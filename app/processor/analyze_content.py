@@ -67,7 +67,7 @@ class LLMEnvironment:
             
         return OpenAI(**client_kwargs)
 
-    def ask_llm(self, message: dict, temperature: float = 0.0) -> str:
+    def ask_llm(self, message: dict, response_format: dict = None, temperature: float = 0.0) -> str:
         """
         Interroge le LLM avec un prompt système et utilisateur.
         
@@ -75,6 +75,7 @@ class LLMEnvironment:
             message:
                 system_prompt: Prompt système pour définir le rôle du LLM
                 user_prompt: Prompt utilisateur avec la question
+            response_format: Format de réponse à utiliser
             temperature: Température pour la génération (0.0 = déterministe)
             
         Returns:
@@ -84,7 +85,8 @@ class LLMEnvironment:
             response = self.client.chat.completions.create(
                 model=self.llm_model,
                 messages=message,
-                temperature=temperature
+                temperature=temperature,
+                response_format=response_format if response_format else None
             )
             
             return response.choices[0].message.content.strip()
@@ -114,13 +116,14 @@ class LLMEnvironment:
                 # logger.error(f"ERREUR lors de la seconde tentative LLM: {str(e2)}")
                 return f"Erreur lors de l'appel au LLM: {str(e)[:100]}"
             
-    def analyze_content(self, context: str, question: str, temperature: float = 0.0) -> str:
+    def analyze_content(self, context: str, question: str, response_format: dict = None, temperature: float = 0.0) -> str:
         """
         Analyse le contexte fourni en utilisant l'API LLM.
         
         Args:
             context: Contexte à analyser (texte complet ou liste de chunks)
             question: Question à poser au LLM
+            response_format: Format de réponse à utiliser
             temperature: Température pour la génération (0.0 = déterministe)
             
         Returns:
@@ -134,7 +137,7 @@ class LLMEnvironment:
             {"role": "user", "content": user_prompt}
         ]
 
-        return self.ask_llm(message, temperature)
+        return self.ask_llm(message, response_format, temperature)
 
 # Fonction pour extraire le JSON de la réponse
 def parse_json_response(response_text):
@@ -179,6 +182,22 @@ def get_prompt_from_attributes(dfAttributes: pd.DataFrame ):
         question+=f"""{consigne}"""
   return question
 
+def create_response_format(dfAttributes, classification):
+    l_output_field = select_attr(dfAttributes, classification).output_field.tolist()
+    response_format = {
+        "type": "json_schema",
+        "json_schema": {
+            "name": f"{classification}",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {output_field: {"type": "string"} for output_field in l_output_field},
+                "required": list(dfAttributes.output_field)
+            }
+        }
+    }
+    return response_format
+
 def df_analyze_content(api_key, 
                        base_url, 
                        llm_model, 
@@ -220,6 +239,7 @@ def df_analyze_content(api_key,
         classification = row['classification']
         try:
             question = get_prompt_from_attributes(select_attr(dfAttributes, classification))
+            response_format = create_response_format(dfAttributes, classification)
             context = row['relevant_content']
 
             if(context == ""):
@@ -228,8 +248,9 @@ def df_analyze_content(api_key,
             with log_execution_time(f"df_analyze_content({row.filename})"):
                 response = llm_env.analyze_content(context=context,
                                                 question=question,
+                                                response_format=response_format,
                                                 temperature=temperature)
-            
+            print(response)
             data, error = parse_json_response(response)
 
             result = {
@@ -279,93 +300,3 @@ def df_analyze_content(api_key,
 def save_df_analyze_content_result(df: pd.DataFrame):
     bulk_update_attachments(df, ['llm_response', 'json_error'])
 
-
-def questionDesignation(row):
-    context = ' ET '.join(row['infos'])
-    question = f"""    
-    Création d'une désignation et d'une description détaillée de la dépense
-
-    Voici les informations disponibles sur la dépense :
-
-    {context}
-    A partir de ces informations, tu dois produire :
-    1. Un description, appelée "designation" : une description de la dépense en une phrase.
-    2. Une description détaillée, appelée "description" : une description plus longue qui reprend tous les éléments importants fournis dans les informations ci-dessus.
-    3. Tu dois IMPÉRATIVEMENT répondre UNIQUEMENT avec un JSON valide, sans aucun autre texte, avec cette structure exacte:
-    {{
-        "designation": la description en un paragraphe,
-        "description": la description detaillée à partir des éléments importants fournis dans les informations ci-dessus
-    }}
-    4. Les informations seront fournies sous format JSON séparés par ET avec parfois de la redondance.
-    """
-    return question
-
-def df_create_designation(api_key,
-                          base_url,
-                          llm_model,
-                          df: pd.DataFrame,
-                          temperature: float = 0.0,
-                          max_workers: int = 4,
-                          save_path: str = None,
-                          directory_path: str = None) -> pd.DataFrame:
-    dfResult = df[df['json_error'].isna()].query('nb_mot > 0')\
-    .groupby('num_EJ')\
-    .agg({
-        'llm_response': list
-    }).reset_index()\
-    .rename(columns={'llm_response': 'infos'})\
-    .sort_values(by='num_EJ', ascending=True)\
-    .copy()
-    dfResult['llm_response'] = None
-    dfResult['json_error'] = None
-
-    def process_row(idx):
-        row = dfResult.iloc[idx]
-        question = questionDesignation(row)
-        try:
-            llm_env = LLMEnvironment(
-                api_key=api_key,
-                base_url=base_url,
-                llm_model=llm_model
-            )
-            system_prompt = "Vous êtes un assistant IA qui analyse des documents juridiques."
-            message = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": question}
-            ]
-            response = llm_env.ask_llm(message=message, 
-                                       temperature=temperature)
-            data, error = parse_json_response(response)
-            
-            result = {
-                'llm_response': response,
-                'json_error': error
-            }
-
-            if not error:
-                result.update({
-                    'designation': data.get('designation', ''),
-                    'description': data.get('description', '')
-                })
-            else: 
-                print(f"Erreur lors de l'analyse du fichier {row['num_EJ']}: {error}")
-        except Exception as e:
-            result = {
-                'llm_response': None,
-                'json_error': f"Erreur lors de l'analyse: {str(e)}"
-            }
-        return idx, result
-    
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = [executor.submit(process_row, i) for i in range(len(dfResult))]
-        
-        for future in tqdm(futures, total=len(futures), desc="Traitement des désignations"):
-            idx, result = future.result()
-            for key, value in result.items():
-                dfResult.at[idx, key] = value
-        
-    if(save_path != None):
-        dfResult.to_csv(f'{save_path}/Designation_{directory_path.split("/")[-1]}_{getDate()}.csv', index = False)
-        print(f"Liste des fichiers sauvegardées dans {save_path}/Designation_{directory_path.split("/")[-1]}_{getDate()}.csv")
-
-    return dfResult
