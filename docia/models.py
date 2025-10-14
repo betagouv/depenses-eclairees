@@ -88,7 +88,7 @@ class DataEngagementItems(models.Model):
         db_default=RandomUUID(),
         editable=False,
     )
-    num_ej = models.ForeignKey(DataEngagement, on_delete=models.CASCADE, db_column="num_ej", to_field="num_ej")
+    num_ej = models.CharField(max_length=20)
     poste_ej = models.CharField()
     num_contrat = models.CharField(null=True, blank=True)  # noqa: DJ001
     groupe_marchandise = models.CharField(null=True, blank=True)  # noqa: DJ001
@@ -99,7 +99,7 @@ class DataEngagementItems(models.Model):
         unique_together = [("num_ej", "poste_ej")]
 
     def __str__(self):
-        return f"{self.num_ej_id} - {self.poste_ej}"
+        return f"{self.num_ej} - {self.poste_ej}"
 
 
 class DataProgrammesMinisteriels(models.Model):
