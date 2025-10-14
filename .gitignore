@@ -12,3 +12,4 @@ last_extract
 /notes.txt
 /celerybeat*
 /dump.rdb
+/notebooks
