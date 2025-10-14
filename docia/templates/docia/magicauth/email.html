@@ -1,0 +1,20 @@
+{% extends 'email_base.html' %}
+
+{% block content %}
+    <p>Vous avez demandé vous connecter avec le site Dépenses Éclairées. Pour compléter votre demande, cliquez sur ce bouton :</p>
+
+    <div class="cta">
+        <a href="https://{{ site.domain }}{% url 'magicauth-wait' token.key %}?next={{ next_url|urlencode }}">
+            Se connecter
+        </a>
+    </div>
+
+    <p>Ce lien n'est valable que {{ TOKEN_DURATION_MINUTES }} minutes. Il est à usage unique</p>
+
+    <p>En cas de difficulté, vous pouvez copier ce lien directement dans votre navigateur :</p>
+
+    <p>https://{{ site.domain }}{% url 'magicauth-wait' token.key %}?next={{ next_url|urlencode }}</p>
+
+
+    <p>Si vous n'êtes pas à l'origine de cette demande vous pouvez ignorer ce message.</p>
+{% endblock %}

@@ -1,0 +1,53 @@
+name: Django Tests CI
+
+on:
+  push:
+    branches: ['main']
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: docia
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready 
+          --health-interval 10s 
+          --health-timeout 5s 
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        id: setup-python
+        with:
+          python-version-file: "pyproject.toml"
+      - name: Install Poetry
+        run: pipx install poetry
+      - name: Setup local virtual environment
+        run: |
+          poetry config virtualenvs.create true --local
+          poetry config virtualenvs.in-project true --local
+      - uses: actions/cache@v4
+        name: Cache virtualenv based on the dependencies lock file
+        with:
+          path: ./.venv
+          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('poetry.lock') }}
+      - name: Install dependencies
+        run: poetry sync
+      - name: Setup env
+        run: cp ci.env .env
+      - name: Check no missing migrations
+        run: poetry run ./manage.py makemigrations --check --dry-run
+      - name: Run ruff
+        run: poetry run ruff check docia
+      - name: Run ruff format
+        run: poetry run ruff format --check docia

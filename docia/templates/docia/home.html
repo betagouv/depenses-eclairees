@@ -1,0 +1,70 @@
+{% extends "docia/base.html" %}
+
+{% load dsfr_tags static %}
+
+
+{% block content %}
+
+  <h1>Dépenses éclairées</h1>
+
+  <div class="fr-mb-10v">
+    Rejoignez-nous sur Tchap et posez vos questions&nbsp;:
+    <a target="_blank" href="{{ settings.TCHAP_SUPPORT_CANAL_URL }}">
+      Support - Dépenses Éclairées
+    </a>
+  </div>
+
+  {% if user.is_authenticated %}
+
+    <form method="get">
+      {{ form }}
+      <div class="fr-input-group fr-my-4w">
+        <button type="submit" class="fr-btn" title="Chercher">
+          Chercher
+        </button>
+      </div>
+    </form>
+
+    {% if is_form_processed %}
+      {% if is_ratelimited %}
+        Limite de requêtes atteinte. Veuillez réessayer demain.
+      {% endif %}
+      {% if not documents and not unprocessed %}
+        Aucun résultat.
+      {% endif %}
+      {% for doc in documents %}
+        <section class="fr-accordion" data-fr-js-accordion="true">
+          <h3 class="fr-accordion__title">
+            <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}" data-fr-js-collapse-button="true">
+              {{ doc.title }}
+            </button>
+          </h3>
+          <div class="fr-collapse" id="{{ doc.id }}" data-fr-js-collapse="true" style="--collapse: -48px;">
+            {% dsfr_table content=doc.content extra_classes='fr-table--bordered fr-table--no-scroll copyable' %}
+          </div>
+        </section>
+      {% endfor %}
+      {% if unprocessed %}
+        <section class="fr-accordion" data-fr-js-accordion="true">
+          <h3 class="fr-accordion__title">
+            <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="unprocessed" data-fr-js-collapse-button="true">
+              Non traités
+            </button>
+          </h3>
+          <div class="fr-collapse" id="unprocessed" data-fr-js-collapse="true" style="--collapse: -48px;">
+            {% for doc in unprocessed %}
+              {{ doc }}<br/>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+    {% endif %}
+
+  {% else %}
+    <a href="{% url 'login' %}">Se connecter</a>
+  {% endif %}
+
+  <div style="margin-bottom: 50vh"></div>
+
+  <script src="{% static 'js/clipboard.js' %}" defer></script>
+{% endblock %}

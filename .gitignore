@@ -1,0 +1,14 @@
+.env
+__pycache__/
+*.pyc
+.DS_Store
+doc/
+env/
+PJ.7z.7z
+last_extract
+.cache
+.pdf_cache
+.ipynb_checkpoints
+/notes.txt
+/celerybeat*
+/dump.rdb

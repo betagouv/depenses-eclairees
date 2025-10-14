@@ -1,0 +1,32 @@
+{% extends "dsfr/base.html" %}
+
+
+{% block header %}
+{% endblock header %}
+
+
+{% block footer %}
+{% endblock footer %}
+
+
+{% block content %}
+  <div>
+    <h1 class="fr-h1">Connexion</h1>
+
+    <form method="post">
+      {% csrf_token %}
+      {{ form }}
+      <div class="fr-input-group fr-my-4w">
+        <button type="submit" class="fr-btn" title="Valider">
+          Se connecter
+        </button>
+      </div>
+    </form>
+
+    <hr/>
+
+    {% if settings.PROCONNECT_ALLOWED %}
+      <a href="{% url 'oidc_authentication_init' %}{% if request.GET.next %}?next={{ request.GET.next|urlencode }}{% endif %}" class="fr-btn">Pro connect</a>
+    {% endif %}
+  </div>
+{% endblock %}

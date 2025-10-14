@@ -1,0 +1,56 @@
+{% extends "dsfr/header.html" %}
+{% load i18n %}
+
+{% block service_title %}
+  <a href="/" title="Accueil — Dépenses Éclairées">
+    <p class="fr-header__service-title">
+      Dépenses Éclairées
+      <span class="fr-badge fr-badge--sm fr-badge--green-emeraude">BETA</span>
+    </p>
+  </a>
+{% endblock service_title %}
+
+{% block header_tools_links %}
+  <div class="fr-header__tools-links">
+    <ul class="fr-btns-group">
+        <li>
+          {% if user.is_authenticated %}
+            <div class="fr-nav__link">
+              <span>{{ user.email }}</span>
+            <form action="{% url 'oidc_logout' %}" method="post">
+              {% csrf_token %}
+              <input type="submit" value="Se déconnecter" class="">
+            </form>
+            </div>
+          {% else %}
+            <a class="fr-icon-lock-line fr-btn" href="{% url 'login' %}">Se connecter</a>
+          {% endif %}
+        </li>
+    </ul>
+  </div>
+{% endblock header_tools_links %}
+
+{% block main_menu %}
+  <div class="fr-header__menu fr-modal"
+       id="fr-menu-mobile"
+       aria-labelledby="fr-btn-menu-mobile">
+    <div class="fr-container">
+      <button class="fr-btn--close fr-btn" aria-controls="fr-menu-mobile">
+        {% translate "Close" %}
+      </button>
+      <div class="fr-header__menu-links">
+      </div>
+      {% translate "Main menu" as main_menu_label %}
+      <nav role="navigation"
+           class="fr-nav"
+           id="fr-navigation"
+           aria-label="{{ main_menu_label }}">
+        <ul class="fr-nav__list">
+          <li class="fr-nav__item">
+            <a class="fr-nav__link" href="#" target="_self">Accueil</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+{% endblock main_menu %}
