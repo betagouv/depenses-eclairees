@@ -13,11 +13,13 @@ from tqdm import tqdm
 from typing import Dict
 import magic
 
+from django.core.files.storage import default_storage
+
 from .utils_file_manager import extract_num_EJ
 from app.utils import getDate
 from app.grist import post_new_data_to_grist, post_data_to_grist_multiple_keys
 from app.grist import URL_TABLE_ATTACHMENTS, URL_TABLE_ENGAGEMENTS, URL_TABLE_BATCH, API_KEY_GRIST
-from ..data.sql.sql import bulk_create_batches, bulk_create_engagements, bulk_create_attachments
+from app.data.db import bulk_create_batches, bulk_create_engagements, bulk_create_attachments
 
 
 def unzip_all_files(source_dir, target_dir=None):
@@ -309,7 +311,7 @@ def remove_empty_files(directory_path: str) -> list:
     return deleted_files
 
 
-def get_file_hash(file_path: str) -> str:
+def get_file_hash(file_path: str, force_local=False) -> str:
     """
     Calcule le hash SHA-256 d'un fichier.
     
@@ -321,7 +323,8 @@ def get_file_hash(file_path: str) -> str:
     """
     try:
         hash_sha256 = hashlib.sha256()
-        with open(file_path, "rb") as f:
+        _open = open if force_local else default_storage.open
+        with _open(file_path, "rb") as f:
             # Lire le fichier par chunks pour optimiser la mémoire
             for chunk in iter(lambda: f.read(4096), b""):
                 hash_sha256.update(chunk)
@@ -357,7 +360,7 @@ def remove_duplicate(directory_path: str) -> list:
         file_path = os.path.join(directory_path, filename)
         if not os.path.isfile(file_path):
             continue
-        file_hash = get_file_hash(file_path)
+        file_hash = get_file_hash(file_path, force_local=True)
         if file_hash == "ERROR":
             print(f"Impossible de calculer le hash pour {filename}, ignoré.")
             continue
@@ -447,7 +450,7 @@ def detect_ole2_by_streams(file_path: str) -> str:
         filename = os.path.basename(file_path).lower()
         if filename.endswith('.msg'):
             # Vérifier si c'est un PDF dans un MSG
-            with open(file_path, 'rb') as f:
+            with default_storage.open(file_path, 'rb') as f:
                 content = f.read(1000)  # Lire seulement les premiers octets
                 if b'%PDF' in content:
                     return 'pdf'
@@ -462,7 +465,7 @@ def detect_ole2_by_streams(file_path: str) -> str:
         elif filename.endswith('.db') or 'thumbs.db' in filename:
             return 'db'
         
-        with open(file_path, 'rb') as f:
+        with default_storage.open(file_path, 'rb') as f:
             # Lire tout le fichier et chercher des patterns caractéristiques
             content = f.read()
             
@@ -637,7 +640,7 @@ def detect_file_type_by_magic_bytes(file_path: str) -> str:
         str: Extension détectée ou 'unknown'
     """
     try:
-        with open(file_path, 'rb') as f:
+        with default_storage.open(file_path, 'rb') as f:
             # Lire les premiers 16 octets
             header = f.read(16)
             
@@ -672,7 +675,8 @@ def detect_file_extension_from_content(file_path: str) -> str:
     
     # Essayer d'abord avec python-magic si disponible
     try:
-        mime = magic.from_file(file_path, mime=True)
+        with default_storage.open(file_path, 'rb') as f:
+            mime = magic.from_buffer(f.read(1024), mime=True)
         mime_to_ext = {
             'application/pdf': 'pdf',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
@@ -752,7 +756,7 @@ def get_file_initial_info(filename, directory_path: str) -> dict:
     file_path = os.path.join(directory_path, filename)
     
     # Calculer le hash seulement si le fichier existe
-    file_hash = get_file_hash(file_path) if os.path.isfile(file_path) else "ERROR"
+    file_hash = get_file_hash(file_path) if default_storage.exists(file_path) else "ERROR"
     extension = get_corrected_extension(filename, file_path)
     
     return {
@@ -761,7 +765,7 @@ def get_file_initial_info(filename, directory_path: str) -> dict:
         'dossier': directory_path,
         'extension': extension,
         'date_creation': getDate(),
-        'taille': os.path.getsize(file_path) if os.path.isfile(file_path) else 0,
+        'taille': default_storage.size(file_path),
         'hash': file_hash
     }
 
@@ -776,10 +780,10 @@ def get_files_initial_infos(directory_path: str, save_path = None, save_grist = 
         pd.DataFrame: DataFrame contenant les informations sur les fichiers
     """
     files_data = []
-        
-    for filename in tqdm(os.listdir(directory_path), desc="Analyse des fichiers"):
+
+    files = default_storage.listdir(directory_path)[1]
+    for filename in tqdm(files, desc="Analyse des fichiers"):
         file_infos = get_file_initial_info(filename, directory_path)
-        file_path = os.path.join(directory_path, filename)
 
         files_data.append(file_infos)
     
@@ -821,14 +825,16 @@ def get_files_initial_infos(directory_path: str, save_path = None, save_grist = 
     return dfFiles.sort_values(by=["filename","extension","hash"])
 
 
-def save_files_initial_infos_result(df: pd.DataFrame, batch_grist=""):
+def save_files_initial_infos_result(df: pd.DataFrame, batch: str):
+    if not batch:
+        raise ValueError(f"Batch cannot be empty (got: {batch!r})")
+
     bulk_create_engagements(df)
     bulk_create_attachments(df)
 
-    if batch_grist != "" and isinstance(batch_grist, str):
-        dfBatch = df[["num_EJ"]].drop_duplicates("num_EJ")
-        dfBatch["Batch"] = batch_grist
-        bulk_create_batches(df=dfBatch)
+    dfBatch = df[["num_EJ"]].drop_duplicates("num_EJ")
+    dfBatch["Batch"] = batch
+    bulk_create_batches(df=dfBatch)
 
 
 def get_files_chorus_infos(dfFiles: pd.DataFrame, df_ground_truth: pd.DataFrame, directory_path: str, save_path = None) -> pd.DataFrame:

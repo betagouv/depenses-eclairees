@@ -1,14 +1,19 @@
+import io
 import os
-import docx2txt
+import tempfile
+from concurrent.futures import ProcessPoolExecutor, as_completed
 import zipfile
+import re
+
+from django.core.files.storage import default_storage
+
+from PIL import Image
+import docx2txt
+import pymupdf
 import pandas as pd
 from PyPDF2 import PdfReader
-import re
 import pytesseract
-from pdf2image import convert_from_path
-#import fitz  # PyMuPDF
 from tqdm import tqdm
-from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from app.data.sql.sql import bulk_update_attachments
 from app.utils import count_words, log_execution_time
@@ -85,13 +90,14 @@ def display_pdf_stats(dfFiles, title="Statistiques globales"):
 
 # Fonction pour extraire le texte d'un PDF avec Fitz, PdfReader ou PyTesseract 
 # OCR PyTesseract en-dessous de word_thresehold = 50
-def extract_text_from_pdf(filename, folder, word_threshold=50):
+def extract_text_from_pdf(file_content: bytes, file_path: str, word_threshold=50):
     """
     Extrait le texte d'un PDF. Si le PDF contient moins de mots que le seuil défini,
     utilise l'OCR pour extraire le texte.
     
     Args:
-        filename (str): Nom du fichier PDF
+        file_content (bytes): Contenu du fichier
+        file_path (str): Chemin du fichier PDF
         word_threshold (int): Nombre minimal de mots en dessous duquel l'OCR est utilisé
         folder (str): Dossier contenant les fichiers PDF
         
@@ -99,10 +105,11 @@ def extract_text_from_pdf(filename, folder, word_threshold=50):
         tuple: (texte extrait, booléen indiquant si l'OCR a été utilisé)
     """
     # Construire le chemin complet du fichier
-    file_path = os.path.join(folder, filename)
     try:
         # Essayer d'extraire directement le texte avec PyPDF2
-        pdf = PdfReader(file_path)
+        # TODO Use pymupdf instead, it's faster
+        # https://pymupdf.readthedocs.io/en/latest/about.html#performance
+        pdf = PdfReader(io.BytesIO(file_content))
         text = ""
         for page in pdf.pages:
             text += page.extract_text() or ""
@@ -130,9 +137,16 @@ def extract_text_from_pdf(filename, folder, word_threshold=50):
             if word_count_fitz < word_threshold:
                 is_ocr_used = True
                 text_ocr = ""
-                images = convert_from_path(file_path)
-                for img in images:
-                    text_ocr += pytesseract.image_to_string(img) or ""
+                # https://pymupdf.readthedocs.io/en/latest/recipes-ocr.html#how-to-ocr-a-document-page
+                # https://pymupdf.readthedocs.io/en/latest/installation.html#installation-ocr
+                doc = pymupdf.open(stream=io.BytesIO(file_content))
+                for page in doc:
+                    pix = page.get_pixmap(dpi=200, colorspace=pymupdf.csRGB, alpha=0)
+                    image = pix.pil_image()
+                    text_ocr += pytesseract.image_to_string(image, lang='fra') or ""
+                    # alternatively we could use this tesseract wrapper from pymupdf
+                    # text_page = page.get_textpage_ocr(dpi=200, language='fra', full=True)
+                    # text_ocr += text_page.extractText()
                 return text_ocr.strip(), is_ocr_used
             else:
                 return text_with_fitz.strip(), is_ocr_used
@@ -143,32 +157,21 @@ def extract_text_from_pdf(filename, folder, word_threshold=50):
         print(f"Erreur lors de l'extraction du texte de {file_path}: {e}")
         return "", False
 
-def extract_text_from_docx(filename, folder):
+def extract_text_from_docx(file_content: bytes, file_path: str):
     """
     Extrait le texte d'un fichier DOCX avec gestion d'erreurs robuste.
     
     Args:
-        filename (str): Nom du fichier DOCX
-        folder (str): Dossier contenant le fichier
-        
+        file_content (bytes): Contenu du fichier
+        file_path (str): Chemin du fichier DOCX
+
     Returns:
         tuple: (texte extrait, booléen indiquant si l'OCR a été utilisé)
     """
-    file_path = os.path.join(folder, filename)
-    
-    # Vérifier que le fichier existe
-    if not os.path.exists(file_path):
-        print(f"Erreur: Le fichier {file_path} n'existe pas")
-        return "", False
-    
-    # Vérifier que le fichier n'est pas vide
-    if os.path.getsize(file_path) == 0:
-        print(f"Erreur: Le fichier {file_path} est vide")
-        return "", False
-    
+
     try:
         # Tentative d'extraction du texte avec docx2txt
-        text = docx2txt.process(file_path)
+        text = docx2txt.process(io.BytesIO(file_content))
         
         # Vérifier que le texte a été extrait
         if text is None:
@@ -210,33 +213,22 @@ def extract_text_from_docx(filename, folder):
         return "", False
         
 
-def extract_text_from_odt(filename, folder):
+def extract_text_from_odt(file_content: bytes, file_path: str):
     """
     Extrait le texte d'un fichier ODT avec gestion d'erreurs robuste.
     
     Args:
-        filename (str): Nom du fichier ODT
-        folder (str): Dossier contenant le fichier
-        
+        file_content (bytes): Contenu du fichier
+        file_path (str): Nom du fichier ODT
+
     Returns:
         tuple: (texte extrait, booléen indiquant si l'OCR a été utilisé)
     """
-    file_path = os.path.join(folder, filename)
-    
-    # Vérifier que le fichier existe
-    if not os.path.exists(file_path):
-        print(f"Erreur: Le fichier {file_path} n'existe pas")
-        return "", False
-    
-    # Vérifier que le fichier n'est pas vide
-    if os.path.getsize(file_path) == 0:
-        print(f"Erreur: Le fichier {file_path} est vide")
-        return "", False
-    
+
     try:
         # Méthode 1: Essayer avec zipfile (ODT est un fichier ZIP)
         try:
-            with zipfile.ZipFile(file_path, 'r') as zip_file:
+            with zipfile.ZipFile(io.BytesIO(file_content), 'r') as zip_file:
                 # Lire le contenu XML principal
                 if 'content.xml' in zip_file.namelist():
                     content = zip_file.read('content.xml')
@@ -273,61 +265,37 @@ def extract_text_from_odt(filename, folder):
         print(f"Erreur inattendue lors de l'extraction du texte de {file_path}: {e}")
         return "", False
 
-def extract_text_from_txt(filename, folder):
+def extract_text_from_txt(file_content: bytes, file_path: str):
     """
     Extrait le texte d'un fichier TXT avec gestion d'erreurs robuste.
     """
-    file_path = os.path.join(folder, filename)
 
-    # Vérifier que le fichier existe
-    if not os.path.exists(file_path):
-        print(f"Erreur: Le fichier {file_path} n'existe pas")
-        return "", False
-    
-    # Vérifier que le fichier n'est pas vide
-    if os.path.getsize(file_path) == 0:
-        print(f"Erreur: Le fichier {file_path} est vide")
-        return "", False
-    
     try:
         # Lire le contenu du fichier
-        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-            text = f.read()
+        text = file_content.decode('utf-8', errors='ignore')
         return text, False
     except Exception as e:
         print(f"Erreur inattendue lors de l'extraction du texte de {file_path}: {e}")
         return "", False
 
-def extract_text_from_image(filename, folder):
+def extract_text_from_image(file_content: bytes, file_path: str):
     """
     Extrait le texte d'une image (PNG, JPG, JPEG, TIFF) avec OCR (Optical Character Recognition).
     
     Args:
-        filename (str): Nom du fichier image
-        folder (str): Dossier contenant le fichier
-        
+        file_content (bytes): Contenu de l'image
+        file_path (str): Chemin du fichier image
+
     Returns:
         tuple: (texte extrait, booléen indiquant si l'OCR a été utilisé)
     """
-    file_path = os.path.join(folder, filename)
-    
-    # Vérifier que le fichier existe
-    if not os.path.exists(file_path):
-        print(f"Erreur: Le fichier {file_path} n'existe pas")
-        return "", False
-    
-    # Vérifier que le fichier n'est pas vide
-    if os.path.getsize(file_path) == 0:
-        print(f"Erreur: Le fichier {file_path} est vide")
-        return "", False
-    
+
     try:
         # Ouvrir l'image directement avec PIL
-        from PIL import Image
-        image = Image.open(file_path)
+        image = Image.open(io.BytesIO(file_content))
         
         # Extraire le texte avec pytesseract
-        text_ocr = pytesseract.image_to_string(image)
+        text_ocr = pytesseract.image_to_string(image, lang='fra')
         
         # Nettoyer le texte
         text_ocr = text_ocr.strip()
@@ -345,141 +313,120 @@ def extract_text_from_image(filename, folder):
 
 
 
-def extract_text_from_doc_libreoffice(filename, folder):
+def extract_text_from_doc_libreoffice(file_path):
     """
     Extrait le texte d'un fichier .doc en utilisant LibreOffice (avec gestion d'erreurs robuste)
     """
-    file_path = os.path.join(folder, filename)
-    temp_dir = os.path.join(folder, "temp_libreoffice")
-    
+
     try:
-        # Vérifier si LibreOffice est disponible
-        import subprocess
-        result = subprocess.run(['which', 'libreoffice'], capture_output=True, text=True)
-        if result.returncode != 0:
-            # Essayer d'autres chemins possibles
-            possible_paths = [
-                '/Applications/LibreOffice.app/Contents/MacOS/soffice',  # macOS
-                '/usr/bin/libreoffice',  # Linux
-                'C:\\Program Files\\LibreOffice\\program\\soffice.exe',  # Windows
-                'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe'  # Windows 32-bit
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            # Vérifier si LibreOffice est disponible
+            import subprocess
+            result = subprocess.run(['which', 'libreoffice'], capture_output=True, text=True)
+            if result.returncode != 0:
+                # Essayer d'autres chemins possibles
+                possible_paths = [
+                    '/Applications/LibreOffice.app/Contents/MacOS/soffice',  # macOS
+                    '/usr/bin/libreoffice',  # Linux
+                    'C:\\Program Files\\LibreOffice\\program\\soffice.exe',  # Windows
+                    'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe'  # Windows 32-bit
+                ]
+
+                libreoffice_path = None
+                for path in possible_paths:
+                    if os.path.exists(path):
+                        libreoffice_path = path
+                        break
+
+                if not libreoffice_path:
+                    print("LibreOffice n'est pas installé ou pas trouvé dans le PATH")
+                    return "", False
+            else:
+                libreoffice_path = 'libreoffice'
+
+            # Essayer plusieurs méthodes de conversion avec LibreOffice
+            methods = [
+                # Méthode 1: Conversion directe en txt
+                {
+                    'name': 'conversion directe txt',
+                    'cmd': [libreoffice_path, '--headless', '--convert-to', 'txt', '--outdir', tmpdirname, file_path]
+                },
+                # Méthode 2: Conversion en docx puis extraction
+                {
+                    'name': 'conversion docx',
+                    'cmd': [libreoffice_path, '--headless', '--convert-to', 'docx', '--outdir', tmpdirname, file_path]
+                },
+                # Méthode 3: Conversion avec options de récupération
+                {
+                    'name': 'conversion avec récupération',
+                    'cmd': [libreoffice_path, '--headless', '--invisible', '--convert-to', 'txt', '--outdir', tmpdirname, file_path]
+                }
             ]
-            
-            libreoffice_path = None
-            for path in possible_paths:
-                if os.path.exists(path):
-                    libreoffice_path = path
-                    break
-            
-            if not libreoffice_path:
-                print("LibreOffice n'est pas installé ou pas trouvé dans le PATH")
-                return "", False
-        else:
-            libreoffice_path = 'libreoffice'
-        
-        # Créer un dossier temporaire
-        os.makedirs(temp_dir, exist_ok=True)
-        
-        # Essayer plusieurs méthodes de conversion avec LibreOffice
-        methods = [
-            # Méthode 1: Conversion directe en txt
-            {
-                'name': 'conversion directe txt',
-                'cmd': [libreoffice_path, '--headless', '--convert-to', 'txt', '--outdir', temp_dir, file_path]
-            },
-            # Méthode 2: Conversion en docx puis extraction
-            {
-                'name': 'conversion docx',
-                'cmd': [libreoffice_path, '--headless', '--convert-to', 'docx', '--outdir', temp_dir, file_path]
-            },
-            # Méthode 3: Conversion avec options de récupération
-            {
-                'name': 'conversion avec récupération',
-                'cmd': [libreoffice_path, '--headless', '--invisible', '--convert-to', 'txt', '--outdir', temp_dir, file_path]
-            }
-        ]
-        
-        for method in methods:
-            try:
-                result = subprocess.run(method['cmd'], capture_output=True, text=True, timeout=90)
-                
-                if result.returncode == 0:
-                    # Chercher le fichier de sortie
-                    base_name = os.path.splitext(filename)[0]
-                    possible_outputs = [
-                        os.path.join(temp_dir, f"{base_name}.txt"),
-                        os.path.join(temp_dir, f"{base_name}.docx")
-                    ]
-                    
-                    for output_path in possible_outputs:
-                        if os.path.exists(output_path):
-                            if output_path.endswith('.txt'):
-                                # Lire directement le fichier txt
-                                with open(output_path, 'r', encoding='utf-8', errors='ignore') as f:
-                                    text = f.read()
-                                
-                                # Nettoyer
-                                os.remove(output_path)
-                                if os.path.exists(temp_dir) and not os.listdir(temp_dir):
-                                    os.rmdir(temp_dir)
-                                
-                                if text and len(text.strip()) > 10:
-                                    return text.strip(), False
-                            
-                            elif output_path.endswith('.docx'):
-                                # Utiliser docx2txt sur le fichier docx
-                                try:
-                                    text = docx2txt.process(output_path)
-                                    os.remove(output_path)
-                                    if os.path.exists(temp_dir) and not os.listdir(temp_dir):
-                                        os.rmdir(temp_dir)
-                                    
+
+            for method in methods:
+                try:
+                    result = subprocess.run(method['cmd'], capture_output=True, text=True, timeout=90)
+
+                    if result.returncode == 0:
+                        # Chercher le fichier de sortie
+                        base_name = os.path.splitext(file_path.split('/'[-1]))[0]
+                        possible_outputs = [
+                            os.path.join(tmpdirname, f"{base_name}.txt"),
+                            os.path.join(tmpdirname, f"{base_name}.docx")
+                        ]
+
+                        for output_path in possible_outputs:
+                            if os.path.exists(output_path):
+                                if output_path.endswith('.txt'):
+                                    # Lire directement le fichier txt
+                                    with open(output_path, 'r', encoding='utf-8', errors='ignore') as f:
+                                        text = f.read()
+
                                     if text and len(text.strip()) > 10:
                                         return text.strip(), False
-                                except Exception as e:
-                                    print(f"    - Erreur docx2txt: {e}")
-                                    continue
-                
-                else:
-                    # Vérifier si c'est une erreur de déploiement
-                    if "DeploymentException" in result.stderr or "libc++abi" in result.stderr:
-                        print(f"    - Erreur de déploiement LibreOffice, essai méthode suivante...")
-                        continue
+
+                                elif output_path.endswith('.docx'):
+                                    # Utiliser docx2txt sur le fichier docx
+                                    try:
+                                        text = docx2txt.process(output_path)
+
+                                        if text and len(text.strip()) > 10:
+                                            return text.strip(), False
+                                    except Exception as e:
+                                        print(f"    - Erreur docx2txt: {e}")
+                                        continue
+
                     else:
-                        print(f"    - Erreur LibreOffice ({method['name']}): {result.stderr[:200]}...")
-                        continue
-                        
-            except subprocess.TimeoutExpired:
-                print(f"    - Timeout avec {method['name']}")
-                continue
-            except Exception as e:
-                print(f"    - Erreur avec {method['name']}: {e}")
-                continue
-        
-        # Nettoyer le dossier temporaire
-        if os.path.exists(temp_dir):
-            try:
-                import shutil
-                shutil.rmtree(temp_dir)
-            except:
-                pass
-        
-        return "", False
+                        # Vérifier si c'est une erreur de déploiement
+                        if "DeploymentException" in result.stderr or "libc++abi" in result.stderr:
+                            print(f"    - Erreur de déploiement LibreOffice, essai méthode suivante...")
+                            continue
+                        else:
+                            print(f"    - Erreur LibreOffice ({method['name']}): {result.stderr[:200]}...")
+                            continue
+
+                except subprocess.TimeoutExpired:
+                    print(f"    - Timeout avec {method['name']}")
+                    continue
+                except Exception as e:
+                    print(f"    - Erreur avec {method['name']}: {e}")
+                    continue
+
+            return "", False
             
     except Exception as e:
         print(f"Erreur lors de la conversion LibreOffice de {file_path}: {e}")
         return "", False
 
 
-def extract_text_from_doc_docx2txt(filename, folder):
+def extract_text_from_doc_docx2txt(file_content: bytes, file_path: str):
     """
     Essaie d'extraire le texte d'un fichier .doc avec docx2txt (parfois ça marche)
     """
-    file_path = os.path.join(folder, filename)
-    
+
     try:
         # Essayer docx2txt sur le fichier .doc (parfois ça fonctionne)
-        text = docx2txt.process(file_path)
+        text = docx2txt.process(io.BytesIO(file_content))
         
         if text and len(text.strip()) > 10:
             return text.strip(), False
@@ -487,66 +434,66 @@ def extract_text_from_doc_docx2txt(filename, folder):
             return "", False
             
     except Exception as e:
-        print(f"docx2txt ne peut pas traiter {filename}: {e}")
+        print(f"docx2txt ne peut pas traiter {file_path}: {e}")
         return "", False
 
-def extract_text_from_doc_via_conversion(filename, folder):
+def extract_text_from_doc_via_conversion(file_path: str):
     """
     Convertit le fichier .doc en .docx puis extrait le texte
     """
-    file_path = os.path.join(folder, filename)
     docx_path = file_path.replace('.doc', '.docx')
-    
+
     try:
-        # Vérifier si LibreOffice est disponible
-        import subprocess
-        result = subprocess.run(['which', 'libreoffice'], capture_output=True, text=True)
-        if result.returncode != 0:
-            # Essayer d'autres chemins possibles
-            possible_paths = [
-                '/Applications/LibreOffice.app/Contents/MacOS/soffice',  # macOS
-                '/usr/bin/libreoffice',  # Linux
-                'C:\\Program Files\\LibreOffice\\program\\soffice.exe',  # Windows
-                'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe'  # Windows 32-bit
-            ]
-            
-            libreoffice_path = None
-            for path in possible_paths:
-                if os.path.exists(path):
-                    libreoffice_path = path
-                    break
-            
-            if not libreoffice_path:
-                print("LibreOffice n'est pas installé pour la conversion")
-                return "", False
-        else:
-            libreoffice_path = 'libreoffice'
-        
-        # Convertir .doc en .docx avec LibreOffice
-        cmd = [
-            libreoffice_path,
-            '--headless',
-            '--convert-to', 'docx',
-            '--outdir', folder,
-            file_path
-        ]
-        
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-        
-        if result.returncode == 0 and os.path.exists(docx_path):
-            # Utiliser docx2txt sur le fichier .docx
-            text = docx2txt.process(docx_path)
-            
-            # Supprimer le fichier .docx temporaire
-            os.remove(docx_path)
-            
-            if text and len(text.strip()) > 10:
-                return text.strip(), False
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            # Vérifier si LibreOffice est disponible
+            import subprocess
+            result = subprocess.run(['which', 'libreoffice'], capture_output=True, text=True)
+            if result.returncode != 0:
+                # Essayer d'autres chemins possibles
+                possible_paths = [
+                    '/Applications/LibreOffice.app/Contents/MacOS/soffice',  # macOS
+                    '/usr/bin/libreoffice',  # Linux
+                    'C:\\Program Files\\LibreOffice\\program\\soffice.exe',  # Windows
+                    'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe'  # Windows 32-bit
+                ]
+
+                libreoffice_path = None
+                for path in possible_paths:
+                    if os.path.exists(path):
+                        libreoffice_path = path
+                        break
+
+                if not libreoffice_path:
+                    print("LibreOffice n'est pas installé pour la conversion")
+                    return "", False
             else:
+                libreoffice_path = 'libreoffice'
+
+            # Convertir .doc en .docx avec LibreOffice
+            cmd = [
+                libreoffice_path,
+                '--headless',
+                '--convert-to', 'docx',
+                '--outdir', tmpdirname,
+                file_path
+            ]
+
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+
+            if result.returncode == 0 and os.path.exists(docx_path):
+                # Utiliser docx2txt sur le fichier .docx
+                text = docx2txt.process(docx_path)
+
+                # Supprimer le fichier .docx temporaire
+                os.remove(docx_path)
+
+                if text and len(text.strip()) > 10:
+                    return text.strip(), False
+                else:
+                    return "", False
+            else:
+                print(f"Erreur lors de la conversion: {result.stderr}")
                 return "", False
-        else:
-            print(f"Erreur lors de la conversion: {result.stderr}")
-            return "", False
             
     except subprocess.TimeoutExpired:
         print(f"Timeout lors de la conversion de {file_path}")
@@ -616,23 +563,18 @@ def is_text_readable(text):
     # Si aucune des vérifications précédentes n'a réussi, utiliser le critère de base
     return True
 
-def extract_text_from_doc_alternative(filename, folder):
+def extract_text_from_doc_alternative(file_content: bytes):
     """
     Méthode alternative pour les fichiers .doc problématiques
     Utilise une approche de récupération de texte ASCII de qualité
     """
-    file_path = os.path.join(folder, filename)
-    
+
     try:
-        # Essayer de lire le fichier comme un fichier binaire et extraire le texte
-        with open(file_path, 'rb') as f:
-            content = f.read()
-        
         import re
         
         # Chercher uniquement des chaînes de texte ASCII de qualité
         # Pattern pour les mots de 4+ caractères avec lettres et espaces
-        ascii_patterns = re.findall(rb'[a-zA-Z\x20-\x7E]{4,}', content)
+        ascii_patterns = re.findall(rb'[a-zA-Z\x20-\x7E]{4,}', file_content)
         
         if ascii_patterns:
             # Essayer de décoder avec différents encodages
@@ -659,7 +601,7 @@ def extract_text_from_doc_alternative(filename, folder):
         
         # Si la méthode ASCII échoue, essayer une extraction plus basique
         # Chercher des blocs de texte séparés par des caractères de contrôle
-        text_blocks = re.split(rb'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]+', content)
+        text_blocks = re.split(rb'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]+', file_content)
         
         for block in text_blocks:
             if len(block) > 30:  # Blocs significatifs
@@ -692,19 +634,15 @@ def extract_text_from_doc_alternative(filename, folder):
         print(f"Erreur lors de l'extraction alternative: {e}")
         return "", False
 
-def extract_text_from_doc_ole2(filename, folder):
+def extract_text_from_doc_ole2(file_content: bytes):
     """
     Méthode d'extraction utilisant l'analyse OLE2 pour les fichiers .doc
     """
-    file_path = os.path.join(folder, filename)
-    
+
     try:
         # Essayer d'utiliser python-docx2txt ou une bibliothèque similaire
         # Cette méthode est plus spécialisée pour les fichiers .doc OLE2
-        
-        with open(file_path, 'rb') as f:
-            content = f.read()
-        
+
         import re
         
         # Patterns spécifiques aux fichiers Word OLE2
@@ -717,13 +655,13 @@ def extract_text_from_doc_ole2(filename, folder):
         ]
         
         # Vérifier que c'est bien un fichier Word OLE2
-        is_word_doc = any(pattern in content for pattern in word_patterns)
+        is_word_doc = any(pattern in file_content for pattern in word_patterns)
         if not is_word_doc:
             return "", False
         
         # Extraire le texte en cherchant des patterns de texte dans le format OLE2
         # Chercher des chaînes de texte Unicode (UTF-16 LE)
-        unicode_patterns = re.findall(rb'[\x20-\x7E\x00]{2,}', content)
+        unicode_patterns = re.findall(rb'[\x20-\x7E\x00]{2,}', file_content)
         
         extracted_texts = []
         for pattern in unicode_patterns:
@@ -754,99 +692,95 @@ def extract_text_from_doc_ole2(filename, folder):
         print(f"Erreur lors de l'extraction OLE2: {e}")
         return "", False
 
-def extract_text_from_doc_robust(filename, folder):
+def extract_text_from_doc_robust(file_content: bytes, file_path: str):
     """
     Extrait le texte d'un fichier .doc avec plusieurs méthodes de fallback
     Gère les erreurs de déploiement LibreOffice
     """
-    file_path = os.path.join(folder, filename)
-    
-    # Vérifications préliminaires
-    if not os.path.exists(file_path):
-        print(f"  - Erreur: Le fichier {filename} n'existe pas")
-        return "", False
-    
-    if os.path.getsize(file_path) == 0:
-        print(f"  - Erreur: Le fichier {filename} est vide")
-        return "", False
-    
-    print(f"  - Extraction du texte de {filename} ({os.path.getsize(file_path)} octets)")
+
+    print(f"  - Extraction du texte de {file_path} ({len(file_content)} octets)")
     
     # Méthode 1: LibreOffice avec gestion d'erreurs robuste
     print(f"    - Tentative 1: LibreOffice (conversion directe)")
-    text, is_ocr = extract_text_from_doc_libreoffice(filename, folder)
+    text, is_ocr = extract_text_from_doc_libreoffice(file_path)
     if text and is_text_readable(text):
         print(f"    - Succès avec LibreOffice: {len(text)} caractères, {len(text.split())} mots")
         return text, is_ocr
     
     # Méthode 2: LibreOffice avec conversion .doc -> .docx
     print(f"    - Tentative 2: LibreOffice (conversion .doc -> .docx)")
-    text, is_ocr = extract_text_from_doc_via_conversion(filename, folder)
+    text, is_ocr = extract_text_from_doc_via_conversion(file_path)
     if text and is_text_readable(text):
         print(f"    - Succès avec conversion .docx: {len(text)} caractères, {len(text.split())} mots")
         return text, is_ocr
     
     # Méthode 3: Essayer docx2txt (parfois ça marche sur les .doc)
     print(f"    - Tentative 3: docx2txt direct")
-    text, is_ocr = extract_text_from_doc_docx2txt(filename, folder)
+    text, is_ocr = extract_text_from_doc_docx2txt(file_content)
     if text and is_text_readable(text):
         print(f"    - Succès avec docx2txt: {len(text)} caractères, {len(text.split())} mots")
         return text, is_ocr
     
     # Méthode 4: Extraction OLE2 spécialisée
     print(f"    - Tentative 4: Extraction OLE2 spécialisée")
-    text, is_ocr = extract_text_from_doc_ole2(filename, folder)
+    text, is_ocr = extract_text_from_doc_ole2(file_content)
     if text and is_text_readable(text):
         print(f"    - Succès avec extraction OLE2: {len(text)} caractères, {len(text.split())} mots")
         return text, is_ocr
     
     # Méthode 5: Extraction alternative pour fichiers problématiques
     print(f"    - Tentative 5: Extraction alternative (ASCII)")
-    text, is_ocr = extract_text_from_doc_alternative(filename, folder)
+    text, is_ocr = extract_text_from_doc_alternative(file_content)
     if text and is_text_readable(text):
         print(f"    - Succès avec extraction alternative: {len(text)} caractères, {len(text.split())} mots")
         return text, is_ocr
     
     # Si toutes les méthodes échouent
-    print(f"  - Échec: Impossible d'extraire le texte de {filename}")
+    print(f"  - Échec: Impossible d'extraire le texte de {file_path}")
     print(f"  - Le fichier peut être corrompu ou dans un format non supporté")
     return "", False
 
 
-def extract_text(filename, folder, extension, word_threshold=50):
+def extract_text(file_content: bytes, file_path: str, extension, word_threshold=50):
     """
     Extrait le texte d'un fichier selon son extension.
     
     Args:
         filename (str): Nom du fichier
-        folder (str): Dossier contenant le fichier
+        file_path (str): Chemin du fichier
         extension (str): Extension du fichier (pdf, docx, doc, odt)
         word_threshold (int): Seuil de mots pour décider d'utiliser l'OCR (PDF uniquement)
         
     Returns:
         tuple: (texte extrait, booléen indiquant si l'OCR a été utilisé)
     """
+
+    # Vérifier que le fichier n'est pas vide
+    if not file_content:
+        print(f"Erreur: Le fichier {file_path} est vide")
+        return "", False
+
     ext = extension.lower()
     # from app.file_manager import file_type_detector
     
     # ext = file_type_detector.get_corrected_extension(filename, os.path.join(folder, filename))
     # return ext, False
     if ext == 'unknown':
-        print(f"Extension inconnue pour {filename}")
+        print(f"Extension inconnue pour {file_path}")
         return "", False
 
     elif ext == 'pdf':
-        return extract_text_from_pdf(filename, folder, word_threshold)
+        return extract_text_from_pdf(file_content, file_path, word_threshold)
     elif ext == 'docx':
-        return extract_text_from_docx(filename, folder)
+        return extract_text_from_docx(file_content, file_path)
     elif ext == 'odt':
-        return extract_text_from_odt(filename, folder)
+        return extract_text_from_odt(file_content, file_path)
     elif ext == 'txt':
-        return extract_text_from_txt(filename, folder)
+        return extract_text_from_txt(file_content, file_path)
     elif ext in ['png', 'jpg', 'jpeg', 'tiff', 'tif']:
-        return extract_text_from_image(filename, folder)
+        return extract_text_from_image(file_content, file_path)
     elif ext == 'doc':
-        return extract_text_from_doc_robust(filename, folder)
+        return extract_text_from_doc_robust(file_content, file_path)
     else:
         return "", False
 
@@ -921,8 +855,19 @@ def process_row(row, word_threshold):
     extension = row['extension']
 
     with log_execution_time(f"df_extract_text({filename})"):
-        text, is_ocr = extract_text(filename, folder, extension, word_threshold)
-        nb_mot = count_words(text)
+
+        file_path = f"{folder}/{filename}"
+
+        # Vérifier que le fichier existe
+        if not default_storage.exists(file_path):
+            print(f"Erreur: Le fichier {file_path} n'existe pas")
+            text, is_ocr = "", False
+            nb_mot = 0
+        else:
+            with default_storage.open(file_path, 'rb') as f:
+                file_content = f.read()
+            text, is_ocr = extract_text(file_content, file_path, extension, word_threshold)
+            nb_mot = count_words(text)
 
     return row['index'], {
         'text': text,

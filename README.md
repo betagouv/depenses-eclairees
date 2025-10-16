@@ -24,7 +24,6 @@ Install C libraries
 
 ```bash
 brew install libmagic  # file detection (python-magic)
-brew install poppler   # ocr (pdf2image)
 brew install tesseract # ocr (pytesseract)
 ```
 

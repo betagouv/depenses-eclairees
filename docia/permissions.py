@@ -26,7 +26,7 @@ def user_can_view_ej(user, num_ej: str):
     Returns:
         bool: True if user has permission to view the EJ, False otherwise
     """
-    qs_batch = DataBatch.objects.filter(batch__in=ALLOWED_BATCHES, num_ej=num_ej)
+    qs_batch = DataBatch.objects.filter(batch__in=ALLOWED_BATCHES, ej_id=num_ej)
     if user.is_staff or user.is_superuser:
         return True
     elif num_ej in ALLOWED_EJ_NUMBERS or qs_batch.exists():

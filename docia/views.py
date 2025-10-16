@@ -34,16 +34,17 @@ def home(request):
                     db_docs = DataAttachments.objects.filter(num_ej=form.cleaned_data["num_ej"])
                     db_docs = db_docs.order_by("classification")
                     for db_doc in db_docs:
+                        llm_response = db_doc.llm_response or {}
+                        doc = {
+                            "id": db_doc.id,
+                            "title": f"[{db_doc.classification}] {db_doc.filename}",
+                            "content": sorted([[key, value] for key, value in llm_response.items()]),
+                            "url": db_doc.file.url if db_doc.file else "",
+                        }
                         if db_doc.llm_response:
-                            documents.append(
-                                {
-                                    "id": db_doc.id,
-                                    "title": f"[{db_doc.classification}] {db_doc.filename}",
-                                    "content": sorted([[key, value] for key, value in db_doc.llm_response.items()]),
-                                }
-                            )
+                            documents.append(doc)
                         else:
-                            unprocessed.append(f"[{db_doc.classification}] {db_doc.filename}")
+                            unprocessed.append(doc)
     else:
         # Create empty form
         form = forms.GetEJDetailsForm()

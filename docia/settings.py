@@ -47,20 +47,24 @@ IN_CELERY_WORKER_PROCESS = sys.argv and sys.argv[0].endswith("celery") and "work
 # Application definition
 
 INSTALLED_APPS = [
+    # Django apps
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
-    "whitenoise.runserver_nostatic",
+    "whitenoise.runserver_nostatic",  # white noise must be before staticfiles
     "django.contrib.staticfiles",
-    "django_celery_results",
+    # Django DSFR
     "widget_tweaks",
     "dsfr",
-    # django.forms must be after dsfr
-    "django.forms",
+    "django.forms",  # django.forms must be after dsfr
+    # External apps
+    "django_celery_results",
     "mozilla_django_oidc",
     "magicauth",
+    "rest_framework",
+    # Internal apps
     "docia",
 ]
 
@@ -200,11 +204,37 @@ STATIC_ROOT = BASE_DIR / "dist" / "static"
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
+
+default_file_storage = config.str("STORAGE_BACKEND")
+
 STORAGES = {
+    "default": {
+        "BACKEND": default_file_storage,
+    },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+
+if default_file_storage == "storages.backends.s3.S3Storage":
+    S3_ENDPOINT_URL = config.str("AWS_S3_ENDPOINT_URL")
+    S3_REGION_NAME = config.str("AWS_S3_REGION_NAME")
+    S3_ACCESS_KEY_ID = config.str("AWS_S3_ACCESS_KEY_ID")
+    S3_SECRET_ACCESS_KEY = config.str("AWS_S3_SECRET_ACCESS_KEY")
+    S3_BUCKET_NAME = config.str("STORAGE_S3_BUCKET_NAME")
+    STORAGES["default"]["OPTIONS"] = {
+        "endpoint_url": S3_ENDPOINT_URL,
+        "region_name": S3_REGION_NAME,
+        "access_key": S3_ACCESS_KEY_ID,
+        "secret_key": S3_SECRET_ACCESS_KEY,
+        "bucket_name": S3_BUCKET_NAME,
+        "file_overwrite": False,
+    }
+elif default_file_storage == "django.core.files.storage.FileSystemStorage":
+    STORAGES["default"]["OPTIONS"] = {
+        "location": config.str("STORAGE_LOCAL_PATH"),
+        "allow_overwrite": False,
+    }
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -268,6 +298,12 @@ LOGGING = {
         "django.db": {
             "level": config.str("LOG_LEVEL_DB", default="WARNING"),
         },
+        "boto3": {
+            "level": config.str("LOG_LEVEL_BOTO3", default="WARNING"),
+        },
+        "requests": {
+            "level": "DEBUG",
+        },
         "docia": {
             "level": config.str("LOG_LEVEL", default="INFO"),
         },
@@ -296,6 +332,7 @@ SHELL_AUTO_IMPORTS = [
     ("django.db", ("connection",)),
     ("django.db.transaction", ("atomic",)),
     ("django.db.models", "*"),
+    ("django.conf", ("settings",)),
     "time",
     "datetime",
     ("pprint", ("pprint",)),

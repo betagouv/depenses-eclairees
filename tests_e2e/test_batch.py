@@ -22,9 +22,6 @@ BASE_TEST_DATA_PATH = BASE_DATA_PATH / "tests"
 BASE_EXPECTED_DATA_PATH = BASE_TEST_DATA_PATH / "batch_output"
 BATCH_FOLDER_PATH = batch_input_dir
 
-# Add poppler to path
-os.environ['PATH'] = '/usr/local/bin:' + os.getenv('PATH', '')
-
 
 def sort_dict_keys(d):
     items = sorted(list(d.items()))
