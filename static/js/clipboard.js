@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Create the copy button
         const copyButton = document.createElement('button');
         copyButton.textContent = 'Copier';
-        copyButton.className = 'fr-badge fr-badge--sm fr-ml-1w';
+        copyButton.className = 'btn-copy fr-badge fr-badge--sm fr-ml-1w copy-' + fieldName;
         copyButton.style.fontSize = '12px';
         copyButton.style.padding = '2px 6px';
 
