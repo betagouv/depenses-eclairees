@@ -333,3 +333,6 @@ REST_FRAMEWORK = {
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
     "NON_FIELD_ERRORS_KEY": "non_field_errors",
 }
+
+
+MATOMO_URL = config.str("MATOMO_URL", default="")
