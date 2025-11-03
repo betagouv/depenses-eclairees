@@ -159,31 +159,31 @@ def parse_json_response(response_text):
         return None, f"Erreur d'analyse: {str(e)}"
     
 # Fonction pour générer le prompt à partir des attributs à chercher
-def get_prompt_from_attributes(dfAttributes: pd.DataFrame ):
+def get_prompt_from_attributes(df_attributes: pd.DataFrame ):
   question = """Extrait les informations clés et renvoie-les uniquement au format JSON spécifié, sans texte supplémentaire.
 
   Format de réponse (commence par "{" et termine par "}") :
 {
 """
-  for idx, row in dfAttributes.iterrows():
+  for idx, row in df_attributes.iterrows():
       attr = row["attribut"]
-      if idx != dfAttributes.index[-1]:
+      if idx != df_attributes.index[-1]:
         question+=f"""  "{attr}": "", \n"""
       else:
         question+=f"""  "{attr}": "" \n""" 
   question+="""}
 
   Instructions d'extraction :\n\n"""    
-  for idx, row in dfAttributes.iterrows():
+  for idx, row in df_attributes.iterrows():
       consigne = row["consigne"]
-      if idx != dfAttributes.index[-1]:
+      if idx != df_attributes.index[-1]:
         question+=f"""{consigne}\n"""
       else:
         question+=f"""{consigne}"""
   return question
 
-def create_response_format(dfAttributes, classification):
-    l_output_field = select_attr(dfAttributes, classification).output_field.tolist()
+def create_response_format(df_attributes, classification):
+    l_output_field = select_attr(df_attributes, classification).output_field.tolist()
     response_format = {
         "type": "json_schema",
         "json_schema": {
@@ -192,7 +192,7 @@ def create_response_format(dfAttributes, classification):
             "schema": {
                 "type": "object",
                 "properties": {output_field: {"type": "string"} for output_field in l_output_field},
-                "required": list(dfAttributes.output_field)
+                "required": list(df_attributes.output_field)
             }
         }
     }
@@ -202,7 +202,7 @@ def df_analyze_content(api_key,
                        base_url, 
                        llm_model, 
                        df: pd.DataFrame, 
-                       dfAttributes: pd.DataFrame, 
+                       df_attributes: pd.DataFrame, 
                        temperature: float = 0.0, 
                        max_workers: int = 4, 
                        save_path: str = None, 
@@ -224,7 +224,7 @@ def df_analyze_content(api_key,
     dfResult['llm_response'] = None
     dfResult['json_error'] = None
 
-    for attr in dfAttributes.attribut:
+    for attr in df_attributes.attribut:
         dfResult[attr] = None
 
     llm_env = LLMEnvironment(
@@ -238,8 +238,8 @@ def df_analyze_content(api_key,
         row = df.loc[idx]
         classification = row['classification']
         try:
-            question = get_prompt_from_attributes(select_attr(dfAttributes, classification))
-            response_format = create_response_format(dfAttributes, classification)
+            question = get_prompt_from_attributes(select_attr(df_attributes, classification))
+            response_format = create_response_format(df_attributes, classification)
             context = row['relevant_content']
 
             if(context == ""):
@@ -250,7 +250,6 @@ def df_analyze_content(api_key,
                                                 question=question,
                                                 response_format=response_format,
                                                 temperature=temperature)
-            print(response)
             data, error = parse_json_response(response)
 
             result = {
@@ -259,7 +258,7 @@ def df_analyze_content(api_key,
             }
 
             if not error:
-                for attr in dfAttributes.attribut:
+                for attr in df_attributes.attribut:
                     result.update({f'{attr}': data.get(attr, '')})
             else: 
                 print(f"Erreur lors de l'analyse du fichier {row["filename"]}: {error}")
