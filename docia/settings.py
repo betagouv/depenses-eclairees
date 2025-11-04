@@ -157,7 +157,6 @@ OIDC_CALLBACK_CLASS = "docia.auth.views.CustomOIDCAuthenticationCallbackView"
 OIDC_CREATE_USER = True
 OIDC_RP_SIGN_ALGO = "RS256"
 OIDC_RP_SCOPES = "openid email given_name usual_name"
-OIDC_AUTHENTICATION_CALLBACK_URL = "oidc_authentication_callback_custom"
 # Specific to lasuite.oidc
 OIDC_OP_LOGOUT_ENDPOINT = OIDC_OP_BASE_URL + "session/end"
 OIDC_ALLOW_DUPLICATE_EMAILS = False

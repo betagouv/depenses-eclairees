@@ -30,7 +30,6 @@ urlpatterns = [
     path("", views.home, name="home"),
     path("login", auth_views.LoginView.as_view(), name="login"),
     path("t/", include(tracking_urls)),
-    path("oauth2callback", OIDCCallbackClass.as_view(), name="oidc_authentication_callback_custom"),
     path("oidc/", include(oidc_urls)),
     path("magicauth/", include(magicauth_urls)),
     path("admin/", admin.site.urls),
