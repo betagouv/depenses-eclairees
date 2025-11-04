@@ -104,3 +104,26 @@ class UserAdmin(auth_admin.UserAdmin):
         "updated_at",
     )
     search_fields = ("id", "sub", "admin_email", "email", "full_name")
+
+
+@admin.register(models.DataAttachments)
+class DataAttachmentAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "filename",
+        "dossier",
+        "ej",
+        "is_ocr",
+        "nb_mot",
+        "taille",
+        "classification",
+        "classification_type",
+        "file",
+        "date_creation",
+    )
+    ordering = (
+        "-date_creation",
+        "dossier",
+        "filename",
+    )
+    search_fields = ("id", "filename", "dossier", "ej", "classification", "classification_type")

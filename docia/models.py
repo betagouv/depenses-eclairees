@@ -7,7 +7,7 @@ from .ratelimit import models as ratelimit_models  # noqa
 from .tracking import models as tracking_models  # noqa
 
 
-class DataEngagement(models.Model):
+class DataEngagement(BaseModel):
     id = models.UUIDField(
         primary_key=True,
         db_default=RandomUUID(),
@@ -30,16 +30,17 @@ class DataEngagement(models.Model):
         return f"{self.num_ej}"
 
 
-class DataAttachments(models.Model):
+class DataAttachments(BaseModel):
     id = models.UUIDField(
         primary_key=True,
         db_default=RandomUUID(),
         editable=False,
     )
     filename = models.CharField(unique=True)
+    file = models.FileField(null=True, blank=True, max_length=1000, unique=True)
     extension = models.CharField(null=True, blank=True)  # noqa: DJ001
     dossier = models.CharField(null=True, blank=True)  # noqa: DJ001
-    num_ej = models.ForeignKey(
+    ej = models.ForeignKey(
         DataEngagement, on_delete=models.PROTECT, db_column="num_ej", to_field="num_ej", null=True, blank=True
     )
     text = models.TextField(null=True, blank=True)  # noqa: DJ001
@@ -58,31 +59,33 @@ class DataAttachments(models.Model):
 
     class Meta:
         db_table = "attachments"
+        verbose_name = "Attachment"
+        verbose_name_plural = "Attachments"
 
     def __str__(self):
-        return f"{self.num_ej_id, self.filename}"
+        return f"{self.ej_id, self.filename}"
 
 
-class DataBatch(models.Model):
+class DataBatch(BaseModel):
     id = models.UUIDField(
         primary_key=True,
         db_default=RandomUUID(),
         editable=False,
     )
     batch = models.CharField(max_length=255, null=True, blank=True)  # noqa: DJ001
-    num_ej = models.ForeignKey(
+    ej = models.ForeignKey(
         DataEngagement, on_delete=models.PROTECT, db_column="num_ej", to_field="num_ej", null=True, blank=True
     )
 
     class Meta:
         db_table = "batch"
-        unique_together = ("batch", "num_ej")
+        unique_together = ("batch", "ej")
 
     def __str__(self):
-        return f"{self.batch} - {self.num_ej_id}"
+        return f"{self.batch} - {self.ej_id}"
 
 
-class DataEngagementItems(models.Model):
+class DataEngagementItems(BaseModel):
     id = models.UUIDField(
         primary_key=True,
         db_default=RandomUUID(),
@@ -102,7 +105,7 @@ class DataEngagementItems(models.Model):
         return f"{self.num_ej} - {self.poste_ej}"
 
 
-class DataProgrammesMinisteriels(models.Model):
+class DataProgrammesMinisteriels(BaseModel):
     id = models.UUIDField(
         primary_key=True,
         db_default=RandomUUID(),

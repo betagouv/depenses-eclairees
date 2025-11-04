@@ -13,13 +13,12 @@ dependencies = [
     "olefile",
     "openai",
     "openpyxl",
-    "pdf2image",
     "pandas",
     "Pillow",
     "psycopg[binary]",
     "PyPDF2",
     "PyCryptodome",
-    "pymupdf",
+    "PyMuPDF",
     "pytesseract",
     "python-magic",
     "scikit-learn",
@@ -42,6 +41,7 @@ dependencies = [
     "mozilla-django-oidc (>=4.0.1,<5.0.0)",
     "django-lasuite (>=0.0.14,<0.0.15)",
     "django-magicauth (>=1.0.2,<2.0.0)",
+    "django-storages[s3] (>=1.14.6,<2.0.0)",
 ]
 
 [tool.poetry]

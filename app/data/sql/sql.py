@@ -7,8 +7,8 @@ def connect():
     db_url = os.getenv('DATABASE_URL', '')
     return psycopg.connect(db_url)
 
-def get_config():
 
+def get_config():
     info = connect().info
     return dict(
         host=info.host,
@@ -45,32 +45,6 @@ def _executemany_df(df, columns, sql, batch_size=100):
     executemany(sql, data, batch_size=batch_size)
 
 
-def bulk_create_batches(df, batch_size=100):
-    """
-    Bulk insert records into the batch table in batches.
-    
-    Args:
-        df (pd.DataFrame): DataFrame containing Batch and num_EJ columns
-        batch_size (int): Number of records to insert in each batch
-    """
-    sql = '''
-          INSERT INTO batch (Batch, num_EJ)
-          VALUES (%s, %s) ON CONFLICT DO NOTHING \
-          '''
-    # Convert data frame to tuples
-    columns = ["Batch", "num_EJ"]
-    _executemany_df(df, columns, sql, batch_size=batch_size)
-
-
-def bulk_create_engagements(df, batch_size=100):
-    sql = '''
-        INSERT INTO engagements(num_EJ, date_creation)
-        VALUES (%s, %s) ON CONFLICT DO NOTHING
-    '''
-    # Convert data frame to tuples
-    columns = ["num_EJ", "date_creation"]
-    _executemany_df(df, columns, sql, batch_size=batch_size)
-
 def bulk_create_engagements_items(df, batch_size=100):
     sql = '''
         INSERT INTO engagements_items(num_EJ, poste_EJ, num_contrat, groupe_marchandise, centre_financier)
@@ -78,16 +52,6 @@ def bulk_create_engagements_items(df, batch_size=100):
     '''
     # Convert data frame to tuples
     columns = ["num_EJ", "poste_EJ", "num_contrat", "groupe_marchandise", "centre_financier"]
-    _executemany_df(df, columns, sql, batch_size=batch_size)
-
-
-def bulk_create_attachments(df, batch_size=100):
-    sql = '''
-          INSERT INTO attachments(filename, extension, dossier, num_EJ, date_creation, taille, hash)
-          VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING \
-    '''
-    # Convert data frame to tuples
-    columns = ["filename", "extension", "dossier", "num_EJ", "date_creation", "taille", "hash"]
     _executemany_df(df, columns, sql, batch_size=batch_size)
 
 
