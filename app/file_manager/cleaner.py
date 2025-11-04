@@ -1,11 +1,8 @@
 import os
-import sys
+import unicodedata
 import zipfile
-import argparse
 from pathlib import Path
-from tqdm import tqdm
 import shutil
-import argparse
 import re
 import pandas as pd
 import hashlib
@@ -879,3 +876,26 @@ def get_files_chorus_infos(dfFiles: pd.DataFrame, df_ground_truth: pd.DataFrame,
 
     return dfResult
 
+
+def clean_filenames_unicode(dirpath: str):
+    paths = [p for p in os.listdir(dirpath)]
+    path_join = os.path.join
+    rename = os.rename
+    files = [p for p in paths if os.path.isfile(path_join(dirpath, p))]
+    directories = [p for p in paths if os.path.isdir(path_join(dirpath, p))]
+
+    renamed_files = []
+
+    for f in files:
+        file_path = path_join(dirpath, f)
+        file_path_nfc = unicodedata.normalize("NFC", file_path)
+        if file_path != file_path_nfc:
+            rename(file_path, file_path_nfc)
+            renamed_files.append((file_path, file_path_nfc))
+
+    for d in directories:
+        dir_path = path_join(dirpath, d)
+        r = clean_filenames_unicode(dir_path)
+        renamed_files.extend(r)
+
+    return renamed_files
