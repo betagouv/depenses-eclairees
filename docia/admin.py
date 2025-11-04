@@ -126,4 +126,4 @@ class DataAttachmentAdmin(admin.ModelAdmin):
         "dossier",
         "filename",
     )
-    search_fields = ("id", "filename", "dossier", "ej", "classification", "classification_type")
+    search_fields = ("id", "filename", "dossier", "ej__num_ej", "classification", "classification_type")
