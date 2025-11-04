@@ -31,7 +31,7 @@ def home(request):
                 if not user_can_view_ej(request.user, num_ej):
                     logger.warning(f"PermissionDenied: User {request.user.email} cannot view EJ {num_ej}")
                 else:
-                    db_docs = DataAttachments.objects.filter(num_ej=form.cleaned_data["num_ej"])
+                    db_docs = DataAttachments.objects.filter(ej_id=form.cleaned_data["num_ej"])
                     db_docs = db_docs.order_by("classification")
                     for db_doc in db_docs:
                         llm_response = db_doc.llm_response or {}
