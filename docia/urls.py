@@ -20,7 +20,6 @@ from django.urls import include, path
 
 from lasuite.oidc_login.urls import urlpatterns as oidc_urls
 from magicauth.urls import urlpatterns as magicauth_urls
-from mozilla_django_oidc.urls import OIDCCallbackClass
 
 from . import views
 from .auth import views as auth_views
