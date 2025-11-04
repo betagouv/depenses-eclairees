@@ -25,7 +25,7 @@ config = environ.Env()
 config.read_env(BASE_DIR / ".env")
 
 
-if "test" in sys.argv[0] or "test" in sys.argv[1]:
+if "pytest" in sys.argv[0] or ("manage.py" in sys.argv[0] and "test" in sys.argv[1]):
     print("LOAD TEST ENVIRONMENT VARIABLES! (TESTING=True)")
     config.read_env(BASE_DIR / "test.env")
 
