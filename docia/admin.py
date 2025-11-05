@@ -118,7 +118,6 @@ class DataAttachmentAdmin(admin.ModelAdmin):
         "taille",
         "classification",
         "classification_type",
-        "file",
         "date_creation",
     )
     ordering = (
