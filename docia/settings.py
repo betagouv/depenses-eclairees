@@ -25,9 +25,12 @@ config = environ.Env()
 config.read_env(BASE_DIR / ".env")
 
 
-if "pytest" in sys.argv[0] or ("manage.py" in sys.argv[0] and "test" in sys.argv[1]):
+TESTING = "pytest" in sys.argv[0] or ("manage.py" in sys.argv[0] and "test" in sys.argv[1])
+if TESTING:
+    assert config.str("ENV") != "prod", "prod environment cannot be used for testing!"
     print("LOAD TEST ENVIRONMENT VARIABLES! (TESTING=True)")
-    config.read_env(BASE_DIR / "test.env")
+    config.read_env(BASE_DIR / "test.env", overwrite=True)
+    assert "test" == config.str("ENV"), "test.env has not be correctly loaded!"
 
 
 # Quick-start development settings - unsuitable for production
@@ -43,6 +46,8 @@ ALLOWED_HOSTS = config.list("DJANGO_ALLOWED_HOSTS", default=["127.0.0.1", "local
 
 ENV = config.str("ENV")
 IN_CELERY_WORKER_PROCESS = sys.argv and sys.argv[0].endswith("celery") and "worker" in sys.argv
+
+ADMIN_BASE_URL_PATH = config.str("DJANGO_ADMIN_BASE_URL_PATH", default="")
 
 # Application definition
 
@@ -222,6 +227,11 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+
+
+if TESTING:
+    STORAGES["staticfiles"]["BACKEND"] = "django.contrib.staticfiles.storage.StaticFilesStorage"
+
 
 if storage_backend == "s3":
     S3_ENDPOINT_URL = config.str("AWS_S3_ENDPOINT_URL")

@@ -21,7 +21,7 @@ from django.urls import include, path
 from lasuite.oidc_login.urls import urlpatterns as oidc_urls
 from magicauth.urls import urlpatterns as magicauth_urls
 
-from . import views
+from . import settings, views
 from .auth import views as auth_views
 from .tracking.urls import urlpatterns as tracking_urls
 
@@ -31,5 +31,7 @@ urlpatterns = [
     path("t/", include(tracking_urls)),
     path("oidc/", include(oidc_urls)),
     path("magicauth/", include(magicauth_urls)),
-    path("admin/", admin.site.urls),
 ]
+
+if settings.ADMIN_BASE_URL_PATH:
+    urlpatterns.append(path(settings.ADMIN_BASE_URL_PATH, admin.site.urls))
