@@ -1,0 +1,65 @@
+"""
+Définitions des attributs à extraire pour les documents de type "att_sirene".
+"""
+
+ATT_SIRENE_ATTRIBUTES = {
+    "siret": {
+        "consigne": """SIRET  
+   Définition : Numéro SIRET de la société principale, composé de 14 chiffres.  
+   Indices :
+   - Peut être mentionné comme "SIRET", ou "numéro d'immatriculation"
+   Format : un numéro composé de 14 chiffres, sans espaces.  
+""",
+        "search": "",
+        "output_field": "siret"
+    },
+
+    "siren": {
+        "consigne": """SIREN
+   Définition : numéro de SIREN du prestataire / du titulaire principal, composé de 9 chiffres
+   Indices :
+   - Après la mention SIREN au début ou à la fin du document.
+   - A partir d'un numéro de SIRET : les 9 premiers chiffres d'un SIRET de 14 chiffres.
+   - A partir d'un numéro RCS : les 9 chiffres du numéro RCS (après "RCS" ou "N° RCS")
+   - A partir d'un numéro de TVA : les 9 derniers chiffres du numéro de TVA (après l'identifiant du pays et du département ex : FR12)
+   - Ne rien renvoyer si aucun SIREN trouvé
+   Format : un numéro composé de 9 chiffres, sans espaces ni caractères spéciaux
+""",
+        "search": "",
+        "output_field": "siren"
+    },
+
+    "denomination_insee": {
+        "consigne": """DENOMINATION_INSEE
+     Définition : Dénomination de la société dans le répertoire SIRENE.
+     Indices : 
+     - Rechercher la dénomination de la société dans le répertoire SIRENE.
+     - Ne rien renvoyer si aucune dénomination trouvée.
+""",
+        "search": "",
+        "output_field": "denomination"
+    },
+
+    "activite_principale": {
+        "consigne": """ACTIVITE_PRINCIPALE
+     Définition : Activité principale exercée (APE) de la société dans le répertoire SIRENE.
+     Indices : 
+     - Rechercher l'activité principale de la société dans le répertoire SIRENE.
+     - Ne rien renvoyer si aucune activité principale trouvée.
+""",
+        "search": "",
+        "output_field": "activite_principale"
+    },
+
+    "adresse_postale_insee": {
+        "consigne": """ADRESSE_POSTALE_INSEE
+     Définition : Adresse postale de la société dans le répertoire SIRENE.
+     Indices : 
+     - Rechercher l'adresse postale de la société dans le répertoire SIRENE.
+     - Ne rien renvoyer si aucune adresse postale trouvée.
+""",
+        "search": "",
+        "output_field": "adresse_postale_insee"
+    },
+}
+
