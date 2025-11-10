@@ -3,118 +3,23 @@ Analyse le contexte fourni en utilisant l'api et les modèles d'IA. Prend en ent
 Contexte = parfois tout le texte extrait, parfois seulement une liste de chunks concaténés.
 """
 
-
 import pandas as pd
 import json
+import logging
 import re
 from concurrent.futures import ThreadPoolExecutor
 
-from django.conf import settings
 from tqdm import tqdm
-from openai import OpenAI
-from typing import Optional
 
+from docia.file_processing.llm import LLMClient
 from .attributes_query import select_attr
-from app.utils import getDate, log_execution_time
+from app.utils import getDate
 from app.grist import update_records_in_grist
 from app.grist import API_KEY_GRIST, URL_TABLE_ATTACHMENTS
 from ..data.sql.sql import bulk_update_attachments
 
+logger = logging.getLogger("docia." + __name__)
 
-class LLMEnvironment:
-
-    # init
-    def __init__(
-        self,
-        llm_model: str,
-        api_key: Optional[str] = None,
-        base_url: Optional[str] = None,
-    ):
-        """
-        Initialise l'environnement RAG.
-        
-        Args:
-            api_key: Clé API OpenAI
-            base_url: URL de base pour l'API OpenAI (facultatif)
-            embedding_model: Modèle d'embedding à utiliser
-            llm_model: Modèle LLM à utiliser
-            chunk_size: Taille des chunks en caractères
-            chunk_overlap: Chevauchement entre les chunks en caractères
-            embedding_dimension: Dimension des vecteurs d'embedding
-            hybrid_search: Activer la recherche hybride (sémantique + lexicale)
-            semantic_weight: Poids de la recherche sémantique (0 à 1)
-            retrieval_top_k: Nombre de chunks à récupérer lors de la recherche
-        """
-        self.api_key = api_key or settings.ALBERT_API_KEY
-        self.base_url = base_url or settings.ALBERT_BASE_URL
-        self.llm_model = llm_model
-
-        # Initialisation du client OpenAI
-        self.client = self._initialize_openai_client()
-           
-    # API LLM à remplacer par un appel à une fonction dédiée
-    def _initialize_openai_client(self) -> OpenAI:
-        """
-        Initialise le client OpenAI avec la clé API fournie et éventuellement une URL de base personnalisée.
-        
-        Returns:
-            Instance du client OpenAI
-        """
-        client_kwargs = {"api_key": self.api_key}
-        
-        if self.base_url:
-            client_kwargs["base_url"] = self.base_url
-            
-        return OpenAI(**client_kwargs)
-
-    def ask_llm(self, message: dict, response_format: dict = None, temperature: float = 0.0) -> str:
-        """
-        Interroge le LLM avec un prompt système et utilisateur.
-        
-        Args:
-            message:
-                system_prompt: Prompt système pour définir le rôle du LLM
-                user_prompt: Prompt utilisateur avec la question
-            response_format: Format de réponse à utiliser
-            temperature: Température pour la génération (0.0 = déterministe)
-            
-        Returns:
-            Réponse du LLM
-        """
-        try:
-            response = self.client.chat.completions.create(
-                model=self.llm_model,
-                messages=message,
-                temperature=temperature,
-                response_format=response_format if response_format else None
-            )
-            
-            return response.choices[0].message.content.strip()
-            
-        except Exception as e:
-            # logger.error(f"ERREUR lors de l'appel au LLM: {str(e)}")
-
-            # En cas d'erreur, essayer avec un prompt plus court
-            try:
-                # Version simplifiée du prompt
-                user_prompt = message[1]['content']
-                short_user_prompt = user_prompt[:1000] + "..." if len(user_prompt) > 1000 else user_prompt
-                short_system_prompt = "Réponds à la question de manière concise."
-
-                response = self.client.chat.completions.create(
-                    model=self.llm_model,
-                    messages=[
-                        {"role": "system", "content": short_system_prompt},
-                        {"role": "user", "content": short_user_prompt}
-                    ],
-                    temperature=temperature
-                )
-                
-                return response.choices[0].message.content.strip()
-                
-            except Exception as e2:
-                # logger.error(f"ERREUR lors de la seconde tentative LLM: {str(e2)}")
-                return f"Erreur lors de l'appel au LLM: {str(e)[:100]}"
 
 # Fonction pour extraire le JSON de la réponse
 def parse_json_response(response_text):
@@ -266,7 +171,7 @@ def analyze_file_text(filename: str, text: str, df_attributes: pd.DataFrame, cla
         Réponse du LLM à la question posée
     """
 
-    llm_env = LLMEnvironment(llm_model)
+    llm_env = LLMClient(llm_model)
 
     question = get_prompt_from_attributes(select_attr(df_attributes, classification))
     response_format = create_response_format(df_attributes, classification)
@@ -277,12 +182,12 @@ def analyze_file_text(filename: str, text: str, df_attributes: pd.DataFrame, cla
     system_prompt = "Vous êtes un assistant IA qui analyse des documents juridiques."
     user_prompt = f"Analyse le contexte suivant et réponds à la question : {question}\n\nContexte : {text}"
 
-    message = [
+    messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}
     ]
 
-    response = llm_env.ask_llm(message, response_format, temperature)
+    response = llm_env.ask_llm(messages, response_format, temperature)
 
     data, error = parse_json_response(response)
 

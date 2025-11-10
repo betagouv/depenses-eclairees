@@ -6,7 +6,7 @@ from app.processor.attributes_query import ATTRIBUTES
 
 
 def test_analyze_file_text():
-    with patch("app.processor.analyze_content.LLMEnvironment.ask_llm", autospec=True) as m:
+    with patch("app.processor.analyze_content.LLMClient.ask_llm", autospec=True) as m:
         data = {
             "denomination_insee": "Entreprise Test",
             "siren_kbis": "kbistest",
@@ -22,7 +22,7 @@ def test_analyze_file_text():
 
 
 def test_analyze_file_text_bad_json():
-    with patch("app.processor.analyze_content.LLMEnvironment.ask_llm", autospec=True) as m:
+    with patch("app.processor.analyze_content.LLMClient.ask_llm", autospec=True) as m:
         m.return_value = '{"wrong json"}'
         r = analyze_file_text("doc.pdf", "Hello World", ATTRIBUTES, classification="kbis")
         assert r == {

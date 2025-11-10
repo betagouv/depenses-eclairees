@@ -4,11 +4,11 @@ from PyPDF2 import PdfReader
 import tqdm
 from concurrent.futures import ThreadPoolExecutor
 
+from docia.file_processing.llm import LLMClient
 from .utils_file_manager import normalize_text
 from app.utils import getDate
 from app.grist import update_records_in_grist
 from app.grist import URL_TABLE_ATTACHMENTS, API_KEY_GRIST
-from app.processor.analyze_content import LLMEnvironment
 from ..data.sql.sql import bulk_update_attachments
 
 
@@ -117,7 +117,7 @@ def classify_file_with_llm(filename: str, text: str, list_classification: dict,
     Returns:
         str: Classification du fichier
     """
-    llm_env = LLMEnvironment(llm_model)
+    llm_env = LLMClient(llm_model)
 
     system_prompt = "Vous êtes un assistant qui aide à classer des fichiers en fonction de leur contenu."
 
@@ -139,12 +139,12 @@ DEBUT PAGE>>>
 Répondez UNIQUEMENT par le nom de la catégorie, sans autre texte ni ponctuation.
     """
 
-    message = [
+    messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": prompt}
     ]
 
-    response = llm_env.ask_llm(message=message)
+    response = llm_env.ask_llm(messages=messages)
 
     # Convertir la réponse en clé de classification
     for key, value in list_classification.items():

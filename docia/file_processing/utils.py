@@ -169,7 +169,9 @@ def display_batch_progress(batch_id: str):
     with (
         tqdm(desc="      documents", total=total_jobs, position=0) as pbar_jobs,
         tqdm(
-            desc="            ocr", total=progress["steps"][ProcessDocumentStepType.TEXT_EXTRACTION]["total"], position=1
+            desc="            ocr",
+            total=progress["steps"][ProcessDocumentStepType.TEXT_EXTRACTION]["total"],
+            position=1,
         ) as pbar_ocr,
         tqdm(
             desc=" classification", total=progress["steps"][ProcessDocumentStepType.CLASSIFICATION]["total"], position=2
