@@ -185,5 +185,33 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
         "search": "",
         "output_field": "date_signature"
     },
+
+    "date_notification": {
+        "consigne": """DATE_NOTIFICATION
+      Définition : Date de notification du marché aux mandataires. 
+      Indices : 
+      - Parfois en début du document, ou en toute fin de document.
+      - Après la mention "Date de notification".
+      - S'il n'y a pas de date de notification explicite, ne rien renvoyer.
+     Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
+""",
+        "search": "",
+        "output_field": "date_notification"
+    },
+
+    "date_fin_validite": {
+        "consigne": """DATE_FIN_VALIDITE
+        Définition : Date de fin de validité du marché après reconduction(s) éventuelle(s).
+        Indices :
+        - A partir de la durée du contrat, et du nombre de reconductions possibles.
+        - Ainsi qu'à partir de la date de notification du marché.
+        - Déduire la date de fin de validité en ajoutant la durée du contrat, et le nombre de reconductions possibles maximum.
+        - S'il manque une information sur la durée du marché ou la date de notification, ne rien renvoyer.
+        Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
+    """,
+        "search": "",
+        "output_field": "date_fin_validite"
+    },
+
 }
 
