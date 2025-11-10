@@ -67,9 +67,17 @@ class LLMEnvironment:
             
         return OpenAI(**client_kwargs)
 
-    def ask_llm(self, message: dict, response_format: dict = None, temperature: float = 0.0) -> str:
+    def ask_llm(
+        self, 
+        message: dict, 
+        response_format: dict = None, 
+        temperature: float = 0.0, 
+        max_retries: int = 6, 
+        retry_delay: float = 5.0
+    ) -> str:
         """
         Interroge le LLM avec un prompt système et utilisateur.
+        En cas d'erreur de rate limiting (429), attend et réessaye automatiquement.
         
         Args:
             message:
@@ -77,44 +85,45 @@ class LLMEnvironment:
                 user_prompt: Prompt utilisateur avec la question
             response_format: Format de réponse à utiliser
             temperature: Température pour la génération (0.0 = déterministe)
+            max_retries: Nombre maximum de tentatives en cas d'erreur 429 (défaut: 3)
+            retry_delay: Délai d'attente en secondes entre les tentatives (défaut: 2.0)
             
         Returns:
             Réponse du LLM
+            
+        Raises:
+            Exception: Si toutes les tentatives échouent ou si l'erreur n'est pas de type 429
         """
-        try:
-            response = self.client.chat.completions.create(
-                model=self.llm_model,
-                messages=message,
-                temperature=temperature,
-                response_format=response_format if response_format else None
-            )
-            
-            return response.choices[0].message.content.strip()
-            
-        except Exception as e:
-            # logger.error(f"ERREUR lors de l'appel au LLM: {str(e)}")
-            
-            # En cas d'erreur, essayer avec un prompt plus court
+        for attempt in range(max_retries):
             try:
-                # Version simplifiée du prompt
-                user_prompt = message[1]['content']
-                short_user_prompt = user_prompt[:1000] + "..." if len(user_prompt) > 1000 else user_prompt
-                short_system_prompt = "Réponds à la question de manière concise."
-
                 response = self.client.chat.completions.create(
                     model=self.llm_model,
-                    messages=[
-                        {"role": "system", "content": short_system_prompt},
-                        {"role": "user", "content": short_user_prompt}
-                    ],
-                    temperature=temperature
+                    messages=message,
+                    temperature=temperature,
+                    response_format=response_format if response_format else None
                 )
-                
-                return response.choices[0].message.content.strip()
-                
-            except Exception as e2:
-                # logger.error(f"ERREUR lors de la seconde tentative LLM: {str(e2)}")
-                return f"Erreur lors de l'appel au LLM: {str(e)[:100]}"
+
+                content = response.choices[0].message.content.strip()
+
+                return content  # Succès
+
+            except Exception as e:
+                # Cas proxy : l'API retourne une "réponse d'erreur" au lieu d'une exception
+                if (str(e).startswith("Error code: 429") 
+                    and "per minute exceeded" in str(e).lower()
+                ):
+                    if attempt < max_retries - 1:
+                        wait_time = retry_delay * (attempt + 1)
+                        print(f"Erreur 429 détectée, retry dans {wait_time:.1f}s (tentative {attempt+1}/{max_retries})")
+                        time.sleep(wait_time)
+                        continue  # Réessaye
+
+                    else:
+                        raise Exception(
+                            f"Erreur de rate limiting per minute détectée dans la réponse malgré {max_retries} tentatives : {str(e)[:200]}"
+                        )
+
+                raise Exception(f"Erreur lors de l'appel au LLM : {str(e)}")
             
     def analyze_content(self, context: str, question: str, response_format: dict = None, temperature: float = 0.0) -> str:
         """
