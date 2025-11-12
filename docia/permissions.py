@@ -27,9 +27,10 @@ def user_can_view_ej(user, num_ej: str):
         bool: True if user has permission to view the EJ, False otherwise
     """
     qs_batch = DataBatch.objects.filter(batch__in=ALLOWED_BATCHES, ej_id=num_ej)
-    if user.is_staff or user.is_superuser:
+    user_has_perm = user.has_perm("docia.view_dataattachments")
+    if user.is_superuser:
         return True
-    elif num_ej in ALLOWED_EJ_NUMBERS or qs_batch.exists():
+    elif user_has_perm and (num_ej in ALLOWED_EJ_NUMBERS or qs_batch.exists()):
         return True
     else:
         return False
