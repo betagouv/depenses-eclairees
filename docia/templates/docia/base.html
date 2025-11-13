@@ -10,6 +10,17 @@
     <script>
       var _mtm = window._mtm = window._mtm || [];
       _mtm.push({'mtm.startTime': (new Date().getTime()), 'event': 'mtm.Start'});
+      {% if request.user.is_anonymous %}
+        _mtm.push({
+          'event': 'setUserId',
+          'userId': null,
+        });
+      {% else %}
+        _mtm.push({
+          'event': 'setUserId',
+          'userId': '{{ request.user.email }}',
+        });
+      {% endif %}
       (function() {
         var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
         g.async=true; g.src='{{ settings.MATOMO_URL }}'; s.parentNode.insertBefore(g,s);
