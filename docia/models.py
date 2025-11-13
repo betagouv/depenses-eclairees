@@ -30,7 +30,7 @@ class DataEngagement(BaseModel):
         return f"{self.num_ej}"
 
 
-class DataAttachments(BaseModel):
+class DataAttachment(BaseModel):
     id = models.UUIDField(
         primary_key=True,
         db_default=RandomUUID(),

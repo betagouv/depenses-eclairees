@@ -48,7 +48,7 @@ def test_restrict_no_permission(client):
 @pytest.fixture
 def user_with_permission():
     user = UserFactory()
-    user.user_permissions.add(Permission.objects.get(codename="view_dataattachments"))
+    user.user_permissions.add(Permission.objects.get(codename="view_dataattachment"))
     return user
 
 
