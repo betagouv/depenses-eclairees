@@ -348,89 +348,36 @@ def extract_text_from_doc_libreoffice(file_content: bytes, file_path: str):
         logger.warning("LibreOffice n'est pas installé ou pas trouvé dans le PATH")
         return "", False
 
-    try:
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            local_file_path = os.path.join(tmpdirname, "file.doc")
-            with open(local_file_path, 'wb') as f:
-                f.write(file_content)
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        local_file_path = os.path.join(tmpdirname, "file.doc")
+        with open(local_file_path, 'wb') as f:
+            f.write(file_content)
 
-            # Essayer plusieurs méthodes de conversion avec LibreOffice
-            methods = [
-                # Méthode 1: Conversion directe en txt
-                {
-                    'name': 'conversion directe txt',
-                    'cmd': [
-                        libreoffice_path, '--headless', '--invisible',
-                        '--convert-to', 'txt',
-                        '--outdir', tmpdirname,
-                        local_file_path,
-                    ],
-                },
-                # Méthode 2: Conversion en docx puis extraction
-                {
-                    'name': 'conversion docx',
-                    'cmd': [
-                        libreoffice_path, '--headless', '--invisible',
-                        '--convert-to', 'docx',
-                        '--outdir', tmpdirname,
-                        local_file_path,
-                    ],
-                },
-            ]
+        cmd = [
+            libreoffice_path,
+            '--headless', '--invisible',
+            '--convert-to', 'txt',
+            '--outdir', tmpdirname,
+            local_file_path,
+        ]
+        try:
+            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=90)
+        except subprocess.TimeoutExpired:
+            logger.exception("Error libreoffice (timeout)\n%s", result.stdout)
 
-            for method in methods:
-                try:
-                    result = subprocess.run(method['cmd'], capture_output=True, text=True, timeout=90)
-
-                    if result.returncode == 0:
-                        # Chercher le fichier de sortie
-                        possible_outputs = [
-                            os.path.join(tmpdirname, f"file.txt"),
-                            os.path.join(tmpdirname, f"file.docx")
-                        ]
-
-                        for output_path in possible_outputs:
-                            if os.path.exists(output_path):
-                                if output_path.endswith('.txt'):
-                                    # Lire directement le fichier txt
-                                    with open(output_path, 'r', encoding='utf-8', errors='ignore') as f:
-                                        text = f.read()
-
-                                    if text and len(text.strip()) > 10:
-                                        return text.strip(), False
-
-                                elif output_path.endswith('.docx'):
-                                    # Utiliser docx2txt sur le fichier docx
-                                    try:
-                                        text = docx2txt.process(output_path)
-
-                                        if text and len(text.strip()) > 10:
-                                            return text.strip(), False
-                                    except Exception as e:
-                                        print(f"    - Erreur docx2txt: {e}")
-                                        continue
-
-                    else:
-                        # Vérifier si c'est une erreur de déploiement
-                        if "DeploymentException" in result.stderr or "libc++abi" in result.stderr:
-                            print(f"    - Erreur de déploiement LibreOffice, essai méthode suivante...")
-                            continue
-                        else:
-                            print(f"    - Erreur LibreOffice ({method['name']}): {result.stderr[:200]}...")
-                            continue
-
-                except subprocess.TimeoutExpired:
-                    print(f"    - Timeout avec {method['name']}")
-                    continue
-                except Exception as e:
-                    print(f"    - Erreur avec {method['name']}: {e}")
-                    continue
-
+        if result.returncode != 0:
+            logger.error("Error libreoffice (unknown):\n%s", result.stdout)
             return "", False
-            
-    except Exception as e:
-        print(f"Erreur lors de la conversion LibreOffice de {file_path}: {e}")
-        return "", False
+        else:
+            output_path = os.path.join(tmpdirname, f"file.txt")
+            try:
+                with open(output_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    text = f.read()
+                return text.strip(), False
+            except FileNotFoundError:
+                logger.error("Error libreoffice (output file not found)\n%s", result.stdout)
+                return "", False
+
 
 
 def extract_text_from_doc_docx2txt(file_content: bytes, file_path: str):
