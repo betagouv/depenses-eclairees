@@ -1,0 +1,22 @@
+FROM scalingo/scalingo-24
+
+WORKDIR /app
+
+# Install python 3.13
+RUN mkdir -p /var/log/apt/
+RUN apt update && apt install -y software-properties-common
+RUN add-apt-repository -y ppa:deadsnakes/ppa
+RUN apt update && apt install -y python3.13 python3.13-dev python3.13-venv pipx
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.13 1
+RUN pipx install poetry
+ENV PATH="/root/.local/bin:$PATH"
+
+# Install system dependencies
+COPY Aptfile .
+RUN apt update
+RUN apt install -y --no-install-recommends $(cat Aptfile)
+
+# Install Python deps
+COPY pyproject.toml .
+COPY poetry.lock .
+RUN poetry install

@@ -355,7 +355,7 @@ def extract_text_from_doc_libreoffice(file_content: bytes, file_path: str):
 
         cmd = [
             libreoffice_path,
-            '--headless', '--invisible',
+            '--headless',
             '--convert-to', 'txt',
             '--outdir', tmpdirname,
             local_file_path,
