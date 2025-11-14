@@ -42,7 +42,9 @@ jobs:
           path: ./.venv
           key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('poetry.lock') }}
       - name: Install system dependencies
-        run: sudo apt install --no-install-recommends $(cat Aptfile)
+        run: |
+          sudo apt-get update
+          sudo apt install -y --no-install-recommends $(cat Aptfile)
       - name: Install Python dependencies
         run: poetry sync
       - name: Setup env
