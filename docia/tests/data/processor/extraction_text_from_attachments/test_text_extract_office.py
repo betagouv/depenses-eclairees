@@ -1,4 +1,4 @@
-from app import extract_text_from_doc, extract_text_from_docx, extract_text_from_odt
+from app.processor import extract_text_from_doc, extract_text_from_docx, extract_text_from_odt
 
 from .utils import ASSETS_DIR, assert_similar_text
 
