@@ -632,48 +632,40 @@ def extract_text_from_doc(file_content: bytes, file_path: str):
     return "", False
 
 
-def extract_text(file_content: bytes, file_path: str, extension, word_threshold=50):
+def extract_text(file_content: bytes, file_path: str, file_type: str, word_threshold=50):
     """
-    Extrait le texte d'un fichier selon son extension.
+    Extrait le texte d'un fichier selon son type.
     
     Args:
         filename (str): Nom du fichier
         file_path (str): Chemin du fichier
-        extension (str): Extension du fichier (pdf, docx, doc, odt)
+        file_type (str): Type du fichier (pdf, docx, doc, odt)
         word_threshold (int): Seuil de mots pour décider d'utiliser l'OCR (PDF uniquement)
         
     Returns:
         tuple: (texte extrait, booléen indiquant si l'OCR a été utilisé)
     """
 
-    # Vérifier que le fichier n'est pas vide
     if not file_content:
-        print(f"Erreur: Le fichier {file_path} est vide")
         return "", False
 
-    ext = extension.lower()
-    # from app.file_manager import file_type_detector
-    
-    # ext = file_type_detector.get_corrected_extension(filename, os.path.join(folder, filename))
-    # return ext, False
-    if ext == 'unknown':
-        print(f"Extension inconnue pour {file_path}")
+    if file_type == "unknown":
+        logger.warning(f"Unknown file type for {file_path} (type={file_type!r})")
         return "", False
-
-    elif ext == 'pdf':
+    elif file_type == 'pdf':
         return extract_text_from_pdf(file_content, file_path, word_threshold)
-    elif ext == 'docx':
+    elif file_type == 'docx':
         return extract_text_from_docx(file_content, file_path)
-    elif ext == 'odt':
+    elif file_type == 'odt':
         return extract_text_from_odt(file_content, file_path)
-    elif ext == 'txt':
+    elif file_type == 'txt':
         return extract_text_from_txt(file_content, file_path)
-    elif ext in ['png', 'jpg', 'jpeg', 'tiff', 'tif']:
+    elif file_type in ['png', 'jpg', 'jpeg', 'tiff', 'tif']:
         return extract_text_from_image(file_content, file_path)
-    elif ext == 'doc':
+    elif file_type == 'doc':
         return extract_text_from_doc(file_content, file_path)
     else:
-        return "", False
+        raise ValueError(f"Invalid file type for {file_path} (type={file_type!r})")
 
 
 def df_extract_text(dfFiles: pd.DataFrame, word_threshold=50, save_path=None, directory_path=None, save_grist=False, max_workers=4):
@@ -703,7 +695,7 @@ def df_extract_text(dfFiles: pd.DataFrame, word_threshold=50, save_path=None, di
 
     # Traitement parallèle
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        futures = [executor.submit(process_row, row, word_threshold)
+        futures = [executor.submit(process_df_row, row, word_threshold)
                    for row in dfResult.reset_index().to_dict('records')]
 
         results = []
@@ -735,7 +727,7 @@ def df_extract_text(dfFiles: pd.DataFrame, word_threshold=50, save_path=None, di
     return dfResult
 
 
-def process_row(row, word_threshold):
+def process_df_row(row, word_threshold):
     """
     Fonction pour traiter une ligne du DataFrame.
     Extrait le texte du PDF et met à jour les colonnes correspondantes.
@@ -745,26 +737,29 @@ def process_row(row, word_threshold):
     folder = row['dossier']
     extension = row['extension']
 
-    with log_execution_time(f"df_extract_text({filename})"):
+    file_path = f"{folder}/{filename}"
 
-        file_path = f"{folder}/{filename}"
-
-        # Vérifier que le fichier existe
-        if not default_storage.exists(file_path):
-            print(f"Erreur: Le fichier {file_path} n'existe pas")
-            text, is_ocr = "", False
-            nb_mot = 0
-        else:
-            with default_storage.open(file_path, 'rb') as f:
-                file_content = f.read()
-            text, is_ocr = extract_text(file_content, file_path, extension, word_threshold)
-            nb_mot = count_words(text)
+    try:
+        text, is_ocr, nb_words = process_file(file_path, extension, word_threshold)
+    except FileNotFoundError:
+        logger.error("Erreur: Le fichier %s n'existe pas", file_path)
+        text, is_ocr = "", False
+        nb_words = 0
 
     return row['index'], {
         'text': text,
         'is_OCR': is_ocr,
-        'nb_mot': nb_mot
+        'nb_mot': nb_words
     }
+
+
+def process_file(file_path: str, extension: str, word_threshold: int = 50):
+    with default_storage.open(file_path, 'rb') as f:
+        file_content = f.read()
+    with log_execution_time(f"extract_text({file_path})"):
+        text, is_ocr = extract_text(file_content, file_path, extension, word_threshold)
+    nb_words = count_words(text)
+    return text, is_ocr, nb_words
 
 
 def save_df_extract_text_result(df: pd.DataFrame):

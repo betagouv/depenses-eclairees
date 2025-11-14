@@ -3,6 +3,7 @@ from django.db import models
 
 # Import other models so Django can discover them
 from .common.models import BaseModel, User  # noqa
+from .file_processing import models as file_processing_models  # noqa
 from .ratelimit import models as ratelimit_models  # noqa
 from .tracking import models as tracking_models  # noqa
 
