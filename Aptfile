@@ -1,3 +1,6 @@
 tesseract-ocr
 tesseract-ocr-fra
 libtesseract-dev
+libreoffice-core-nogui
+libreoffice-writer-nogui
+libreoffice-java-common
