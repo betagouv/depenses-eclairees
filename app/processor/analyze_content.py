@@ -8,9 +8,10 @@ import pandas as pd
 import json
 import re
 import time
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
-from openai import OpenAI
+from openai import OpenAI, RateLimitError
 from typing import List, Dict, Tuple, Optional, Union, Any
 
 from app.ai_models.config_albert import BASE_URL_PROD, API_KEY_AMA
@@ -20,6 +21,7 @@ from app.grist import update_records_in_grist
 from app.grist import API_KEY_GRIST, URL_TABLE_ATTACHMENTS
 from ..data.sql.sql import bulk_update_attachments
 
+logger = logging.getLogger("docia." + __name__)
 
 class LLMEnvironment:
 
@@ -109,12 +111,10 @@ class LLMEnvironment:
 
             except Exception as e:
                 # Cas proxy : l'API retourne une "réponse d'erreur" au lieu d'une exception
-                if (str(e).startswith("Error code: 429") 
-                    and "per minute exceeded" in str(e).lower()
-                ):
+                if isinstance(e, RateLimitError):
                     if attempt < max_retries - 1:
                         wait_time = retry_delay * (attempt + 1)
-                        print(f"Erreur 429 détectée, retry dans {wait_time:.1f}s (tentative {attempt+1}/{max_retries})")
+                        logger.warning(f"Erreur 429 détectée, retry dans {wait_time:.1f}s (tentative {attempt+1}/{max_retries})")
                         time.sleep(wait_time)
                         continue  # Réessaye
 
@@ -122,8 +122,7 @@ class LLMEnvironment:
                         raise Exception(
                             f"Erreur de rate limiting per minute détectée dans la réponse malgré {max_retries} tentatives : {str(e)[:200]}"
                         )
-
-                raise Exception(f"Erreur lors de l'appel au LLM : {str(e)}")
+                raise
             
     def analyze_content(self, context: str, question: str, response_format: dict = None, temperature: float = 0.0) -> str:
         """
