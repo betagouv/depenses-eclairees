@@ -3,8 +3,8 @@ from unittest.mock import patch
 import pytest
 from celery import states
 
-from docia.file_processing.models import TaskStatus
-from docia.file_processing.text_extraction import extract_text, extract_text_for_folder
+from docia.file_processing.models import BatchTextExtraction, FileTextExtraction, TaskStatus
+from docia.file_processing.text_extraction import extract_text, extract_text_for_folder, get_batch_progress
 from docia.tests.factories.data import DataAttachmentFactory
 
 
@@ -87,3 +87,71 @@ def test_batch_error_handling():
     assert extract1.error == ""
     assert extract2.status == TaskStatus.FAILURE
     assert "Error processing doc2" in extract2.error
+
+
+@pytest.mark.django_db
+def test_get_batch_progress():
+    batch = BatchTextExtraction.objects.create(folder="myfolder", status=TaskStatus.STARTED)
+    doc1 = DataAttachmentFactory(dossier="myfolder", filename="doc1.pdf")
+    doc2 = DataAttachmentFactory(dossier="myfolder", filename="doc2.pdf")
+    ext1 = FileTextExtraction.objects.create(batch=batch, document=doc1, status=TaskStatus.PENDING)
+    ext2 = FileTextExtraction.objects.create(batch=batch, document=doc2, status=TaskStatus.PENDING)
+    progress = get_batch_progress(batch.id)
+    assert progress == {
+        "status": TaskStatus.STARTED,
+        "completed": 0,
+        "errors": 0,
+        "total": 2,
+    }
+
+    # One running
+    ext1.status = TaskStatus.STARTED
+    ext1.save()
+
+    progress = get_batch_progress(batch.id)
+    assert progress == {
+        "status": TaskStatus.STARTED,
+        "completed": 0,
+        "errors": 0,
+        "total": 2,
+    }
+
+    # One finished
+    ext1.status = TaskStatus.SUCCESS
+    ext1.save()
+
+    progress = get_batch_progress(batch.id)
+    assert progress == {
+        "status": TaskStatus.STARTED,
+        "completed": 1,
+        "errors": 0,
+        "total": 2,
+    }
+
+    # One failed
+    ext1.status = TaskStatus.FAILURE
+    ext1.save()
+
+    progress = get_batch_progress(batch.id)
+    assert progress == {
+        "status": TaskStatus.STARTED,
+        "completed": 1,
+        "errors": 1,
+        "total": 2,
+    }
+
+    # Finished
+    ext1.status = TaskStatus.FAILURE
+    ext1.save()
+    ext2.status = TaskStatus.SUCCESS
+    ext2.save()
+    batch.status = TaskStatus.FAILURE
+    batch.save()
+
+    progress = get_batch_progress(batch.id)
+    assert progress == {
+        "status": TaskStatus.FAILURE,
+        "completed": 2,
+        "errors": 1,
+        "total": 2,
+    }

@@ -2,10 +2,10 @@ from django.contrib.postgres.functions import RandomUUID
 from django.db import models
 
 # Import other models so Django can discover them
-from .common.models import BaseModel, User  # noqa
-from .file_processing import models as file_processing_models  # noqa
-from .ratelimit import models as ratelimit_models  # noqa
-from .tracking import models as tracking_models  # noqa
+from .common.models import BaseModel, User  # noqa: F401
+from .file_processing.models import BatchTextExtraction, FileTextExtraction  # noqa: F401
+from .ratelimit.models import RateLimitCount  # noqa: F401
+from .tracking.models import TrackingEvent  # noqa: F401
 
 
 class DataEngagement(BaseModel):

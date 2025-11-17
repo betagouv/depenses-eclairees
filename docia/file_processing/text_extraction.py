@@ -1,10 +1,13 @@
 import logging
+import time
 import traceback
 
+from django.db.models import Count
 from django.db.transaction import atomic
 
 from celery import chord, shared_task
 from celery.result import AsyncResult
+from tqdm import tqdm
 
 from app.processor import extraction_text_from_attachments as processing
 from docia.file_processing.models import BatchTextExtraction, FileTextExtraction, TaskStatus
@@ -36,6 +39,46 @@ def extract_text_for_folder(folder: str) -> tuple[BatchTextExtraction, AsyncResu
         batch.filetextextraction_set.bulk_create(extracts)
     r = chord(task_extract_text.s(extract.id) for extract in extracts)(task_finalize_batch.s(batch.id))
     return batch, r
+
+
+def get_batch_progress(batch_id: str):
+    batch = BatchTextExtraction.objects.get(id=batch_id)
+    # Count the number of tasks in each status
+    qs_aggregate = batch.filetextextraction_set.values("status").annotate(count=Count("id"))
+    counters = dict((row["status"], row["count"]) for row in qs_aggregate)
+    completed = sum(
+        tasks_count for status, tasks_count in counters.items() if status in [TaskStatus.SUCCESS, TaskStatus.FAILURE]
+    )
+    errors = counters.get(TaskStatus.FAILURE, 0)
+    total = sum(tasks_count for tasks_count in counters.values())
+    return {
+        "status": batch.status,
+        "completed": completed,
+        "errors": errors,
+        "total": total,
+    }
+
+
+def display_batch_progress(batch_id: str):
+    batch = BatchTextExtraction.objects.get(id=batch_id)
+    total_tasks = batch.filetextextraction_set.count()
+    logger.info(
+        "Processing batch %(batch_id)s (folder=%(folder)s, tasks=%(total_tasks)s)...",
+        dict(
+            batch_id=batch.id,
+            folder=batch.folder,
+            total_tasks=total_tasks,
+        ),
+    )
+    with tqdm(total=total_tasks) as pbar:
+        while True:
+            progress = get_batch_progress(batch_id)
+            pbar.n = progress["completed"]
+            pbar.set_postfix(errors=progress["errors"])
+            if progress["status"] in [TaskStatus.SUCCESS, TaskStatus.FAILURE]:
+                break
+            time.sleep(1)
+    logger.info("Completed")
 
 
 def extract_text(document: DataAttachment) -> tuple[FileTextExtraction, AsyncResult]:
