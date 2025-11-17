@@ -109,20 +109,15 @@ class LLMEnvironment:
 
                 return content  # Succès
 
-            except Exception as e:
+            except RateLimitError as e:
                 # Cas proxy : l'API retourne une "réponse d'erreur" au lieu d'une exception
-                if isinstance(e, RateLimitError):
-                    if attempt < max_retries - 1:
-                        wait_time = retry_delay * (attempt + 1)
-                        logger.warning(f"Erreur 429 détectée, retry dans {wait_time:.1f}s (tentative {attempt+1}/{max_retries})")
-                        time.sleep(wait_time)
-                        continue  # Réessaye
-
-                    else:
-                        raise Exception(
-                            f"Erreur de rate limiting per minute détectée dans la réponse malgré {max_retries} tentatives : {str(e)[:200]}"
-                        )
-                raise
+                if attempt < max_retries - 1:
+                    wait_time = retry_delay * (attempt + 1)
+                    logger.warning(f"Erreur 429 - RateLimitError détectée, retry dans {wait_time:.1f}s (tentative {attempt+1}/{max_retries})")
+                    time.sleep(wait_time)
+                    continue  # Réessaye
+                else:
+                    raise
             
     def analyze_content(self, context: str, question: str, response_format: dict = None, temperature: float = 0.0) -> str:
         """
