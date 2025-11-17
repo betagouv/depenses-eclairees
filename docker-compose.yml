@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile-scalingo
+    command: poetry run gunicorn --config gunicorn_conf.py docia.wsgi --bind 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=docia.settings
+      - DATABASE_URL=postgres://thomas@host.docker.internal:5432/docia

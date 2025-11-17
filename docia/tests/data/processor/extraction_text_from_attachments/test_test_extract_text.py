@@ -2,7 +2,7 @@ from unittest import mock
 
 import pytest
 
-from app import extract_text, extract_text_from_txt
+from app.processor import extract_text, extract_text_from_txt
 
 from .utils import ASSETS_DIR, assert_similar_text
 

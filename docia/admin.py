@@ -87,7 +87,7 @@ class UserAdmin(auth_admin.UserAdmin):
         "created_at",
         "updated_at",
     )
-    list_filter = ("is_staff", "is_superuser", "is_active")
+    list_filter = ("is_staff", "is_superuser", "is_active", "groups")
     ordering = (
         "is_active",
         "-is_superuser",
