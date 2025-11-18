@@ -4,11 +4,10 @@ import sys
 from django.core.management.base import BaseCommand, CommandError
 
 from docia.file_processing.text_extraction import (
-    TaskStatus,
-    display_batch_progress,
+    JobStatus,
     extract_text_for_folder,
-    get_batch_progress,
 )
+from docia.file_processing.utils import display_batch_progress, get_batch_progress
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +46,7 @@ class Command(BaseCommand):
             batch.refresh_from_db()
 
             # Display final status
-            if batch.status == TaskStatus.SUCCESS:
+            if batch.status == JobStatus.SUCCESS:
                 self.stdout.write(
                     self.style.SUCCESS(f"Successfully extracted text from all documents in folder: {folder}")
                 )
@@ -70,7 +69,7 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR(f"Failed to process: {failed}"))
 
             # Return appropriate exit code
-            if batch.status != TaskStatus.SUCCESS:
+            if batch.status != JobStatus.SUCCESS:
                 sys.exit(1)
 
         except Exception as e:

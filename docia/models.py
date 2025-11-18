@@ -3,7 +3,7 @@ from django.db import models
 
 # Import other models so Django can discover them
 from .common.models import BaseModel, User  # noqa: F401
-from .file_processing.models import BatchTextExtraction, FileTextExtraction  # noqa: F401
+from .file_processing.models import BatchJob, DocumentJob  # noqa: F401
 from .ratelimit.models import RateLimitCount  # noqa: F401
 from .tracking.models import TrackingEvent  # noqa: F401
 

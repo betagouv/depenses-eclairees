@@ -1,4 +1,4 @@
-from app.processor import (
+from app.processor.extraction_text_from_attachments import (
     extract_text_from_doc,
     extract_text_from_docx,
     extract_text_from_odt,

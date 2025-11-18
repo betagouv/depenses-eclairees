@@ -2,7 +2,9 @@ import logging
 
 from celery import shared_task
 
-from .file_processing.text_extraction import task_extract_text, task_finalize_batch  # noqa: F401
+from .file_processing.classification import task_analyze_document  # noqa: F401
+from .file_processing.text_extraction import task_extract_text  # noqa: F401
+from .file_processing.utils import task_finalize_batch  # noqa: F401
 
 logger = logging.getLogger(__name__)
 

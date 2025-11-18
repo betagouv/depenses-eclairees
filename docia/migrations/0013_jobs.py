@@ -13,28 +13,36 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='BatchTextExtraction',
+            name='BatchJob',
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
+                ('job_name', models.CharField(choices=[('TEXT_EXTRACTION', 'Text Extraction'), ('CLASSIFICATION', 'Classification'), ('ANALYZE', 'Analyze')])),
                 ('folder', models.CharField(max_length=50)),
                 ('status', models.CharField(choices=[('PENDING', 'Pending'), ('STARTED', 'Started'), ('SUCCESS', 'Success'), ('FAILURE', 'Failure')])),
+                ('celery_task_id', models.CharField(blank=True, max_length=250)),
             ],
             options={
                 'abstract': False,
             },
         ),
         migrations.CreateModel(
-            name='FileTextExtraction',
+            name='DocumentJob',
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
+                ('job_name', models.CharField(choices=[('TEXT_EXTRACTION', 'Text Extraction'), ('CLASSIFICATION', 'Classification'), ('ANALYZE', 'Analyze')])),
                 ('status', models.CharField(choices=[('PENDING', 'Pending'), ('STARTED', 'Started'), ('SUCCESS', 'Success'), ('FAILURE', 'Failure')])),
-                ('error', models.TextField(blank=True, default='')),
-                ('batch', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='docia.batchtextextraction')),
+                ('error', models.CharField(blank=True, default='')),
+                ('traceback', models.TextField(blank=True, default='')),
+                ('celery_task_id', models.CharField(blank=True, max_length=250)),
+                ('batch', models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, to='docia.batchjob')),
                 ('document', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='docia.dataattachment')),
+                ('started_at', models.DateTimeField(blank=True, null=True)),
+                ('finished_at', models.DateTimeField(blank=True, null=True)),
+                ('duration', models.DurationField(blank=True, null=True)),
             ],
             options={
                 'abstract': False,
