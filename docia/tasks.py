@@ -10,7 +10,7 @@ from .file_processing.utils import task_finalize_batch  # noqa: F401
 logger = logging.getLogger(__name__)
 
 
-@shared_task
+@shared_task(name="docia.add")
 def add(x, y):
     logger.info("add %s + %s", x, y)
     return x + y

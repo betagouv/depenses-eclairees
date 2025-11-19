@@ -50,7 +50,7 @@ class AbstractJobWorker(ABC):
     def process(self, job): ...
 
 
-@shared_task
+@shared_task(name="docia.finalize_batch")
 def task_finalize_batch(job_results: list[JobStatus], batch_id: str) -> JobStatus:
     """
     Celery task to finalize a batch text extraction process.

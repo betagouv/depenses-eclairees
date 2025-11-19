@@ -35,7 +35,7 @@ class ExtractTextJobWorker(AbstractJobWorker):
         document.save(update_fields=["text", "is_ocr", "nb_mot"])
 
 
-@shared_task
+@shared_task(name="docia.extract_text", queue="heavy_cpu")
 def task_extract_text(job_id: str) -> JobStatus:
     worker = ExtractTextJobWorker()
     return worker.run(job_id)

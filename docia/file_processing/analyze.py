@@ -41,7 +41,7 @@ class AnalyzeDocumentJobWorker(AbstractJobWorker):
         document.save(update_fields=["llm_response", "json_error"])
 
 
-@shared_task
+@shared_task(name="docia.analyze_document")
 def task_analyze_document(job_id: str):
     runner = AnalyzeDocumentJobWorker()
     return runner.run(job_id)

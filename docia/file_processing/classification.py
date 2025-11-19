@@ -40,7 +40,7 @@ class DocumentClassificationJobWorker(AbstractJobWorker):
         document.save(update_fields=["classification", "classification_type"])
 
 
-@shared_task
+@shared_task(name="docia.classify_document")
 def task_classify_document(job_id: str):
     runner = DocumentClassificationJobWorker()
     return runner.run(job_id)
