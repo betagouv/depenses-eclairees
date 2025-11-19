@@ -39,7 +39,7 @@ app.autodiscover_tasks()
 def task_prerun(task_id, task, **kwargs):
     args = kwargs["args"]
     # Compact args for chords
-    if isinstance(args[0], list) and len(args[0]) > 3:
+    if len(args) > 0 and isinstance(args[0], list) and len(args[0]) > 3:
         sargs = str([
             args[0][:3] + ['...'],
             *args[1:],

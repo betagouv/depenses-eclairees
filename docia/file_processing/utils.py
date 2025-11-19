@@ -5,6 +5,7 @@ import traceback
 import uuid
 from abc import ABC
 
+from celery.result import GroupResult
 from django.db.models import Count
 from django.db.transaction import atomic
 
@@ -27,23 +28,24 @@ class AbstractJobWorker(ABC):
                 return
 
             job.started_at = datetime.datetime.now(tz=datetime.timezone.utc)
+            job.status = JobStatus.STARTED
+            job.save(update_fields=["status"])
 
+        try:
             document = job.document
             file_path = document.file.name
+            self.process(job)
+        except Exception as e:
+            logger.exception("(%s) Error during processing %s", self.__class__.__name__, file_path)
+            job.status = JobStatus.FAILURE
+            job.error = str(e)
+            job.traceback = traceback.format_exc()
+        else:
+            job.status = JobStatus.SUCCESS
 
-            try:
-                self.process(job)
-            except Exception as e:
-                logger.exception("(%s) Error during processing %s", self.__class__.__name__, file_path)
-                job.status = JobStatus.FAILURE
-                job.error = str(e)
-                job.traceback = traceback.format_exc()
-            else:
-                job.status = JobStatus.SUCCESS
-
-            job.finished_at = datetime.datetime.now(tz=datetime.timezone.utc)
-            job.duration = job.finished_at - job.started_at
-            job.save()
+        job.finished_at = datetime.datetime.now(tz=datetime.timezone.utc)
+        job.duration = job.finished_at - job.started_at
+        job.save()
 
         return job.status
 
@@ -152,6 +154,34 @@ def display_batch_progress(batch_id: str):
             pbar.n = progress["completed"]
             pbar.set_postfix(errors=progress["errors"])
             if progress["status"] in [JobStatus.SUCCESS, JobStatus.FAILURE]:
+                break
+            time.sleep(1)
+    logger.info("Completed")
+
+
+def get_group_result_progress(celery_task_id: str):
+    gr = GroupResult.restore(celery_task_id)
+    # Count the number of tasks in each status
+    completed = gr.completed_count()
+    errors = len([res for res in gr if res.failed()])
+    total = len(gr.children)
+    return {
+        "is_done": gr.ready(),
+        "completed": completed,
+        "errors": errors,
+        "total": total,
+    }
+
+
+def display_group_progress(celery_task_id: str):
+    gr = GroupResult.restore(celery_task_id)
+    total_tasks = len(gr.children)
+    with tqdm(total=total_tasks) as pbar:
+        while True:
+            progress = get_group_result_progress(celery_task_id)
+            pbar.n = progress["completed"]
+            pbar.set_postfix(errors=progress["errors"])
+            if progress["is_done"]:
                 break
             time.sleep(1)
     logger.info("Completed")
