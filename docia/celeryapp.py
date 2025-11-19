@@ -7,6 +7,10 @@ from django.db import transaction
 from celery import Celery, Task, signals
 
 
+# Use same name as Celery is using for its task success logger
+logger_celery = logging.getLogger("celery.app.trace")
+
+
 class BaseTask(Task):
     def on_commit(self, *args, **kwargs):
         if settings.ENV == "test":
@@ -33,4 +37,13 @@ app.autodiscover_tasks()
 
 @signals.task_prerun.connect()
 def task_prerun(task_id, task, **kwargs):
-    logging.info("Start task %s args=%s kwargs=%s", task.name, kwargs["args"], kwargs["kwargs"])
+    args = kwargs["args"]
+    # Compact args for chords
+    if isinstance(args[0], list) and len(args[0]) > 3:
+        sargs = str([
+            args[0][:3] + ['...'],
+            *args[1:],
+        ])
+    else:
+        sargs = str(args)
+    logger_celery.info("Start task %s args=%s kwargs=%s", task.name, sargs, kwargs["kwargs"])
