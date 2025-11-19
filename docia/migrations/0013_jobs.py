@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('job_name', models.CharField(choices=[('TEXT_EXTRACTION', 'Text Extraction'), ('CLASSIFICATION', 'Classification'), ('ANALYZE', 'Analyze')])),
                 ('folder', models.CharField(max_length=50)),
-                ('status', models.CharField(choices=[('PENDING', 'Pending'), ('STARTED', 'Started'), ('SUCCESS', 'Success'), ('FAILURE', 'Failure')])),
+                ('status', models.CharField(choices=[('PENDING', 'Pending'), ('STARTED', 'Started'), ('SUCCESS', 'Success'), ('FAILURE', 'Failure'), ('CANCELED', 'Canceled')])),
                 ('celery_task_id', models.CharField(blank=True, max_length=250)),
             ],
             options={
@@ -34,7 +34,7 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('job_name', models.CharField(choices=[('TEXT_EXTRACTION', 'Text Extraction'), ('CLASSIFICATION', 'Classification'), ('ANALYZE', 'Analyze')])),
-                ('status', models.CharField(choices=[('PENDING', 'Pending'), ('STARTED', 'Started'), ('SUCCESS', 'Success'), ('FAILURE', 'Failure')])),
+                ('status', models.CharField(choices=[('PENDING', 'Pending'), ('STARTED', 'Started'), ('SUCCESS', 'Success'), ('FAILURE', 'Failure'), ('CANCELED', 'Canceled')])),
                 ('error', models.CharField(blank=True, default='')),
                 ('traceback', models.TextField(blank=True, default='')),
                 ('celery_task_id', models.CharField(blank=True, max_length=250)),

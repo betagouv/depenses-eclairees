@@ -1,9 +1,9 @@
+import datetime
 import logging
 import time
 import traceback
 import uuid
 from abc import ABC
-import datetime
 
 from django.db.models import Count
 from django.db.transaction import atomic

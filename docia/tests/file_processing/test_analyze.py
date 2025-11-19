@@ -80,7 +80,7 @@ def test_batch_error_handling():
         text: str,
         df_attributes: pd.DataFrame,
         classification: str,
-        llm_model: str = 'albert-large',
+        llm_model: str = "albert-large",
         temperature: float = 0.0,
     ):
         if filename.endswith("doc2.pdf"):

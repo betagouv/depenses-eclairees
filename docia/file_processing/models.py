@@ -8,6 +8,7 @@ class JobStatus(models.TextChoices):
     STARTED = "STARTED"
     SUCCESS = "SUCCESS"
     FAILURE = "FAILURE"
+    CANCELED = "CANCELED"
 
 
 class JobName(models.TextChoices):

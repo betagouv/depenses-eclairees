@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def classify_documents_in_folder(folder: str) -> tuple[BatchJob, AsyncResult]:
+    # TODO filter only documents we can classify (user DOC_ATTRS)
     return launch_batch(
         JobName.CLASSIFICATION,
         folder,
