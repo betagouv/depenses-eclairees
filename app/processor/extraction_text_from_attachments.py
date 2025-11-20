@@ -18,7 +18,7 @@ import pytesseract
 from tqdm import tqdm
 
 from app.data.sql.sql import bulk_update_attachments
-from app.utils import count_words, log_execution_time
+from app.utils import count_words, log_execution_time, clean_nul_bytes
 from app.utils import getDate
 from app.grist import update_records_in_grist
 from app.grist import API_KEY_GRIST, URL_TABLE_ATTACHMENTS
@@ -653,19 +653,23 @@ def extract_text(file_content: bytes, file_path: str, file_type: str, word_thres
         logger.warning(f"Unknown file type for {file_path} (type={file_type!r})")
         return "", False
     elif file_type == 'pdf':
-        return extract_text_from_pdf(file_content, file_path, word_threshold)
+        text, is_ocr = extract_text_from_pdf(file_content, file_path, word_threshold)
     elif file_type == 'docx':
-        return extract_text_from_docx(file_content, file_path)
+        text, is_ocr = extract_text_from_docx(file_content, file_path)
     elif file_type == 'odt':
-        return extract_text_from_odt(file_content, file_path)
+        text, is_ocr = extract_text_from_odt(file_content, file_path)
     elif file_type == 'txt':
-        return extract_text_from_txt(file_content, file_path)
+        text, is_ocr = extract_text_from_txt(file_content, file_path)
     elif file_type in ['png', 'jpg', 'jpeg', 'tiff', 'tif']:
-        return extract_text_from_image(file_content, file_path)
+        text, is_ocr = extract_text_from_image(file_content, file_path)
     elif file_type == 'doc':
-        return extract_text_from_doc(file_content, file_path)
+        text, is_ocr = extract_text_from_doc(file_content, file_path)
     else:
         raise ValueError(f"Invalid file type for {file_path} (type={file_type!r})")
+
+    text = clean_nul_bytes(text)
+
+    return text, is_ocr
 
 
 def df_extract_text(dfFiles: pd.DataFrame, word_threshold=50, save_path=None, directory_path=None, save_grist=False, max_workers=4):
