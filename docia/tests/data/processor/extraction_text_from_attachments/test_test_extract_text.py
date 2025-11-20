@@ -11,18 +11,22 @@ def test_extract_text():
     file_content = b"content"
 
     with mock.patch("app.processor.extraction_text_from_attachments.extract_text_from_pdf", autospec=True) as m:
+        m.return_value = ("hello", True)
         extract_text(file_content, "file.pdf", "pdf")
         m.assert_called_once_with(file_content, "file.pdf", 50)
 
     with mock.patch("app.processor.extraction_text_from_attachments.extract_text_from_docx", autospec=True) as m:
+        m.return_value = ("hello", True)
         extract_text(file_content, "file.docx", "docx")
         m.assert_called_once_with(file_content, "file.docx")
 
     with mock.patch("app.processor.extraction_text_from_attachments.extract_text_from_txt", autospec=True) as m:
+        m.return_value = ("hello", True)
         extract_text(file_content, "file.txt", "txt")
         m.assert_called_once_with(file_content, "file.txt")
 
     with mock.patch("app.processor.extraction_text_from_attachments.extract_text_from_doc", autospec=True) as m:
+        m.return_value = ("hello", True)
         extract_text(file_content, "file.doc", "doc")
         m.assert_called_once_with(file_content, "file.doc")
 
@@ -31,6 +35,7 @@ def test_extract_text():
 def test_extract_text_from_image(extension):
     file_content = b"content"
     with mock.patch("app.processor.extraction_text_from_attachments.extract_text_from_image", autospec=True) as m:
+        m.return_value = ("hello", True)
         extract_text(file_content, f"file.{extension}", extension)
         m.assert_called_once_with(file_content, f"file.{extension}")
 

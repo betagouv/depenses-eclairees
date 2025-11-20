@@ -14,7 +14,7 @@ import docx2txt
 import pymupdf
 import pandas as pd
 from PyPDF2 import PdfReader
-import pytesseract
+import tesserocr
 from tqdm import tqdm
 
 from app.data.sql.sql import bulk_update_attachments
@@ -94,8 +94,8 @@ def display_pdf_stats(dfFiles, title="Statistiques globales"):
     
     print("=" * len(title))
 
-# Fonction pour extraire le texte d'un PDF avec Fitz, PdfReader ou PyTesseract 
-# OCR PyTesseract en-dessous de word_thresehold = 50
+# Fonction pour extraire le texte d'un PDF avec Fitz, PdfReader ou Tesseract
+# OCR Tesseract en-dessous de word_thresehold = 50
 def extract_text_from_pdf(file_content: bytes, file_path: str, word_threshold=50):
     """
     Extrait le texte d'un PDF. Si le PDF contient moins de mots que le seuil défini,
@@ -149,7 +149,7 @@ def extract_text_from_pdf(file_content: bytes, file_path: str, word_threshold=50
                 for page in doc:
                     pix = page.get_pixmap(dpi=200, colorspace=pymupdf.csRGB, alpha=0)
                     image = pix.pil_image()
-                    text_ocr += pytesseract.image_to_string(image, lang='fra') or ""
+                    text_ocr += tesserocr.image_to_text(image, lang='fra') or ""
                     # alternatively we could use this tesseract wrapper from pymupdf
                     # text_page = page.get_textpage_ocr(dpi=200, language='fra', full=True)
                     # text_ocr += text_page.extractText()
@@ -300,8 +300,8 @@ def extract_text_from_image(file_content: bytes, file_path: str):
         # Ouvrir l'image directement avec PIL
         image = Image.open(io.BytesIO(file_content))
         
-        # Extraire le texte avec pytesseract
-        text_ocr = pytesseract.image_to_string(image, lang='fra')
+        # Extraire le texte avec tesseract
+        text_ocr = tesserocr.image_to_text(image, lang='fra')
         
         # Nettoyer le texte
         text_ocr = text_ocr.strip()

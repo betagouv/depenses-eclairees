@@ -19,7 +19,6 @@ dependencies = [
     "PyPDF2",
     "PyCryptodome",
     "PyMuPDF",
-    "pytesseract",
     "python-magic",
     "scikit-learn",
     "tiktoken",
@@ -42,6 +41,7 @@ dependencies = [
     "django-lasuite (>=0.0.14,<0.0.15)",
     "django-magicauth (>=1.0.2,<2.0.0)",
     "django-storages[s3] (>=1.14.6,<2.0.0)",
+    "tesserocr (>=2.9.1,<3.0.0)",
 ]
 
 [tool.poetry]
