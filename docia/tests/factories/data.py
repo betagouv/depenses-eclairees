@@ -1,6 +1,6 @@
 import factory
 
-from docia.models import DataAttachments, DataBatch, DataEngagement
+from docia.models import DataAttachment, DataBatch, DataEngagement
 
 
 class DataEngagementFactory(factory.django.DjangoModelFactory):
@@ -20,9 +20,9 @@ class DataBatchFactory(factory.django.DjangoModelFactory):
 
 class DataAttachmentFactory(factory.django.DjangoModelFactory):
     class Meta:
-        model = DataAttachments
+        model = DataAttachment
 
     filename = factory.Sequence(lambda n: f"file_{n:0>3}.txt")
-    dossier = "raw"
+    dossier = factory.Sequence(lambda n: f"raw/folder{n // 5:0>3}")
     file = factory.lazy_attribute(lambda a: f"{a.dossier}/{a.filename}")
     extension = factory.lazy_attribute(lambda a: a.filename.split(".")[-1])

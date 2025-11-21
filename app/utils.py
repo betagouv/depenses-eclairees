@@ -81,6 +81,14 @@ def json_print(obj):
         print(json.dumps(obj, indent=3, ensure_ascii=False))
 
 
+def clean_nul_bytes(text: str) -> str:
+    """
+    Clean NUL bytes (0x00) from text
+    PostgreSQL doesn't allow NUL bytes in text fields.
+    """
+    return text.replace('\x00', '')
+
+
 def clean_nul_bytes_from_dataframe(df: pd.DataFrame, text_columns: list = None) -> pd.DataFrame:
     """
     Clean NUL bytes (0x00) from text columns in a DataFrame.
@@ -102,6 +110,5 @@ def clean_nul_bytes_from_dataframe(df: pd.DataFrame, text_columns: list = None) 
     
     for col in text_columns:
         if col in df_clean.columns:
-            df_clean[col] = df_clean[col].astype(str).str.replace('\x00', '', regex=False)
-    
+            df_clean[col] = df_clean[col].astype(str).apply(clean_nul_bytes)
     return df_clean

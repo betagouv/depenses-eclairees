@@ -2,9 +2,15 @@ from django.contrib.postgres.functions import RandomUUID
 from django.db import models
 
 # Import other models so Django can discover them
-from .common.models import BaseModel, User  # noqa
-from .ratelimit import models as ratelimit_models  # noqa
-from .tracking import models as tracking_models  # noqa
+from .common.models import BaseModel, User  # noqa: F401
+from .file_processing.models import (  # noqa: F401
+    ProcessDocumentBatch,
+    ProcessDocumentJob,
+    ProcessDocumentStep,
+    ProcessingStatus,
+)
+from .ratelimit.models import RateLimitCount  # noqa: F401
+from .tracking.models import TrackingEvent  # noqa: F401
 
 
 class DataEngagement(BaseModel):
@@ -30,7 +36,7 @@ class DataEngagement(BaseModel):
         return f"{self.num_ej}"
 
 
-class DataAttachments(BaseModel):
+class DataAttachment(BaseModel):
     id = models.UUIDField(
         primary_key=True,
         db_default=RandomUUID(),

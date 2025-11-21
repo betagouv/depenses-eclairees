@@ -19,7 +19,6 @@ from tqdm import tqdm
 from typing import List, Dict, Tuple, Optional, Union, Any
 from concurrent.futures import ThreadPoolExecutor
 
-from app.ai_models.config_albert import BASE_URL_PROD, API_KEY_AMA
 from app.data.sql.sql import bulk_update_attachments
 from app.utils import getDate
 from app.processor.attributes_query import select_attr
@@ -834,8 +833,8 @@ class RAGEnvironment:
 def df_select_content(dfFiles: pd.DataFrame, 
                       dfAttributes: pd.DataFrame,
                       max_mots=5000,
-                      api_key=API_KEY_AMA,
-                      base_url=BASE_URL_PROD,
+                      api_key="",
+                      base_url="",
                       embedding_model="BAAI/bge-m3",
                       chunk_size=1000,
                       chunk_overlap=200,

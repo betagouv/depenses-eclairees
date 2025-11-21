@@ -294,7 +294,7 @@ def final_infos_all_EJ(dfEJPJ, api_url, api_key, llm_model='albert-large', max_w
         max_workers (int): Nombre de threads parallèles
     """
 
-    llm_env = processor.LLMEnvironment(
+    llm_env = processor.LLMClient(
         api_key=api_key,
         base_url=api_url,
         llm_model=llm_model

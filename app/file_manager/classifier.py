@@ -1,17 +1,18 @@
-import os
+import logging
 import pandas as pd
 from PyPDF2 import PdfReader
-import re
-import numpy as np
 import tqdm
 from concurrent.futures import ThreadPoolExecutor
 
-from .utils_file_manager import extract_num_EJ, normalize_text
+from docia.file_processing.llm import LLMClient
+from .utils_file_manager import normalize_text
 from app.utils import getDate
-from app.grist import select_records_by_key, update_records_in_grist
-from app.grist import URL_TABLE_ATTACHMENTS, URL_TABLE_ENGAGEMENTS, URL_TABLE_BATCH, API_KEY_GRIST
-from app import processor
+from app.grist import update_records_in_grist
+from app.grist import URL_TABLE_ATTACHMENTS, API_KEY_GRIST
 from ..data.sql.sql import bulk_update_attachments
+
+
+logger = logging.getLogger("docia." + __name__)
 
 
 def is_expression_in_filename(expression: list[str], filename: str) -> bool:
@@ -98,16 +99,15 @@ def classify_file_with_name(filename:str, list_classification = {"devis":{"words
                     # return type_document
                     pClassification.at[type_document, 'score'] = 1
     return pClassification.query("score == 1").index.tolist() if pClassification.query("score == 1").shape[0] > 0 else ['Non classifié']
-    # return 'Non classifié'
 
-def classify_file_with_llm(filename: str, folder: str, text: str, list_classification: dict, 
-                          api_key: str, base_url: str, llm_model: str = 'albert-large') -> str:
+
+def classify_file_with_llm(filename: str, text: str, list_classification: dict,
+                           llm_model: str = 'albert-large') -> str:
     """
     Classifie un fichier en fonction de son contenu en utilisant un LLM.
     
     Args:
         filename (str): Nom du fichier à classifier
-        folder (str): Dossier contenant le fichier
         text (str): Contenu textuel du fichier
         list_classification (dict): Dictionnaire de classification
         api_key (str): Clé API pour le LLM
@@ -117,18 +117,13 @@ def classify_file_with_llm(filename: str, folder: str, text: str, list_classific
     Returns:
         str: Classification du fichier
     """
-    try:
-        llm_env = processor.LLMEnvironment(
-            api_key=api_key,
-            base_url=base_url,
-            llm_model=llm_model
-        )
-        
-        system_prompt = "Vous êtes un assistant qui aide à classer des fichiers en fonction de leur contenu."
-        
-        prompt = f"""
+    llm_env = LLMClient(llm_model)
+
+    system_prompt = "Vous êtes un assistant qui aide à classer des fichiers en fonction de leur contenu."
+
+    prompt = f"""
 A partir du contenu du fichier, vous devez déterminer à quelle catégorie le document appartient parmi les catégories suivantes.
-        {',\n'.join([f"'{v['nom_complet']}': {v['description']}" if v['description']!='' else f"'{v['nom_complet']}'" for v in list_classification.values()])}
+    {',\n'.join([f"'{v['nom_complet']}': {v['description']}" if v['description']!='' else f"'{v['nom_complet']}'" for v in list_classification.values()])}
 
 Le titre du document est un élément essentiel pour la classification.
 Si le type de document ne correspond à aucune des catégories, répondez "Non classifié".
@@ -136,28 +131,27 @@ Si le type de document ne correspond à aucune des catégories, répondez "Non c
 Voici le nom du document (attention celui-ci peut être trompeur, il faut aussi regarder le contenu) : '{filename}'
 
 Voici la première page du document :
-'{text[:min(len(text),2000)]}'
+
+DEBUT PAGE>>>
+'{text[:2000]}'
+<<<FIN PAGE
 
 Répondez UNIQUEMENT par le nom de la catégorie, sans autre texte ni ponctuation.
-        """
-        
-        message = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": prompt}
-        ]
-        
-        response = llm_env.ask_llm(message=message)
-        
-        # Convertir la réponse en clé de classification
-        for key, value in list_classification.items():
-            if value['nom_complet'] == response:
-                return key
-        
-        return 'Non classifié'
-        
-    except Exception as e:
-        print(f"Erreur lors de la classification LLM de {filename}: {e}")
-        return 'Non classifié'
+    """
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": prompt}
+    ]
+
+    response = llm_env.ask_llm(messages=messages)
+
+    # Convertir la réponse en clé de classification
+    for key, value in list_classification.items():
+        if value['nom_complet'] == response:
+            return key
+
+    return 'Non classifié'
 
 
 def classify_files(dfFiles: pd.DataFrame, list_classification: dict, classification_type: str = "name", 
@@ -213,15 +207,18 @@ def classify_files(dfFiles: pd.DataFrame, list_classification: dict, classificat
                     raise ValueError("La colonne 'text' est requise pour la classification LLM. Utilisez d'abord df_extract_text.")
                 
                 text = row['text']
-                file_classification = classify_file_with_llm(
-                    filename=filename, 
-                    folder=folder, 
-                    text=text, 
-                    list_classification=list_classification,
-                    api_key=api_key,
-                    base_url=base_url,
-                    llm_model=llm_model
-                )
+                try:
+                    file_classification = classify_file_with_llm(
+                        filename=filename,
+                        text=text,
+                        list_classification=list_classification,
+                        api_key=api_key,
+                        base_url=base_url,
+                        llm_model=llm_model
+                    )
+                except Exception as e:
+                    logger.exception("Erreur lors de la classification LLM de %r: %s", filename, e)
+                    file_classification = 'Non classifié'
                 result['classification'] = file_classification
                 result['classification_type'] = 'llm'
             else:
