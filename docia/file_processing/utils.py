@@ -185,11 +185,15 @@ def display_batch_progress(batch_id: str):
             pbar_jobs.n = progress["progress"]
             pbar_jobs.set_postfix(errors=progress["errors"])
             pbar_ocr.n = progress["steps"][ProcessDocumentStepType.TEXT_EXTRACTION]["progress"]
-            pbar_ocr.set_postfix(errors=progress["steps"][ProcessDocumentStepType.TEXT_EXTRACTION]["errors"],
-                                 skipped=progress["steps"][ProcessDocumentStepType.TEXT_EXTRACTION]["skipped"])
+            pbar_ocr.set_postfix(
+                errors=progress["steps"][ProcessDocumentStepType.TEXT_EXTRACTION]["errors"],
+                skipped=progress["steps"][ProcessDocumentStepType.TEXT_EXTRACTION]["skipped"],
+            )
             pbar_classification.n = progress["steps"][ProcessDocumentStepType.CLASSIFICATION]["progress"]
-            pbar_classification.set_postfix(errors=progress["steps"][ProcessDocumentStepType.CLASSIFICATION]["errors"],
-                                            skipped=progress["steps"][ProcessDocumentStepType.CLASSIFICATION]["skipped"])
+            pbar_classification.set_postfix(
+                errors=progress["steps"][ProcessDocumentStepType.CLASSIFICATION]["errors"],
+                skipped=progress["steps"][ProcessDocumentStepType.CLASSIFICATION]["skipped"],
+            )
             pbar_info_extraction.n = progress["steps"][ProcessDocumentStepType.INFO_EXTRACTION]["progress"]
             pbar_info_extraction.set_postfix(
                 errors=progress["steps"][ProcessDocumentStepType.INFO_EXTRACTION]["errors"],

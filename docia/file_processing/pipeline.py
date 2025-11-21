@@ -80,5 +80,9 @@ def cancel_batch(batch_id: str):
         batch = ProcessDocumentBatch.objects.get(id=batch_id)
         batch.status = ProcessingStatus.CANCELLED
         batch.save()
-        ProcessDocumentJob.objects.filter(batch=batch).filter(status=ProcessingStatus.PENDING).update(status=ProcessingStatus.CANCELLED)
-        ProcessDocumentStep.objects.filter(job__batch=batch).filter(status=ProcessingStatus.PENDING).update(status=ProcessingStatus.CANCELLED)
+        ProcessDocumentJob.objects.filter(batch=batch).filter(status=ProcessingStatus.PENDING).update(
+            status=ProcessingStatus.CANCELLED
+        )
+        ProcessDocumentStep.objects.filter(job__batch=batch).filter(status=ProcessingStatus.PENDING).update(
+            status=ProcessingStatus.CANCELLED
+        )

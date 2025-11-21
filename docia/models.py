@@ -3,9 +3,14 @@ from django.db import models
 
 # Import other models so Django can discover them
 from .common.models import BaseModel, User  # noqa: F401
+from .file_processing.models import (  # noqa: F401
+    ProcessDocumentBatch,
+    ProcessDocumentJob,
+    ProcessDocumentStep,
+    ProcessingStatus,
+)
 from .ratelimit.models import RateLimitCount  # noqa: F401
 from .tracking.models import TrackingEvent  # noqa: F401
-from .file_processing.models import ProcessDocumentBatch, ProcessDocumentJob, ProcessDocumentStep, ProcessingStatus  # noqa: F401
 
 
 class DataEngagement(BaseModel):
