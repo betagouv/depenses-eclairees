@@ -3,7 +3,7 @@ Définitions des attributs à extraire pour les documents de type "acte_engageme
 """
 
 ACTE_ENGAGEMENT_ATTRIBUTES = {
-    "objet": {
+    "objet_marche": {
         "consigne": """OBJET
    Définition : l'objet du marché, c'est-à-dire ce qui a été acheté, ou le service fourni.
    Indices :
@@ -17,30 +17,50 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
    - Si l'objet de la commande est incompréhensible, proposer un objet simple qui reflète le contenu de la commande.
 """,
         "search": "",
-        "output_field": "objet"
+        "output_field": "objet_marche"
+    },
+
+    "lot_concerne": {
+        "consigne": """LOT_CONCERNE
+   Définition : le lot du marché concerné par le contrat.
+   Indices :
+   - Chercher après les mentions "Objet" et "Lot", ou autre mention similaire, en particulier en début du document.
+   - Renvoyer le numéro du lot, ainsi que le titre du lot s'il est disponible : "Lot X : [titre du lot]"
+   - Ne rien renvoyer si aucun lot trouvé.
+   Format : 
+   - La chaîne de caractères"Lot X : [titre du lot]", où le titre du lot est écrit en minuscule correctement.
+   - Si aucun lot trouvé, renvoyer ''
+""",
+        "search": "",
+        "output_field": "lot_concerne"
     },
 
     "administration_beneficiaire": {
         "consigne": """ADMINISTRATION_BENEFICIAIRE 
      Définition : Structure administrative ou publique qui bénéficie de la commande, ou qui achète la prestation.
      Indices :
-     - Rechercher les mentions d'achateurs, de pouvoir adjudicateur, ou d'autorité contractante.
-     - Le résultat est souvent une direction, un service, ou une administration.
-     - S'il est seulement précisé les rôles ou les postes de persones (ex : le préfet de la région Île-de-France), déduire la direction / le service / l'administration bénéficiaire (ex : la préfecture de la région Île-de-France).
-     Format : le nom de l'administration bénéficiaire en toutes lettres (pas d'acronymes si possible). 
+     - Rechercher les mentions d'achateurs, de pouvoir adjudicateur, ou d'autorité contractante. Le résultat est souvent une direction ou un service au sein d'une administration.
+     - Si possible, inclure le nom de l'administration jusqu'à deux sous-niveaux organisationnels.
+        * Exemple de bon résultat : Ministère de la culture (MDC) - Secrétariat général (SG) - Direction des musées de France (DMF)
+        * Exemple de résultat trop général : Ministère de la culture (MC)
+        * Exemple de résultat insuffisant : Direction des musées de France (DMF)
+        * Exemple de résultat trop détaillé : Ministère de la culture (MC) - Secrétariat général (SG) - Direction des musées de France (DMF) - Service des musées d'artisanat (SMA)
+     - S'il est seulement précisé les rôles ou les postes de persones, déduire la direction / le service / l'administration bénéficiaire.
+        * Exemple : le préfet de la région Île-de-France -> Préfecture de la région Île-de-France
+     Format : les différents niveaux de l'administration bénéficiaire en minuscule correctement écrit (et leurs acronymes entre parenthèses si disponibles), séparés par des tirets, . 
 """,
         "search": "",
-        "output_field": "administration_bénéficiaire"
+        "output_field": "administration_beneficiaire"
     },
 
     "societe_principale": {
         "consigne": """SOCIETE_PRINCIPALE  
-     Définition : Société principale contractante avec l'administration publique ou ses représentants. Si un groupement est mentionné, extraire la société mandataire ou représentante.  
+     Définition : Société principale contractante (titulaire). Si un groupement est mentionné, extraire la société mandataire ou représentante.  
      Indices : 
      - Rechercher les mentions de société, entreprise, titulaire, mandataire, contractant.
      - En général, l'autre nom de personne morale que l'administration acheteuse.
-     - Vérifier que le nom de la société est cohérent avec le nom de domaine de l'adresse mail d'une personne de contact "@..."
-     Format : renvoyer le nom de la société telle qu'écrit dans le document.
+     - Les noms de domaine des adresses mails peuvent donner des indices sur la bonne orthographe.
+     Format : renvoyer le nom de la société.
 """,
         "search": "",
         "output_field": "societe_principale"
@@ -74,22 +94,22 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
 
     "rib_mandataire": {
         "consigne": """RIB_MANDATAIRE
-     Définition : Informations bancaires du compte à créditer indiqué dans l'acte d'engagement (IBAN de préférence).
+     Définition : Informations bancaires (IBAN en priorité) du compte à créditer indiqué dans l'acte d'engagement.
      Indices : 
-     - Rechercher les informations bancaires du mandataire dans la section des comptes à créditer, de préférence sous forme d'IBAN.
-     - 1er cas (préféré) : le RIB est fourni sous forme d'un IBAN (27 caractères commençant par "FR76"). Renvoyer :
+     - Rechercher dans les informations bancaires, en priorité près des mentions "RIB" ou "IBAN".
+     - 1er cas (prioritaire) : l'IBAN est fourni (27 caractères commençant par "FR76"). Renvoyer :
         * 'banque' : Nom de la banque (sans la mention "Banque")
-        * 'iban' : IBAN du compte à créditer
-     - 2ème cas (uniquement s'il n'y a pas d'IBAN) : le RIB est fourni sous forme de 4 champs numériques sans IBAN. Renvoyer :
+        * 'iban' : IBAN du compte à créditer (souvent 6 groupes de 4 caractères, puis 3 caractères)
+     - 2ème cas (uniquement s'il n'y a pas d'IBAN) : l'IBAN n'est pas fourni, mais les autres informations bancaires sont fournies. Renvoyer :
         * 'banque' : Nom de la banque (sans la mention "Banque")
-        * 'code_banque' : code de la banque à 5 chiffres
-        * 'code_guichet' : code du guichet à 5 chiffres
-        * 'numero_compte' : numéro de compte français à 11 chiffres
-        * 'cle_rib' : clé du RIB à 2 chiffres
+        * 'code_banque' : code de la banque à 5 chiffres (espaces non compris)
+        * 'code_guichet' : code du guichet à 5 chiffres (espaces non compris)
+        * 'numero_compte' : numéro de compte français à 11 chiffres (espaces non compris)
+        * 'cle_rib' : clé du RIB à 2 chiffres (espaces non compris)
      - Ne rien renvoyer si aucune information bancaire trouvée pour le mandataire (ni IBAN, ni informations seules).
      Format : 
-     - 1er cas (préféré) : un json sous format suivant {"banque": "nom de la banque", "iban": "IBAN à 27 caractères"}
-     - 2ème cas (uniquement s'il n'y a pas d'IBAN) : un json sous format suivant {"banque": "nom de la banque", "code_banque": "code de la banque à 5 chiffres", "code_guichet": "code du guichet à 5 chiffres", "numero_compte": "numéro de compte français à 11 chiffres", "cle_rib": "clé du RIB à 2 chiffres"}
+     - 1er cas (prioritaire) : un json sous format suivant {"banque": "nom de la banque", "iban": "IBAN avec espaces tous les 4 caractères"}
+     - 2ème cas (secondaire - uniquement s'il n'y a pas d'IBAN) : un json sous format suivant {"banque": "nom de la banque", "code_banque": "code de la banque à 5 chiffres", "code_guichet": "code du guichet à 5 chiffres", "numero_compte": "numéro de compte à 11 chiffres", "cle_rib": "clé du RIB à 2 chiffres"}
 """,
         "search": "",
         "output_field": "rib_mandataire"
@@ -122,13 +142,16 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
 
     "cotraitants":{
         "consigne": """COTRAITANTS
-     Définition : Liste des entreprises cotraitantes autres que le mandataire (entreprise principale).
-     Indices : 
-     - Rechercher dans le paragraphe de description du groupement, s'il y a des entreprises en plus du mandataire avec le statut de cotraintant (et non pas sous-traitantes).
-     - Attention, les cotraitants peuvent aussi être mentionnés dans les prestations, ou dans les comptes à créditer. Si c'est le cas, il y a probablement d'autres cotraitantes.
-     - S'il n'y a que des sous-traitants, ne rien renvoyer.
-     - Ne rien renvoyer si aucun nom de contratant trouvé.
-     Format : une liste de dictionnaires sous format [{"nom": "nom de la société", "siret": "siret de la société"}]
+Objectif : Extraire uniquement les entreprises réellement mentionnées comme cotraitantes (hors mandataire).
+Règles d’extraction :
+- Ne retenir qu’une entreprise explicitement décrite comme cotraitante dans le texte.
+- Ignorer totalement les entreprises mentionnées comme sous-traitantes.
+- Ignorer toute mention générique contenant le mot “cotraitant” (ex. “Cotraitant”, “cotraitant1”, “cotraitant2”) : ce ne sont pas des entreprises.
+- Une entreprise n’est retenue que si au moins l’un des éléments suivants apparaît dans le texte : un nom réel d’entreprise, un numéro SIRET (14 chiffres) ou SIREN (9 chiffres) valide.
+- Ne rien renvoyer si aucun cotraitant réel n’est identifié dans le texte.
+- Format attendu : 
+    * une liste JSON : [{"nom": "...", "siret": "..."}]
+    * Si aucun cotraitant valide n’est trouvé, renvoyer exactement : []
 """,
         "search": "",
         "output_field": "cotraitants"
@@ -165,6 +188,9 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
      Indices : 
      - Rechercher les mentions "hors taxes", "HT", "sans TVA", "hors TVA" ou équivalent. 
      - Extraire le montant exprimé en euros ou en écriture littérale, et mets le en chiffres en euros.
+     - Cas particuliers :
+        * Pour un marché en plusieurs lots (cf champ lot_concerne), ne renvoyer que le montant du lot concerné.
+        * Pour un marché en plusieurs tranches, renvoyer la somme des montants de toutes les tranches.
      - Ne rien envoyer si aucun montant HT trouvé.
      Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
 """,
@@ -176,10 +202,12 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
         "consigne": """MONTANT_TTC  
      Définition : Montant du marché toutes taxes comprises (avec TVA incluse).  
      Indices : 
-     - Rechercher les expressions "TTC", "TVA incluse", "TVA comprise". 
-     - Extraire le montant TTC exprimé en euros ou en écriture littérale, et mets le en chiffres en euros.
+     - Rechercher les expressions "TTC", "TVA incluse", "TVA comprise".
      - Ignorer les montants HT (hors taxes) et le montant de TVA seule
-     - Peut être le même montant que le montant HT si pas de TVA.
+     - Le montant TTC peut être le même que le montant HT, s'il n'y a pas de TVA.
+     - Cas particuliers :
+        * Pour un marché en plusieurs lots (cf champ lot_concerne), ne renvoyer que le montant du lot concerné.
+        * Pour un marché en plusieurs tranches, renvoyer la somme des montants de toutes les tranches.
      - Ne rien envoyer si aucun montant TTC trouvé, ou si le montant a plus de chance d'être en HT que en TTC.
      Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
 """,
@@ -188,18 +216,25 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
     },
 
     "duree": {
-        "consigne": """DUREE_MARCHE
-        Définition : Durée du marché totale exprimée en mois.
+        "consigne": """DUREE
+        Définition : Durée du marché totale exprimée en mois et extension possible.
         Indices :
-        - Souvent le résultat d'un petit calcul, donne seulement le résultat de l'addition des durées selon les cas.
-        - Dans le paragraphe consacré à la durée ou aux délais du marché, plusieurs cas possibles :
-            * Un marché simple, sans tranches, sans reconductions. Renvoyer la durée en nombre de mois.
-            * Un marché à tranches, avec des tranches obligatoires et optionnelles. Dans ce cas, durée = somme des durées de toutes les tranches.
-            * Un marché à reconductions, avec une durée de base et des reconductions possibles. Dans ce cas, durée = base + durée_reconduction * nb_reconductions_maximum
-        - Ne rien renvoyer si aucune durée de marché trouvée.
-        Format : la durée en nombre de mois au total, en nombre entier.
+        - Chercher dans le paragraphe indiquant la durée du marché ou le délai d'exécution des prestations.
+        - Durée initiale : la durée du marché ferme (sans reconduction ou tranches optionnelles), en nombre de mois.
+            * En l'absence de précisions sur la durée ferme, renvoyer ''
+            * Exemple : une durée de 1 an, renvoyer 12.
+            * Pour une durée entre des dates clés, par exemple "jusqu'à la réunion de conclusion 6 mois après le lancement" : renvoyer 6 mois.
+        - Extension de durée possible : extenion maximale en nombre de mois.
+            * En l'absence d'informations claires, renvoyer ''
+            * Si des reconductions sont précisées (ne pas confondre avec des tranches optionnelles qui sont gérées ci-dessous) :
+                1. duree_reconduction : Trouver la durée d'une reconduction (en nombre de mois). Si l'information n'est pas précisée, renvoyer ''.
+                2. nb_reconductions : Trouver le nombre de reconductions possibles. Si l'information n'est pas précisée, renvoyer ''.
+            * Si des tranches optionnelles sont précisées : renvoyer la durée de l'ensemble des tranches optionnelles.
+                1. delai_tranche_optionnelle : Trouver la durée de l'ensemble des tranches optionnelles.
+                    Exemple : 2 tranches optionnelles de 8 mois, renvoyer 8 + 8 = 16.
+        Format : un json sous format suivant {"duree_initiale": "nombre entier de mois", "duree_reconduction": "nombre entier de mois", "nb_reconductions": "nombre entier de reconductions possibles", "delai_tranche_optionnelle": "nombre entier de mois"}
     """,
-        "search": "",
+        "search": "Section du document qui décrit la durée du marché ou le délai d'exécution des prestations.",
         "output_field": "duree"
     },
 
@@ -207,9 +242,10 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
         "consigne": """DATE_SIGNATURE_MANDATAIRE
       Définition : Date de signature du document par le mandataire (entreprise prestataire principale). 
       Indices : 
-      - Uniquement la date de signature de l'entreprise mandataire, par par l'administration bénéficiaire.
+      - Uniquement la date de signature de l'entreprise mandataire, pas celle de l'administration bénéficiaire.
       - Souvent la première date de signature en cas de plusieurs dates de signature.
       - Repérer les expressions comme "Signé le", "Fait à ...", ou des dates en bas du document associées à une signature.
+      - Si le document termine par une date seule, c'est probablement la date de signature de l'administration.
       - Ignorer les dates d'émission ou de création du document, en général en haut du document
       - Ne rien renvoyer si aucune date de signature trouvée pour le mandataire.
      Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
@@ -225,6 +261,7 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
       - Uniquement la date de signature de l'acheteur, du pouvoir adjudicateur, ou de l'administration bénéficiaire.
       - Souvent la dernière signature en cas de plusieurs dates de signatures.
       - Repérer les expressions comme "Signé le", "Fait à ...", ou des dates en bas du document associées à une signature.
+      - Si le document termine par une date seule, c'est surement la date designature de l'administration.
       - Ignorer les dates d'émission ou de création du document, en général en haut du document
       - Ne rien renvoyer si aucune date de signature trouvée
      Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
@@ -239,6 +276,7 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
       Indices : 
       - Parfois en début du document, ou en toute fin de document.
       - Après la mention "Date de notification" ou "Date de début du marché".
+      - S'il y a un doute sur la lecture de la date, prendre la date la plus proche postérieure à la signature par l'administration si disponible.
       - S'il n'y a pas de date de notification explicite, ne rien renvoyer.
       - Attention à ne pas confondre la date de notification avec la date de signature.
      Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  

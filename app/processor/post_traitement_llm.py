@@ -1,5 +1,8 @@
 import json
 import re
+import logging
+
+logger = logging.getLogger("docia." + __name__)
 
 def iban_to_numeros(iban: str) -> str:
     if(len(iban) != 27):
@@ -146,20 +149,20 @@ def post_traitement_rib(rib_entree: str) -> dict:
         rib['iban'] = re.sub(r'\s+', '', rib['iban']).upper()
         if(len(rib['iban']) != 27):
             raise ValueError("L'IBAN doit contenir 27 caractères")
-        return {'banque': rib.get('banque', ''), 'iban': rib['iban'].upper()}
+        return json.dumps({'banque': rib.get('banque', ''), 'iban': rib['iban'].upper()})
     
     # Si on a les 4 champs numériques mais pas d'iban, on construit l'iban
     elif all(k in rib for k in ['code_banque', 'code_guichet', 'numero_compte', 'cle_rib']):
         iban = 'FR76' + rib['code_banque'] + rib['code_guichet'] + rib['numero_compte'] + rib['cle_rib']
         if(len(iban) != 27):
             raise ValueError("L'IBAN doit contenir 27 caractères")
-        return {'banque': rib.get('banque', ''), 'iban': iban}
+        return json.dumps({'banque': rib.get('banque', ''), 'iban': iban})
     
     # Si ni l'une ni l'autre condition n'est validée, on retourne une erreur explicite
     else:
         raise ValueError("Le 'rib' doit contenir soit un IBAN, soit les champs code_banque, code_guichet, numero_compte et cle_rib.")
 
-def post_traitement_montant(montant: str) -> float:
+def post_traitement_montant(montant: str) -> str:
     """
     Extrait le montant d'une expression chaîne de caractères.
     Exemples d'entrées possibles :
@@ -184,7 +187,126 @@ def post_traitement_montant(montant: str) -> float:
         # Remplacer la virgule (cas français) par un point pour le float Python
         num = num.replace(',', '.')
         try:
-            return round(float(num), 2)
+            return json.dumps(round(float(num), 2))
         except (ValueError, TypeError):
-            return None
-    return None
+            return ''
+    return ''
+
+def post_traitement_cotraitants(cotraitants: str) -> str:
+    """
+    Post-traitement des cotraitants pour extraire les informations sur les entreprises cotraitantes.
+    """
+    try:
+        # On commence par évaluer la chaîne d'entrée comme une liste Python.
+        list_cotraitants = json.loads(cotraitants)
+        list_clean_cotraitants = []
+        # On parcourt chaque cotraitant de la liste
+        for cotraitant in list_cotraitants:
+            try: 
+                # Pour chaque cotraitant, on nettoie le SIRET et on construit un dictionnaire propre
+                clean_cotraitant = {
+                    'nom': cotraitant['nom'],
+                    'siret': post_traitement_siret(cotraitant['siret'])
+                }
+                list_clean_cotraitants.append(clean_cotraitant)
+            except Exception as e:
+                # Si une erreur survient lors du nettoyage du SIRET, on loggue un warning et met un SIRET vide
+                logger.error(f"Erreur dans post_traitement_cotraitants pour le cotraitant {cotraitant['nom']} : {e}")
+                clean_cotraitant = {'nom': cotraitant['nom'], 'siret': ''}
+                list_clean_cotraitants.append(clean_cotraitant)
+        # On retourne la liste nettoyée des cotraitants
+        return json.dumps(list_clean_cotraitants)
+    except Exception as e:
+        # Si une erreur globale apparaît (exemple : eval échoue), on loggue et renvoie une liste vide
+        logger.error(f"Erreur dans post_traitement_cotraitants lors de l'évaluation de la chaîne d'entrée des cotraitants : {e}")
+        return json.dumps([])
+
+def post_traitement_sous_traitants(sous_traitants: str) -> str:
+    """
+    Post-traitement des cotraitants pour extraire les informations sur les entreprises sous-traitantes.
+    """
+    try:
+        # On commence par évaluer la chaîne d'entrée comme une liste Python.
+        list_sous_traitants = json.loads(sous_traitants)
+        list_clean_sous_traitants = []
+        # On parcourt chaque sous-traitant de la liste
+        for sous_traitant in list_sous_traitants:
+            try: 
+                # Pour chaque sous-traitant, on nettoie le SIRET et on construit un dictionnaire propre
+                clean_sous_traitant = {
+                    'nom': sous_traitant['nom'],
+                    'siret': post_traitement_siret(sous_traitant['siret'])
+                }
+                list_clean_sous_traitants.append(clean_sous_traitant)
+            except Exception as e:
+                # Si une erreur survient lors du nettoyage du SIRET, on loggue un warning et met un SIRET vide
+                logger.error(f"Erreur dans post_traitement_sous_traitants pour le sous-traitant {sous_traitant['nom']} : {e}")
+                clean_sous_traitant = {'nom': sous_traitant['nom'], 'siret': ''}
+                list_clean_sous_traitants.append(clean_sous_traitant)
+        # On retourne la liste nettoyée des sous-traitants
+        return json.dumps(list_clean_sous_traitants)
+    except Exception as e:
+        # Si une erreur globale apparaît (exemple : eval échoue), on loggue et renvoie une liste vide
+        logger.error(f"Erreur dans post_traitement_sous_traitants lors de l'évaluation de la chaîne d'entrée des sous-traitants : {e}")
+        return json.dumps([])
+
+def post_traitement_duree(duree: str) -> str:
+    """
+    Post-traitement de la durée pour extraire les informations sur la durée du marché.
+    """
+    if duree is None or duree == '' or duree == 'nan':
+        return json.dumps('')
+    try:
+        # On commence par évaluer la chaîne d'entrée comme un json.
+        duree_json = json.loads(duree)
+        # Vérification, ajout et format des clés pour qu'elles soient des str d'entier ou ''
+        champs = ['duree_initiale', 'duree_reconduction', 'nb_reconductions', 'delai_tranche_optionnelle']
+        for champ in champs:
+            valeur = duree_json.get(champ, '')
+            # Vérifier le format : doit être un str représentant un entier ou ''
+            if isinstance(valeur, int):
+                duree_json[champ] = str(valeur)
+            elif isinstance(valeur, str):
+                valeur = valeur.replace(' ', '').replace('\xa0', '').replace(u'\u202f', '')
+                # Si string vide ou string d'un entier positif
+                if valeur == '' or (valeur.isdigit() and valeur != '0'):
+                    duree_json[champ] = valeur
+                else:
+                    # Format incorrect, on met ''
+                    duree_json[champ] = ''
+            else:
+                # Si ce n'est ni un int ni un str (float, bool, list, None, etc.), on remplace par ''
+                duree_json[champ] = ''
+        
+        # Si toutes les valeurs sont vides, on renvoie '' au lieu d'un dictionnaire avec des champs vides
+        if all(valeur == '' for valeur in duree_json.values()):
+            return json.dumps('')
+        
+        return json.dumps(duree_json)
+    except Exception as e:
+        # Si une erreur globale apparaît (exemple : eval échoue), on loggue et renvoie une durée vide
+        logger.error(f"Erreur dans post_traitement_duree lors de l'évaluation de la chaîne d'entrée de la durée : {e}")
+        return json.dumps('')
+
+def post_traitement_siret(siret: str) -> str:
+    """
+    Post-traitement du SIRET pour le nettoyer.
+    """
+    # Le post-traitement du SIRET : on attend un string de 14 chiffres.
+    # On corrige éventuellement si possible : (float en string, espaces...)
+    if not isinstance(siret, str):
+        siret = str(siret)
+
+    # Retirer les espaces
+    siret = siret.replace(' ', '').replace('\xa0', '').replace(u'\u202f', '')
+
+    # Si chaine de float valide (ex: "12345678901234.0"), transformer en int/str
+    if re.fullmatch(r"\d{14}\.0+", siret):
+        siret = siret.split('.')[0]
+
+    # Si restent seulement des chiffres et longueur 14, c'est ok
+    if siret.isdigit() and len(siret) == 14:
+        return siret
+
+    # Si pas corrigible, on lève une erreur ValueError
+    raise ValueError("Le SIRET fourni n'est pas corrigible.")

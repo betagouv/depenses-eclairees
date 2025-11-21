@@ -3,16 +3,18 @@ import re
 from datetime import datetime
 import pandas as pd
 import pytest
+import logging
 
-# import sys
-# sys.path.append(".")
+import sys
+sys.path.append(".")
 
-from app.processor.analyze_content import df_analyze_content
+from app.processor.analyze_content import df_analyze_content, LLMEnvironment, parse_json_response
 from app.processor.attributes_query import ATTRIBUTES
 from app.ai_models.config_albert import API_KEY_ALBERT, BASE_URL_PROD
 from app.utils import json_print
-from app.processor import post_traitement_llm
+from app.processor.post_traitement_llm import *
 
+logger = logging.getLogger("docia." + __name__)
 
 def normalize_string(s):
     """Normalise une chaîne de caractères : minuscule et sans caractères spéciaux."""
@@ -26,32 +28,192 @@ def normalize_string(s):
     return s
 
 
-def compare_objet(llm_value, ref_value):
-    """Compare objet : renvoie True."""
-    return True
+def compare_objet(llm_value, ref_value, llm_model='albert-small'):
+    """
+    Compare deux objets en utilisant un LLM comme juge pour évaluer la proximité de sens.
+    
+    Args:
+        llm_value: Valeur extraite par le LLM
+        ref_value: Valeur de référence
+        temperature: Température pour la génération (0.0 = déterministe, 0.2-0.3 = nuance avec cohérence)
+                    Par défaut 0.2 pour permettre de la nuance tout en gardant de la reproductibilité.
+        
+    Returns:
+        bool: True si les objets sont sémantiquement proches, False sinon
+    """
+    # Gestion des valeurs vides ou None
+    if (llm_value == '' or llm_value is None or llm_value == 'nan') and (ref_value == '' or ref_value is None or ref_value == 'nan'):
+        return True
+    
+    if (llm_value == '' or llm_value is None or llm_value == 'nan') or (ref_value == '' or ref_value is None or ref_value == 'nan'):
+        return False
+    
+    try:
+        # Création d'une instance LLMEnvironment
+        llm_env = LLMEnvironment(
+            api_key=API_KEY_ALBERT,
+            base_url=BASE_URL_PROD,
+            llm_model=llm_model
+        )
+        
+        # Construction du prompt pour demander l'avis du LLM
+        system_prompt = "Vous êtes un expert en analyse sémantique de documents juridiques. Votre rôle est d'évaluer la proximité de sens entre deux descriptions d'objets."
+        
+        user_prompt = f"""Compare les deux descriptions d'objet suivantes et détermine si elles décrivent la même chose ou des choses sémantiquement proches.
+
+    Valeur extraite par le LLM: {llm_value}
+
+    Valeur de référence: {ref_value}
+
+    Analyse si ces deux descriptions ont le même sens ou un sens proche. Prends en compte :
+    - Les synonymes et formulations équivalentes
+    - Les variations de style ou de formulation
+    - L'essence et le contenu principal, pas seulement la forme exacte
+
+    Tu dois IMPÉRATIVEMENT répondre UNIQUEMENT avec un JSON valide, sans aucun autre texte, avec cette structure exacte:
+    {{
+        "sont_proches": true ou false,
+        "explication": "brève explication de votre analyse"
+    }}"""
+        
+        message = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+        
+        # Format de réponse JSON forcé
+        response_format = {"type": "json_object"}
+        
+        # Appel au LLM avec format JSON forcé
+        # Température 0.2 : permet de la nuance dans l'évaluation sémantique tout en gardant de la cohérence
+        response = llm_env.ask_llm(message=message, response_format=response_format, temperature=0.2)
+        
+        # Parsing de la réponse JSON avec la fonction parse_json_response
+        result, error = parse_json_response(response)
+        
+        if error:
+            logger.warning(f"Erreur lors du parsing de la réponse LLM pour compare_objet: {error}. Réponse: {response}")
+            return False
+        
+        # print("Réponse LLM : ", result.get("explication", ""))
+
+        return bool(result.get("sont_proches", False))
+            
+    except Exception as e:
+        logger.error(f"Erreur lors de l'appel LLM pour compare_objet: {e}")
+        return False
 
 
-def compare_administration_beneficiaire(llm_value, ref_value):
-    """Compare administration_beneficiaire : renvoie True."""
-    return True
+def compare_administration_beneficiaire(llm_value, ref_value, llm_model='albert-small'):
+    """
+    Compare deux administrations bénéficiaires en utilisant un LLM comme juge pour évaluer s'il s'agit du même organisme ou d'une entité publique équivalente.
+
+    Args:
+        llm_value: Valeur extraite par le LLM pour l'administration bénéficiaire
+        ref_value: Valeur de référence pour l'administration bénéficiaire
+    
+    Returns:
+        bool: True si les administrations bénéficiaires sont identiques ou équivalentes, False sinon
+    """
+    # Gestion des valeurs vides ou None
+    if (llm_value == '' or llm_value is None or llm_value == 'nan') and (ref_value == '' or ref_value is None or ref_value == 'nan'):
+        return True
+
+    if (llm_value == '' or llm_value is None or llm_value == 'nan') or (ref_value == '' or ref_value is None or ref_value == 'nan'):
+        return False
+
+    try:
+        # Création d'une instance LLMEnvironment
+        llm_env = LLMEnvironment(
+            api_key=API_KEY_ALBERT,
+            base_url=BASE_URL_PROD,
+            llm_model=llm_model
+        )
+
+        # Construction du prompt pour demander l'avis du LLM
+        system_prompt = (
+            "Vous êtes un expert en analyse de documents administratifs publics. "
+            "Votre rôle est d'évaluer si deux chaînes désignent la même administration bénéficiaire (structure administrative ou publique bénéficiaire d'une commande) "
+            "ou deux entités publiques équivalentes."
+        )
+
+        user_prompt = f"""Compare les deux mentions suivantes concernant l'administration bénéficiaire d'un contrat ou acte administratif, 
+        et détermine si elles désignent la même structure, entité ou administration bénéficiaire, ou des administrations strictement équivalentes
+        (avec ou sans variation d'intitulé ou de formulation).
+
+        Valeur extraite par le LLM :
+        {llm_value}
+
+        Valeur de référence :
+        {ref_value}
+
+        Analyse si ces deux valeurs réfèrent à la même administration ou à une entité équivalente. Prends en compte :
+        - Les synonymes, reformulations, différences d'intitulé ou d'abréviation (par exemple, 'Préfecture de la région Île-de-France' vs 'Préfecture régionale Île-de-France')
+        - Le contexte administratif ou territorial, les rôles correspondant aux structures (par exemple, un intitulé de direction qui désigne l'administration bénéficiaire)
+        - Le fait que certaines valeurs peuvent préciser un service ou une direction interne d'une administration (cela compte pour la même administration si l'essentiel concorde)
+        - Le format doit être le nom complet, sans acronymes sauf s'ils sont officiels et connus
+
+        Tu dois IMPÉRATIVEMENT répondre UNIQUEMENT avec un JSON valide, sans aucun autre texte, avec cette structure exacte :
+        {{
+            "sont_equivalentes": true ou false,
+            "explication": "brève explication de votre analyse"
+        }}"""
+
+        message = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+
+        # Format de réponse JSON forcé
+        response_format = {"type": "json_object"}
+
+        # Appel au LLM avec format JSON forcé, température basse pour fiabilité
+        response = llm_env.ask_llm(message=message, response_format=response_format, temperature=0.2)
+
+        # Parsing de la réponse JSON avec la fonction parse_json_response
+        result, error = parse_json_response(response)
+
+        if error:
+            logger.warning(
+                f"Erreur lors du parsing de la réponse LLM pour compare_administration_beneficiaire: {error}. Réponse: {response}"
+            )
+            return False
+
+        print("Explication LLM administration_beneficiaire : ", result.get("explication", ""))
+
+        return bool(result.get("sont_equivalentes", False))
+        
+    except Exception as e:
+        logger.error(f"Erreur lors de l'appel LLM pour compare_administration_beneficiaire: {e}")
+        return False
 
 
 def compare_societe_principale(llm_value, ref_value):
     """Compare societe_principale : comparaison de chaînes normalisées."""
     llm_norm = normalize_string(llm_value)
     ref_norm = normalize_string(ref_value)
-    return llm_norm == ref_norm
+
+    if llm_norm == ref_norm:
+        return True
+    else:
+        llm_norm_no_space = llm_norm.replace(" ", "")
+        ref_norm_no_space = ref_norm.replace(" ","")
+        return llm_norm_no_space == ref_norm_no_space
 
 
-def compare_siret_mandataire(llm_value, ref_value):
-    """Compare siret_mandataire : comparaison exaSupercte."""
+def compare_siret(llm_value, ref_value):
+    """Compare siret : comparaison exacte."""
+    if (llm_value == '' or llm_value is None or llm_value == 'nan') and (ref_value == '' or ref_value is None or ref_value == 'nan'):
+        return True
     llm_str = str(llm_value) if not pd.isna(llm_value) else ""
     ref_str = str(ref_value) if not pd.isna(ref_value) else ""
     return llm_str == ref_str
 
 
-def compare_siren_mandataire(llm_value, ref_value):
-    """Compare siren_mandataire : comparaison exacte."""
+def compare_siren(llm_value, ref_value):
+    """Compare siren : comparaison exacte."""
+    if (llm_value == '' or llm_value is None or llm_value == 'nan') and (ref_value == '' or ref_value is None or ref_value == 'nan'):
+        return True
     llm_str = str(llm_value) if not pd.isna(llm_value) else ""
     ref_str = str(ref_value) if not pd.isna(ref_value) else ""
     return llm_str == ref_str
@@ -59,12 +221,16 @@ def compare_siren_mandataire(llm_value, ref_value):
 
 def compare_rib_mandataire(llm_val, ref_val):
     """Compare rib_mandataire : format JSON, comparaison des 5 champs."""
-    llm_dict = post_traitement_llm.post_traitement_rib(llm_val)
-    ref_dict = post_traitement_llm.post_traitement_rib(ref_val)
 
-    if llm_dict == '' and ref_dict == '':
+    if (llm_val == '' or llm_val is None or llm_val == 'nan') and (ref_val == '' or ref_val is None or ref_val == 'nan'):
         return True
+
+    elif (llm_val == '' or llm_val is None or llm_val == 'nan'):
+        return False
     
+    llm_dict = json.loads(llm_val)
+    ref_dict = json.loads(ref_val)
+
     # Si 'iban' est dans ref_dict et non vide, alors on compare les ibans (exact).
     if ref_dict.get('iban', '') != '':
         if llm_dict.get('iban', '') == ref_dict.get('iban', ''):
@@ -85,28 +251,76 @@ def compare_rib_mandataire(llm_val, ref_val):
 
 def compare_avance(llm_value, ref_value):
     """Compare avance : renvoie True."""
-    return True
+    return False
 
 
-def compare_cotraitants(llm_value, ref_value):
-    """Compare cotraitants : liste de json, renvoie True pour l'instant."""
-    return True
+def compare_cotraitants(llm_val, ref_val):
+    """Compare cotraitants : liste de json, renvoie True si tous les cotraitants LLM sont trouvés côté référence."""
+    llm_dict = json.loads(llm_val)
+    ref_dict = json.loads(ref_val)
+
+    if len(llm_dict) != len(ref_dict):
+        return False
+    
+    cotraitants_valids = True
+    # Pour chaque cotraitant généré par le LLM
+    for cotraitant_llm in llm_dict:
+        this_cotraitant_valid = False
+        # On essaye de le retrouver dans la liste de référence
+        for cotraitant_ref in ref_dict:
+            # On compare le nom (avec la fonction de normalisation) et le siret
+            if compare_societe_principale(cotraitant_llm['nom'], cotraitant_ref['nom']) and compare_siret(cotraitant_llm['siret'], cotraitant_ref['siret']):
+                this_cotraitant_valid = True  # Un match est trouvé
+                print("Cotraitant trouvé : ", cotraitant_ref)
+                break
+        if not this_cotraitant_valid:
+            # Si on ne trouve pas ce cotraitant dans les références, on considère la comparaison échouée
+            print("Cotraitant non trouvé : ", cotraitant_llm)
+            cotraitants_valids = False
+            break
+    # La fonction ne vérifie pas s'il manque des cotraitants côté LLM
+    return cotraitants_valids
 
 
-def compare_sous_traitants(llm_value, ref_value):
-    """Compare sous_traitants : liste de json, renvoie True pour l'instant."""
-    return True
+def compare_sous_traitants(llm_val, ref_val):
+    """Compare sous_traitants : liste de json, renvoie True si tous les sous_traitants LLM sont trouvés côté référence."""
+    llm_dict = json.loads(llm_val)
+    ref_dict = json.loads(ref_val)
+
+    if len(llm_dict) != len(ref_dict):
+        return False
+    
+    sous_traitants_valids = True
+    # Pour chaque sous_traitant généré par le LLM
+    for sous_traitant_llm in llm_dict:
+        this_sous_traitant_valid = False
+        # On essaye de le retrouver dans la liste de référence
+        for sous_traitant_ref in ref_dict:
+            # On compare le nom (avec la fonction de normalisation) et le siret
+            if compare_societe_principale(sous_traitant_llm['nom'], sous_traitant_ref['nom']) and compare_siret(sous_traitant_llm['siret'], sous_traitant_ref['siret']):
+                this_sous_traitant_valid = True  # Un match est trouvé
+                print("Sous-traitant trouvé : ", sous_traitant_ref)
+                break
+        if not this_sous_traitant_valid:
+            # Si on ne trouve pas ce sous_traitant dans les références, on considère la comparaison échouée
+            print("Sous-traitant non trouvé : ", sous_traitant_llm)
+            sous_traitants_valids = False
+            break
+    # La fonction ne vérifie pas s'il manque des sous_traitants côté LLM
+    return sous_traitants_valids
 
 
 def compare_rib_autres(llm_value, ref_value):
     """Compare rib_autres : liste de json, renvoie True pour l'instant."""
-    return True
+    return False
 
 
-def compare_montant(llm_value, ref_value):
+def compare_montant(llm_val, ref_val):
     """Compare montant : comparaison des valeurs."""
-    llm_val = post_traitement_llm.post_traitement_montant(llm_value)
-    ref_val = post_traitement_llm.post_traitement_montant(ref_value)
+    if (llm_val == '' or llm_val is None or llm_val == 'nan') and (ref_val == '' or ref_val is None or ref_val == 'nan'):
+        return True
+    # llm_val = post_traitement_montant(llm_value)
+    # ref_val = post_traitement_montant(ref_value)
     return llm_val == ref_val
 
 
@@ -123,6 +337,7 @@ def parse_date(date_str):
             continue
     return None
 
+
 def compare_date(llm_value, ref_value):
     """Compare date : comparaison de dates."""
     llm_date = parse_date(llm_value)
@@ -133,41 +348,107 @@ def compare_date(llm_value, ref_value):
         return False
     return llm_date == ref_date
 
-def compare_duree(llm_value, ref_value):
+
+def compare_duree(llm_val, ref_val):
     """Compare duree : nombre de mois, comparaison exacte."""
+    llm_dict = json.loads(llm_val)
+    ref_dict = json.loads(ref_val)
+   
+    if (llm_dict == '' or llm_dict is None or llm_dict == 'nan') and (ref_dict == '' or ref_dict is None or ref_dict == 'nan'):
+        return True
+
+    if (llm_dict == '' or llm_dict is None or llm_dict == 'nan') or (ref_dict == '' or ref_dict is None or ref_dict == 'nan'):
+        return False
+    
     try:
-        llm_val = int(float(llm_value)) if not pd.isna(llm_value) and llm_value != "" else None
-        ref_val = int(float(ref_value)) if not pd.isna(ref_value) and ref_value != "" else None
-        if llm_val is None and ref_val is None:
-            return True
-        if llm_val is None or ref_val is None:
+        if llm_dict.get('duree_initiale', '') != ref_dict.get('duree_initiale', ''):
             return False
-        return llm_val == ref_val
+        if llm_dict.get('duree_reconduction', '') != ref_dict.get('duree_reconduction', ''):
+            return False
+        if llm_dict.get('nb_reconductions', '') != ref_dict.get('nb_reconductions', ''):
+            return False
+        if llm_dict.get('delai_tranche_optionnelle', '') != ref_dict.get('delai_tranche_optionnelle', ''):
+            return False
+        return True
     except (ValueError, TypeError):
         return False
 
 
+def patch_post_traitement(df):
+    df_patched = df.copy()
+    post_traitement_functions = {
+        'rib_mandataire': post_traitement_rib,
+        'montant_ttc': post_traitement_montant,
+        'montant_ht': post_traitement_montant,
+        'cotraitants': post_traitement_cotraitants,
+        'sous_traitants': post_traitement_sous_traitants,
+        'siret_mandataire': post_traitement_siret,
+        'duree': post_traitement_duree,
+    }
+
+    for idx, row in df_patched.iterrows():
+        llm_response = row.get('llm_response', None)
+        if llm_response is None or pd.isna(llm_response):
+            continue
+        llm_data = json.loads(llm_response) if isinstance(llm_response, str) else llm_response
+        
+        for key in llm_data.keys():
+            if key in post_traitement_functions:
+                try:
+                    llm_data[key] = post_traitement_functions[key](llm_data[key])
+                    df_patched.loc[idx, key] = json.dumps(llm_data[key])
+                except Exception as e:
+                    logger.warning(f"Erreur dans post_traitement_functions pour {key}, idx: {idx} : {e}")
+                    llm_data[key] = ''
+                    df_patched.loc[idx, key] = ''
+
+        df_patched.loc[idx, 'llm_response'] = json.dumps(llm_data)
+
+    return df_patched
+
+# def clean_df_test(df):
+#     df_clean = df.copy()
+#     for idx, row in df.iterrows():
+#         try:
+#             df_clean.loc[idx, 'rib_mandataire'] = post_traitement_rib(row['rib_mandataire'])
+#             logger.info(df_clean.loc[idx, 'rib_mandataire'])
+#         except Exception as e:
+#             logger.warning(f"Erreur dans clean_df_test pour {idx}: {e}")
+#             df_clean.loc[idx, 'rib_mandataire'] = None
+#             continue
+#     return df_clean
+
 # Mapping des colonnes vers leurs fonctions de comparaison
-COMPARISON_FUNCTIONS = {
-    'objet': compare_objet,
-    'administration_beneficiaire': compare_administration_beneficiaire,
-    'societe_principale': compare_societe_principale,
-    'siret_mandataire': compare_siret_mandataire,
-    'siren_mandataire': compare_siren_mandataire,
-    'rib_mandataire': compare_rib_mandataire,
-    'avance': compare_avance,
-    'cotraitants': compare_cotraitants,
-    'sous_traitants': compare_sous_traitants,
-    'rib_autres': compare_rib_autres,
-    'montant_ttc': compare_montant,
-    'montant_ht': compare_montant,
-    'date_signature_mandataire': compare_date,
-    'date_signature_administration': compare_date,
-    'duree': compare_duree,
-}
+def get_comparison_functions():
+    """
+    Retourne le dictionnaire des fonctions de comparaison.
+    Cette fonction garantit que les références pointent toujours vers les dernières versions des fonctions,
+    même après un rechargement de module.
+    
+    Returns:
+        dict: Dictionnaire associant les noms de colonnes à leurs fonctions de comparaison
+    """
+    return {
+        'objet_marche': compare_objet,
+        'administration_beneficiaire': compare_administration_beneficiaire,
+        'societe_principale': compare_societe_principale,
+        'siret_mandataire': compare_siret,
+        'siren_mandataire': compare_siren,
+        'rib_mandataire': compare_rib_mandataire,
+        'avance': compare_avance,
+        'cotraitants': compare_cotraitants,
+        'sous_traitants': compare_sous_traitants,
+        'rib_autres': compare_rib_autres,
+        'montant_ttc': compare_montant,
+        'montant_ht': compare_montant,
+        'date_signature_mandataire': compare_date,
+        'date_signature_administration': compare_date,
+        'date_notification': compare_date,
+        'duree': compare_duree,
+    }
 
 
-def test_quality_infos():
+def create_batch_test():
     """Test de qualité des informations extraites par le LLM."""
     # Chemin vers le fichier CSV de test
     csv_path = "/Users/dinum-284659/dev/data/test/test_acte_engagement.csv"
@@ -177,6 +458,28 @@ def test_quality_infos():
     df_test['siret_mandataire'] = df_test['siret_mandataire'].apply(lambda x: x.split('.')[0])
     df_test['siren_mandataire'] = df_test['siren_mandataire'].apply(lambda x: x.split('.')[0])
     df_test.fillna('', inplace=True)
+
+    # Post-traitement direct des colonnes du DataFrame de test (après lecture du CSV)
+    # Les fonctions post-traitement sont utilisées comme pour patch_post_traitement, mais appliquées colonne par colonne
+    POST_TRAITEMENT_FUNCTIONS = {
+        'rib_mandataire': post_traitement_rib,
+        'cotraitants': post_traitement_cotraitants,
+        'sous_traitants': post_traitement_sous_traitants,
+        'duree': post_traitement_duree,
+        'montant_ttc': post_traitement_montant,
+        'montant_ht': post_traitement_montant,
+        'siret_mandataire': post_traitement_siret
+        # Ajouter ici d'autres champs si besoin dans le futur
+    }
+    for col, post_trait_func in POST_TRAITEMENT_FUNCTIONS.items():
+        if col in df_test.columns:
+            for idx, val in df_test[col].items():
+                try:
+                    # On conserve le même format qu'en production: JSON str
+                    df_test.at[idx, col] = post_trait_func(val)
+                except Exception as e:
+                    logger.warning(f"Erreur dans post-traitement DF_TEST pour colonne {col} à l'index {idx}: {e}")
+                    df_test.at[idx, col] = ''
     
     # Création du DataFrame pour l'analyse
     df_analyze = pd.DataFrame()
@@ -195,232 +498,257 @@ def test_quality_infos():
         df=df_analyze,
         df_attributes=ATTRIBUTES,
         max_workers=20,
-        temperature=0.5,
+        temperature=0.3,
         save_grist=False
     )
     
+    df_post_traitement = patch_post_traitement(df_result)
+
     # Fusion des résultats avec les valeurs de référence
-    df_merged = df_result[['filename', 'llm_response']].merge(
+    df_merged = df_post_traitement[['filename', 'llm_response']].merge(
         df_test,
         on='filename',
         how='inner'
     )
     
-    # Stockage détaillé de toutes les comparaisons
-    detailed_comparisons = []
+    return df_merged
+
+
+def test_quality_un_champ(df_merged, col_to_test = 'duree'):
+    # ============================================================================
+    # COMPARAISON POUR UNE COLONNE SPÉCIFIQUE
+    # ============================================================================
+    
+    comparison_func = get_comparison_functions()[col_to_test]
+    print(f"\n{'='*80}")
+    print(f"Comparaison pour la colonne: {col_to_test}")
+    print(f"{'='*80}\n")
+    
+    # Boucle de comparaison simple
+    for idx, row in df_merged.iterrows():
+        filename = row.get('filename', 'unknown')
+        
+        # Parser le JSON de llm_response
+        llm_data = json.loads(row.get('llm_response', None))
+
+        
+        # Extraire les valeurs
+        ref_val = row.get(col_to_test, None)
+        llm_val = llm_data.get(col_to_test, None)
+
+        if isinstance(llm_val, dict):
+            llm_val = json.dumps(llm_val)
+        
+        # Extraction des pbm OCR
+        list_pbm_ocr = row.get('pbm_ocr', False)
+        pbm_ocr = col_to_test in eval(list_pbm_ocr)
+
+        # Comparer les valeurs
+        try:
+            match_result = comparison_func(llm_val, ref_val)
+            match_result = bool(match_result) if not isinstance(match_result, bool) else match_result
+            status = "✅ MATCH" if match_result else "❌ NO MATCH"
+            print(f"{status} | {filename} | OCR {"❌" if pbm_ocr else "✅"}")
+            print(f"  LLM: {llm_val}")
+            print(f"  REF: {ref_val}")
+            print()
+        except Exception as e:
+            print(f"❌ ERREUR | {filename}: {str(e)} | OCR {"❌" if pbm_ocr else "✅"}")
+            print(f"  LLM: {llm_val}")
+            print(f"  REF: {ref_val}")
+            print()
+    
+
+def test_quality_une_ligne(df_merged, row_idx_to_test = 0, excluded_columns = []):
+    # ============================================================================
+    # COMPARAISON POUR UNE LIGNE SPÉCIFIQUE
+    # ============================================================================
+    
+    if row_idx_to_test < len(df_merged):
+        row = df_merged.iloc[row_idx_to_test]
+        filename = row.get('filename', 'unknown')
+        
+        print(f"\n{'='*80}")
+        print(f"Comparaison pour la ligne {row_idx_to_test} (fichier: {filename})")
+        print(f"{'='*80}\n")
+        
+        # Parser le JSON de llm_response
+        llm_data = json.loads(row.get('llm_response', None))
+        
+        # Comparer toutes les colonnes (sauf exclues)
+        for col in get_comparison_functions().keys():
+            if col in excluded_columns:
+                continue
+            if col not in df_merged.columns:
+                continue
+            
+            comparison_func = get_comparison_functions()[col]
+            
+            # Extraire les valeurs
+            ref_val = row.get(col, None)
+            llm_val = llm_data.get(col, None)
+            
+            if isinstance(llm_val, dict):
+                llm_val = json.dumps(llm_val)
+            
+            # Extraction des pbm OCR
+            list_pbm_ocr = row.get('pbm_ocr', False)
+            pbm_ocr = col in eval(list_pbm_ocr)
+
+            # Comparer les valeurs
+            try:
+                match_result = comparison_func(llm_val, ref_val)
+                match_result = bool(match_result) if not isinstance(match_result, bool) else match_result
+                status = "✅ MATCH" if match_result else "❌ NO MATCH"
+                print(f"{status} | {col} | OCR {"❌" if pbm_ocr else "✅"}")
+                print(f"  LLM: {llm_val}")
+                print(f"  REF: {ref_val}")
+                print()
+            except Exception as e:
+                print(f"❌ ERREUR | {col}: {str(e)} | OCR {"❌" if pbm_ocr else "✅"}")
+                print(f"  LLM: {llm_val}")
+                print(f"  REF: {ref_val}")
+                print()
+    else:
+        print(f"\n❌ Index {row_idx_to_test} invalide. Le DataFrame contient {len(df_merged)} lignes.\n")
+    
+
+def test_statistiques_globales(df_merged, excluded_columns = []):
+    # ============================================================================
+    # STATISTIQUES GLOBALES DE COMPARAISON
+    # ============================================================================
+    
+    print(f"\n{'='*80}")
+    print("STATISTIQUES GLOBALES DE COMPARAISON")
+    print(f"{'='*80}\n")
+    
     results = {}
     
-    # Colonnes à exclure des comparaisons
-    excluded_columns = {
-        'objet',
-        'administration_beneficiaire',
-        'avance',
-        'cotraitants',
-        'sous_traitants',
-        'rib_autres'
-    }
-    
-    # Comparaison pour chaque colonne
-    for col in COMPARISON_FUNCTIONS.keys():
+    # Comparaison pour chaque colonne (sauf exclues)
+    for col in get_comparison_functions().keys():
         # Ignorer les colonnes exclues
         if col in excluded_columns:
             continue
         
         # Vérifier si la colonne existe dans le CSV de référence
-        if col in df_test.columns:
-            comparison_func = COMPARISON_FUNCTIONS[col]
-            print(f"Traitement de la colonne: {col}")
-            matches = []
+        if col not in df_merged.columns:
+            continue
+        
+        comparison_func = get_comparison_functions()[col]
+        matches = []
+        errors = []
+        ocr_errors_count = 0
+        matches_no_ocr = []
+        
+        # Comparer toutes les lignes pour cette colonne
+        for idx, row in df_merged.iterrows():
+            filename = row.get('filename', 'unknown')
             
-            for idx, row in df_merged.iterrows():
-                filename = row.get('filename', 'unknown')
-                llm_val = None
-                ref_val = None
-                match_result = None
-                error = None
-                
-                # Parser le JSON de llm_response
+            # Vérifier les erreurs OCR pour cette colonne
+            pbm_ocr = False
+            try:
+                list_pbm_ocr = row.get('pbm_ocr', False)
+                if list_pbm_ocr and list_pbm_ocr != False:
+                    pbm_ocr_list = eval(list_pbm_ocr) if isinstance(list_pbm_ocr, str) else list_pbm_ocr
+                    if col in pbm_ocr_list:
+                        ocr_errors_count += 1
+                        pbm_ocr = True
+            except Exception:
+                # Si erreur lors de l'évaluation, on ignore
+                pass
+            
+            # Parser le JSON de llm_response
+            try:
                 llm_response = row.get('llm_response', None)
                 if llm_response is None or pd.isna(llm_response):
-                    error = "llm_response est None ou NaN"
-                    match_result = False
-                    detailed_comparisons.append({
-                        'filename': filename,
-                        'colonne': col,
-                        'llm_val': None,
-                        'ref_val': None,
-                        'match': False,
-                        'error': error
-                    })
+                    errors.append(f"{filename}: llm_response est None ou NaN")
                     matches.append(False)
+                    # Si pas de problème OCR, on compte aussi dans matches_no_ocr
+                    if not pbm_ocr:
+                        matches_no_ocr.append(False)
                     continue
                 
-                try:
-                    llm_data = json.loads(llm_response) if isinstance(llm_response, str) else llm_response
-                except (json.JSONDecodeError, TypeError) as e:
-                    error = f"Erreur de parsing JSON: {str(e)}"
-                    match_result = False
-                    detailed_comparisons.append({
-                        'filename': filename,
-                        'colonne': col,
-                        'llm_val': None,
-                        'ref_val': None,
-                        'match': False,
-                        'error': error
-                    })
-                    matches.append(False)
-                    continue
-                
-                # Extraire la valeur du champ dans le JSON
-                llm_val = llm_data.get(col, None)
-                
-                # Récupérer la valeur de référence du CSV
-                ref_val = row.get(col, None)
-                
-                # Comparer les valeurs avec gestion d'erreur
-                try:
-                    match_result = comparison_func(llm_val, ref_val)
-                    # S'assurer que match_result est un booléen
-                    if not isinstance(match_result, bool):
-                        match_result = bool(match_result)
-                    matches.append(match_result)
-                except Exception as e:
-                    error = f"Erreur dans comparison_func: {str(e)}"
-                    match_result = False
-                    matches.append(False)
-                
-                # Stocker les détails de la comparaison
-                detailed_comparisons.append({
-                    'filename': filename,
-                    'colonne': col,
-                    'llm_val': llm_val,
-                    'ref_val': ref_val,
-                    'match': match_result,
-                    'error': error
-                })
-            
-            results[col] = {
-                'total': len(matches),
-                'matches': sum(matches),
-                'accuracy': sum(matches) / len(matches) if len(matches) > 0 else 0.0
-            }
-    
-    # Création d'un DataFrame pour l'affichage détaillé
-    df_comparisons = pd.DataFrame(detailed_comparisons)
-    
-    # Affichage des résultats agrégés
-    print("\n=== Résultats de la comparaison (agrégés) ===")
-    for col, result in results.items():
-        print(f"{col}: {result['matches']}/{result['total']} ({result['accuracy']*100:.2f}%)")
-    
-    # Affichage détaillé des comparaisons
-    print("\n=== Détails des comparaisons ===")
-    print(f"Nombre total de comparaisons: {len(df_comparisons)}")
-    print("\nTableau complet des comparaisons:")
-    print("=" * 120)
-    
-    # Formatage pour l'affichage
-    for filename in df_comparisons['filename'].unique():
-        print(f"\n📄 Fichier: {filename}")
-        print("-" * 120)
-        df_file = df_comparisons[df_comparisons['filename'] == filename]
-        
-        for _, row in df_file.iterrows():
-            colonne = row['colonne']
-            # Ignorer les colonnes exclues dans l'affichage détaillé
-            if colonne in excluded_columns:
+                llm_data = json.loads(llm_response) if isinstance(llm_response, str) else llm_response
+            except (json.JSONDecodeError, TypeError) as e:
+                errors.append(f"{filename}: Erreur de parsing JSON: {str(e)}")
+                matches.append(False)
+                # Si pas de problème OCR, on compte aussi dans matches_no_ocr
+                if not pbm_ocr:
+                    matches_no_ocr.append(False)
                 continue
-            llm_val_str = str(row['llm_val']) if row['llm_val'] is not None else "None"
-            ref_val_str = str(row['ref_val']) if row['ref_val'] is not None else "None"
-            match = row['match']
-            error = row['error']
             
-            # Tronquer les valeurs trop longues pour l'affichage
-            max_len = 40
-            if len(llm_val_str) > max_len:
-                llm_val_str = llm_val_str[:max_len] + "..."
-            if len(ref_val_str) > max_len:
-                ref_val_str = ref_val_str[:max_len] + "..."
+            # Extraire les valeurs
+            ref_val = row.get(col, None)
+            llm_val = llm_data.get(col, None)
             
-            # Symbole pour le match
-            if pd.notna(error):
-                status = "❌ ERROR"
-                status_info = f" | Erreur: {error}"
-            elif match:
-                status = "✅ MATCH"
-                status_info = ""
-            else:
-                status = "❌ NO MATCH"
-                status_info = ""
+            # Convertir les dict en JSON string (cohérent avec la partie de débogage)
+            if isinstance(llm_val, dict):
+                llm_val = json.dumps(llm_val)
             
-            print(f"  {colonne:25} | LLM: {llm_val_str:40} | REF: {ref_val_str:40} | {status}{status_info}")
-    
-    print("\n" + "=" * 120)
-    
-    # Affichage détaillé par champ (colonne)
-    print("\n=== Détails des comparaisons par champ ===")
-    print("=" * 120)
-    
-    # Trier les colonnes pour un affichage cohérent
-    colonnes_triees = [col for col in COMPARISON_FUNCTIONS.keys() if col not in excluded_columns]
-    
-    for colonne in colonnes_triees:
-        print(f"\n📋 Champ: {colonne}")
-        print("-" * 120)
-        df_col = df_comparisons[df_comparisons['colonne'] == colonne]
+            # Comparer les valeurs
+            try:
+                match_result = comparison_func(llm_val, ref_val)
+                match_result = bool(match_result) if not isinstance(match_result, bool) else match_result
+                matches.append(match_result)
+                # Si pas de problème OCR, on ajoute aussi à matches_no_ocr
+                if not pbm_ocr:
+                    matches_no_ocr.append(match_result)
+            except Exception as e:
+                errors.append(f"{filename}: Erreur dans comparison_func: {str(e)}")
+                matches.append(False)
+                # Si pas de problème OCR, on ajoute aussi à matches_no_ocr
+                if not pbm_ocr:
+                    matches_no_ocr.append(False)
         
-        for _, row in df_col.iterrows():
-            filename = row['filename']
-            llm_val_str = str(row['llm_val']) if row['llm_val'] is not None else "None"
-            ref_val_str = str(row['ref_val']) if row['ref_val'] is not None else "None"
-            match = row['match']
-            error = row['error']
-            
-            # Tronquer les valeurs trop longues pour l'affichage
-            max_len = 80
-            if len(llm_val_str) > max_len:
-                llm_val_str = llm_val_str[:max_len] + "..."
-            if len(ref_val_str) > max_len:
-                ref_val_str = ref_val_str[:max_len] + "..."
-            if len(filename) > 30:
-                filename = filename[:30] + "..."
-            
-            # Symbole pour le match
-            if pd.notna(error):
-                status = "❌ ERROR"
-                status_info = f" | Erreur: {error}"
-            elif match:
-                status = "✅ MATCH"
-                status_info = ""
-            else:
-                status = "❌ NO MATCH"
-                status_info = ""
-            
-            print(f"  📄 {filename:30} | LLM: {llm_val_str:20} | REF: {ref_val_str:20} | {status}{status_info}")
+        # Calculer les statistiques pour cette colonne
+        total = len(matches)
+        matches_count = sum(matches)
+        errors_count = len(errors)
+        accuracy = matches_count / total if total > 0 else 0.0
+        
+        # Calculer l'accuracy sans OCR (seulement sur les comparaisons sans problème OCR)
+        total_no_ocr = len(matches_no_ocr)
+        matches_no_ocr_count = sum(matches_no_ocr)
+        accuracy_no_ocr = matches_no_ocr_count / total_no_ocr if total_no_ocr > 0 else 0.0
+        
+        results[col] = {
+            'total': total,
+            'matches': matches_count,
+            'errors': errors_count,
+            'ocr_errors': ocr_errors_count,
+            'accuracy': accuracy,
+            'accuracy_no_ocr': accuracy_no_ocr,
+            'total_no_ocr': total_no_ocr,
+            'matches_no_ocr': matches_no_ocr_count
+        }
     
-    print("\n" + "=" * 120)
+    # Affichage des statistiques
+    print(f"{'Colonne':<35} | {'Total':<6} | {'Matches':<8} | {'Erreurs':<8} | {'OCR Errors':<10} | {'Accuracy':<10} | {'Accuracy (no OCR)':<18}")
+    print("-" * 120)
     
-    # Statistiques par colonne (en excluant les colonnes exclues)
-    print("\n=== Statistiques par colonne ===")
-    for col in df_comparisons['colonne'].unique():
-        # Filtrer explicitement les colonnes exclues (au cas où)
-        if col in excluded_columns:
-            continue
-        df_col = df_comparisons[df_comparisons['colonne'] == col]
-        total = len(df_col)
-        matches = sum(df_col['match'] == True)
-        errors = sum(pd.notna(df_col['error']))
-        accuracy = matches/total*100 if total > 0 else 0.0
-        print(f"{col:30} | Total: {total:3} | Matches: {matches:3} | Erreurs: {errors:3} | Accuracy: {accuracy:.2f}%")
-    
-    # Assertions pour vérifier que les tests passent
-    # On peut ajuster les seuils selon les besoins
     for col, result in results.items():
-        assert result['total'] > 0, f"Aucune donnée trouvée pour {col}"
-        # Pour l'instant, on vérifie juste que le test s'exécute sans erreur
-        # Les seuils de précision peuvent être ajustés selon les besoins
+        print(f"{col:<35} | {result['total']:<6} | {result['matches']:<8} | {result['errors']:<8} | {result['ocr_errors']:<10} | {result['accuracy']*100:>6.2f}% | {result['accuracy_no_ocr']*100:>14.2f}%")
     
-    return df_comparisons
+    print(f"\n{'='*120}")
+    print("Résumé global:")
+    total_comparisons = sum(r['total'] for r in results.values())
+    total_matches = sum(r['matches'] for r in results.values())
+    total_errors = sum(r['errors'] for r in results.values())
+    total_ocr_errors = sum(r['ocr_errors'] for r in results.values())
+    global_accuracy = total_matches / total_comparisons if total_comparisons > 0 else 0.0
+    
+    # Calculer l'accuracy globale sans OCR
+    total_no_ocr = sum(r['total_no_ocr'] for r in results.values())
+    total_matches_no_ocr = sum(r['matches_no_ocr'] for r in results.values())
+    global_accuracy_no_ocr = total_matches_no_ocr / total_no_ocr if total_no_ocr > 0 else 0.0
+    
+    print(f"Total de comparaisons: {total_comparisons}")
+    print(f"Total de matches: {total_matches}")
+    print(f"Total d'erreurs: {total_errors}")
+    print(f"Total d'erreurs OCR: {total_ocr_errors}")
+    print(f"Accuracy globale: {global_accuracy*100:.2f}%")
+    print(f"Accuracy globale (sans OCR): {global_accuracy_no_ocr*100:.2f}% ({total_matches_no_ocr}/{total_no_ocr})")
+    print(f"{'='*120}\n")
 
 # df_comparisons = test_quality_infos()
     
@@ -428,4 +756,21 @@ def test_quality_infos():
 # print(row['llm_val'], '\n', row['ref_val'])
 # print(row['match'])
 
-test_quality_infos()
+df_merged = create_batch_test()
+
+EXCLUDED_COLUMNS = [
+    'objet_marche', 
+    'administration_beneficiaire', 
+    'avance', 
+    'cotraitants', 
+    'sous_traitants', 
+    'rib_autres'
+]
+
+test_quality_un_champ(df_merged, col_to_test = 'societe_principale')
+
+test_quality_une_ligne(df_merged, row_idx_to_test = 0, excluded_columns = EXCLUDED_COLUMNS)
+
+test_quality_un_champ(df_merged, col_to_test = 'cotraitants')
+
+test_statistiques_globales(df_merged, excluded_columns = [])
