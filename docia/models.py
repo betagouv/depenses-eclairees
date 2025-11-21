@@ -5,6 +5,7 @@ from django.db import models
 from .common.models import BaseModel, User  # noqa: F401
 from .ratelimit.models import RateLimitCount  # noqa: F401
 from .tracking.models import TrackingEvent  # noqa: F401
+from .file_processing.models import ProcessDocumentBatch, ProcessDocumentJob, ProcessDocumentStep, ProcessingStatus  # noqa: F401
 
 
 class DataEngagement(BaseModel):

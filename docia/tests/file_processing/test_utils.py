@@ -13,13 +13,13 @@ def test_get_batch_progress():
     progress = get_batch_progress(batch.id)
     assert progress == {
         "status": ProcessingStatus.STARTED,
-        "completed": 0,
+        "progress": 0,
         "errors": 0,
         "total": 2,
         "steps": {
-            ProcessDocumentStepType.TEXT_EXTRACTION: {"completed": 0, "errors": 0, "total": 0},
-            ProcessDocumentStepType.CLASSIFICATION: {"completed": 0, "errors": 0, "total": 0},
-            ProcessDocumentStepType.INFO_EXTRACTION: {"completed": 0, "errors": 0, "total": 0},
+            ProcessDocumentStepType.TEXT_EXTRACTION: {"progress": 0, "errors": 0, "total": 0},
+            ProcessDocumentStepType.CLASSIFICATION: {"progress": 0, "errors": 0, "total": 0},
+            ProcessDocumentStepType.INFO_EXTRACTION: {"progress": 0, "errors": 0, "total": 0},
         },
     }
 
@@ -31,7 +31,7 @@ def test_get_batch_progress():
     del progress["steps"]
     assert progress == {
         "status": ProcessingStatus.STARTED,
-        "completed": 0,
+        "progress": 0,
         "errors": 0,
         "total": 2,
     }
@@ -44,7 +44,7 @@ def test_get_batch_progress():
     del progress["steps"]
     assert progress == {
         "status": ProcessingStatus.STARTED,
-        "completed": 1,
+        "progress": 1,
         "errors": 0,
         "total": 2,
     }
@@ -57,7 +57,7 @@ def test_get_batch_progress():
     del progress["steps"]
     assert progress == {
         "status": ProcessingStatus.STARTED,
-        "completed": 1,
+        "progress": 1,
         "errors": 1,
         "total": 2,
     }
@@ -74,7 +74,7 @@ def test_get_batch_progress():
     del progress["steps"]
     assert progress == {
         "status": ProcessingStatus.FAILURE,
-        "completed": 2,
+        "progress": 2,
         "errors": 1,
         "total": 2,
     }

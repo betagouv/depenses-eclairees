@@ -98,8 +98,9 @@ def get_batch_progress_per_step(batch):
         ProcessDocumentStepType.INFO_EXTRACTION,
     ]:
         step_counters[step_type] = {
-            "completed": 0,
+            "progress": 0,
             "errors": 0,
+            "skipped": 0,
             "total": 0,
         }
     qs_aggregate = (
@@ -109,15 +110,17 @@ def get_batch_progress_per_step(batch):
     step_types = set(row["step_type"] for row in aggregate)
     for step_type in step_types:
         counters = dict((row["status"], row["count"]) for row in aggregate if row["step_type"] == step_type)
-        completed = sum(
+        progress = sum(
             tasks_count
             for status, tasks_count in counters.items()
-            if status in [ProcessingStatus.SUCCESS, ProcessingStatus.FAILURE]
+            if status not in [ProcessingStatus.PENDING, ProcessingStatus.STARTED]
         )
+        skipped = counters.get(ProcessingStatus.SKIPPED, 0)
         errors = counters.get(ProcessingStatus.FAILURE, 0)
         total = sum(tasks_count for tasks_count in counters.values())
         step_counters[step_type] = {
-            "completed": completed,
+            "progress": progress,
+            "skipped": skipped,
             "errors": errors,
             "total": total,
         }
@@ -129,10 +132,10 @@ def get_batch_progress(batch_id: str):
     # Count the number of tasks in each status
     qs_aggregate = batch.job_set.values("status").annotate(count=Count("id"))
     counters = dict((row["status"], row["count"]) for row in qs_aggregate)
-    completed = sum(
+    progress = sum(
         tasks_count
         for status, tasks_count in counters.items()
-        if status in [ProcessingStatus.SUCCESS, ProcessingStatus.FAILURE]
+        if status not in [ProcessingStatus.PENDING, ProcessingStatus.STARTED]
     )
     errors = counters.get(ProcessingStatus.FAILURE, 0)
     total = sum(tasks_count for tasks_count in counters.values())
@@ -141,7 +144,7 @@ def get_batch_progress(batch_id: str):
 
     return {
         "status": batch.status,
-        "completed": completed,
+        "progress": progress,
         "errors": errors,
         "total": total,
         "steps": steps_progress,
@@ -179,17 +182,20 @@ def display_batch_progress(batch_id: str):
     ):
         while True:
             progress = get_batch_progress(batch_id)
-            pbar_jobs.n = progress["completed"]
+            pbar_jobs.n = progress["progress"]
             pbar_jobs.set_postfix(errors=progress["errors"])
-            pbar_ocr.n = progress["steps"][ProcessDocumentStepType.TEXT_EXTRACTION]["completed"]
-            pbar_ocr.set_postfix(errors=progress["steps"][ProcessDocumentStepType.TEXT_EXTRACTION]["errors"])
-            pbar_classification.n = progress["steps"][ProcessDocumentStepType.CLASSIFICATION]["completed"]
-            pbar_classification.set_postfix(errors=progress["steps"][ProcessDocumentStepType.CLASSIFICATION]["errors"])
-            pbar_info_extraction.n = progress["steps"][ProcessDocumentStepType.INFO_EXTRACTION]["completed"]
+            pbar_ocr.n = progress["steps"][ProcessDocumentStepType.TEXT_EXTRACTION]["progress"]
+            pbar_ocr.set_postfix(errors=progress["steps"][ProcessDocumentStepType.TEXT_EXTRACTION]["errors"],
+                                 skipped=progress["steps"][ProcessDocumentStepType.TEXT_EXTRACTION]["skipped"])
+            pbar_classification.n = progress["steps"][ProcessDocumentStepType.CLASSIFICATION]["progress"]
+            pbar_classification.set_postfix(errors=progress["steps"][ProcessDocumentStepType.CLASSIFICATION]["errors"],
+                                            skipped=progress["steps"][ProcessDocumentStepType.CLASSIFICATION]["skipped"])
+            pbar_info_extraction.n = progress["steps"][ProcessDocumentStepType.INFO_EXTRACTION]["progress"]
             pbar_info_extraction.set_postfix(
-                errors=progress["steps"][ProcessDocumentStepType.INFO_EXTRACTION]["errors"]
+                errors=progress["steps"][ProcessDocumentStepType.INFO_EXTRACTION]["errors"],
+                skipped=progress["steps"][ProcessDocumentStepType.INFO_EXTRACTION]["skipped"],
             )
-            if progress["status"] in [ProcessingStatus.SUCCESS, ProcessingStatus.FAILURE]:
+            if progress["status"] in [ProcessingStatus.SUCCESS, ProcessingStatus.FAILURE, ProcessingStatus.CANCELLED]:
                 break
             time.sleep(1)
     logger.info("Completed")

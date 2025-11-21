@@ -73,3 +73,12 @@ def task_from_step_type(step_type: ProcessDocumentStepType):
         return task_extract_info
     else:
         raise ValueError(f"Unknown step type {step_type}")
+
+
+def cancel_batch(batch_id: str):
+    with atomic():
+        batch = ProcessDocumentBatch.objects.get(id=batch_id)
+        batch.status = ProcessingStatus.CANCELLED
+        batch.save()
+        ProcessDocumentJob.objects.filter(batch=batch).filter(status=ProcessingStatus.PENDING).update(status=ProcessingStatus.CANCELLED)
+        ProcessDocumentStep.objects.filter(job__batch=batch).filter(status=ProcessingStatus.PENDING).update(status=ProcessingStatus.CANCELLED)
