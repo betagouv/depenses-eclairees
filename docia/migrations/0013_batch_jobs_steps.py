@@ -7,8 +7,6 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    replaces = [('docia', '0013_jobs'), ('docia', '0014_analyzedocumentbatch_fileinfo_and_more'), ('docia', '0015_rename_analyzedocumentbatch_processdocumentbatch_and_more')]
-
     dependencies = [
         ('docia', '0012_alter_trackingevent_id_alter_user_id'),
     ]
