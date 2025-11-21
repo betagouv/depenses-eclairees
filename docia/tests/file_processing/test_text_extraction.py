@@ -1,99 +1,28 @@
+from contextlib import contextmanager
 from unittest.mock import patch
 
 import pytest
-from celery import states
 
-from docia.file_processing.models import JobName, JobStatus
-from docia.file_processing.text_extraction import extract_text, extract_text_for_folder
-from docia.tests.factories.data import DataAttachmentFactory
+from docia.file_processing.models import ProcessDocumentStepType, ProcessingStatus
+from docia.file_processing.text_extraction import task_extract_text
+from docia.tests.factories.file_processing import ProcessDocumentStepFactory
 
 
-@pytest.mark.django_db
-def test_document_text_extraction():
-    doc = DataAttachmentFactory()
-
+@contextmanager
+def patch_extract_text():
     with patch("app.processor.extraction_text_from_attachments.process_file", autospec=True) as m:
         m.return_value = ("Hello World", False, 2)
-        job, result = extract_text(doc)
-
-    assert result.status == states.SUCCESS
-    assert job.celery_task_id == result.task_id
-    assert job.job_name == JobName.TEXT_EXTRACTION
-    job.refresh_from_db()
-    doc.refresh_from_db()
-    assert job.status == JobStatus.SUCCESS
-    assert job.error == ""
-    assert job.started_at is not None
-    assert job.finished_at is not None
-    assert job.duration is not None
-    assert doc.text == "Hello World"
-    assert not doc.is_ocr
-    assert doc.nb_mot == 2
+        yield m
 
 
 @pytest.mark.django_db
-def test_batch_text_extraction():
-    folder = "batch_1234"
-    doc1 = DataAttachmentFactory(dossier=folder, filename="doc1.pdf")
-    doc2 = DataAttachmentFactory(dossier=folder, filename="doc2.pdf")
-    doc_should_not_be_processed = DataAttachmentFactory()
-
-    with patch("app.processor.extraction_text_from_attachments.process_file", autospec=True) as m:
-        m.return_value = ("Hello World", False, 2)
-        batch, result = extract_text_for_folder(folder)
-
-    assert result.status == states.SUCCESS
-    assert batch.celery_task_id == result.task_id
-    assert batch.job_name == JobName.TEXT_EXTRACTION
-    batch.refresh_from_db()
-    doc1.refresh_from_db()
-    doc2.refresh_from_db()
-    doc_should_not_be_processed.refresh_from_db()
-    assert batch.status == JobStatus.SUCCESS
-    for doc in [doc1, doc2]:
-        assert doc.text == "Hello World"
-        assert not doc.is_ocr
-        assert doc.nb_mot == 2
-    assert doc_should_not_be_processed.text is None
-    assert doc_should_not_be_processed.is_ocr is None
-    assert doc_should_not_be_processed.nb_mot is None
-    jobs = list(batch.documentjob_set.order_by("document__filename"))
-    for job in jobs:
-        assert job.status == JobStatus.SUCCESS
-        assert job.error == ""
-    assert len(jobs) == 2
-
-
-@pytest.mark.django_db
-def test_batch_error_handling():
-    folder = "batch_1234"
-    doc1 = DataAttachmentFactory(dossier=folder, filename="doc1.pdf")
-    doc2 = DataAttachmentFactory(dossier=folder, filename="doc2.pdf")
-
-    def process_file(file_path, extension, word_threshold=50):
-        if file_path.endswith("doc2.pdf"):
-            raise Exception("Error processing doc2")
-        return "Hello World", False, 2
-
-    with patch("app.processor.extraction_text_from_attachments.process_file", autospec=True) as m:
-        m.side_effect = process_file
-        batch, result = extract_text_for_folder(folder)
-
-    assert result.status == states.SUCCESS
-    batch.refresh_from_db()
-    doc1.refresh_from_db()
-    doc2.refresh_from_db()
-    assert batch.status == JobStatus.FAILURE
-    assert doc1.text == "Hello World"
-    assert not doc1.is_ocr
-    assert doc1.nb_mot == 2
-    assert doc2.text is None
-    assert doc2.is_ocr is None
-    assert doc2.nb_mot is None
-    job1, job2 = list(batch.documentjob_set.order_by("document__filename"))
-    assert job1.status == JobStatus.SUCCESS
-    assert job1.error == ""
-    assert job2.status == JobStatus.FAILURE
-    assert "Error processing doc2" in job2.error
-    assert "Exception: Error processing doc2" in job2.traceback
-    assert "Traceback" in job2.traceback
+def test_task_extract_info():
+    step = ProcessDocumentStepFactory(step_type=ProcessDocumentStepType.TEXT_EXTRACTION)
+    with patch_extract_text():
+        task_extract_text(step.id)
+    step.refresh_from_db()
+    assert step.status == ProcessingStatus.SUCCESS
+    assert step.error == ""
+    assert step.job.document.text == "Hello World"
+    assert not step.job.document.is_ocr
+    assert step.job.document.nb_mot == 2

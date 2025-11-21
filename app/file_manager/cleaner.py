@@ -7,7 +7,6 @@ import re
 import pandas as pd
 import hashlib
 from tqdm import tqdm
-from typing import Dict
 import magic
 
 from django.core.files.storage import default_storage
@@ -323,7 +322,7 @@ def get_file_hash(file_path: str, force_local=False) -> str:
         _open = open if force_local else default_storage.open
         with _open(file_path, "rb") as f:
             # Lire le fichier par chunks pour optimiser la mémoire
-            for chunk in iter(lambda: f.read(4096), b""):
+            for chunk in iter(lambda: f.read(65536), b""):
                 hash_sha256.update(chunk)
         return hash_sha256.hexdigest()
     except Exception as e:
@@ -409,7 +408,7 @@ def remove_duplicate(directory_path: str) -> list:
 
 
 # Magic bytes pour les formats de fichiers courants
-MAGIC_BYTES: Dict[bytes, str] = {
+MAGIC_BYTES: dict[bytes, str] = {
     b'\x25\x50\x44\x46': 'pdf',  # %PDF
     b'\x50\x4B\x03\x04': 'zip',  # ZIP (aussi docx, xlsx, pptx, odt, ods, odp)
     b'\x50\x4B\x05\x06': 'zip',  # ZIP (fichier vide)
@@ -670,7 +669,6 @@ def detect_file_extension_from_content(file_path: str) -> str:
     if not os.path.exists(file_path):
         return 'unknown'
     
-    # Essayer d'abord avec python-magic si disponible
     try:
         with default_storage.open(file_path, 'rb') as f:
             mime = magic.from_buffer(f.read(1024), mime=True)
@@ -696,8 +694,6 @@ def detect_file_extension_from_content(file_path: str) -> str:
         detected_ext = mime_to_ext.get(mime, 'unknown')
         if detected_ext != 'unknown':
             return detected_ext
-    except ImportError:
-        pass
     except Exception as e:
         print(f"Erreur avec python-magic: {e}")
     
@@ -742,20 +738,20 @@ def get_corrected_extension(filename: str, file_path: str) -> str:
 def get_file_initial_info(filename, directory_path: str) -> dict:
     """
     Analyse un fichier et crée un dictionnaire avec les informations sur le fichier.
-    
+
     Args:
         filename (str): Nom du fichier à analyser
         directory_path (str): Chemin vers le dossier contenant le fichier
-        
+
     Returns:
         dict: Dictionnaire contenant les informations sur le fichier
     """
     file_path = os.path.join(directory_path, filename)
-    
-    # Calculer le hash seulement si le fichier existe
-    file_hash = get_file_hash(file_path) if default_storage.exists(file_path) else "ERROR"
+
+    # Calculer le hash et l'extension
+    file_hash = get_file_hash(file_path)
     extension = get_corrected_extension(filename, file_path)
-    
+
     return {
         'filename': filename,
         'num_EJ': extract_num_EJ(filename),

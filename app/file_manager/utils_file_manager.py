@@ -1,7 +1,8 @@
 import re
 import unicodedata
 
-def extract_num_EJ(filename: str) -> int:
+
+def extract_num_EJ(filename: str) -> str:
     """
     Extrait les 10 premiers chiffres du nom du fichier et les convertit en int.
     
@@ -12,14 +13,11 @@ def extract_num_EJ(filename: str) -> int:
         int: Les 10 premiers chiffres trouvés ou NaN si moins de 10 chiffres
     """
     # Extraire tous les chiffres du nom de fichier
-    digits = ''.join(re.findall(r'\d', filename))
-    
-    # Vérifier s'il y a au moins 10 chiffres
-    if len(digits) >= 10:
-        return digits[:10]
+    m = re.search(r"^\d{10}", filename)
+    if m:
+        return m.group(0)
     else:
-        # Retourner NaN si moins de 10 chiffres
-        return "-1"
+        raise ValueError(f"num_ej missing in filename {filename}")
 
 
 def normalize_text(text):

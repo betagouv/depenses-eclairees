@@ -1,72 +1,79 @@
 import pytest
 
-from docia.file_processing.models import BatchJob, DocumentJob, JobName, JobStatus
+from docia.file_processing.models import ProcessDocumentStepType, ProcessingStatus
 from docia.file_processing.utils import get_batch_progress
-from docia.tests.factories.data import DataAttachmentFactory
+from docia.tests.factories.file_processing import ProcessDocumentBatchFactory, ProcessDocumentJobFactory
 
 
 @pytest.mark.django_db
 def test_get_batch_progress():
-    batch = BatchJob.objects.create(job_name=JobName.TEXT_EXTRACTION, folder="myfolder", status=JobStatus.STARTED)
-    doc1 = DataAttachmentFactory(dossier="myfolder", filename="doc1.pdf")
-    doc2 = DataAttachmentFactory(dossier="myfolder", filename="doc2.pdf")
-    ext1 = DocumentJob.objects.create(batch=batch, document=doc1, status=JobStatus.PENDING)
-    ext2 = DocumentJob.objects.create(batch=batch, document=doc2, status=JobStatus.PENDING)
+    batch = ProcessDocumentBatchFactory(status=ProcessingStatus.STARTED)
+    job1 = ProcessDocumentJobFactory(batch=batch, status=ProcessingStatus.PENDING)
+    job2 = ProcessDocumentJobFactory(batch=batch, status=ProcessingStatus.PENDING)
     progress = get_batch_progress(batch.id)
     assert progress == {
-        "status": JobStatus.STARTED,
+        "status": ProcessingStatus.STARTED,
         "completed": 0,
         "errors": 0,
         "total": 2,
+        "steps": {
+            ProcessDocumentStepType.TEXT_EXTRACTION: {"completed": 0, "errors": 0, "total": 0},
+            ProcessDocumentStepType.CLASSIFICATION: {"completed": 0, "errors": 0, "total": 0},
+            ProcessDocumentStepType.INFO_EXTRACTION: {"completed": 0, "errors": 0, "total": 0},
+        },
     }
 
     # One running
-    ext1.status = JobStatus.STARTED
-    ext1.save()
+    job1.status = ProcessingStatus.STARTED
+    job1.save()
 
     progress = get_batch_progress(batch.id)
+    del progress["steps"]
     assert progress == {
-        "status": JobStatus.STARTED,
+        "status": ProcessingStatus.STARTED,
         "completed": 0,
         "errors": 0,
         "total": 2,
     }
 
     # One finished
-    ext1.status = JobStatus.SUCCESS
-    ext1.save()
+    job1.status = ProcessingStatus.SUCCESS
+    job1.save()
 
     progress = get_batch_progress(batch.id)
+    del progress["steps"]
     assert progress == {
-        "status": JobStatus.STARTED,
+        "status": ProcessingStatus.STARTED,
         "completed": 1,
         "errors": 0,
         "total": 2,
     }
 
     # One failed
-    ext1.status = JobStatus.FAILURE
-    ext1.save()
+    job1.status = ProcessingStatus.FAILURE
+    job1.save()
 
     progress = get_batch_progress(batch.id)
+    del progress["steps"]
     assert progress == {
-        "status": JobStatus.STARTED,
+        "status": ProcessingStatus.STARTED,
         "completed": 1,
         "errors": 1,
         "total": 2,
     }
 
     # Finished
-    ext1.status = JobStatus.FAILURE
-    ext1.save()
-    ext2.status = JobStatus.SUCCESS
-    ext2.save()
-    batch.status = JobStatus.FAILURE
+    job1.status = ProcessingStatus.FAILURE
+    job1.save()
+    job2.status = ProcessingStatus.SUCCESS
+    job2.save()
+    batch.status = ProcessingStatus.FAILURE
     batch.save()
 
     progress = get_batch_progress(batch.id)
+    del progress["steps"]
     assert progress == {
-        "status": JobStatus.FAILURE,
+        "status": ProcessingStatus.FAILURE,
         "completed": 2,
         "errors": 1,
         "total": 2,

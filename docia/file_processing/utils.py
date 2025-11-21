@@ -2,158 +2,194 @@ import datetime
 import logging
 import time
 import traceback
-import uuid
 from abc import ABC
 
-from celery.result import GroupResult
 from django.db.models import Count
 from django.db.transaction import atomic
 
-from celery import chord, shared_task
-from tqdm import tqdm
+from celery.result import GroupResult
+from tqdm.autonotebook import tqdm
 
-from ..models import DataAttachment
-from .models import BatchJob, DocumentJob, JobName, JobStatus
+from .models import ProcessDocumentBatch, ProcessDocumentStep, ProcessDocumentStepType, ProcessingStatus
 
 logger = logging.getLogger(__name__)
 
 
-class AbstractJobWorker(ABC):
-    def run(self, job_id: str) -> JobStatus:
+class AbstractStepRunner(ABC):
+    def run(self, step_id: str) -> ProcessingStatus:
         with atomic():
-            job = DocumentJob.objects.select_for_update(nowait=True).get(id=job_id)
+            step = ProcessDocumentStep.objects.select_related("job").select_for_update(nowait=True).get(id=step_id)
 
-            if job.status != JobStatus.PENDING:
-                logger.info(f"Workload {job_id} ({job.document.file.name}) already processed")
+            file_path = step.job.document.file.name
+
+            if step.status != ProcessingStatus.PENDING:
+                logger.info(f"Step already processed step={step_id} ({file_path}) status={step.status}")
                 return
 
-            job.started_at = datetime.datetime.now(tz=datetime.timezone.utc)
-            job.status = JobStatus.STARTED
-            job.save(update_fields=["status"])
+            if step.job.status == ProcessingStatus.CANCELLED:
+                logger.info(f"Job cancelled job={step.job.id} step={step_id} ({file_path})")
+                return
+
+            if step.job.status not in (ProcessingStatus.PENDING, ProcessingStatus.STARTED):
+                logger.info(
+                    f"Job already processed job={step.job.id} step={step_id} ({file_path}) status={step.job.status}"
+                )
+                return
+
+            if step.job.status == ProcessingStatus.PENDING:
+                step.job.status = ProcessingStatus.STARTED
+                step.job.save(update_fields=["status"])
+
+            step.started_at = datetime.datetime.now(tz=datetime.timezone.utc)
+            step.status = ProcessingStatus.STARTED
+            step.save(update_fields=["status"])
+            step.job.status = ProcessingStatus.STARTED
 
         try:
-            document = job.document
-            file_path = document.file.name
-            self.process(job)
+            self.process(step)
         except Exception as e:
             logger.exception("(%s) Error during processing %s", self.__class__.__name__, file_path)
-            job.status = JobStatus.FAILURE
-            job.error = str(e)
-            job.traceback = traceback.format_exc()
+            step.status = ProcessingStatus.FAILURE
+            step.error = str(e)
+            step.traceback = traceback.format_exc()
         else:
-            job.status = JobStatus.SUCCESS
+            step.status = ProcessingStatus.SUCCESS
 
-        job.finished_at = datetime.datetime.now(tz=datetime.timezone.utc)
-        job.duration = job.finished_at - job.started_at
-        job.save()
+        step.finished_at = datetime.datetime.now(tz=datetime.timezone.utc)
+        step.duration = step.finished_at - step.started_at
+        step.save()
 
-        return job.status
+        # Propagate failure
+        if step.status == ProcessingStatus.FAILURE:
+            step.job.status = ProcessingStatus.FAILURE
+            step.job.save(update_fields=["status"])
 
-    def process(self, job): ...
+            # Skip next steps
+            step.job.step_set.filter(status=ProcessingStatus.PENDING).update(status=ProcessingStatus.SKIPPED)
 
+        # Finish job if needed
+        if not step.job.step_set.filter(status__in=[ProcessingStatus.PENDING, ProcessingStatus.STARTED]).exists():
+            if step.job.step_set.filter(status=ProcessingStatus.FAILURE).exists():
+                step.job.status = ProcessingStatus.FAILURE
+            else:
+                step.job.status = ProcessingStatus.SUCCESS
+            step.job.save(update_fields=["status"])
 
-@shared_task(name="docia.finalize_batch")
-def task_finalize_batch(job_results: list[JobStatus], batch_id: str) -> JobStatus:
-    """
-    Celery task to finalize a batch text extraction process.
-    Set the status to either SUCCESS or FAILURE based on the status of all tasks in the batch.
+            # Finish batch if needed
+            if not step.job.batch.job_set.filter(
+                status__in=[ProcessingStatus.PENDING, ProcessingStatus.STARTED]
+            ).exists():
+                if step.job.batch.job_set.filter(status=ProcessingStatus.FAILURE).exists():
+                    step.job.batch.status = ProcessingStatus.FAILURE
+                else:
+                    step.job.batch.status = ProcessingStatus.SUCCESS
+                step.job.batch.save(update_fields=["status"])
 
-    Args:
-        batch_id (str): The ID of the BatchTextExtraction to finalize
+        return step.status
 
-    Returns:
-        JobStatus: The final status of the batch text extraction task
-    """
-    with atomic():
-        batch = BatchJob.objects.select_for_update(nowait=True).get(id=batch_id)
-
-        if batch.documentjob_set.filter(status__in=(JobStatus.PENDING, JobStatus.STARTED)).exists():
-            logger.error(f"Batch {batch_id} not finished yet")
-            raise ValueError(f"Batch not finished yet. (batch_id={batch.id})")
-        elif batch.documentjob_set.filter(status=JobStatus.FAILURE).exists():
-            batch.status = JobStatus.FAILURE
-        else:
-            batch.status = JobStatus.SUCCESS
-
-        batch.save()
-
-    return batch.status
+    def process(self, step: ProcessDocumentStep): ...
 
 
-def launch_batch(job_name: JobName, folder: str, doc_task):
-    with atomic():
-        batch = BatchJob.objects.create(
-            job_name=job_name,
-            folder=folder,
-            status=JobStatus.STARTED,
-            celery_task_id=str(uuid.uuid4()),
+def get_batch_progress_per_step(batch):
+    step_counters = {}
+    for step_type in [
+        ProcessDocumentStepType.TEXT_EXTRACTION,
+        ProcessDocumentStepType.CLASSIFICATION,
+        ProcessDocumentStepType.INFO_EXTRACTION,
+    ]:
+        step_counters[step_type] = {
+            "completed": 0,
+            "errors": 0,
+            "total": 0,
+        }
+    qs_aggregate = (
+        ProcessDocumentStep.objects.filter(job__batch=batch).values("step_type", "status").annotate(count=Count("id"))
+    )
+    aggregate = list(qs_aggregate)
+    step_types = set(row["step_type"] for row in aggregate)
+    for step_type in step_types:
+        counters = dict((row["status"], row["count"]) for row in aggregate if row["step_type"] == step_type)
+        completed = sum(
+            tasks_count
+            for status, tasks_count in counters.items()
+            if status in [ProcessingStatus.SUCCESS, ProcessingStatus.FAILURE]
         )
-        subjobs = []
-        subtasks = []
-        for document in DataAttachment.objects.filter(file__startswith=folder):
-            job = DocumentJob(
-                job_name=JobName.CLASSIFICATION,
-                batch=batch,
-                document=document,
-                status=JobStatus.PENDING,
-                celery_task_id=str(uuid.uuid4()),
-            )
-            subjobs.append(job)
-            subtasks.append(doc_task.s(job.id).set(task_id=job.celery_task_id))
-        batch.documentjob_set.bulk_create(subjobs)
-    r = chord(subtasks)(task_finalize_batch.s(batch.id).set(task_id=batch.celery_task_id))
-    return batch, r
-
-
-def launch_document_job(job_name: JobName, document: DataAttachment, doc_task):
-    job = DocumentJob.objects.create(
-        job_name=job_name,
-        document=document,
-        status=JobStatus.PENDING,
-        celery_task_id=str(uuid.uuid4()),
-    )
-    r = doc_task.apply_async(
-        args=(job.id,),
-        task_id=job.celery_task_id,
-    )
-    return job, r
+        errors = counters.get(ProcessingStatus.FAILURE, 0)
+        total = sum(tasks_count for tasks_count in counters.values())
+        step_counters[step_type] = {
+            "completed": completed,
+            "errors": errors,
+            "total": total,
+        }
+    return step_counters
 
 
 def get_batch_progress(batch_id: str):
-    batch = BatchJob.objects.get(id=batch_id)
+    batch = ProcessDocumentBatch.objects.get(id=batch_id)
     # Count the number of tasks in each status
-    qs_aggregate = batch.documentjob_set.values("status").annotate(count=Count("id"))
+    qs_aggregate = batch.job_set.values("status").annotate(count=Count("id"))
     counters = dict((row["status"], row["count"]) for row in qs_aggregate)
     completed = sum(
-        tasks_count for status, tasks_count in counters.items() if status in [JobStatus.SUCCESS, JobStatus.FAILURE]
+        tasks_count
+        for status, tasks_count in counters.items()
+        if status in [ProcessingStatus.SUCCESS, ProcessingStatus.FAILURE]
     )
-    errors = counters.get(JobStatus.FAILURE, 0)
+    errors = counters.get(ProcessingStatus.FAILURE, 0)
     total = sum(tasks_count for tasks_count in counters.values())
+
+    steps_progress = get_batch_progress_per_step(batch)
+
     return {
         "status": batch.status,
         "completed": completed,
         "errors": errors,
         "total": total,
+        "steps": steps_progress,
     }
 
 
 def display_batch_progress(batch_id: str):
-    batch = BatchJob.objects.get(id=batch_id)
-    total_tasks = batch.documentjob_set.count()
+    batch = ProcessDocumentBatch.objects.get(id=batch_id)
+    total_jobs = batch.job_set.count()
+    total_tasks = ProcessDocumentStep.objects.filter(job__batch=batch).count()
+    progress = get_batch_progress(batch_id)
     logger.info(
-        "Processing batch %(batch_id)s (folder=%(folder)s, tasks=%(total_tasks)s)...",
+        "Processing batch %(batch_id)s (folder=%(folder)s, jobs=%(total_jobs)s, tasks=%(total_tasks)s)...",
         dict(
             batch_id=batch.id,
             folder=batch.folder,
+            total_jobs=total_jobs,
             total_tasks=total_tasks,
         ),
     )
-    with tqdm(total=total_tasks) as pbar:
+
+    with (
+        tqdm(desc="documents", total=total_jobs, position=0) as pbar_jobs,
+        tqdm(
+            desc="ocr", total=progress["steps"][ProcessDocumentStepType.TEXT_EXTRACTION]["total"], position=1
+        ) as pbar_ocr,
+        tqdm(
+            desc="classification", total=progress["steps"][ProcessDocumentStepType.CLASSIFICATION]["total"], position=2
+        ) as pbar_classification,
+        tqdm(
+            desc="info extraction",
+            total=progress["steps"][ProcessDocumentStepType.INFO_EXTRACTION]["total"],
+            position=3,
+        ) as pbar_info_extraction,
+    ):
         while True:
             progress = get_batch_progress(batch_id)
-            pbar.n = progress["completed"]
-            pbar.set_postfix(errors=progress["errors"])
-            if progress["status"] in [JobStatus.SUCCESS, JobStatus.FAILURE]:
+            pbar_jobs.n = progress["completed"]
+            pbar_jobs.set_postfix(errors=progress["errors"])
+            pbar_ocr.n = progress["steps"][ProcessDocumentStepType.TEXT_EXTRACTION]["completed"]
+            pbar_ocr.set_postfix(errors=progress["steps"][ProcessDocumentStepType.TEXT_EXTRACTION]["errors"])
+            pbar_classification.n = progress["steps"][ProcessDocumentStepType.CLASSIFICATION]["completed"]
+            pbar_classification.set_postfix(errors=progress["steps"][ProcessDocumentStepType.CLASSIFICATION]["errors"])
+            pbar_info_extraction.n = progress["steps"][ProcessDocumentStepType.INFO_EXTRACTION]["completed"]
+            pbar_info_extraction.set_postfix(
+                errors=progress["steps"][ProcessDocumentStepType.INFO_EXTRACTION]["errors"]
+            )
+            if progress["status"] in [ProcessingStatus.SUCCESS, ProcessingStatus.FAILURE]:
                 break
             time.sleep(1)
     logger.info("Completed")

@@ -1,32 +1,18 @@
 import logging
 
 from celery import shared_task
-from celery.result import AsyncResult
 
 from app.processor import extraction_text_from_attachments as processor
-from docia.models import DataAttachment
 
-from .models import BatchJob, DocumentJob, JobName, JobStatus
-from .utils import AbstractJobWorker, launch_batch, launch_document_job
+from .models import ProcessDocumentStep, ProcessingStatus
+from .utils import AbstractStepRunner
 
 logger = logging.getLogger(__name__)
 
 
-def extract_text_for_folder(folder: str) -> tuple[BatchJob, AsyncResult]:
-    return launch_batch(
-        JobName.TEXT_EXTRACTION,
-        folder,
-        task_extract_text,
-    )
-
-
-def extract_text(document: DataAttachment) -> tuple[DocumentJob, AsyncResult]:
-    return launch_document_job(JobName.TEXT_EXTRACTION, document, task_extract_text)
-
-
-class ExtractTextJobWorker(AbstractJobWorker):
-    def process(self, job):
-        document = job.document
+class ExtractTextStepRunner(AbstractStepRunner):
+    def process(self, step: ProcessDocumentStep):
+        document = step.job.document
         file_path = document.file.name
         text, is_ocr, nb_words = processor.process_file(file_path, document.extension)
         document.text = text
@@ -36,6 +22,6 @@ class ExtractTextJobWorker(AbstractJobWorker):
 
 
 @shared_task(name="docia.extract_text", queue="heavy_cpu")
-def task_extract_text(job_id: str) -> JobStatus:
-    worker = ExtractTextJobWorker()
-    return worker.run(job_id)
+def task_extract_text(step_id: str) -> ProcessingStatus:
+    worker = ExtractTextStepRunner()
+    return worker.run(step_id)

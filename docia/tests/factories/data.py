@@ -23,6 +23,6 @@ class DataAttachmentFactory(factory.django.DjangoModelFactory):
         model = DataAttachment
 
     filename = factory.Sequence(lambda n: f"file_{n:0>3}.txt")
-    dossier = "raw"
+    dossier = factory.Sequence(lambda n: f"raw/folder{n // 5:0>3}")
     file = factory.lazy_attribute(lambda a: f"{a.dossier}/{a.filename}")
     extension = factory.lazy_attribute(lambda a: a.filename.split(".")[-1])

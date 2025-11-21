@@ -11,24 +11,22 @@ def test_clean_nul_bytes():
 
 def test_clean_nul_bytes_df():
     # Create test dataframe with null bytes
-    df = pd.DataFrame({
-        'text': ['\x00Hello\x00', 'World\x00!'],
-        'number': [1, 2],
-        'other_text': ['Test\x00', '\x00Data']
-    })
+    df = pd.DataFrame(
+        {"text": ["\x00Hello\x00", "World\x00!"], "number": [1, 2], "other_text": ["Test\x00", "\x00Data"]}
+    )
 
     # Test cleaning specific text column
-    df_cleaned = clean_nul_bytes_from_dataframe(df, text_columns=['text'])
-    assert df_cleaned['text'].tolist() == ['Hello', 'World!']
-    assert df_cleaned['other_text'].tolist() == ['Test\x00', '\x00Data']
+    df_cleaned = clean_nul_bytes_from_dataframe(df, text_columns=["text"])
+    assert df_cleaned["text"].tolist() == ["Hello", "World!"]
+    assert df_cleaned["other_text"].tolist() == ["Test\x00", "\x00Data"]
 
     # Test cleaning multiple text columns
-    df_cleaned = clean_nul_bytes_from_dataframe(df, text_columns=['text', 'other_text'])
-    assert df_cleaned['text'].tolist() == ['Hello', 'World!']
-    assert df_cleaned['other_text'].tolist() == ['Test', 'Data']
+    df_cleaned = clean_nul_bytes_from_dataframe(df, text_columns=["text", "other_text"])
+    assert df_cleaned["text"].tolist() == ["Hello", "World!"]
+    assert df_cleaned["other_text"].tolist() == ["Test", "Data"]
 
     # Test cleaning with no columns specified (should clean all string columns)
     df_cleaned = clean_nul_bytes_from_dataframe(df)
-    assert df_cleaned['text'].tolist() == ['Hello', 'World!']
-    assert df_cleaned['other_text'].tolist() == ['Test', 'Data']
-    assert df_cleaned['number'].tolist() == [1, 2]
+    assert df_cleaned["text"].tolist() == ["Hello", "World!"]
+    assert df_cleaned["other_text"].tolist() == ["Test", "Data"]
+    assert df_cleaned["number"].tolist() == [1, 2]
