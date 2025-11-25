@@ -18,7 +18,11 @@ class Command(shell.Command):
                 module_path, objs = import_description
                 if objs == "*":
                     module = importlib.import_module(module_path)
-                    objs = list(module.__all__)
+                    if hasattr(module, "__all__"):
+                        objs = list(module.__all__)
+                    else:
+                        # Fall back to all public attributes (those not starting with underscore)
+                        objs = [name for name in dir(module) if not name.startswith('_')]
                 for obj in objs:
                     imports.append(f"{module_path}.{obj}")
         return imports
