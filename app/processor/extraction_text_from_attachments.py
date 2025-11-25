@@ -27,6 +27,24 @@ from app.grist import API_KEY_GRIST, URL_TABLE_ATTACHMENTS
 logger = logging.getLogger("docia." + __name__)
 
 
+class UnsupportedFileType(Exception):
+    pass
+
+
+SUPPORTED_FILES_TYPE = [
+    "pdf",
+    "docx",
+    "odt",
+    "txt",
+    "png",
+    "jpg",
+    "jpeg",
+    "tiff",
+    "tif",
+    "doc"
+]
+
+
 # Fonction pour afficher les statistiques sur les PDFs et l'OCR
 def display_pdf_stats(dfFiles, title="Statistiques globales"):
     """
@@ -758,10 +776,34 @@ def process_df_row(row, word_threshold):
 
 
 def process_file(file_path: str, extension: str, word_threshold: int = 50):
+    """
+    Process a single file to extract text content with OCR support if needed.
+    
+    Args:
+        file_path: Path to the file to process
+        extension: File extension indicating type (pdf, docx, etc)
+        word_threshold: Minimum word count threshold below which OCR is triggered for PDFs
+        
+    Returns:
+        tuple:
+            - extracted text (str)
+            - whether OCR was used (bool)
+            - word count (int)
+            
+    Raises:
+        UnsupportedFileType: If file extension is not supported
+        FileNotFoundError: If file does not exist
+    """
+
+    if extension not in SUPPORTED_FILES_TYPE:
+        raise UnsupportedFileType(f"Unsupported filed type {extension!r}")
+
     with default_storage.open(file_path, 'rb') as f:
         file_content = f.read()
+
     with log_execution_time(f"extract_text({file_path})"):
         text, is_ocr = extract_text(file_content, file_path, extension, word_threshold)
+
     nb_words = count_words(text)
     return text, is_ocr, nb_words
 
