@@ -5,6 +5,7 @@ import pytest
 
 from docia.file_processing.models import ProcessDocumentStep, ProcessDocumentStepType, ProcessingStatus
 from docia.file_processing.pipeline import launch_batch
+from docia.models import DataAttachment
 from docia.tests.factories.data import DataAttachmentFactory
 
 
@@ -34,7 +35,7 @@ def test_batch():
     _doc_should_not_be_processed = DataAttachmentFactory()
 
     with patch_extract_text() as m_text, patch_classify() as m_classify, patch_extract_info() as m_info:
-        batch, result = launch_batch(folder)
+        batch, result = launch_batch(folder=folder)
 
     assert result.ready()
     assert batch.celery_task_id == result.id
@@ -72,7 +73,7 @@ def test_batch_error_handling():
 
     with patch_extract_text() as m_text, patch_classify() as m_classify, patch_extract_info() as m_info:
         m_text.side_effect = mock_extract_text
-        batch, result = launch_batch(folder)
+        batch, result = launch_batch(folder=folder)
 
     assert result.ready()
     batch.refresh_from_db()
@@ -97,3 +98,33 @@ def test_batch_error_handling():
     for step in job2.step_set.exclude(step_type=ProcessDocumentStepType.TEXT_EXTRACTION):
         assert step.status == ProcessingStatus.SKIPPED
         assert step.error == ""
+
+
+@pytest.mark.django_db
+def test_launch_batch_filter_documents_by_classifications_and_folder():
+    folder = "batch_1234"
+    DataAttachmentFactory(dossier=folder, filename="doc1.pdf")
+    DataAttachmentFactory(dossier=folder, filename="doc2.pdf")
+    _doc_should_not_be_processed = DataAttachmentFactory(dossier=folder)
+
+    with patch_extract_text(), patch_classify(), patch_extract_info():
+        batch, _result = launch_batch(folder=folder, target_classifications=["kbis", "devis"])
+
+    batch.refresh_from_db()
+    assert batch.target_classifications == ["kbis", "devis"]
+
+
+@pytest.mark.django_db
+def test_launch_batch_specify_qs():
+    folder = "batch_1234"
+    doc1 = DataAttachmentFactory(dossier=folder, filename="doc1.pdf")
+    doc2 = DataAttachmentFactory(dossier=folder, filename="doc2.pdf")
+    _doc_should_not_be_processed = DataAttachmentFactory(dossier=folder)
+
+    qs = DataAttachment.objects.filter(id__in=(doc1.id, doc2.id))
+    with patch_extract_text(), patch_classify(), patch_extract_info():
+        batch, _result = launch_batch(qs_documents=qs)
+
+    batch.refresh_from_db()
+    job1, job2 = batch.job_set.order_by("document__filename")
+    assert [doc1, doc2] == [job1.document, job2.document]

@@ -6,7 +6,7 @@ from app.processor import analyze_content as processor
 from app.processor.attributes_query import ATTRIBUTES
 
 from .models import ProcessDocumentStep
-from .utils import AbstractStepRunner
+from .utils import AbstractStepRunner, SkipStepException
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +15,12 @@ class ExtractInfoStepRunner(AbstractStepRunner):
     def process(self, step: ProcessDocumentStep):
         document = step.job.document
         file_path = document.file.name
+
+        classification = document.classification
+        target_classifications = step.job.batch.target_classifications
+
+        if target_classifications is not None and classification not in target_classifications:
+            raise SkipStepException(f"Not in target classifications: {classification}.")
 
         result = processor.analyze_file_text(
             file_path,

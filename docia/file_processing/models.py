@@ -1,3 +1,4 @@
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
 from docia.common.models import BaseModel
@@ -19,7 +20,8 @@ class ProcessDocumentStepType(models.TextChoices):
 
 
 class ProcessDocumentBatch(BaseModel):
-    folder = models.CharField(max_length=50)
+    folder = models.CharField(max_length=100, null=True, blank=True)  # noqa: DJ001
+    target_classifications = ArrayField(models.CharField(max_length=255), null=True, blank=True)
     status = models.CharField(choices=ProcessingStatus.choices, default=ProcessingStatus.PENDING)
     celery_task_id = models.CharField(max_length=250, blank=True)
 

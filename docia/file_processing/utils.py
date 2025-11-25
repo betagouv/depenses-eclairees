@@ -15,6 +15,10 @@ from .models import ProcessDocumentBatch, ProcessDocumentStep, ProcessDocumentSt
 logger = logging.getLogger(__name__)
 
 
+class SkipStepException(Exception):
+    pass
+
+
 class AbstractStepRunner(ABC):
     def run(self, step_id: str) -> ProcessingStatus:
         with atomic():
@@ -47,6 +51,9 @@ class AbstractStepRunner(ABC):
 
         try:
             self.process(step)
+        except SkipStepException as e:
+            logger.exception("(%s) Skip %s: %s", self.__class__.__name__, file_path, e)
+            step.status = ProcessingStatus.SKIPPED
         except Exception as e:
             logger.exception("(%s) Error during processing %s", self.__class__.__name__, file_path)
             step.status = ProcessingStatus.FAILURE
@@ -59,9 +66,9 @@ class AbstractStepRunner(ABC):
         step.duration = step.finished_at - step.started_at
         step.save()
 
-        # Propagate failure
-        if step.status == ProcessingStatus.FAILURE:
-            step.job.status = ProcessingStatus.FAILURE
+        # Propagate failure and skip
+        if step.status in (ProcessingStatus.FAILURE, ProcessingStatus.SKIPPED):
+            step.job.status = step.status
             step.job.save(update_fields=["status"])
 
             # Skip next steps
@@ -69,11 +76,10 @@ class AbstractStepRunner(ABC):
 
         # Finish job if needed
         if not step.job.step_set.filter(status__in=[ProcessingStatus.PENDING, ProcessingStatus.STARTED]).exists():
-            if step.job.step_set.filter(status=ProcessingStatus.FAILURE).exists():
-                step.job.status = ProcessingStatus.FAILURE
-            else:
+            # If job has not already ended
+            if step.job.status == ProcessingStatus.STARTED:
                 step.job.status = ProcessingStatus.SUCCESS
-            step.job.save(update_fields=["status"])
+                step.job.save(update_fields=["status"])
 
             # Finish batch if needed
             if not step.job.batch.job_set.filter(

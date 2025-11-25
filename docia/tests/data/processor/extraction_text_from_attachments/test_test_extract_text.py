@@ -2,7 +2,12 @@ from unittest import mock
 
 import pytest
 
-from app.processor.extraction_text_from_attachments import extract_text, extract_text_from_txt
+from app.processor.extraction_text_from_attachments import (
+    UnsupportedFileType,
+    extract_text,
+    extract_text_from_txt,
+    process_file,
+)
 
 from .utils import ASSETS_DIR, assert_similar_text
 
@@ -47,3 +52,8 @@ def test_extract_text_from_txt():
     text, is_ocr = extract_text_from_txt(file_content, "file.md")
     assert not is_ocr
     assert_similar_text(text, 0.999)
+
+
+def test_process_unsupported_file_type_raises():
+    with pytest.raises(UnsupportedFileType):
+        process_file("file.custom", "custom")

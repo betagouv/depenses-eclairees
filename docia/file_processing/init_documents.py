@@ -95,19 +95,24 @@ def bulk_create_batches(num_ejs, batch):
     DataBatch.objects.bulk_create(batches, batch_size=200, ignore_conflicts=True)
 
 
-def init_documents_in_folder(folder: str, batch: str):
+def init_documents_in_folder(folder: str, batch: str, on_success=None):
     all_files = default_storage.listdir(folder)[1]
     files_count = len(all_files)
     if files_count < 200:
         chunk_size = 10
     else:
         chunk_size = 100
-    gr = group(
+    group_task = group(
         [
             task_chunk_init_documents.s(batch, folder, chunk_number=i, chunk_size=chunk_size)
             for i in range(files_count // chunk_size + 1)
-        ]
-    )()
+        ],
+    )
+    if on_success:
+        r = (group_task | on_success)()
+        gr = r.parent
+    else:
+        gr = group_task()
     gr.save()
     return gr
 
