@@ -15,6 +15,10 @@ from .models import ProcessDocumentBatch, ProcessDocumentStep, ProcessDocumentSt
 logger = logging.getLogger(__name__)
 
 
+class SkipStepException(Exception):
+    pass
+
+
 class AbstractStepRunner(ABC):
     def run(self, step_id: str) -> ProcessingStatus:
         with atomic():
@@ -47,6 +51,9 @@ class AbstractStepRunner(ABC):
 
         try:
             self.process(step)
+        except SkipStepException as e:
+            logger.exception("(%s) Skip %s: %s", self.__class__.__name__, file_path, e)
+            step.status = ProcessingStatus.SKIPPED
         except Exception as e:
             logger.exception("(%s) Error during processing %s", self.__class__.__name__, file_path)
             step.status = ProcessingStatus.FAILURE

@@ -22,7 +22,7 @@ class Command(shell.Command):
                         objs = list(module.__all__)
                     else:
                         # Fall back to all public attributes (those not starting with underscore)
-                        objs = [name for name in dir(module) if not name.startswith('_')]
+                        objs = [name for name in dir(module) if not name.startswith("_")]
                 for obj in objs:
                     imports.append(f"{module_path}.{obj}")
         return imports
