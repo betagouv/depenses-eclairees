@@ -83,11 +83,13 @@ class LLMClient:
                 response = content  # Success
                 break
 
-            except RateLimitError:
+            except RateLimitError as e:
                 if attempt < max_retries:
                     rnd = 1 + (0.1 * random.random())  # Ajout d'un peu de random (10%)
                     wait_time = retry_delay * rnd * (attempt + 1)
-                    logger.warning(f"RateLimitError, wait {wait_time:.1f}s before retry ({attempt + 1}/{max_retries})")
+                    logger.warning(
+                        f"RateLimitError ({str(e)}), wait {wait_time:.1f}s before retry ({attempt + 1}/{max_retries})"
+                    )
                     time.sleep(wait_time)
                     continue  # Retry
                 raise
