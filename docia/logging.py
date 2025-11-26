@@ -6,6 +6,8 @@ from django.conf import settings
 
 from celery import current_task
 
+from . import celeryworker
+
 local = threading.local()
 
 
@@ -63,4 +65,5 @@ class CeleryTaskFilter(logging.Filter):
         else:
             record.task_id = ""
             record.task_name = ""
+        record.worker_name = celeryworker.worker_nodename
         return True

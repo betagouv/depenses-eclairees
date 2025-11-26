@@ -6,8 +6,7 @@ from django.db import transaction
 
 from celery import Celery, Task, signals
 
-# Use same name as Celery is using for its task success logger
-logger_celery = logging.getLogger("celery.app.trace")
+logger_celery = logging.getLogger(__name__)
 
 
 class BaseTask(Task):
