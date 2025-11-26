@@ -354,13 +354,16 @@ SHELL_AUTO_IMPORTS = [
     "datetime",
     ("pprint", ("pprint",)),
     ("docia", ("tasks", "models")),
+    ("docia.file_processing.init_documents", ("init_documents_in_folder",)),
+    ("docia.file_processing.pipeline", ("launch_batch", "cancel_batch", "init_documents_and_launch_batch")),
+    ("docia.file_processing.utils", "*"),
 ]
 
 
 CELERY_TASK_ALWAYS_EAGER = config.bool("CELERY_ALWAYS_EAGER", False)
 if not CELERY_TASK_ALWAYS_EAGER:
     CELERY_BROKER_URL = config.str("CELERY_BROKER_URL")
-    CELERY_RESULT_BACKEND = config.str("CELERY_RESULT_BACKEND_URL")
+CELERY_RESULT_BACKEND = config.str("CELERY_RESULT_BACKEND_URL")
 CELERY_TASK_EAGER_PROPAGATES = True
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 CELERY_RESULT_EXTENDED = True  # include extended information about the tasks in results (name, args, ...)
@@ -390,3 +393,6 @@ REST_FRAMEWORK = {
 
 
 MATOMO_URL = config.str("MATOMO_URL", default="")
+
+ALBERT_API_KEY = config.str("ALBERT_API_KEY")
+ALBERT_BASE_URL = config.str("ALBERT_BASE_URL")

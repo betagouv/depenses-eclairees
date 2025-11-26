@@ -1,7 +1,7 @@
+import uuid
 from typing import override
 
 from django.contrib.auth import models as auth_models
-from django.contrib.postgres.functions import RandomUUID
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -15,7 +15,7 @@ class BaseModel(models.Model):
 
     id = models.UUIDField(
         primary_key=True,
-        db_default=RandomUUID(),
+        default=uuid.uuid4,
         editable=False,
     )
     created_at = models.DateTimeField(

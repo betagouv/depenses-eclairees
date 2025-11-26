@@ -5,7 +5,7 @@ import pytest
 import pandas as pd
 
 from app.data.db import bulk_create_attachments, bulk_create_batches, bulk_create_engagements
-from docia.models import DataAttachments, DataBatch, DataEngagement
+from docia.models import DataAttachment, DataBatch, DataEngagement
 from docia.tests.factories.data import DataBatchFactory, DataEngagementFactory
 
 
@@ -96,7 +96,7 @@ def test_bulk_create_attachments():
     )
     bulk_create_attachments(df)
     attachments = list(
-        DataAttachments.objects.all()
+        DataAttachment.objects.all()
         .order_by("file")
         .values("filename", "extension", "dossier", "ej_id", "date_creation", "taille", "hash", "file")
     )
@@ -138,7 +138,7 @@ def test_bulk_create_attachments():
 def test_bulk_create_attachments_ignore_duplicates():
     ej = DataEngagementFactory()
     ej1, ej2 = DataEngagementFactory.create_batch(2)
-    DataAttachments.objects.create(
+    DataAttachment.objects.create(
         filename="file1.pdf",
         dossier="dossier1",
         file="dossier1/file1.pdf",
@@ -161,7 +161,7 @@ def test_bulk_create_attachments_ignore_duplicates():
     )
     bulk_create_attachments(df)
     attachments = list(
-        DataAttachments.objects.all()
+        DataAttachment.objects.all()
         .order_by("file")
         .values("filename", "extension", "dossier", "ej_id", "date_creation", "taille", "hash", "file")
     )
