@@ -283,7 +283,7 @@ LOGGING = {
             "datefmt": "%Y-%m-%dT%H:%M:%S%z",
         },
         "celery": {
-            "format": "[%(asctime)s] %(levelname)s/%(processName)s task=%(task_name)s[%(task_id)s] %(name)s %(message)s",  # noqa: E501
+            "format": "[%(asctime)s] %(levelname)s %(worker_name)s/%(processName)s task=%(task_name)s[%(task_id)s] %(name)s %(message)s",  # noqa: E501
             "datefmt": "%Y-%m-%dT%H:%M:%S%z",
         },
     },
