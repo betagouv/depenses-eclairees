@@ -123,11 +123,11 @@ def df_analyze_content(api_key,
             }
             print(f"Erreur lors de l'analyse du fichier {row['filename']}: {e}")
 
-        if not result["error"]:
+        if not result["json_error"]:
             for attr in df_attributes.attribut:
-                result.update({f'{attr}': result["data"].get(attr, '')})
+                result.update({f'{attr}': result["llm_response"].get(attr, '')})
         else:
-            print(f"Erreur lors de l'analyse du fichier {row["filename"]}: {result['error']}")
+            print(f"Erreur lors de l'analyse du fichier {row["filename"]}: {result['json_error']}")
 
         return idx, result
 

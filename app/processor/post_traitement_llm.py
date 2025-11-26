@@ -203,17 +203,20 @@ def post_traitement_cotraitants(cotraitants: str) -> str:
         # On parcourt chaque cotraitant de la liste
         for cotraitant in list_cotraitants:
             try: 
-                # Pour chaque cotraitant, on nettoie le SIRET et on construit un dictionnaire propre
-                clean_cotraitant = {
-                    'nom': cotraitant['nom'],
-                    'siret': post_traitement_siret(cotraitant['siret'])
-                }
-                list_clean_cotraitants.append(clean_cotraitant)
+                # Pour chaque cotraitant, on nettoie le SIRET
+                clean_siret = cotraitant['siret']
             except Exception as e:
-                # Si une erreur survient lors du nettoyage du SIRET, on loggue un warning et met un SIRET vide
+                clean_siret = ''
                 logger.error(f"Erreur dans post_traitement_cotraitants pour le cotraitant {cotraitant['nom']} : {e}")
-                clean_cotraitant = {'nom': cotraitant['nom'], 'siret': ''}
+                
+            clean_cotraitant = {
+                'nom': cotraitant['nom'],
+                'siret': clean_siret
+            }
+            # On ajoute à la liste seulement si le nom ou le siret n'est pas vide
+            if clean_cotraitant['nom'] or clean_cotraitant['siret']:
                 list_clean_cotraitants.append(clean_cotraitant)
+            
         # On retourne la liste nettoyée des cotraitants
         return json.dumps(list_clean_cotraitants)
     except Exception as e:

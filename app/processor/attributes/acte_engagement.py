@@ -70,7 +70,10 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
         "consigne": """SIRET_MANDATAIRE  
    Définition : Numéro SIRET de la société principale, composé de 14 chiffres.  
    Indices :
-   - Peut être mentionné comme "SIRET", ou "numéro d'immatriculation"
+   - Peut être mentionné comme "SIRET", ou "numéro d'immatriculation".
+   - Si plusieurs SIRET sont disponibles pour une même entreprise, avec différentes terminaisons (5 derniers chiffres), prendre le numéro le plus élevé.
+        * Exemple : 123 456 789 00001 et 123 456 789 00020, renvoyer 12345678900020 (car 00020 > 00001).
+   - Si le numéro de SIRET ne contient pas suffisamment de caractères, ne pas compléter : renvoyer tel quel.
    Format : un numéro composé de 14 chiffres, sans espaces.  
 """,
         "search": "",
@@ -224,6 +227,7 @@ Règles d’extraction :
             * En l'absence de précisions sur la durée ferme, renvoyer ''
             * Exemple : une durée de 1 an, renvoyer 12.
             * Pour une durée entre des dates clés, par exemple "jusqu'à la réunion de conclusion 6 mois après le lancement" : renvoyer 6 mois.
+                -> Attention : si ces dates clés sont insuffisamment documentées, renvoyer ''
         - Extension de durée possible : extenion maximale en nombre de mois.
             * En l'absence d'informations claires, renvoyer ''
             * Si des reconductions sont précisées (ne pas confondre avec des tranches optionnelles qui sont gérées ci-dessous) :
@@ -236,6 +240,13 @@ Règles d’extraction :
     """,
         "search": "Section du document qui décrit la durée du marché ou le délai d'exécution des prestations.",
         "output_field": "duree"
+    },
+
+    "duree_explication": {
+        "consigne": """DUREE_EXPLICATION
+        Définition : Explique comment tu as calculé la durée ci-dessus""",
+        "search": "Section du document qui décrit la durée du marché ou le délai d'exécution des prestations.",
+        "output_field": "duree_explication"
     },
 
     "date_signature_mandataire": {

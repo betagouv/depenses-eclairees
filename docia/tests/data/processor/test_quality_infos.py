@@ -8,7 +8,7 @@ import logging
 import sys
 sys.path.append(".")
 
-from app.processor.analyze_content import df_analyze_content, LLMEnvironment, parse_json_response
+from app.processor.analyze_content import df_analyze_content, LLMClient, parse_json_response
 from app.processor.attributes_query import ATTRIBUTES
 from app.ai_models.config_albert import API_KEY_ALBERT, BASE_URL_PROD
 from app.utils import json_print
@@ -448,7 +448,7 @@ def get_comparison_functions():
     }
 
 
-def create_batch_test():
+def create_batch_test(coef_multi_ligne = 1):
     """Test de qualité des informations extraites par le LLM."""
     # Chemin vers le fichier CSV de test
     csv_path = "/Users/dinum-284659/dev/data/test/test_acte_engagement.csv"
@@ -481,6 +481,10 @@ def create_batch_test():
                     logger.warning(f"Erreur dans post-traitement DF_TEST pour colonne {col} à l'index {idx}: {e}")
                     df_test.at[idx, col] = ''
     
+    if coef_multi_ligne > 1:
+        df_test = pd.concat([df_test for x in range(coef_multi_ligne)]).reset_index(drop=True)
+
+        
     # Création du DataFrame pour l'analyse
     df_analyze = pd.DataFrame()
     df_analyze['filename'] = df_test['filename']
@@ -756,7 +760,7 @@ def test_statistiques_globales(df_merged, excluded_columns = []):
 # print(row['llm_val'], '\n', row['ref_val'])
 # print(row['match'])
 
-df_merged = create_batch_test()
+df_merged = create_batch_test(2)
 
 EXCLUDED_COLUMNS = [
     'objet_marche', 
@@ -767,10 +771,10 @@ EXCLUDED_COLUMNS = [
     'rib_autres'
 ]
 
-test_quality_un_champ(df_merged, col_to_test = 'societe_principale')
+test_quality_un_champ(df_merged, col_to_test = 'duree')
 
 test_quality_une_ligne(df_merged, row_idx_to_test = 0, excluded_columns = EXCLUDED_COLUMNS)
 
 test_quality_un_champ(df_merged, col_to_test = 'cotraitants')
 
-test_statistiques_globales(df_merged, excluded_columns = [])
+test_statistiques_globales(df_merged, excluded_columns = ['avance', 'rib_autres','administration_beneficiaire','objet_marche'])
