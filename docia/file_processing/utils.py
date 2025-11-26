@@ -52,7 +52,7 @@ class AbstractStepRunner(ABC):
         try:
             self.process(step)
         except SkipStepException as e:
-            logger.exception("(%s) Skip %s: %s", self.__class__.__name__, file_path, e)
+            logger.info("(%s) Skip %s: %s", self.__class__.__name__, file_path, e)
             step.status = ProcessingStatus.SKIPPED
         except Exception as e:
             logger.exception("(%s) Error during processing %s", self.__class__.__name__, file_path)
