@@ -355,7 +355,7 @@ SHELL_AUTO_IMPORTS = [
     ("pprint", ("pprint",)),
     ("docia", ("tasks", "models")),
     ("docia.file_processing.init_documents", ("init_documents_in_folder",)),
-    ("docia.file_processing.pipeline", ("launch_batch", "cancel_batch")),
+    ("docia.file_processing.pipeline", ("launch_batch", "cancel_batch", "init_documents_and_launch_batch")),
     ("docia.file_processing.utils", "*"),
 ]
 
