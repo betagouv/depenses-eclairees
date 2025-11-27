@@ -11,8 +11,7 @@ sys.path.append(".")
 from app.processor.analyze_content import df_analyze_content, LLMClient, parse_json_response
 from app.processor.attributes_query import ATTRIBUTES
 from app.ai_models.config_albert import API_KEY_ALBERT, BASE_URL_PROD
-from app.utils import json_print
-from app.processor.post_traitement_llm import *
+from app.processor.post_processing_llm import *
 
 logger = logging.getLogger("docia." + __name__)
 
@@ -28,7 +27,7 @@ def normalize_string(s):
     return s
 
 
-def compare_objet(llm_value, ref_value, llm_model='albert-small'):
+def compare_object(llm_value, ref_value, llm_model='albert-small'):
     """
     Compare deux objets en utilisant un LLM comme juge pour évaluer la proximité de sens.
     
@@ -50,7 +49,7 @@ def compare_objet(llm_value, ref_value, llm_model='albert-small'):
     
     try:
         # Création d'une instance LLMEnvironment
-        llm_env = LLMEnvironment(
+        llm_env = LLMClient(
             api_key=API_KEY_ALBERT,
             base_url=BASE_URL_PROD,
             llm_model=llm_model
@@ -92,7 +91,7 @@ def compare_objet(llm_value, ref_value, llm_model='albert-small'):
         result, error = parse_json_response(response)
         
         if error:
-            logger.warning(f"Erreur lors du parsing de la réponse LLM pour compare_objet: {error}. Réponse: {response}")
+            logger.warning(f"Error parsing LLM response for compare_object: {error}. Response: {response}")
             return False
         
         # print("Réponse LLM : ", result.get("explication", ""))
@@ -100,11 +99,11 @@ def compare_objet(llm_value, ref_value, llm_model='albert-small'):
         return bool(result.get("sont_proches", False))
             
     except Exception as e:
-        logger.error(f"Erreur lors de l'appel LLM pour compare_objet: {e}")
+        logger.error(f"Error calling LLM for compare_object: {e}")
         return False
 
 
-def compare_administration_beneficiaire(llm_value, ref_value, llm_model='albert-small'):
+def compare_beneficiary_administration(llm_value, ref_value, llm_model='albert-small'):
     """
     Compare deux administrations bénéficiaires en utilisant un LLM comme juge pour évaluer s'il s'agit du même organisme ou d'une entité publique équivalente.
 
@@ -124,7 +123,7 @@ def compare_administration_beneficiaire(llm_value, ref_value, llm_model='albert-
 
     try:
         # Création d'une instance LLMEnvironment
-        llm_env = LLMEnvironment(
+        llm_env = LLMClient(
             api_key=API_KEY_ALBERT,
             base_url=BASE_URL_PROD,
             llm_model=llm_model
@@ -175,20 +174,20 @@ def compare_administration_beneficiaire(llm_value, ref_value, llm_model='albert-
 
         if error:
             logger.warning(
-                f"Erreur lors du parsing de la réponse LLM pour compare_administration_beneficiaire: {error}. Réponse: {response}"
+                f"Error parsing LLM response for compare_beneficiary_administration: {error}. Response: {response}"
             )
             return False
 
-        print("Explication LLM administration_beneficiaire : ", result.get("explication", ""))
+        print("LLM explanation for administration_beneficiaire: ", result.get("explication", ""))
 
         return bool(result.get("sont_equivalentes", False))
         
     except Exception as e:
-        logger.error(f"Erreur lors de l'appel LLM pour compare_administration_beneficiaire: {e}")
+        logger.error(f"Error calling LLM for compare_beneficiary_administration: {e}")
         return False
 
 
-def compare_societe_principale(llm_value, ref_value):
+def compare_main_company(llm_value, ref_value):
     """Compare societe_principale : comparaison de chaînes normalisées."""
     llm_norm = normalize_string(llm_value)
     ref_norm = normalize_string(ref_value)
@@ -219,7 +218,7 @@ def compare_siren(llm_value, ref_value):
     return llm_str == ref_str
 
 
-def compare_rib_mandataire(llm_val, ref_val):
+def compare_mandatee_bank_account(llm_val:str, ref_val:str):
     """Compare rib_mandataire : format JSON, comparaison des 5 champs."""
 
     if (llm_val == '' or llm_val is None or llm_val == 'nan') and (ref_val == '' or ref_val is None or ref_val == 'nan'):
@@ -249,12 +248,12 @@ def compare_rib_mandataire(llm_val, ref_val):
         return True
 
 
-def compare_avance(llm_value, ref_value):
-    """Compare avance : renvoie True."""
+def compare_advance(llm_value, ref_value):
+    """Compare avance : renvoie False."""
     return False
 
 
-def compare_cotraitants(llm_val, ref_val):
+def compare_co_contractors(llm_val, ref_val):
     """Compare cotraitants : liste de json, renvoie True si tous les cotraitants LLM sont trouvés côté référence."""
     llm_dict = json.loads(llm_val)
     ref_dict = json.loads(ref_val)
@@ -262,27 +261,27 @@ def compare_cotraitants(llm_val, ref_val):
     if len(llm_dict) != len(ref_dict):
         return False
     
-    cotraitants_valids = True
+    co_contractors_valid = True
     # Pour chaque cotraitant généré par le LLM
-    for cotraitant_llm in llm_dict:
-        this_cotraitant_valid = False
+    for co_contractor_llm in llm_dict:
+        this_co_contractor_valid = False
         # On essaye de le retrouver dans la liste de référence
-        for cotraitant_ref in ref_dict:
+        for co_contractor_ref in ref_dict:
             # On compare le nom (avec la fonction de normalisation) et le siret
-            if compare_societe_principale(cotraitant_llm['nom'], cotraitant_ref['nom']) and compare_siret(cotraitant_llm['siret'], cotraitant_ref['siret']):
-                this_cotraitant_valid = True  # Un match est trouvé
-                print("Cotraitant trouvé : ", cotraitant_ref)
+            if compare_main_company(co_contractor_llm['nom'], co_contractor_ref['nom']) and compare_siret(co_contractor_llm['siret'], co_contractor_ref['siret']):
+                this_co_contractor_valid = True  # Un match est trouvé
+                print("Co-contractor found: ", co_contractor_ref)
                 break
-        if not this_cotraitant_valid:
+        if not this_co_contractor_valid:
             # Si on ne trouve pas ce cotraitant dans les références, on considère la comparaison échouée
-            print("Cotraitant non trouvé : ", cotraitant_llm)
-            cotraitants_valids = False
+            print("Co-contractor not found: ", co_contractor_llm)
+            co_contractors_valid = False
             break
     # La fonction ne vérifie pas s'il manque des cotraitants côté LLM
-    return cotraitants_valids
+    return co_contractors_valid
 
 
-def compare_sous_traitants(llm_val, ref_val):
+def compare_subcontractors(llm_val, ref_val):
     """Compare sous_traitants : liste de json, renvoie True si tous les sous_traitants LLM sont trouvés côté référence."""
     llm_dict = json.loads(llm_val)
     ref_dict = json.loads(ref_val)
@@ -290,37 +289,66 @@ def compare_sous_traitants(llm_val, ref_val):
     if len(llm_dict) != len(ref_dict):
         return False
     
-    sous_traitants_valids = True
+    subcontractors_valid = True
     # Pour chaque sous_traitant généré par le LLM
-    for sous_traitant_llm in llm_dict:
-        this_sous_traitant_valid = False
+    for subcontractor_llm in llm_dict:
+        this_subcontractor_valid = False
         # On essaye de le retrouver dans la liste de référence
-        for sous_traitant_ref in ref_dict:
+        for subcontractor_ref in ref_dict:
             # On compare le nom (avec la fonction de normalisation) et le siret
-            if compare_societe_principale(sous_traitant_llm['nom'], sous_traitant_ref['nom']) and compare_siret(sous_traitant_llm['siret'], sous_traitant_ref['siret']):
-                this_sous_traitant_valid = True  # Un match est trouvé
-                print("Sous-traitant trouvé : ", sous_traitant_ref)
+            if compare_main_company(subcontractor_llm['nom'], subcontractor_ref['nom']) and compare_siret(subcontractor_llm['siret'], subcontractor_ref['siret']):
+                this_subcontractor_valid = True  # Un match est trouvé
+                print("Sous-traitant trouvé : ", subcontractor_ref)
                 break
-        if not this_sous_traitant_valid:
+        if not this_subcontractor_valid:
             # Si on ne trouve pas ce sous_traitant dans les références, on considère la comparaison échouée
-            print("Sous-traitant non trouvé : ", sous_traitant_llm)
-            sous_traitants_valids = False
+            print("Sous-traitant non trouvé : ", subcontractor_llm)
+            subcontractors_valid = False
             break
     # La fonction ne vérifie pas s'il manque des sous_traitants côté LLM
-    return sous_traitants_valids
+    return subcontractors_valid
 
 
-def compare_rib_autres(llm_value, ref_value):
-    """Compare rib_autres : liste de json, renvoie True pour l'instant."""
-    return False
+def compare_other_bank_accounts(llm_val:str, ref_val:str):
+    """Compare rib_autres : liste de json, renvoie True si tous les comptes bancaires LLM sont trouvés côté référence."""
+    if (llm_val == '' or llm_val is None or llm_val == 'nan') and (ref_val == '' or ref_val is None or ref_val == 'nan'):
+        return True
+    
+    if (llm_val == '' or llm_val is None or llm_val == 'nan') or (ref_val == '' or ref_val is None or ref_val == 'nan'):
+        return False
+    
+    llm_list = json.loads(llm_val)
+    ref_list = json.loads(ref_val)
+
+    if len(llm_list) != len(ref_list):
+        return False
+    
+    bank_accounts_valid = True
+    # Pour chaque compte bancaire généré par le LLM
+    for bank_account_llm in llm_list:
+        this_bank_account_valid = False
+        # On essaye de le retrouver dans la liste de références
+        for bank_account_ref in ref_list:
+            # On compare le compte bancaire avec la fonction compare_mandatee_bank_account
+            if compare_mandatee_bank_account(json.dumps(bank_account_llm), json.dumps(bank_account_ref)):
+                this_bank_account_valid = True  # Un match est trouvé
+                print("RIB trouvé : ", bank_account_ref)
+                break
+        if not this_bank_account_valid:
+            # Si on ne trouve pas ce compte bancaire dans les références, on considère la comparaison échouée
+            print("RIB non trouvé : ", bank_account_llm)
+            bank_accounts_valid = False
+            break
+    # La fonction ne vérifie pas s'il manque des comptes bancaires côté LLM
+    return bank_accounts_valid
 
 
-def compare_montant(llm_val, ref_val):
+def compare_amount(llm_val, ref_val):
     """Compare montant : comparaison des valeurs."""
     if (llm_val == '' or llm_val is None or llm_val == 'nan') and (ref_val == '' or ref_val is None or ref_val == 'nan'):
         return True
-    # llm_val = post_traitement_montant(llm_value)
-    # ref_val = post_traitement_montant(ref_value)
+    # llm_val = post_processing_amount(llm_value)
+    # ref_val = post_processing_amount(ref_value)
     return llm_val == ref_val
 
 
@@ -349,7 +377,7 @@ def compare_date(llm_value, ref_value):
     return llm_date == ref_date
 
 
-def compare_duree(llm_val, ref_val):
+def compare_duration(llm_val, ref_val):
     """Compare duree : nombre de mois, comparaison exacte."""
     llm_dict = json.loads(llm_val)
     ref_dict = json.loads(ref_val)
@@ -374,16 +402,16 @@ def compare_duree(llm_val, ref_val):
         return False
 
 
-def patch_post_traitement(df):
+def patch_post_processing(df):
     df_patched = df.copy()
-    post_traitement_functions = {
-        'rib_mandataire': post_traitement_rib,
-        'montant_ttc': post_traitement_montant,
-        'montant_ht': post_traitement_montant,
-        'cotraitants': post_traitement_cotraitants,
-        'sous_traitants': post_traitement_sous_traitants,
-        'siret_mandataire': post_traitement_siret,
-        'duree': post_traitement_duree,
+    post_processing_functions = {
+        'rib_mandataire': post_processing_bank_account,
+        'montant_ttc': post_processing_amount,
+        'montant_ht': post_processing_amount,
+        'cotraitants': post_processing_co_contractors,
+        'sous_traitants': post_processing_subcontractors,
+        'siret_mandataire': post_processing_siret,
+        'duree': post_processing_duration,
     }
 
     for idx, row in df_patched.iterrows():
@@ -393,30 +421,18 @@ def patch_post_traitement(df):
         llm_data = json.loads(llm_response) if isinstance(llm_response, str) else llm_response
         
         for key in llm_data.keys():
-            if key in post_traitement_functions:
+            if key in post_processing_functions:
                 try:
-                    llm_data[key] = post_traitement_functions[key](llm_data[key])
+                    llm_data[key] = post_processing_functions[key](llm_data[key])
                     df_patched.loc[idx, key] = json.dumps(llm_data[key])
                 except Exception as e:
-                    logger.warning(f"Erreur dans post_traitement_functions pour {key}, idx: {idx} : {e}")
+                    logger.warning(f"Error in post_processing_functions for {key}, idx: {idx}: {e}")
                     llm_data[key] = ''
                     df_patched.loc[idx, key] = ''
 
         df_patched.loc[idx, 'llm_response'] = json.dumps(llm_data)
 
     return df_patched
-
-# def clean_df_test(df):
-#     df_clean = df.copy()
-#     for idx, row in df.iterrows():
-#         try:
-#             df_clean.loc[idx, 'rib_mandataire'] = post_traitement_rib(row['rib_mandataire'])
-#             logger.info(df_clean.loc[idx, 'rib_mandataire'])
-#         except Exception as e:
-#             logger.warning(f"Erreur dans clean_df_test pour {idx}: {e}")
-#             df_clean.loc[idx, 'rib_mandataire'] = None
-#             continue
-#     return df_clean
 
 # Mapping des colonnes vers leurs fonctions de comparaison
 def get_comparison_functions():
@@ -429,26 +445,26 @@ def get_comparison_functions():
         dict: Dictionnaire associant les noms de colonnes à leurs fonctions de comparaison
     """
     return {
-        'objet_marche': compare_objet,
-        'administration_beneficiaire': compare_administration_beneficiaire,
-        'societe_principale': compare_societe_principale,
+        'objet_marche': compare_object,
+        'administration_beneficiaire': compare_beneficiary_administration,
+        'societe_principale': compare_main_company,
         'siret_mandataire': compare_siret,
         'siren_mandataire': compare_siren,
-        'rib_mandataire': compare_rib_mandataire,
-        'avance': compare_avance,
-        'cotraitants': compare_cotraitants,
-        'sous_traitants': compare_sous_traitants,
-        'rib_autres': compare_rib_autres,
-        'montant_ttc': compare_montant,
-        'montant_ht': compare_montant,
+        'rib_mandataire': compare_mandatee_bank_account,
+        'avance': compare_advance,
+        'cotraitants': compare_co_contractors,
+        'sous_traitants': compare_subcontractors,
+        'rib_autres': compare_other_bank_accounts,
+        'montant_ttc': compare_amount,
+        'montant_ht': compare_amount,
         'date_signature_mandataire': compare_date,
         'date_signature_administration': compare_date,
         'date_notification': compare_date,
-        'duree': compare_duree,
+        'duree': compare_duration,
     }
 
 
-def create_batch_test(coef_multi_ligne = 1):
+def create_batch_test(multi_line_coef = 1):
     """Test de qualité des informations extraites par le LLM."""
     # Chemin vers le fichier CSV de test
     csv_path = "/Users/dinum-284659/dev/data/test/test_acte_engagement.csv"
@@ -461,28 +477,29 @@ def create_batch_test(coef_multi_ligne = 1):
 
     # Post-traitement direct des colonnes du DataFrame de test (après lecture du CSV)
     # Les fonctions post-traitement sont utilisées comme pour patch_post_traitement, mais appliquées colonne par colonne
-    POST_TRAITEMENT_FUNCTIONS = {
-        'rib_mandataire': post_traitement_rib,
-        'cotraitants': post_traitement_cotraitants,
-        'sous_traitants': post_traitement_sous_traitants,
-        'duree': post_traitement_duree,
-        'montant_ttc': post_traitement_montant,
-        'montant_ht': post_traitement_montant,
-        'siret_mandataire': post_traitement_siret
+    POST_PROCESSING_FUNCTIONS = {
+        'rib_mandataire': post_processing_bank_account,
+        'cotraitants': post_processing_co_contractors,
+        'sous_traitants': post_processing_subcontractors,
+        'duree': post_processing_duration,
+        'montant_ttc': post_processing_amount,
+        'montant_ht': post_processing_amount,
+        'siret_mandataire': post_processing_siret
         # Ajouter ici d'autres champs si besoin dans le futur
     }
-    for col, post_trait_func in POST_TRAITEMENT_FUNCTIONS.items():
+    
+    for col, post_process_func in POST_PROCESSING_FUNCTIONS.items():
         if col in df_test.columns:
             for idx, val in df_test[col].items():
                 try:
                     # On conserve le même format qu'en production: JSON str
-                    df_test.at[idx, col] = post_trait_func(val)
+                    df_test.at[idx, col] = post_process_func(val)
                 except Exception as e:
-                    logger.warning(f"Erreur dans post-traitement DF_TEST pour colonne {col} à l'index {idx}: {e}")
+                    logger.warning(f"Error in post-processing DF_TEST for column {col} at index {idx}: {e}")
                     df_test.at[idx, col] = ''
     
-    if coef_multi_ligne > 1:
-        df_test = pd.concat([df_test for x in range(coef_multi_ligne)]).reset_index(drop=True)
+    if multi_line_coef > 1:
+        df_test = pd.concat([df_test for x in range(multi_line_coef)]).reset_index(drop=True)
 
         
     # Création du DataFrame pour l'analyse
@@ -506,19 +523,33 @@ def create_batch_test(coef_multi_ligne = 1):
         save_grist=False
     )
     
-    df_post_traitement = patch_post_traitement(df_result)
+    df_post_processing = patch_post_processing(df_result)
 
     # Fusion des résultats avec les valeurs de référence
-    df_merged = df_post_traitement[['filename', 'llm_response']].merge(
-        df_test,
-        on='filename',
+    # Pour éviter le produit cartésien lorsque filename est dupliqué, on utilise l'index
+    # Les deux dataframes ont le même nombre de lignes et le même ordre
+    df_post_processing_reset = df_post_processing[['filename', 'llm_response']].reset_index(drop=True)
+    df_test_reset = df_test.reset_index(drop=True)
+    
+    # Ajout d'un identifiant unique basé sur l'index pour le merge
+    df_post_processing_reset['_merge_key'] = df_post_processing_reset.index
+    df_test_reset['_merge_key'] = df_test_reset.index
+    
+    # Merge sur l'identifiant unique plutôt que sur filename
+    df_merged = df_post_processing_reset.merge(
+        df_test_reset,
+        on='_merge_key',
         how='inner'
     )
+    
+    # Suppression de la colonne temporaire et de la colonne filename dupliquée
+    df_merged = df_merged.drop(columns=['_merge_key', 'filename_x'])
+    df_merged = df_merged.rename(columns={'filename_y': 'filename'})
     
     return df_merged
 
 
-def test_quality_un_champ(df_merged, col_to_test = 'duree'):
+def check_quality_one_field(df_merged, col_to_test = 'duree'):
     # ============================================================================
     # COMPARAISON POUR UNE COLONNE SPÉCIFIQUE
     # ============================================================================
@@ -563,7 +594,7 @@ def test_quality_un_champ(df_merged, col_to_test = 'duree'):
             print()
     
 
-def test_quality_une_ligne(df_merged, row_idx_to_test = 0, excluded_columns = []):
+def check_quality_one_row(df_merged, row_idx_to_test = 0, excluded_columns = []):
     # ============================================================================
     # COMPARAISON POUR UNE LIGNE SPÉCIFIQUE
     # ============================================================================
@@ -617,7 +648,7 @@ def test_quality_une_ligne(df_merged, row_idx_to_test = 0, excluded_columns = []
         print(f"\n❌ Index {row_idx_to_test} invalide. Le DataFrame contient {len(df_merged)} lignes.\n")
     
 
-def test_statistiques_globales(df_merged, excluded_columns = []):
+def check_global_statistics(df_merged, excluded_columns = []):
     # ============================================================================
     # STATISTIQUES GLOBALES DE COMPARAISON
     # ============================================================================
@@ -665,7 +696,7 @@ def test_statistiques_globales(df_merged, excluded_columns = []):
             try:
                 llm_response = row.get('llm_response', None)
                 if llm_response is None or pd.isna(llm_response):
-                    errors.append(f"{filename}: llm_response est None ou NaN")
+                    errors.append(f"{filename}: llm_response is None or NaN")
                     matches.append(False)
                     # Si pas de problème OCR, on compte aussi dans matches_no_ocr
                     if not pbm_ocr:
@@ -674,7 +705,7 @@ def test_statistiques_globales(df_merged, excluded_columns = []):
                 
                 llm_data = json.loads(llm_response) if isinstance(llm_response, str) else llm_response
             except (json.JSONDecodeError, TypeError) as e:
-                errors.append(f"{filename}: Erreur de parsing JSON: {str(e)}")
+                errors.append(f"{filename}: JSON parsing error: {str(e)}")
                 matches.append(False)
                 # Si pas de problème OCR, on compte aussi dans matches_no_ocr
                 if not pbm_ocr:
@@ -698,7 +729,7 @@ def test_statistiques_globales(df_merged, excluded_columns = []):
                 if not pbm_ocr:
                     matches_no_ocr.append(match_result)
             except Exception as e:
-                errors.append(f"{filename}: Erreur dans comparison_func: {str(e)}")
+                errors.append(f"{filename}: Error in comparison_func: {str(e)}")
                 matches.append(False)
                 # Si pas de problème OCR, on ajoute aussi à matches_no_ocr
                 if not pbm_ocr:
@@ -754,13 +785,8 @@ def test_statistiques_globales(df_merged, excluded_columns = []):
     print(f"Accuracy globale (sans OCR): {global_accuracy_no_ocr*100:.2f}% ({total_matches_no_ocr}/{total_no_ocr})")
     print(f"{'='*120}\n")
 
-# df_comparisons = test_quality_infos()
-    
-# row = df_comparisons.query("colonne == 'rib_mandataire' and match == False").iloc[10]
-# print(row['llm_val'], '\n', row['ref_val'])
-# print(row['match'])
 
-df_merged = create_batch_test(2)
+df_merged = create_batch_test()
 
 EXCLUDED_COLUMNS = [
     'objet_marche', 
@@ -771,10 +797,10 @@ EXCLUDED_COLUMNS = [
     'rib_autres'
 ]
 
-test_quality_un_champ(df_merged, col_to_test = 'duree')
+check_quality_one_field(df_merged, col_to_test = 'duree')
 
-test_quality_une_ligne(df_merged, row_idx_to_test = 0, excluded_columns = EXCLUDED_COLUMNS)
+check_quality_one_row(df_merged, row_idx_to_test = 0, excluded_columns = EXCLUDED_COLUMNS)
 
-test_quality_un_champ(df_merged, col_to_test = 'cotraitants')
+check_quality_one_field(df_merged, col_to_test = 'cotraitants')
 
-test_statistiques_globales(df_merged, excluded_columns = ['avance', 'rib_autres','administration_beneficiaire','objet_marche'])
+check_global_statistics(df_merged, excluded_columns = ['avance', 'rib_autres','administration_beneficiaire','objet_marche'])
