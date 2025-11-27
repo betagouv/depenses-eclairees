@@ -1,9 +1,13 @@
+import logging
+import mimetypes
 import os
 import unicodedata
 import zipfile
 from pathlib import Path
 import shutil
 import re
+
+import olefile
 import pandas as pd
 import hashlib
 from tqdm import tqdm
@@ -16,6 +20,9 @@ from app.utils import getDate
 from app.grist import post_new_data_to_grist, post_data_to_grist_multiple_keys
 from app.grist import URL_TABLE_ATTACHMENTS, URL_TABLE_ENGAGEMENTS, URL_TABLE_BATCH, API_KEY_GRIST
 from app.data.db import bulk_create_batches, bulk_create_engagements, bulk_create_attachments
+
+
+logger = logging.getLogger("docia." + __name__)
 
 
 def unzip_all_files(source_dir, target_dir=None):
@@ -307,7 +314,7 @@ def remove_empty_files(directory_path: str) -> list:
     return deleted_files
 
 
-def get_file_hash(file_path: str, force_local=False) -> str:
+def get_file_hash(file_path: str) -> str:
     """
     Calcule le hash SHA-256 d'un fichier.
     
@@ -319,8 +326,7 @@ def get_file_hash(file_path: str, force_local=False) -> str:
     """
     try:
         hash_sha256 = hashlib.sha256()
-        _open = open if force_local else default_storage.open
-        with _open(file_path, "rb") as f:
+        with default_storage.open(file_path, "rb") as f:
             # Lire le fichier par chunks pour optimiser la mémoire
             for chunk in iter(lambda: f.read(65536), b""):
                 hash_sha256.update(chunk)
@@ -356,7 +362,7 @@ def remove_duplicate(directory_path: str) -> list:
         file_path = os.path.join(directory_path, filename)
         if not os.path.isfile(file_path):
             continue
-        file_hash = get_file_hash(file_path, force_local=True)
+        file_hash = get_file_hash(file_path)
         if file_hash == "ERROR":
             print(f"Impossible de calculer le hash pour {filename}, ignoré.")
             continue
@@ -582,6 +588,7 @@ def detect_ole2_format(file_path: str) -> str:
     # Utiliser directement la méthode par analyse du contenu qui est plus robuste
     return detect_ole2_by_streams(file_path)
 
+
 def detect_zip_based_format(file_path: str) -> str:
     """
     Détecte le format spécifique pour les fichiers ZIP-based (docx, xlsx, pptx, odt, etc.)
@@ -635,28 +642,25 @@ def detect_file_type_by_magic_bytes(file_path: str) -> str:
     Returns:
         str: Extension détectée ou 'unknown'
     """
-    try:
-        with default_storage.open(file_path, 'rb') as f:
-            # Lire les premiers 16 octets
-            header = f.read(16)
-            
-            # Vérifier les magic bytes
-            for magic, ext in MAGIC_BYTES.items():
-                if header.startswith(magic):
-                    # Vérifications spéciales pour les formats ZIP-based
-                    if ext == 'zip':
-                        return detect_zip_based_format(file_path)
-                    # Vérifications spéciales pour les formats OLE2
-                    elif ext == 'ole2':
-                        return detect_ole2_format(file_path)
-                    return ext
-                    
-        return 'unknown'
-    except Exception as e:
-        print(f"Erreur lors de la lecture du fichier {file_path}: {e}")
-        return 'unknown'
+    with default_storage.open(file_path, 'rb') as f:
+        # Lire les premiers 16 octets
+        header = f.read(16)
 
-def detect_file_extension_from_content(file_path: str) -> str:
+        # Vérifier les magic bytes
+        for magic, ext in MAGIC_BYTES.items():
+            if header.startswith(magic):
+                # Vérifications spéciales pour les formats ZIP-based
+                if ext == 'zip':
+                    return detect_zip_based_format(file_path)
+                # Vérifications spéciales pour les formats OLE2
+                elif ext == 'ole2':
+                    return detect_ole2_format(file_path)
+                return ext
+
+        return "unknown"
+
+
+def detect_file_extension_from_content_old(file_path: str) -> str:
     """
     Détecte l'extension d'un fichier à partir de son contenu brut
     
@@ -666,39 +670,78 @@ def detect_file_extension_from_content(file_path: str) -> str:
     Returns:
         str: Extension détectée (sans le point)
     """
-    if not os.path.exists(file_path):
-        return 'unknown'
-    
-    try:
-        with default_storage.open(file_path, 'rb') as f:
-            mime = magic.from_buffer(f.read(1024), mime=True)
-        mime_to_ext = {
-            'application/pdf': 'pdf',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
-            'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
-            'application/vnd.oasis.opendocument.text': 'odt',
-            'application/vnd.oasis.opendocument.spreadsheet': 'ods',
-            'application/vnd.oasis.opendocument.presentation': 'odp',
-            'image/jpeg': 'jpg',
-            'image/png': 'png',
-            'image/gif': 'gif',
-            'image/bmp': 'bmp',
-            'text/plain': 'txt',
-            'application/zip': 'zip',
-            'application/x-rar-compressed': 'rar',
-            'application/x-7z-compressed': '7z',
-            'application/gzip': 'gz',
-            'application/x-bzip2': 'bz2',
-        }
-        detected_ext = mime_to_ext.get(mime, 'unknown')
-        if detected_ext != 'unknown':
-            return detected_ext
-    except Exception as e:
-        print(f"Erreur avec python-magic: {e}")
+
+    with default_storage.open(file_path, "rb") as f:
+        mime = magic.from_buffer(f.read(1024), mime=True)
+
+    mime_to_ext = {
+        'application/pdf': 'pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+        'application/vnd.oasis.opendocument.text': 'odt',
+        'application/vnd.oasis.opendocument.spreadsheet': 'ods',
+        'application/vnd.oasis.opendocument.presentation': 'odp',
+        'image/jpeg': 'jpg',
+        'image/png': 'png',
+        'image/gif': 'gif',
+        'image/bmp': 'bmp',
+        'text/plain': 'txt',
+        'application/zip': 'zip',
+        'application/x-rar-compressed': 'rar',
+        'application/x-7z-compressed': '7z',
+        'application/gzip': 'gz',
+        'application/x-bzip2': 'bz2',
+    }
+    detected_ext = mime_to_ext.get(mime, 'unknown')
+    if detected_ext != "unknown":
+        return detected_ext
     
     # Fallback sur les magic bytes
     return detect_file_type_by_magic_bytes(file_path)
+
+
+def detect_file_extension_from_content(file_path: str) -> str:
+    with default_storage.open(file_path, "rb") as f:
+        header = f.read(1024)
+        mime = magic.from_buffer(header, mime=True)
+        if mime == "application/octet-stream":
+            header += f.read(4096)
+            mime = magic.from_buffer(header, mime=True)
+
+    # Handle ole files (old Microsoft Office formats)
+    if mime == "application/x-ole-storage":
+        ext = guess_office_type(file_path)
+    else:
+        ext = mimetypes.guess_extension(mime, strict=False)
+
+    # Replace .bin with .unknown extension
+    if ext == ".bin":
+        ext = ".unknown"
+
+    if ext:
+        return ext.strip('.')
+    else:
+        logger.warning("Could not guess extension for mime %r (file=%s)", mime, file_path)
+        return "unknown"
+
+
+def guess_office_type(file_path: str) -> str:
+    with default_storage.open(file_path, "rb") as f:
+        ole = olefile.OleFileIO(f)
+        names = {".".join(e) for e in ole.listdir()}
+
+    if "WordDocument" in names:
+        return "doc"
+    if "Workbook" in names or "Book" in names:
+        return "xls"
+    if "PowerPoint Document" in names:
+        return "ppt"
+    if "__properties_version1.0" in names or any(n.startswith("__substg1.0_") for n in names):
+        return "msg"
+
+    return "unknown"
+
 
 def get_corrected_extension(filename: str, file_path: str) -> str:
     """
@@ -731,7 +774,7 @@ def get_corrected_extension(filename: str, file_path: str) -> str:
         return name_ext
     
     # Si les deux sont différentes, prioriser celle du contenu
-    print(f"Extension incohérente pour {filename}: nom='{name_ext}' vs contenu='{content_ext}' -> utilisation de '{content_ext}'")
+    logger.info(f"Extension incohérente pour {filename}: nom='{name_ext}' vs contenu='{content_ext}' -> utilisation de '{content_ext}'")
     return content_ext
 
 
