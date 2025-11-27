@@ -1,6 +1,5 @@
 import logging
 import pandas as pd
-from PyPDF2 import PdfReader
 import tqdm
 from concurrent.futures import ThreadPoolExecutor
 
@@ -41,40 +40,6 @@ def is_expression_in_filename(expression: list[str], filename: str) -> bool:
     except Exception as e:
         raise(e)
 
-def check_first_page_for_devis(pdf_path: str) -> bool:
-    """
-    Lit la première page d'un PDF et vérifie si le mot 'devis' est présent.
-    
-    Args:
-        pdf_path (str): Chemin vers le fichier PDF
-        
-    Returns:
-        bool: True si 'devis' est trouvé, False sinon
-    """
-    try:
-        with open(pdf_path, 'rb') as file:
-            pdf = PdfReader(file)
-            if len(pdf.pages) > 0:
-                first_page = pdf.pages[0]
-                text = first_page.extract_text().lower()
-                return text
-                # return 'devis' in text
-    except Exception as e:
-        print(f"Erreur lors de la lecture du PDF {pdf_path}: {str(e)}")
-        return ''
-    return ''
-
-# def classify_file(filename:str, list_classification = {"devis":{"words":["devis"]}}):
-#     # Test pour chaque type de document dans la liste de classification
-#     for type_document in list_classification:
-#         # Liste les mots clés associés à ce type de document
-#         key_words = list_classification[type_document]["words"]
-#         for word in key_words:
-#             # Vérifier si le mot est dans le nom du fichier
-#             if is_word_in_filename(word, filename):
-#                 return type_document
-
-#     return 'Non classifié'
 
 def classify_file_with_name(filename:str, list_classification = {"devis":{"words":["devis"]}}):
     # Test pour chaque type de document dans la liste de classification

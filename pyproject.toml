@@ -16,7 +16,6 @@ dependencies = [
     "pandas",
     "Pillow",
     "psycopg[binary]",
-    "PyPDF2",
     "PyCryptodome",
     "PyMuPDF",
     "python-magic",

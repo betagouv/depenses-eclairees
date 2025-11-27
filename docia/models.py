@@ -69,7 +69,7 @@ class DataAttachment(BaseModel):
         verbose_name_plural = "Attachments"
 
     def __str__(self):
-        return f"{self.ej_id, self.filename}"
+        return self.file.name
 
 
 class DataBatch(BaseModel):

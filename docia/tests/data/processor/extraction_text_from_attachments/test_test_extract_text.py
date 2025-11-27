@@ -18,7 +18,7 @@ def test_extract_text():
     with mock.patch("app.processor.extraction_text_from_attachments.extract_text_from_pdf", autospec=True) as m:
         m.return_value = ("hello", True)
         extract_text(file_content, "file.pdf", "pdf")
-        m.assert_called_once_with(file_content, "file.pdf", 50)
+        m.assert_called_once_with(file_content, 50)
 
     with mock.patch("app.processor.extraction_text_from_attachments.extract_text_from_docx", autospec=True) as m:
         m.return_value = ("hello", True)
