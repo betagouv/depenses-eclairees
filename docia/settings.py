@@ -394,5 +394,5 @@ REST_FRAMEWORK = {
 
 MATOMO_URL = config.str("MATOMO_URL", default="")
 
-ALBERT_API_KEY = config.str("ALBERT_API_KEY")
-ALBERT_BASE_URL = config.str("ALBERT_BASE_URL")
+API_KEY_ALBERT = config.str("API_KEY_ALBERT")
+BASE_URL_PROD = config.str("BASE_URL_PROD")
