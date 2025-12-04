@@ -482,7 +482,7 @@ def check_global_statistics(df_merged, excluded_columns = []):
     print(f"{'='*120}\n")
 
 
-df_merged = create_batch_test()
+df_merged = create_batch_test(3)
 
 check_quality_one_field(df_merged, col_to_test = 'iban')
 
