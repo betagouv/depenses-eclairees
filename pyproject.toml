@@ -44,10 +44,6 @@ dependencies = [
     "tesserocr (>=2.9.1,<3.0.0)",
 ]
 
-[tool.poetry]
-package-mode = true
-packages = [{include = "app"}]
-
 [dependency-groups]
 dev = [
     "freezegun",
