@@ -4,6 +4,7 @@ from datetime import datetime
 import pandas as pd
 import pytest
 import logging
+from datetime import datetime
 
 import sys
 sys.path.append(".")
@@ -75,7 +76,7 @@ def compare_object(llm_value, ref_value, llm_model='albert-small'):
         "explication": "brève explication de votre analyse"
     }}"""
         
-        message = [
+        messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
         ]
@@ -85,7 +86,7 @@ def compare_object(llm_value, ref_value, llm_model='albert-small'):
         
         # Appel au LLM avec format JSON forcé
         # Température 0.2 : permet de la nuance dans l'évaluation sémantique tout en gardant de la cohérence
-        response = llm_env.ask_llm(message=message, response_format=response_format, temperature=0.2)
+        response = llm_env.ask_llm(messages=messages, response_format=response_format, temperature=0.2)
         
         # Parsing de la réponse JSON avec la fonction parse_json_response
         result, error = parse_json_response(response)
@@ -137,8 +138,9 @@ def compare_beneficiary_administration(llm_value, ref_value, llm_model='albert-s
         )
 
         user_prompt = f"""Compare les deux mentions suivantes concernant l'administration bénéficiaire d'un contrat ou acte administratif, 
-        et détermine si elles désignent la même structure, entité ou administration bénéficiaire, ou des administrations strictement équivalentes
-        (avec ou sans variation d'intitulé ou de formulation).
+        et détermine si elles désignent la même structure, entité ou administration bénéficiaire, ou des administrations équivalentes
+        (avec ou sans variation d'intitulé ou de formulation). Par exemple, si la valeur extraite par le LLM est plus précise que la valeur de référence, 
+        alors on considère que les deux administrations sont équivalentes.
 
         Valeur extraite par le LLM :
         {llm_value}
@@ -151,14 +153,14 @@ def compare_beneficiary_administration(llm_value, ref_value, llm_model='albert-s
         - Le contexte administratif ou territorial, les rôles correspondant aux structures (par exemple, un intitulé de direction qui désigne l'administration bénéficiaire)
         - Le fait que certaines valeurs peuvent préciser un service ou une direction interne d'une administration (cela compte pour la même administration si l'essentiel concorde)
         - Le format doit être le nom complet, sans acronymes sauf s'ils sont officiels et connus
-
+        
         Tu dois IMPÉRATIVEMENT répondre UNIQUEMENT avec un JSON valide, sans aucun autre texte, avec cette structure exacte :
         {{
             "sont_equivalentes": true ou false,
             "explication": "brève explication de votre analyse"
         }}"""
 
-        message = [
+        messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
         ]
@@ -167,7 +169,7 @@ def compare_beneficiary_administration(llm_value, ref_value, llm_model='albert-s
         response_format = {"type": "json_object"}
 
         # Appel au LLM avec format JSON forcé, température basse pour fiabilité
-        response = llm_env.ask_llm(message=message, response_format=response_format, temperature=0.2)
+        response = llm_env.ask_llm(messages=messages, response_format=response_format, temperature=0.2)
 
         # Parsing de la réponse JSON avec la fonction parse_json_response
         result, error = parse_json_response(response)
@@ -178,7 +180,7 @@ def compare_beneficiary_administration(llm_value, ref_value, llm_model='albert-s
             )
             return False
 
-        print("LLM explanation for administration_beneficiaire: ", result.get("explication", ""))
+        # print("LLM explanation for administration_beneficiaire: ", result.get("explication", ""))
 
         return bool(result.get("sont_equivalentes", False))
         
@@ -311,10 +313,10 @@ def compare_subcontractors(llm_val, ref_val):
 
 def compare_other_bank_accounts(llm_val:str, ref_val:str):
     """Compare rib_autres : liste de json, renvoie True si tous les comptes bancaires LLM sont trouvés côté référence."""
-    if (llm_val == '' or llm_val is None or llm_val == 'nan') and (ref_val == '' or ref_val is None or ref_val == 'nan'):
+    if (llm_val == '' or llm_val is None or llm_val == 'nan' or llm_val == '[]') and (ref_val == '' or ref_val is None or ref_val == 'nan' or ref_val == '[]'):
         return True
     
-    if (llm_val == '' or llm_val is None or llm_val == 'nan') or (ref_val == '' or ref_val is None or ref_val == 'nan'):
+    if (llm_val == '' or llm_val is None or llm_val == 'nan' or llm_val == '[]') or (ref_val == '' or ref_val is None or ref_val == 'nan' or ref_val == '[]'):
         return False
     
     llm_list = json.loads(llm_val)
@@ -412,6 +414,7 @@ def patch_post_processing(df):
         'sous_traitants': post_processing_subcontractors,
         'siret_mandataire': post_processing_siret,
         'duree': post_processing_duration,
+        'rib_autres': post_processing_other_bank_accounts
     }
 
     for idx, row in df_patched.iterrows():
@@ -487,6 +490,8 @@ def create_batch_test(multi_line_coef = 1):
         'siret_mandataire': post_processing_siret
         # Ajouter ici d'autres champs si besoin dans le futur
     }
+
+    print(datetime.now())
     
     for col, post_process_func in POST_PROCESSING_FUNCTIONS.items():
         if col in df_test.columns:
@@ -786,21 +791,18 @@ def check_global_statistics(df_merged, excluded_columns = []):
     print(f"{'='*120}\n")
 
 
-df_merged = create_batch_test()
+df_merged = create_batch_test(3)
 
 EXCLUDED_COLUMNS = [
     'objet_marche', 
     'administration_beneficiaire', 
-    'avance', 
-    'cotraitants', 
-    'sous_traitants', 
-    'rib_autres'
+    'avance'
 ]
 
-check_quality_one_field(df_merged, col_to_test = 'duree')
+check_quality_one_field(df_merged, col_to_test = 'rib_mandataire')
 
 check_quality_one_row(df_merged, row_idx_to_test = 0, excluded_columns = EXCLUDED_COLUMNS)
 
 check_quality_one_field(df_merged, col_to_test = 'cotraitants')
 
-check_global_statistics(df_merged, excluded_columns = ['avance', 'rib_autres','administration_beneficiaire','objet_marche'])
+check_global_statistics(df_merged, excluded_columns = ['avance'])

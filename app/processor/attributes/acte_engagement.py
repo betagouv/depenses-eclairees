@@ -40,6 +40,7 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
      Définition : Structure administrative ou publique qui bénéficie de la commande, ou qui achète la prestation.
      Indices :
      - Rechercher les mentions d'achateurs, de pouvoir adjudicateur, ou d'autorité contractante. Le résultat est souvent une direction ou un service au sein d'une administration.
+     - Si aucune information n'est trouvée sur l'administration bénéficiaire : renvoyer ''.
      - Si possible, inclure le nom de l'administration jusqu'à deux sous-niveaux organisationnels.
         * Exemple de bon résultat : Ministère de la culture (MDC) - Secrétariat général (SG) - Direction des musées de France (DMF)
         * Exemple de résultat trop général : Ministère de la culture (MC)
@@ -177,9 +178,14 @@ Règles d’extraction :
         "consigne": """RIB_AUTRES
      Définition : RIB des autres entreprises du groupement, s'il y en a.
      Indices : 
-     - Rechercher dans le paragraphe des comptes à créditer, s'il y a plusieurs RIB indiqués pour plusieurs entreprises différentes..
-     - S'il n'y a que le RIB du mandataire, ne rien renvoyer.
-     Format : une liste de dictionnaires sous format [{"nom": "nom de la société", "IBAN": "IBAN du compte à créditer"}]
+     - Rechercher dans le paragraphe des comptes à créditer, s'il y a plusieurs RIB indiqués pour plusieurs entreprises différentes.
+        * 'societe' : nom de la société du groupement (si possible cohérent avec le champ cotraitants ci-dessus)
+        * 'rib' : informations bancaires du compte à créditer (banque, IBAN, etc.)
+            * 'banque' : Nom de la banque (sans la mention "Banque"). Ne rien renvoyer si aucune banque trouvée.
+            * 'iban' : IBAN du compte à créditer avec espaces tous les 4 caractères. Ne rien renvoyer si aucun IBAN trouvé.
+     - S'il n'y a que le RIB du mandataire, renvoyer [].
+     - S'il n'y a pas d'informations sur le compte bancaire d'une entreprise, ne rien renvoyer pour cette entreprise.
+     Format : une liste de dictionnaires json sous format [{"societe": "nom de la société du groupement", "rib": {"banque": "nom de la banque", "iban": "IBAN avec espaces tous les 4 caractères"}}]
 """,
         "search": "Section du document qui décrit le groupement et les entreprises qui le composent.",
         "output_field": "rib_autres"
