@@ -4,6 +4,7 @@ from datetime import datetime
 import pandas as pd
 import pytest
 import logging
+from datetime import datetime
 
 import sys
 sys.path.append(".")
@@ -26,17 +27,33 @@ def normalize_string(s):
     s = re.sub(r'\s+', ' ', s).strip()
     return s
 
+
 def compare_iban(llm_val:str, ref_val:str):
     """Compare l'IBAN : comparaison des valeurs."""
     if (llm_val == '' or llm_val is None or llm_val == 'nan') and (ref_val == '' or ref_val is None or ref_val == 'nan'):
         return True
     return llm_val == ref_val
 
+
 def compare_bic(llm_val:str, ref_val:str):
     """Compare le BIC : comparaison des valeurs."""
     if (llm_val == '' or llm_val is None or llm_val == 'nan') and (ref_val == '' or ref_val is None or ref_val == 'nan'):
         return True
     return llm_val == ref_val
+
+
+def compare_bank(llm_val:str, ref_val:str):
+    """Compare la banque : comparaison des valeurs."""
+    llm_norm = normalize_string(llm_val)
+    ref_norm = normalize_string(ref_val)
+
+    if llm_norm == ref_norm:
+        return True
+    else:
+        llm_norm_no_space = llm_norm.replace(" ", "")
+        ref_norm_no_space = ref_norm.replace(" ","")
+        return llm_norm_no_space == ref_norm_no_space
+
 
 def compare_account_owner(llm_val:str, ref_val:str):
     """Compare le titulaire du compte : comparaison des valeurs."""
@@ -50,11 +67,46 @@ def compare_account_owner(llm_val:str, ref_val:str):
         ref_norm_no_space = ref_norm.replace(" ","")
         return llm_norm_no_space == ref_norm_no_space
 
+
 def compare_address(llm_val:str, ref_val:str):
-    """Compare l'adresse : comparaison des valeurs."""
+    """Compare l'adresse : comparaison des valeurs selon la structure JSON.
+    
+    Structure attendue : {
+        'numero_voie': 'le numéro de voie',
+        'nom_voie': 'le nom de la voie',
+        'complement_adresse': 'le complément d'adresse éventuel',
+        'code_postal': 'le code postal',
+        'ville': 'la ville',
+        'pays': 'le pays'
+    }
+    """
+    # Gestion des valeurs vides/None/nan
     if (llm_val == '' or llm_val is None or llm_val == 'nan') and (ref_val == '' or ref_val is None or ref_val == 'nan'):
         return True
-    return llm_val == ref_val
+    if (llm_val == '' or llm_val is None or llm_val == 'nan') or (ref_val == '' or ref_val is None or ref_val == 'nan'):
+        return False
+    
+    llm_dict = json.loads(llm_val)
+    ref_dict = json.loads(ref_val)
+    
+    # Liste des champs à comparer
+    fields = ['numero_voie', 'nom_voie', 'complement_adresse', 'code_postal', 'ville', 'pays']
+    
+    # Comparer chaque champ
+    for field in fields:
+        llm_field_val = llm_dict.get(field, '')
+        ref_field_val = ref_dict.get(field, '')
+        
+        # Normaliser les valeurs vides
+        llm_field_val = llm_field_val.strip().title()
+        ref_field_val = llm_field_val.strip().title()
+        
+        # Comparer les valeurs du champ
+        if llm_field_val != ref_field_val:
+            return False
+    
+    return True
+
 
 def compare_domiciliation(llm_val:str, ref_val:str):
     """Compare la domiciliation : comparaison des valeurs."""
@@ -62,11 +114,13 @@ def compare_domiciliation(llm_val:str, ref_val:str):
         return True
     return llm_val == ref_val
 
+
 def patch_post_processing(df):
     df_patched = df.copy()
     post_processing_functions = {
         'iban': post_processing_iban,
-        'bic': post_processing_bic
+        'bic': post_processing_bic,
+        'adresse_postale_titulaire': post_processing_postal_address
     }
 
     for idx, row in df_patched.iterrows():
@@ -89,6 +143,7 @@ def patch_post_processing(df):
 
     return df_patched
 
+
 # Mapping des colonnes vers leurs fonctions de comparaison
 def get_comparison_functions():
     """
@@ -103,9 +158,11 @@ def get_comparison_functions():
         'iban': compare_iban,
         'bic': compare_bic,
         'titulaire_compte': compare_account_owner,
-        'adresse': compare_address,
+        'adresse_postale_titulaire': compare_address,
         'domiciliation': compare_domiciliation,
+        'banque': compare_bank,
     }
+
 
 def create_batch_test(multi_line_coef = 1):
     """Test de qualité des informations extraites par le LLM."""
@@ -120,10 +177,13 @@ def create_batch_test(multi_line_coef = 1):
     # Les fonctions post-traitement sont utilisées comme pour patch_post_traitement, mais appliquées colonne par colonne
     POST_PROCESSING_FUNCTIONS = {
         'iban': post_processing_iban,
-        'bic': post_processing_bic
+        'bic': post_processing_bic,
+        'adresse_postale_titulaire': post_processing_postal_address
         # Ajouter ici d'autres champs si besoin dans le futur
     }
-    
+
+    print(datetime.now())
+
     for col, post_process_func in POST_PROCESSING_FUNCTIONS.items():
         if col in df_test.columns:
             for idx, val in df_test[col].items():
@@ -424,8 +484,8 @@ def check_global_statistics(df_merged, excluded_columns = []):
 
 df_merged = create_batch_test()
 
-check_quality_one_field(df_merged, col_to_test = 'titulaire_compte')
+check_quality_one_field(df_merged, col_to_test = 'iban')
 
-check_quality_one_row(df_merged, row_idx_to_test = 0)
+check_quality_one_row(df_merged, row_idx_to_test = 26)
 
-check_global_statistics(df_merged, excluded_columns = [])
+check_global_statistics(df_merged, excluded_columns = ['domiciliation', 'banque'])

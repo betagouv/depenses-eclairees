@@ -14,8 +14,8 @@ CCAP_ATTRIBUTES = {
         "output_field": "objet_marche_ccap"
     },
 
-    "lots_ccap": {
-        "consigne": """LOTS_CCAP
+    "lots": {
+        "consigne": """LOTS
      Définition : Liste des lots du marché.
      Indices : 
      - Rechercher les lots du marché dans la section de l'alotissement.
@@ -53,7 +53,7 @@ CCAP_ATTRIBUTES = {
         "output_field": "allottissement"
     },
 
-    "duree_lots_ccap": {
+    "duree_lots": {
         "consigne": """DUREE_LOTS
      Définition : Durée de chaque lot du marché.
      Indices : 
@@ -66,7 +66,7 @@ CCAP_ATTRIBUTES = {
         "output_field": "duree_lots"
     },
 
-    "duree_marche_ccap": {
+    "duree_marche": {
         "consigne": """DUREE_MARCHE_CCAP
      Définition : Durée du marché pour un marché non alloti.
      Indices : 
@@ -78,7 +78,7 @@ CCAP_ATTRIBUTES = {
         "output_field": "duree_marche"
     },
 
-    "formule_revision_prix_ccap": {
+    "formule_revision_prix": {
         "consigne": """FORMULE_REVISION_PRIX
      Définition : Formule de révision des prix
      Indices : 
@@ -112,7 +112,7 @@ CCAP_ATTRIBUTES = {
    - Si pour le remboursement, il est fait référence uniquement au code de la commande publique (R.2191-11) :
       - Pour des montants <= 30% du marché TTC, c'est à partir de 65% du montant TTC que le remboursement se déclenche. Renvoyer "65%".
       - Pour des montants > 30% du marché TTC, c'est dès le premier paiement. Renvoyer "0%".
-   Format : condition_déclenchement:"", montant_avance:XX%, montant_reference:"", remboursement:XX%-XX%
+   Format : {'condition_declenchement':"", 'montant_avance':XX%, 'montant_reference':"", 'remboursement':XX%-XX%}
 """,
         "search": "avance accordée titulaire montant initial durée exécution remboursement précompte",
         "output_field": "condition_avance_ccap"
