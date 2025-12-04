@@ -30,7 +30,11 @@ class LLMClient:
         Returns:
             Instance du client OpenAI
         """
-        client_kwargs = {"api_key": self.api_key}
+        client_kwargs = {
+            "api_key": self.api_key,
+            # Disable openai client retry feature, handle retry ourselves
+            "max_retries": 0,
+        }
 
         if self.base_url:
             client_kwargs["base_url"] = self.base_url

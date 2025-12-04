@@ -997,14 +997,14 @@ files = [
 
 [[package]]
 name = "django"
-version = "5.2.7"
+version = "5.2.8"
 description = "A high-level Python web framework that encourages rapid development and clean, pragmatic design."
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "django-5.2.7-py3-none-any.whl", hash = "sha256:59a13a6515f787dec9d97a0438cd2efac78c8aca1c80025244b0fe507fe0754b"},
-    {file = "django-5.2.7.tar.gz", hash = "sha256:e0f6f12e2551b1716a95a63a1366ca91bbcd7be059862c1b18f989b1da356cdd"},
+    {file = "django-5.2.8-py3-none-any.whl", hash = "sha256:37e687f7bd73ddf043e2b6b97cfe02fcbb11f2dbb3adccc6a2b18c6daa054d7f"},
+    {file = "django-5.2.8.tar.gz", hash = "sha256:23254866a5bb9a2cfa6004e8b809ec6246eba4b58a7589bc2772f1bcc8456c7f"},
 ]
 
 [package.dependencies]
@@ -3577,25 +3577,6 @@ files = [
 ]
 
 [[package]]
-name = "pypdf2"
-version = "3.0.1"
-description = "A pure-python PDF library capable of splitting, merging, cropping, and transforming PDF files"
-optional = false
-python-versions = ">=3.6"
-groups = ["main"]
-files = [
-    {file = "PyPDF2-3.0.1.tar.gz", hash = "sha256:a74408f69ba6271f71b9352ef4ed03dc53a31aa404d29b5d31f53bfecfee1440"},
-    {file = "pypdf2-3.0.1-py3-none-any.whl", hash = "sha256:d16e4205cfee272fbdc0568b68d82be796540b1537508cef59388f839c191928"},
-]
-
-[package.extras]
-crypto = ["PyCryptodome"]
-dev = ["black", "flit", "pip-tools", "pre-commit (<2.18.0)", "pytest-cov", "wheel"]
-docs = ["myst_parser", "sphinx", "sphinx_rtd_theme"]
-full = ["Pillow", "PyCryptodome"]
-image = ["Pillow"]
-
-[[package]]
 name = "pytest"
 version = "8.4.2"
 description = "pytest: simple powerful testing with Python"
@@ -5317,4 +5298,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "~=3.13"
-content-hash = "9fa92e0e0a6d31036bc3210aa61febeeaf408bc33e315982cda5c167e580ae1a"
+content-hash = "690c84b347b2f54d8228b76d7eec40a8bdf82ebccceabee2d54f21d289db1432"

@@ -4,8 +4,9 @@ import os
 import subprocess
 import tempfile
 from concurrent.futures import ProcessPoolExecutor, as_completed
-import zipfile
 import re
+import xml.etree.ElementTree as ET
+import zipfile
 
 from django.core.files.storage import default_storage
 
@@ -13,7 +14,6 @@ from PIL import Image
 import docx2txt
 import pymupdf
 import pandas as pd
-from PyPDF2 import PdfReader
 import tesserocr
 from tqdm import tqdm
 
@@ -112,74 +112,46 @@ def display_pdf_stats(dfFiles, title="Statistiques globales"):
     
     print("=" * len(title))
 
-# Fonction pour extraire le texte d'un PDF avec Fitz, PdfReader ou Tesseract
-# OCR Tesseract en-dessous de word_thresehold = 50
-def extract_text_from_pdf(file_content: bytes, file_path: str, word_threshold=50):
+
+def extract_text_from_pdf(file_content: bytes, word_threshold=50):
     """
     Extrait le texte d'un PDF. Si le PDF contient moins de mots que le seuil défini,
     utilise l'OCR pour extraire le texte.
-    
+
     Args:
         file_content (bytes): Contenu du fichier
-        file_path (str): Chemin du fichier PDF
         word_threshold (int): Nombre minimal de mots en dessous duquel l'OCR est utilisé
         folder (str): Dossier contenant les fichiers PDF
-        
+
     Returns:
         tuple: (texte extrait, booléen indiquant si l'OCR a été utilisé)
     """
-    # Construire le chemin complet du fichier
-    try:
-        # Essayer d'extraire directement le texte avec PyPDF2
-        # TODO Use pymupdf instead, it's faster
-        # https://pymupdf.readthedocs.io/en/latest/about.html#performance
-        pdf = PdfReader(io.BytesIO(file_content))
-        text = ""
-        for page in pdf.pages:
-            text += page.extract_text() or ""
-        
-        # Compter les mots dans le texte extrait
-        words = re.findall(r'\w+', text.strip())
-        word_count = len(words)
-        
-        is_ocr_used = False
-        
-        # Si peu de mots sont extraits, c'est peut-être une image scannée
-        if word_count < word_threshold:
-            # Utiliser PyMuPDF (fitz) pour une seconde tentative
-            # doc = fitz.open(file_path)
-            # text_with_fitz = ""
-            # for page in doc:
-            #     text_with_fitz += page.get_text() or ""
-            #
-            # # Compter les mots avec fitz
-            # words_fitz = re.findall(r'\w+', text_with_fitz.strip())
-            # word_count_fitz = len(words_fitz)
-            word_count_fitz = 0
-            
-            # Si toujours peu de mots, utiliser l'OCR
-            if word_count_fitz < word_threshold:
-                is_ocr_used = True
-                text_ocr = ""
-                # https://pymupdf.readthedocs.io/en/latest/recipes-ocr.html#how-to-ocr-a-document-page
-                # https://pymupdf.readthedocs.io/en/latest/installation.html#installation-ocr
-                doc = pymupdf.open(stream=io.BytesIO(file_content))
-                for page in doc:
-                    pix = page.get_pixmap(dpi=200, colorspace=pymupdf.csRGB, alpha=0)
-                    image = pix.pil_image()
-                    text_ocr += tesserocr.image_to_text(image, lang='fra') or ""
-                    # alternatively we could use this tesseract wrapper from pymupdf
-                    # text_page = page.get_textpage_ocr(dpi=200, language='fra', full=True)
-                    # text_ocr += text_page.extractText()
-                return text_ocr.strip(), is_ocr_used
-            else:
-                return text_with_fitz.strip(), is_ocr_used
-        
-        return text.strip(), is_ocr_used
-    
-    except Exception as e:
-        print(f"Erreur lors de l'extraction du texte de {file_path}: {e}")
-        return "", False
+    doc = pymupdf.Document(stream=file_content)
+
+    # Essayer d'extraire directement le texte
+    text = "\n".join([page.get_text() for page in doc]).strip()
+    is_ocr_used = False
+
+    # Compter les mots dans le texte extrait
+    word_count = count_words(text)
+
+    # Si peu de mots sont extraits, c'est peut-être une image scannée
+    # Utilisation de l'OCR
+    if word_count < word_threshold:
+        is_ocr_used = True
+        text_ocr = ""
+        # https://pymupdf.readthedocs.io/en/latest/recipes-ocr.html#how-to-ocr-a-document-page
+        # https://pymupdf.readthedocs.io/en/latest/installation.html#installation-ocr
+        for page in doc:
+            pix = page.get_pixmap(dpi=200, colorspace=pymupdf.csRGB, alpha=0)
+            image = pix.pil_image()
+            text_ocr += tesserocr.image_to_text(image, lang='fra') or ""
+            # Alternatively, we could use this tesseract wrapper from pymupdf
+            # text_page = page.get_textpage_ocr(dpi=200, language='fra', full=True)
+            # text_ocr += text_page.extractText()
+        text = text_ocr.strip()
+
+    return text, is_ocr_used
 
 def extract_text_from_docx(file_content: bytes, file_path: str):
     """
@@ -257,7 +229,6 @@ def extract_text_from_odt(file_content: bytes, file_path: str):
                 if 'content.xml' in zip_file.namelist():
                     content = zip_file.read('content.xml')
                     # Parser le XML pour extraire le texte
-                    import xml.etree.ElementTree as ET
                     root = ET.fromstring(content)
                     
                     # Extraire tout le texte des éléments
@@ -468,7 +439,6 @@ def is_text_readable(text):
         r'\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\b',  # Mois anglais
     ]
     
-    import re
     pattern_matches = sum(1 for pattern in text_patterns if re.search(pattern, text, re.IGNORECASE))
     
     # Si au moins 2 patterns sont trouvés, c'est probablement du texte lisible
@@ -485,8 +455,7 @@ def extract_text_from_doc_alternative(file_content: bytes):
     """
 
     try:
-        import re
-        
+
         # Chercher uniquement des chaînes de texte ASCII de qualité
         # Pattern pour les mots de 4+ caractères avec lettres et espaces
         ascii_patterns = re.findall(rb'[a-zA-Z\x20-\x7E]{4,}', file_content)
@@ -558,8 +527,6 @@ def extract_text_from_doc_ole2(file_content: bytes):
         # Essayer d'utiliser python-docx2txt ou une bibliothèque similaire
         # Cette méthode est plus spécialisée pour les fichiers .doc OLE2
 
-        import re
-        
         # Patterns spécifiques aux fichiers Word OLE2
         word_patterns = [
             rb'WordDocument',  # Signature Word
@@ -671,7 +638,7 @@ def extract_text(file_content: bytes, file_path: str, file_type: str, word_thres
         logger.warning(f"Unknown file type for {file_path} (type={file_type!r})")
         return "", False
     elif file_type == 'pdf':
-        text, is_ocr = extract_text_from_pdf(file_content, file_path, word_threshold)
+        text, is_ocr = extract_text_from_pdf(file_content, word_threshold)
     elif file_type == 'docx':
         text, is_ocr = extract_text_from_docx(file_content, file_path)
     elif file_type == 'odt':
@@ -767,6 +734,9 @@ def process_df_row(row, word_threshold):
         logger.error("Erreur: Le fichier %s n'existe pas", file_path)
         text, is_ocr = "", False
         nb_words = 0
+    except Exception as e:
+        logger.exception("Erreur lors de l'extraction du texte du fichier %s : %s", file_path, e)
+
 
     return row['index'], {
         'text': text,
