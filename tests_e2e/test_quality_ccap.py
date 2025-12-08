@@ -15,6 +15,7 @@ from app.processor.post_processing_llm import *
 
 logger = logging.getLogger("docia." + __name__)
 
+
 def normalize_string(s):
     """Normalise une chaîne de caractères : minuscule et sans caractères spéciaux."""
     if pd.isna(s) or s == "":
@@ -27,99 +28,76 @@ def normalize_string(s):
     return s
 
 
-def compare_iban(llm_val:str, ref_val:str):
-    """Compare l'IBAN : comparaison des valeurs."""
-    if (llm_val == '' or llm_val is None or llm_val == 'nan') and (ref_val == '' or ref_val is None or ref_val == 'nan'):
-        return True
-    return llm_val == ref_val
+def compare_contract_object(llm_val: str, ref_val: str):
+    """Compare l'objet du marché CCAP."""
+    return False
 
 
-def compare_bic(llm_val:str, ref_val:str):
-    """Compare le BIC : comparaison des valeurs."""
-    if (llm_val == '' or llm_val is None or llm_val == 'nan') and (ref_val == '' or ref_val is None or ref_val == 'nan'):
-        return True
-    return llm_val == ref_val
+def compare_batches(llm_val: str, ref_val: str):
+    """Compare les lots du marché."""
+    return False
 
 
-def compare_bank(llm_val:str, ref_val:str):
-    """Compare la banque : comparaison des valeurs."""
-    llm_norm = normalize_string(llm_val)
-    ref_norm = normalize_string(ref_val)
-
-    if llm_norm == ref_norm:
-        return True
-    else:
-        llm_norm_no_space = llm_norm.replace(" ", "")
-        ref_norm_no_space = ref_norm.replace(" ","")
-        return llm_norm_no_space == ref_norm_no_space
+def compare_contract_form(llm_val: str, ref_val: str):
+    """Compare la forme du marché CCAP."""
+    return False
 
 
-def compare_account_owner(llm_val:str, ref_val:str):
-    """Compare le titulaire du compte : comparaison des valeurs."""
-    llm_norm = normalize_string(llm_val)
-    ref_norm = normalize_string(ref_val)
-
-    if llm_norm == ref_norm:
-        return True
-    else:
-        llm_norm_no_space = llm_norm.replace(" ", "")
-        ref_norm_no_space = ref_norm.replace(" ","")
-        return llm_norm_no_space == ref_norm_no_space
+def compare_batching(llm_val: str, ref_val: str):
+    """Compare l'allottissement."""
+    return False
 
 
-def compare_address(llm_val:str, ref_val:str):
-    """Compare l'adresse : comparaison des valeurs selon la structure JSON.
-    
-    Structure attendue : {
-        'numero_voie': 'le numéro de voie',
-        'nom_voie': 'le nom de la voie',
-        'complement_adresse': 'le complément d'adresse éventuel',
-        'code_postal': 'le code postal',
-        'ville': 'la ville',
-        'pays': 'le pays'
-    }
-    """
-    # Gestion des valeurs vides/None/nan
-    if (llm_val == '' or llm_val is None or llm_val == 'nan') and (ref_val == '' or ref_val is None or ref_val == 'nan'):
-        return True
-    if (llm_val == '' or llm_val is None or llm_val == 'nan') or (ref_val == '' or ref_val is None or ref_val == 'nan'):
-        return False
-    
-    llm_dict = json.loads(llm_val)
-    ref_dict = json.loads(ref_val)
-    
-    # Liste des champs à comparer
-    fields = ['numero_voie', 'nom_voie', 'complement_adresse', 'code_postal', 'ville', 'pays']
-    
-    # Comparer chaque champ
-    for field in fields:
-        llm_field_val = llm_dict.get(field, '')
-        ref_field_val = ref_dict.get(field, '')
-        
-        # Normaliser les valeurs vides
-        llm_field_val = llm_field_val.strip().title()
-        ref_field_val = llm_field_val.strip().title()
-        
-        # Comparer les valeurs du champ
-        if llm_field_val != ref_field_val:
-            return False
-    
-    return True
+def compare_batches_duration(llm_val: str, ref_val: str):
+    """Compare la durée des lots."""
+    return False
 
 
-def compare_domiciliation(llm_val:str, ref_val:str):
-    """Compare la domiciliation : comparaison des valeurs."""
-    if (llm_val == '' or llm_val is None or llm_val == 'nan') and (ref_val == '' or ref_val is None or ref_val == 'nan'):
-        return True
-    return llm_val == ref_val
+def compare_contract_duration(llm_val: str, ref_val: str):
+    """Compare la durée du marché."""
+    return False
+
+
+def compare_price_revision_formula(llm_val: str, ref_val: str):
+    """Compare la formule de révision des prix."""
+    return False
+
+
+def compare_reference_index(llm_val: str, ref_val: str):
+    """Compare l'index de référence."""
+    return False
+
+
+def compare_advance_conditions(llm_val: str, ref_val: str):
+    """Compare les conditions d'avance CCAP."""
+    return False
+
+
+def compare_price_revision(llm_val: str, ref_val: str):
+    """Compare la révision des prix."""
+    return False
+
+
+def compare_batches_amount(llm_val: str, ref_val: str):
+    """Compare les montants HT des lots."""
+    return False
+
+
+def compare_amounts(llm_val: str, ref_val: str):
+    """Compare les montants HT."""
+    return False
+
+
+def compare_global_contract(llm_val: str, ref_val: str):
+    """Compare le CCAG."""
+    return False
 
 
 def patch_post_processing(df):
     df_patched = df.copy()
     post_processing_functions = {
-        'iban': post_processing_iban,
-        'bic': post_processing_bic,
-        'adresse_postale_titulaire': post_processing_postal_address
+
+
     }
 
     for idx, row in df_patched.iterrows():
@@ -154,19 +132,26 @@ def get_comparison_functions():
         dict: Dictionnaire associant les noms de colonnes à leurs fonctions de comparaison
     """
     return {
-        'iban': compare_iban,
-        'bic': compare_bic,
-        'titulaire_compte': compare_account_owner,
-        'adresse_postale_titulaire': compare_address,
-        'domiciliation': compare_domiciliation,
-        'banque': compare_bank,
+        'objet_marche': compare_contract_object,
+        'lots': compare_batches,
+        'forme_marche': compare_contract_form,
+        'allottissement': compare_batching,
+        'duree_lots': compare_batches_duration,
+        'duree_marche': compare_contract_duration,
+        'formule_revision_prix': compare_price_revision_formula,
+        'index_reference': compare_reference_index,
+        'condition_avance': compare_advance_conditions,
+        'revision_prix': compare_price_revision,
+        'montant_ht_lots': compare_batches_amount,
+        'montants_ht': compare_amounts,
+        'ccag': compare_global_contract,
     }
 
 
 def create_batch_test(multi_line_coef = 1):
     """Test de qualité des informations extraites par le LLM."""
     # Chemin vers le fichier CSV de test
-    csv_path = "/Users/dinum-284659/dev/data/test/test_rib.csv"
+    csv_path = "/Users/dinum-284659/dev/data/test/test_ccap.csv"
     
     # Lecture du fichier CSV
     df_test = pd.read_csv(csv_path).astype(str)
@@ -175,9 +160,6 @@ def create_batch_test(multi_line_coef = 1):
     # Post-traitement direct des colonnes du DataFrame de test (après lecture du CSV)
     # Les fonctions post-traitement sont utilisées comme pour patch_post_traitement, mais appliquées colonne par colonne
     POST_PROCESSING_FUNCTIONS = {
-        'iban': post_processing_iban,
-        'bic': post_processing_bic,
-        'adresse_postale_titulaire': post_processing_postal_address
         # Ajouter ici d'autres champs si besoin dans le futur
     }
 
@@ -200,7 +182,7 @@ def create_batch_test(multi_line_coef = 1):
     # Création du DataFrame pour l'analyse
     df_analyze = pd.DataFrame()
     df_analyze['filename'] = df_test['filename']
-    df_analyze['classification'] = 'rib'
+    df_analyze['classification'] = 'ccap'
     df_analyze['relevant_content'] = df_test['text']
     
     # Configuration du LLM
@@ -211,7 +193,7 @@ def create_batch_test(multi_line_coef = 1):
         api_key=API_KEY_ALBERT,
         base_url=BASE_URL_PROD,
         llm_model=llm_model,
-        df=df_analyze,
+        df=df_analyze.iloc[:10],
         df_attributes=ATTRIBUTES,
         max_workers=20,
         temperature=0.3,
@@ -244,7 +226,7 @@ def create_batch_test(multi_line_coef = 1):
     return df_merged
 
 
-def check_quality_one_field(df_merged, col_to_test = 'iban'):
+def check_quality_one_field(df_merged, col_to_test = 'objet_marche'):
     # ============================================================================
     # COMPARAISON POUR UNE COLONNE SPÉCIFIQUE
     # ============================================================================
@@ -481,10 +463,27 @@ def check_global_statistics(df_merged, excluded_columns = []):
     print(f"{'='*120}\n")
 
 
-df_merged = create_batch_test(3)
+df_merged = create_batch_test()
 
-check_quality_one_field(df_merged, col_to_test = 'iban')
 
-check_quality_one_row(df_merged, row_idx_to_test = 26)
+check_quality_one_field(df_merged, col_to_test = 'forme_marche')
 
-check_global_statistics(df_merged, excluded_columns = ['domiciliation', 'banque'])
+check_quality_one_row(df_merged, row_idx_to_test = 1)
+
+check_global_statistics(df_merged, excluded_columns = [])
+
+# {
+#   "objet_marche": "", 
+#   "lots": "", 
+#   "forme_marche_ccap": "", 
+#   "allottissement_ccap": "", 
+#   "duree_lots": "", 
+#   "duree_marche": "", 
+#   "formule_revision_prix": "", 
+#   "index_reference_ccap": "", 
+#   "condition_avance_ccap": "", 
+#   "revision_prix_ccap": "", 
+#   "montant_ht_lots_ccap": "", 
+#   "montant_ht_ccap": "", 
+#   "ccag_ccap": "" 
+# }

@@ -791,7 +791,7 @@ def check_global_statistics(df_merged, excluded_columns = []):
     print(f"{'='*120}\n")
 
 
-df_merged = create_batch_test(3)
+df_merged = create_batch_test()
 
 EXCLUDED_COLUMNS = [
     'objet_marche', 
@@ -799,10 +799,10 @@ EXCLUDED_COLUMNS = [
     'avance'
 ]
 
-check_quality_one_field(df_merged, col_to_test = 'rib_mandataire')
+check_quality_one_field(df_merged, col_to_test = 'siret_mandataire')
 
-check_quality_one_row(df_merged, row_idx_to_test = 0, excluded_columns = EXCLUDED_COLUMNS)
+check_quality_one_row(df_merged, row_idx_to_test = 8, excluded_columns = EXCLUDED_COLUMNS)
 
 check_quality_one_field(df_merged, col_to_test = 'cotraitants')
 
-check_global_statistics(df_merged, excluded_columns = ['avance'])
+check_global_statistics(df_merged, excluded_columns = EXCLUDED_COLUMNS)
