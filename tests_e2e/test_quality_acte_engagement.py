@@ -11,7 +11,7 @@ sys.path.append(".")
 
 from app.processor.analyze_content import df_analyze_content, LLMClient, parse_json_response
 from app.processor.attributes_query import ATTRIBUTES
-from app.ai_models.config_albert import API_KEY_ALBERT, BASE_URL_PROD
+from app.ai_models.config_albert import ALBERT_API_KEY, ALBERT_BASE_URL
 from app.processor.post_processing_llm import *
 
 logger = logging.getLogger("docia." + __name__)
@@ -51,8 +51,8 @@ def compare_object(llm_value, ref_value, llm_model='albert-small'):
     try:
         # Création d'une instance LLMEnvironment
         llm_env = LLMClient(
-            api_key=API_KEY_ALBERT,
-            base_url=BASE_URL_PROD,
+            api_key=ALBERT_API_KEY,
+            base_url=ALBERT_BASE_URL,
             llm_model=llm_model
         )
         
@@ -125,8 +125,8 @@ def compare_beneficiary_administration(llm_value, ref_value, llm_model='albert-s
     try:
         # Création d'une instance LLMEnvironment
         llm_env = LLMClient(
-            api_key=API_KEY_ALBERT,
-            base_url=BASE_URL_PROD,
+            api_key=ALBERT_API_KEY,
+            base_url=ALBERT_BASE_URL,
             llm_model=llm_model
         )
 
@@ -518,8 +518,8 @@ def create_batch_test(multi_line_coef = 1):
     
     # Analyse du contenu avec df_analyze_content
     df_result = df_analyze_content(
-        api_key=API_KEY_ALBERT,
-        base_url=BASE_URL_PROD,
+        api_key=ALBERT_API_KEY,
+        base_url=ALBERT_BASE_URL,
         llm_model=llm_model,
         df=df_analyze,
         df_attributes=ATTRIBUTES,
@@ -801,7 +801,7 @@ EXCLUDED_COLUMNS = [
 
 check_quality_one_field(df_merged, col_to_test = 'siret_mandataire')
 
-check_quality_one_row(df_merged, row_idx_to_test = 8, excluded_columns = EXCLUDED_COLUMNS)
+check_quality_one_row(df_merged, row_idx_to_test = 0, excluded_columns = EXCLUDED_COLUMNS)
 
 check_quality_one_field(df_merged, col_to_test = 'cotraitants')
 

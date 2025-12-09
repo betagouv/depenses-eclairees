@@ -226,16 +226,16 @@ def post_processing_amount(amount: str) -> str:
     if not isinstance(amount, str):
         amount = str(amount)
     # Retirer espaces insécables et normaux
-    amount = amount.replace('\xa0', ' ').replace(u'\u202f', ' ').replace(" ", "")
+    amount = amount.replace(" ", "")
     # Chercher un nombre avec ou sans partie décimale, séparateur . ou ,
-    match = re.search(r'(\d+(?:[.,]\d{1,2})?)', amount)
+    match = re.search(r'(\d+(?:[.,]\d+)?)', amount)
     if match:
         num = match.group(1)
         # Remplacer la virgule (cas français) par un point pour le float Python
         num = num.replace(',', '.')
         try:
-            return json.dumps(round(float(num), 2))
-        except (ValueError, TypeError):
+            return str(round(float(num), 2))
+        except ValueError:
             return ''
     return ''
 

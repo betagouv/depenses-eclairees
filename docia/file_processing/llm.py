@@ -16,8 +16,8 @@ class LLMClient:
         api_key: str | None = None,
         base_url: str | None = None,
     ):
-        self.api_key = api_key or settings.API_KEY_ALBERT
-        self.base_url = base_url or settings.BASE_URL_PROD
+        self.api_key = api_key or settings.ALBERT_API_KEY
+        self.base_url = base_url or settings.ALBERT_BASE_URL
         self.llm_model = llm_model
 
         # Initialisation du client OpenAI
