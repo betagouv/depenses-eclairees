@@ -142,6 +142,7 @@ def check_consistency_bank_account(bank_account_input: str) -> bool:
 
     # 2. Déplacer les 4 premiers caractères à la fin
     rearranged = bank_account_input[4:] + bank_account_input[:4]
+    rearranged = rearranged.upper()
 
     # 3. Remplacer chaque lettre par sa valeur numérique A=10, B=11, ...
     converted = ""
@@ -187,10 +188,8 @@ def post_processing_bank_account(bank_account_input: str) -> str:
         json_bank_account['iban'] = re.sub(r'\s+', '', json_bank_account['iban']).upper()
         if((len(json_bank_account['iban']) != 27 and len(json_bank_account['iban'])) != 0):
             return json.dumps({'banque': json_bank_account.get('banque', ''), 'iban': ''})
-            # raise ValueError("L'IBAN doit contenir 27 caractères")
         if(not check_consistency_bank_account(json_bank_account['iban']) and len(json_bank_account['iban']) != 0):
             return json.dumps({'banque': json_bank_account.get('banque', ''), 'iban': ''})
-            # raise ValueError("L'IBAN n'est pas cohérent")
         return json.dumps({'banque': json_bank_account.get('banque', ''), 'iban': json_bank_account['iban'].upper()})
     
     # Si on a les 4 champs numériques mais pas d'iban, on construit l'iban
@@ -198,10 +197,8 @@ def post_processing_bank_account(bank_account_input: str) -> str:
         iban = 'FR76' + json_bank_account['code_banque'] + json_bank_account['code_guichet'] + json_bank_account['numero_compte'] + json_bank_account['cle_rib']
         if(len(iban) != 27 and len(iban) != 0):
             return json.dumps({'banque': json_bank_account.get('banque', ''), 'iban': ''})
-            # raise ValueError("L'IBAN doit contenir 27 caractères")
         if(not check_consistency_bank_account(iban) and len(iban) != 0):
             return json.dumps({'banque': json_bank_account.get('banque', ''), 'iban': ''})
-            # raise ValueError("L'IBAN n'est pas cohérent")
         return json.dumps({'banque': json_bank_account.get('banque', ''), 'iban': iban})
     
     # Si ni l'une ni l'autre condition n'est validée, on retourne une erreur explicite
@@ -287,7 +284,7 @@ def post_processing_subcontractors(subcontractors: str) -> str:
                 # Pour chaque sous-traitant, on nettoie le SIRET et on construit un dictionnaire propre
                 clean_subcontractor = {
                     'nom': subcontractor['nom'],
-                    'siret': post_traitement_siret(subcontractor['siret'])
+                    'siret': post_processing_siret(subcontractor['siret'])
                 }
                 clean_subcontractors_list.append(clean_subcontractor)
             except Exception as e:
@@ -387,36 +384,25 @@ def post_processing_other_bank_accounts(other_bank_accounts: str) -> str:
         
         # Parcourir chaque compte bancaire de la liste
         for account_entry in bank_accounts_list:
-            try:
-                partner_name = account_entry.get('societe', '')
-                account_data = account_entry.get('rib', {})
-                
-                # Convertir le dictionnaire de compte en string JSON pour post_processing_bank_account
-                account_str = json.dumps(account_data) if isinstance(account_data, dict) else str(account_data)
-                
-                # Appliquer le post-traitement à chaque compte
-                processed_account = post_processing_bank_account(account_str)
-                
-                # Parser le résultat pour vérifier qu'il est valide
-                account_dict = json.loads(processed_account)
-                
-                # Ajouter à la liste seulement si le compte est valide (non vide)
-                if account_dict and (account_dict.get('iban', '') != '' or account_dict.get('banque', '') != ''):
-                    clean_bank_accounts.append({'societe': partner_name,'rib': account_dict})
-                    
-            except Exception as e:
-                # Si une erreur survient lors du traitement d'un compte, on loggue et on continue
-                logger.warning(f"Erreur dans post_processing_other_bank_accounts pour un compte bancaire : {e}")
-                # On n'ajoute pas ce compte à la liste nettoyée
-                continue
+            partner_name = account_entry.get('societe', '')
+            account_data = account_entry.get('rib', {})
+            
+            # Convertir le dictionnaire de compte en string JSON pour post_processing_bank_account
+            account_str = json.dumps(account_data) if isinstance(account_data, dict) else str(account_data)
+            
+            # Appliquer le post-traitement à chaque compte
+            processed_account = post_processing_bank_account(account_str)
+            
+            # Parser le résultat pour vérifier qu'il est valide
+            account_dict = json.loads(processed_account)
+            
+            # Ajouter à la liste seulement si le compte est valide (non vide)
+            if account_dict and (account_dict.get('iban', '') != '' or account_dict.get('banque', '') != ''):
+                clean_bank_accounts.append({'societe': partner_name,'rib': account_dict})
         
         # Retourner la liste nettoyée des comptes bancaires
         return json.dumps(clean_bank_accounts)
 
-    except json.JSONDecodeError as e:
-        # Si une erreur globale apparaît lors du parsing JSON, on loggue et renvoie une liste vide
-        logger.error(f"Erreur dans post_processing_other_bank_accounts lors du parsing JSON : {e}")
-        return json.dumps([])
     except Exception as e:
         # Si une autre erreur globale apparaît, on loggue et renvoie une liste vide
         logger.error(f"Erreur dans post_processing_other_bank_accounts : {e}")
