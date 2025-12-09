@@ -2,5 +2,5 @@
 from django.conf import settings
 
 # Récupérer les variables
-BASE_URL_PROD = settings.ALBERT_BASE_URL
-API_KEY_ALBERT = settings.ALBERT_API_KEY
+ALBERT_BASE_URL = settings.ALBERT_BASE_URL
+ALBERT_API_KEY = settings.ALBERT_API_KEY

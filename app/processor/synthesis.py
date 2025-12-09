@@ -9,7 +9,7 @@ from app import grist
 from app.data.sql.sql import bulk_update_engagements, select_engagements_with_attachments
 
 from app.grist import URL_TABLE_ENGAGEMENTS, URL_TABLE_ATTACHMENTS, API_KEY_GRIST
-from app.ai_models.config_albert import API_KEY_ALBERT, BASE_URL_PROD
+from app.ai_models.config_albert import ALBERT_API_KEY, ALBERT_BASE_URL
 from app.utils import log_execution_time
 
 
