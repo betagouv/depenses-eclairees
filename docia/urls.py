@@ -17,20 +17,18 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import include, path
+from django.views.generic import TemplateView
 
 from lasuite.oidc_login.urls import urlpatterns as oidc_urls
-from magicauth.urls import urlpatterns as magicauth_urls
 
 from . import settings, views
-from .auth import views as auth_views
 from .tracking.urls import urlpatterns as tracking_urls
 
 urlpatterns = [
     path("", views.home, name="home"),
-    path("login", auth_views.LoginView.as_view(), name="login"),
+    path("login", TemplateView.as_view(template_name="docia/auth/login.html"), name="login"),
     path("t/", include(tracking_urls)),
     path("oidc/", include(oidc_urls)),
-    path("magicauth/", include(magicauth_urls)),
 ]
 
 if settings.ADMIN_BASE_URL_PATH:

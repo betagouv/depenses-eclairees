@@ -1047,18 +1047,6 @@ dev = ["celery (>=5.0)", "django-configurations (>=2.5.1)", "factory-boy", "pyte
 malware-detection = ["celery (>=5.0)"]
 
 [[package]]
-name = "django-magicauth"
-version = "1.0.2"
-description = "Password-less authentication: login by clicking on a magic link received by email."
-optional = false
-python-versions = "*"
-groups = ["main"]
-files = [
-    {file = "django-magicauth-1.0.2.tar.gz", hash = "sha256:7c3b19bebe46d170842864b70c1605bb1e4da352aa293e5ad14d701cd935c893"},
-    {file = "django_magicauth-1.0.2-py3-none-any.whl", hash = "sha256:3c05a7fa11864b4e15a4c567f799a09e210b1e5bf9e0fbb11106c7d44c1397b0"},
-]
-
-[[package]]
 name = "django-storages"
 version = "1.14.6"
 description = "Support for many storage backends in Django"
@@ -4956,4 +4944,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "~=3.13"
-content-hash = "aed29397a13839c9c9c27d856f9b4105f93571b2b2b90f0a62634df31b94b39e"
+content-hash = "28a6829e8675095a4f900f7696f924abb98aa73e369ebd38ca61c722dd8acfae"
