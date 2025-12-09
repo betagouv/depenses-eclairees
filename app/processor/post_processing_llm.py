@@ -356,7 +356,7 @@ def post_processing_siret(siret: str) -> str:
         siret = siret.split('.')[0]
 
     # Si restent seulement des chiffres et longueur 14, c'est ok
-    if siret.isdigit() and len(siret) == 14:
+    if (siret.isdigit() and len(siret) == 14) or len(siret) == 0:
         return siret
 
     # Si pas corrigible, on lève une erreur ValueError

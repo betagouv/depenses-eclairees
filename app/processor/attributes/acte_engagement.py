@@ -116,7 +116,39 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
      - 2ème cas (secondaire - uniquement s'il n'y a pas d'IBAN) : un json sous format suivant {"banque": "nom de la banque", "code_banque": "code de la banque à 5 chiffres", "code_guichet": "code du guichet à 5 chiffres", "numero_compte": "numéro de compte à 11 chiffres", "cle_rib": "clé du RIB à 2 chiffres"}
 """,
         "search": "",
-        "output_field": "rib_mandataire"
+        "output_field": "rib_mandataire",
+        "schema":
+"""
+{
+    "type": "object",
+    "oneOf": [
+        {
+            "type": "object",
+            "properties": {
+                "banque": {"type": "string"},
+                "iban": {"type": "string"}
+            },
+            "required": ["banque", "iban"]
+        },
+        {
+            "type": "object",
+            "properties": {
+                "banque": {"type": "string"},
+                "code_banque": {"type": "string"},
+                "code_guichet": {"type": "string"},
+                "numero_compte": {"type": "string"},
+                "cle_rib": {"type": "string"}
+            },
+            "required": [
+                "banque",
+                "code_banque",
+                "code_guichet",
+                "numero_compte",
+                "cle_rib"
+            ]
+        }
+    ]
+}"""
     },
 
 #     "avance":{
@@ -158,7 +190,20 @@ Règles d’extraction :
     * Si aucun cotraitant valide n’est trouvé, renvoyer exactement : []
 """,
         "search": "",
-        "output_field": "cotraitants"
+        "output_field": "cotraitants",
+        "schema":
+"""
+{
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "nom": {"type": "string"},
+            "siret": {"type": "string"}
+        },
+        "required": ["nom", "siret"]
+    }
+}"""
     },
 
     "sous_traitants":{
@@ -171,7 +216,20 @@ Règles d’extraction :
      Format : une liste de dictionnaires sous format [{"nom": "nom de la société", "siret": "siret de la société"}]
 """,
         "search": "Section du document qui décrit le groupement et les entreprises qui le composent.",
-        "output_field": "sous_traitants"
+        "output_field": "sous_traitants",
+        "schema":
+"""
+{
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "nom": {"type": "string"},
+            "siret": {"type": "string"}
+        },
+        "required": ["nom", "siret"]
+    }
+}"""
     },
 
     "rib_autres":{
@@ -188,7 +246,27 @@ Règles d’extraction :
      Format : une liste de dictionnaires json sous format [{"societe": "nom de la société du groupement", "rib": {"banque": "nom de la banque", "iban": "IBAN avec espaces tous les 4 caractères"}}]
 """,
         "search": "Section du document qui décrit le groupement et les entreprises qui le composent.",
-        "output_field": "rib_autres"
+        "output_field": "rib_autres",
+        "schema":
+"""
+{
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "societe": {"type": "string"},
+            "rib": {
+                "type": "object",
+                "properties": {
+                    "banque": {"type": "string"},
+                    "iban": {"type": "string"}
+                },
+                "required": ["banque", "iban"]
+            }
+        },
+        "required": ["societe", "rib"]
+    }
+}"""
     },
 
     "montant_ht": {
@@ -245,7 +323,24 @@ Règles d’extraction :
         Format : un json sous format suivant {"duree_initiale": "nombre entier de mois", "duree_reconduction": "nombre entier de mois", "nb_reconductions": "nombre entier de reconductions possibles", "delai_tranche_optionnelle": "nombre entier de mois"}
     """,
         "search": "Section du document qui décrit la durée du marché ou le délai d'exécution des prestations.",
-        "output_field": "duree"
+        "output_field": "duree",
+        "schema":
+"""
+{
+    "type": "object",
+    "properties": {
+        "duree_initiale": {"type": "integer"},
+        "duree_reconduction": {"type": "integer"},
+        "nb_reconductions": {"type": "integer"},
+        "delai_tranche_optionnelle": {"type": "integer"}
+    },
+    "required": [
+        "duree_initiale",
+        "duree_reconduction",
+        "nb_reconductions",
+        "delai_tranche_optionnelle"
+    ]
+}"""
     },
 
     "duree_explication": {
