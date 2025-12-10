@@ -23,4 +23,4 @@ done
 
 # Generate pdf ocr
 "$LIBREOFFICE" --headless --convert-to "pdf" --outdir /tmp/ "$SCRIPT_DIR/lettre.png"
-cp /tmp/lettre.pdf "$SCRIPT_DIR/lettre-orc.pdf"
+cp /tmp/lettre.pdf "$SCRIPT_DIR/lettre-ocr.pdf"
