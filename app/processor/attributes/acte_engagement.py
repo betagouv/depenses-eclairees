@@ -110,7 +110,7 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
         * 'code_guichet' : code du guichet à 5 chiffres (espaces non compris)
         * 'numero_compte' : numéro de compte français à 11 chiffres (espaces non compris)
         * 'cle_rib' : clé du RIB à 2 chiffres (espaces non compris)
-     - Ne rien renvoyer si aucune information bancaire trouvée pour le mandataire (ni IBAN, ni informations seules).
+     - Si aucune information bancaire trouvée pour le mandataire (ni IBAN, ni informations seules), renvoyer {}
      Format : 
      - 1er cas (prioritaire) : un json sous format suivant {"banque": "nom de la banque", "iban": "IBAN avec espaces tous les 4 caractères"}
      - 2ème cas (secondaire - uniquement s'il n'y a pas d'IBAN) : un json sous format suivant {"banque": "nom de la banque", "code_banque": "code de la banque à 5 chiffres", "code_guichet": "code du guichet à 5 chiffres", "numero_compte": "numéro de compte à 11 chiffres", "cle_rib": "clé du RIB à 2 chiffres"}
@@ -145,7 +145,8 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
                             "numero_compte",
                             "cle_rib"
                         ]
-                    }
+                    },
+                    {}
                 ]
             }
     },
@@ -183,7 +184,7 @@ Règles d’extraction :
 - Ignorer totalement les entreprises mentionnées comme sous-traitantes.
 - Ignorer toute mention générique contenant le mot “cotraitant” (ex. “Cotraitant”, “cotraitant1”, “cotraitant2”) : ce ne sont pas des entreprises.
 - Une entreprise n’est retenue que si au moins l’un des éléments suivants apparaît dans le texte : un nom réel d’entreprise, un numéro SIRET (14 chiffres) ou SIREN (9 chiffres) valide.
-- Ne rien renvoyer si aucun cotraitant réel n’est identifié dans le texte.
+- Si aucun cotraitant réel n’est identifié dans le texte, renvoyer []
 - Format attendu : 
     * une liste JSON : [{"nom": "...", "siret": "..."}]
     * Si aucun cotraitant valide n’est trouvé, renvoyer exactement : []
@@ -304,15 +305,15 @@ Règles d’extraction :
         Indices :
         - Chercher dans le paragraphe indiquant la durée du marché ou le délai d'exécution des prestations.
         - Durée initiale : la durée du marché ferme (sans reconduction ou tranches optionnelles), en nombre de mois.
-            * En l'absence de précisions sur la durée ferme, renvoyer ''
+            * En l'absence de précisions sur la durée ferme, renvoyer None
             * Exemple : une durée de 1 an, renvoyer 12.
             * Pour une durée entre des dates clés, par exemple "jusqu'à la réunion de conclusion 6 mois après le lancement" : renvoyer 6 mois.
-                -> Attention : si ces dates clés sont insuffisamment documentées, renvoyer ''
+                -> Attention : si ces dates clés sont insuffisamment documentées, renvoyer None
         - Extension de durée possible : extenion maximale en nombre de mois.
-            * En l'absence d'informations claires, renvoyer ''
+            * En l'absence d'informations claires, renvoyer None
             * Si des reconductions sont précisées (ne pas confondre avec des tranches optionnelles qui sont gérées ci-dessous) :
-                1. duree_reconduction : Trouver la durée d'une reconduction (en nombre de mois). Si l'information n'est pas précisée, renvoyer ''.
-                2. nb_reconductions : Trouver le nombre de reconductions possibles. Si l'information n'est pas précisée, renvoyer ''.
+                1. duree_reconduction : Trouver la durée d'une reconduction (en nombre de mois). Si l'information n'est pas précisée, renvoyer None.
+                2. nb_reconductions : Trouver le nombre de reconductions possibles. Si l'information n'est pas précisée, renvoyer None.
             * Si des tranches optionnelles sont précisées : renvoyer la durée de l'ensemble des tranches optionnelles.
                 1. delai_tranche_optionnelle : Trouver la durée de l'ensemble des tranches optionnelles.
                     Exemple : 2 tranches optionnelles de 8 mois, renvoyer 8 + 8 = 16.
@@ -321,21 +322,24 @@ Règles d’extraction :
         "search": "Section du document qui décrit la durée du marché ou le délai d'exécution des prestations.",
         "output_field": "duree",
         "schema":
-            {
-                "type": "object",
-                "properties": {
-                    "duree_initiale": {"type": "integer"},
-                    "duree_reconduction": {"type": "integer"},
-                    "nb_reconductions": {"type": "integer"},
-                    "delai_tranche_optionnelle": {"type": "integer"}
+            {"oneOf": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "duree_initiale": {"type": "integer"},
+                        "duree_reconduction": {"type": "integer"},
+                        "nb_reconductions": {"type": "integer"},
+                        "delai_tranche_optionnelle": {"type": "integer"}
+                    },
+                    "required": [
+                        "duree_initiale",
+                        "duree_reconduction",
+                        "nb_reconductions",
+                        "delai_tranche_optionnelle"
+                    ]
                 },
-                "required": [
-                    "duree_initiale",
-                    "duree_reconduction",
-                    "nb_reconductions",
-                    "delai_tranche_optionnelle"
-                ]
-            }
+                {}
+            ]}
     },
 
     "duree_explication": {

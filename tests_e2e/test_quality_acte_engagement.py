@@ -220,31 +220,25 @@ def compare_siren(llm_value, ref_value):
     return llm_str == ref_str
 
 
-def compare_mandatee_bank_account(llm_val:str, ref_val:str):
+def compare_mandatee_bank_account(llm_val:dict[str, str], ref_val:dict[str, str]):
     """Compare rib_mandataire : format JSON, comparaison des 5 champs."""
 
-    if (llm_val == '' or llm_val is None or llm_val == 'nan') and (ref_val == '' or ref_val is None or ref_val == 'nan'):
-        return True
-
-    elif (llm_val == '' or llm_val is None or llm_val == 'nan'):
+    if llm_val == {} or ref_val == {}:
         return False
     
-    llm_dict = json.loads(llm_val)
-    ref_dict = json.loads(ref_val)
-
     # Si 'iban' est dans ref_dict et non vide, alors on compare les ibans (exact).
-    if ref_dict.get('iban', '') != '':
-        if llm_dict.get('iban', '') == ref_dict.get('iban', ''):
+    if ref_val.get('iban', '') != '':
+        if llm_val.get('iban', '') == ref_val.get('iban', ''):
             return True
         else:
             return False
     else:
         # Si 'iban' absent ou vide dans ref_dict, alors on vérifie qu'il est aussi absent ou vide dans llm_dict, ET que les banques sont les mêmes (normalisées)
-        if llm_dict.get('iban', '') != '':
+        if llm_val.get('iban', '') != '':
             return False
         # S'il n'y a pas d'iban, on compare les banques (normalisées)
-        llm_banque = normalize_string(llm_dict.get('banque', ''))
-        ref_banque = normalize_string(ref_dict.get('banque', ''))
+        llm_banque = normalize_string(llm_val.get('banque', ''))
+        ref_banque = normalize_string(ref_val.get('banque', ''))
         if llm_banque != ref_banque and (not llm_banque in ref_banque and llm_banque != ''):
             return False
         return True
@@ -255,20 +249,17 @@ def compare_advance(llm_value, ref_value):
     return False
 
 
-def compare_co_contractors(llm_val, ref_val):
+def compare_co_contractors(llm_val:list[dict[str, str]], ref_val:list[dict[str, str]]):
     """Compare cotraitants : liste de json, renvoie True si tous les cotraitants LLM sont trouvés côté référence."""
-    llm_dict = json.loads(llm_val)
-    ref_dict = json.loads(ref_val)
-
-    if len(llm_dict) != len(ref_dict):
+    if len(llm_val) != len(ref_val):
         return False
     
     co_contractors_valid = True
     # Pour chaque cotraitant généré par le LLM
-    for co_contractor_llm in llm_dict:
+    for co_contractor_llm in llm_val:
         this_co_contractor_valid = False
         # On essaye de le retrouver dans la liste de référence
-        for co_contractor_ref in ref_dict:
+        for co_contractor_ref in ref_val:
             # On compare le nom (avec la fonction de normalisation) et le siret
             if compare_main_company(co_contractor_llm['nom'], co_contractor_ref['nom']) and compare_siret(co_contractor_llm['siret'], co_contractor_ref['siret']):
                 this_co_contractor_valid = True  # Un match est trouvé
@@ -283,20 +274,17 @@ def compare_co_contractors(llm_val, ref_val):
     return co_contractors_valid
 
 
-def compare_subcontractors(llm_val, ref_val):
+def compare_subcontractors(llm_val:list[dict[str, str]], ref_val:list[dict[str, str]]):
     """Compare sous_traitants : liste de json, renvoie True si tous les sous_traitants LLM sont trouvés côté référence."""
-    llm_dict = json.loads(llm_val)
-    ref_dict = json.loads(ref_val)
-
-    if len(llm_dict) != len(ref_dict):
+    if len(llm_val) != len(ref_val):
         return False
     
     subcontractors_valid = True
     # Pour chaque sous_traitant généré par le LLM
-    for subcontractor_llm in llm_dict:
+    for subcontractor_llm in llm_val:
         this_subcontractor_valid = False
         # On essaye de le retrouver dans la liste de référence
-        for subcontractor_ref in ref_dict:
+        for subcontractor_ref in ref_val:
             # On compare le nom (avec la fonction de normalisation) et le siret
             if compare_main_company(subcontractor_llm['nom'], subcontractor_ref['nom']) and compare_siret(subcontractor_llm['siret'], subcontractor_ref['siret']):
                 this_subcontractor_valid = True  # Un match est trouvé
@@ -311,28 +299,19 @@ def compare_subcontractors(llm_val, ref_val):
     return subcontractors_valid
 
 
-def compare_other_bank_accounts(llm_val:str, ref_val:str):
+def compare_other_bank_accounts(llm_val:list[dict[str, dict[str, str]]], ref_val:list[dict[str, dict[str, str]]]):
     """Compare rib_autres : liste de json, renvoie True si tous les comptes bancaires LLM sont trouvés côté référence."""
-    if (llm_val == '' or llm_val is None or llm_val == 'nan' or llm_val == '[]') and (ref_val == '' or ref_val is None or ref_val == 'nan' or ref_val == '[]'):
-        return True
-    
-    if (llm_val == '' or llm_val is None or llm_val == 'nan' or llm_val == '[]') or (ref_val == '' or ref_val is None or ref_val == 'nan' or ref_val == '[]'):
-        return False
-    
-    llm_list = json.loads(llm_val)
-    ref_list = json.loads(ref_val)
-
-    if len(llm_list) != len(ref_list):
+    if len(llm_val) != len(ref_val):
         return False
     
     bank_accounts_valid = True
     # Pour chaque compte bancaire généré par le LLM
-    for bank_account_llm in llm_list:
+    for bank_account_llm in llm_val:
         this_bank_account_valid = False
         # On essaye de le retrouver dans la liste de références
-        for bank_account_ref in ref_list:
+        for bank_account_ref in ref_val:
             # On compare le compte bancaire avec la fonction compare_mandatee_bank_account
-            if compare_mandatee_bank_account(json.dumps(bank_account_llm), json.dumps(bank_account_ref)):
+            if compare_mandatee_bank_account(bank_account_llm, bank_account_ref):
                 this_bank_account_valid = True  # Un match est trouvé
                 print("RIB trouvé : ", bank_account_ref)
                 break
@@ -347,10 +326,9 @@ def compare_other_bank_accounts(llm_val:str, ref_val:str):
 
 def compare_amount(llm_val, ref_val):
     """Compare montant : comparaison des valeurs."""
-    if (llm_val == '' or llm_val is None or llm_val == 'nan') and (ref_val == '' or ref_val is None or ref_val == 'nan'):
+    if (llm_val == '') and (ref_val == ''):
         return True
-    # llm_val = post_processing_amount(llm_value)
-    # ref_val = post_processing_amount(ref_value)
+        
     return llm_val == ref_val
 
 
@@ -421,19 +399,18 @@ def patch_post_processing(df):
         llm_response = row.get('llm_response', None)
         if llm_response is None or pd.isna(llm_response):
             continue
-        llm_data = json.loads(llm_response) if isinstance(llm_response, str) else llm_response
         
-        for key in llm_data.keys():
+        for key in llm_response.keys():
             if key in post_processing_functions:
                 try:
-                    llm_data[key] = post_processing_functions[key](llm_data[key])
-                    df_patched.loc[idx, key] = json.dumps(llm_data[key])
+                    llm_response[key] = post_processing_functions[key](llm_response[key])
+                    df_patched.loc[idx, key] = llm_response[key]
                 except Exception as e:
                     logger.warning(f"Error in post_processing_functions for {key}, idx: {idx}: {e}")
-                    llm_data[key] = ''
-                    df_patched.loc[idx, key] = ''
+                    llm_response[key] = None
+                    df_patched.loc[idx, key] = None
 
-        df_patched.loc[idx, 'llm_response'] = json.dumps(llm_data)
+        df_patched.loc[idx, 'llm_response'] = llm_response
 
     return df_patched
 
@@ -474,11 +451,15 @@ def create_batch_test(multi_line_coef = 1):
     
     # Lecture du fichier CSV
     df_test = pd.read_csv(csv_path)
+
     df_test.fillna('', inplace=True)
-    df_test = df_test.astype(str)
-    df_test['siret_mandataire'] = df_test['siret_mandataire'].apply(lambda x: x.split('.')[0])
-    df_test['siren_mandataire'] = df_test['siren_mandataire'].apply(lambda x: x.split('.')[0])
-    df_test.fillna('', inplace=True)
+    df_test['rib_mandataire'] = df_test['rib_mandataire'].apply(lambda x: json.loads(x))
+    df_test['cotraitants'] = df_test['cotraitants'].apply(lambda x: json.loads(x))
+    df_test['sous_traitants'] = df_test['sous_traitants'].apply(lambda x: json.loads(x))
+    df_test['duree'] = df_test['duree'].apply(lambda x: json.loads(x))
+    df_test['rib_autres'] = df_test['rib_autres'].apply(lambda x: json.loads(x))
+    df_test['siret_mandataire'] = df_test['siret_mandataire'].astype(str).apply(lambda x: x.split('.')[0])
+    df_test['siren_mandataire'] = df_test['siren_mandataire'].astype(str).apply(lambda x: x.split('.')[0])
 
     # Post-traitement direct des colonnes du DataFrame de test (après lecture du CSV)
     # Les fonctions post-traitement sont utilisées comme pour patch_post_traitement, mais appliquées colonne par colonne
@@ -553,7 +534,7 @@ def create_batch_test(multi_line_coef = 1):
     df_merged = df_merged.drop(columns=['_merge_key', 'filename_x'])
     df_merged = df_merged.rename(columns={'filename_y': 'filename'})
     
-    return df_merged
+    return df_test, df_result, df_post_processing, df_merged
 
 
 def check_quality_one_field(df_merged, col_to_test = 'duree'):
@@ -793,7 +774,7 @@ def check_global_statistics(df_merged, excluded_columns = []):
     print(f"{'='*120}\n")
 
 
-df_merged = create_batch_test()
+df_test, df_result, df_post_processing, df_merged = create_batch_test()
 
 EXCLUDED_COLUMNS = [
     'objet_marche', 
@@ -801,7 +782,7 @@ EXCLUDED_COLUMNS = [
     'avance'
 ]
 
-check_quality_one_field(df_merged, col_to_test = 'siret_mandataire')
+check_quality_one_field(df_merged, col_to_test = 'rib_mandataire')
 
 check_quality_one_row(df_merged, row_idx_to_test = 0, excluded_columns = EXCLUDED_COLUMNS)
 
