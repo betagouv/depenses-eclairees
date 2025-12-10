@@ -32,16 +32,16 @@ class UnsupportedFileType(Exception):
 
 
 SUPPORTED_FILES_TYPE = [
-    "pdf",
+    "doc"
     "docx",
     "odt",
+    "pdf",
     "txt",
-    "png",
     "jpg",
     "jpeg",
+    "png",
     "tiff",
     "tif",
-    "doc"
 ]
 
 
