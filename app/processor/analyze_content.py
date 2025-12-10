@@ -87,9 +87,9 @@ def create_response_format(df_attributes, classification):
             # Si schema_value est défini et non vide
             if pd.notna(schema_value) and schema_value:
                 # Si c'est une chaîne, essayer de la parser en JSON
-                if isinstance(schema_value, str):
+                if isinstance(schema_value, dict):
                     try:
-                        schema_to_use = json.loads(schema_value)
+                        schema_to_use = schema_value
                     except (json.JSONDecodeError, TypeError):
                         # Si le parsing échoue, garder le schéma par défaut (string)
                         pass
@@ -159,7 +159,7 @@ def df_analyze_content(api_key,
             for attr in df_attributes.attribut:
                 result.update({f'{attr}': result["llm_response"].get(attr, '')})
         else:
-            print(f"Erreur lors de l'analyse du fichier {row["filename"]}: {result['json_error']}")
+            logger.error(f"Erreur lors de l'analyse du fichier {row["filename"]}: {result['json_error']}")
 
         return idx, result
 

@@ -473,7 +473,9 @@ def create_batch_test(multi_line_coef = 1):
     csv_path = "/Users/dinum-284659/dev/data/test/test_acte_engagement.csv"
     
     # Lecture du fichier CSV
-    df_test = pd.read_csv(csv_path).astype(str)
+    df_test = pd.read_csv(csv_path)
+    df_test.fillna('', inplace=True)
+    df_test = df_test.astype(str)
     df_test['siret_mandataire'] = df_test['siret_mandataire'].apply(lambda x: x.split('.')[0])
     df_test['siren_mandataire'] = df_test['siren_mandataire'].apply(lambda x: x.split('.')[0])
     df_test.fillna('', inplace=True)
