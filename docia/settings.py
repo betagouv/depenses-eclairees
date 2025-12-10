@@ -67,7 +67,6 @@ INSTALLED_APPS = [
     # External apps
     "django_celery_results",
     "mozilla_django_oidc",
-    "magicauth",
     "rest_framework",
     # Internal apps
     "docia",
@@ -170,19 +169,6 @@ OIDC_USERINFO_SHORTNAME_FIELD = "given_name"
 OIDC_FALLBACK_TO_EMAIL_FOR_IDENTIFICATION = True
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
-PROCONNECT_ALLOWED = config.bool("PROCONNECT_ALLOWED", False)
-
-# Magic Auth
-MAGICAUTH_DEFAULT_AUTHENTICATION_BACKEND = "django.contrib.auth.backends.ModelBackend"
-MAGICAUTH_EMAIL_FIELD = "email"
-MAGICAUTH_FROM_EMAIL = DEFAULT_FROM_EMAIL
-MAGICAUTH_LOGGED_IN_REDIRECT_URL_NAME = "home"
-MAGICAUTH_EMAIL_HTML_TEMPLATE = "docia/magicauth/email.html"
-MAGICAUTH_EMAIL_TEXT_TEMPLATE = "docia/magicauth/email.txt"
-MAGICAUTH_EMAIL_SENT_VIEW_TEMPLATE = "docia/magicauth/email_sent.html"
-MAGICAUTH_LOGIN_VIEW_TEMPLATE = "docia/magicauth/login.html"
-MAGICAUTH_ENABLE_2FA = False
-MAGICAUTH_EMAIL_SUBJECT = "Votre lien de connexion Dépenses Éclairées"
 
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

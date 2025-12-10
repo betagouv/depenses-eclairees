@@ -2,10 +2,9 @@ from django.contrib.auth.models import Permission
 
 import pytest
 
-from docia.permissions import ALLOWED_BATCHES
+from docia.permissions import ALLOWED_BATCHES, ALLOWED_EJ_NUMBERS
 from docia.tests.factories.data import DataAttachmentFactory, DataBatchFactory, DataEngagementFactory
 from docia.tests.factories.users import UserFactory
-from webapp.webapp.permissions import ALLOWED_EJ_NUMBERS
 
 
 def create_ej_and_document(**kwargs):
