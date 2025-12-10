@@ -4,7 +4,7 @@ import time
 
 from django.conf import settings
 
-from openai import OpenAI, RateLimitError
+from openai import APIStatusError, OpenAI
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +48,7 @@ class LLMClient:
         temperature: float = 0.0,
         max_retries: int = 3,
         retry_delay: float = 60,
+        retry_short_delay: float = 10,
     ) -> str:
         """
         Interroge le LLM avec un prompt système et utilisateur.
@@ -87,12 +88,19 @@ class LLMClient:
                 response = content  # Success
                 break
 
-            except RateLimitError as e:
-                if attempt < max_retries:
+            except APIStatusError as e:
+                if e.status_code == 429:
+                    effective_retry_delay = retry_delay
+                elif e.status_code in (500, 504):
+                    effective_retry_delay = retry_short_delay
+                else:
+                    raise
+
+                if effective_retry_delay and attempt < max_retries:
                     rnd = 1 + (0.1 * random.random())  # Ajout d'un peu de random (10%)
-                    wait_time = retry_delay * rnd * (attempt + 1)
+                    wait_time = effective_retry_delay * rnd * (attempt + 1)
                     logger.warning(
-                        f"RateLimitError ({str(e)}), wait {wait_time:.1f}s before retry ({attempt + 1}/{max_retries})"
+                        f"ApiError {e.status_code} ({str(e)}), wait {wait_time:.1f}s before retry ({attempt + 1}/{max_retries})"  # noqa: E501
                     )
                     time.sleep(wait_time)
                     continue  # Retry
