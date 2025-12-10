@@ -2,17 +2,25 @@ from unittest import mock
 from unittest.mock import Mock, patch
 
 import pytest
-from openai import RateLimitError, APIStatusError, InternalServerError
+from openai import APIStatusError, InternalServerError, RateLimitError
 
 from docia.file_processing.llm import LLMClient
 
 
-@pytest.mark.parametrize("error_class,status_code,retry_delay,error_message", [
-    (RateLimitError, 429, 60, "Error code: 429 - {'detail': '100 requests for albert-large per minute exceeded (remaining: 0).'}"),
-    (APIStatusError, 504, 10, "Error code: 504 - {'detail': 'Model is too busy.'}"),
-    (InternalServerError, 500, 10, "Error code: 500 - {'detail': ''}"),
-    (InternalServerError, 500, 10, "Error code: 500 - {'detail': 'ConnectError'}"),
-])
+@pytest.mark.parametrize(
+    "error_class,status_code,retry_delay,error_message",
+    [
+        (
+            RateLimitError,
+            429,
+            60,
+            "Error code: 429 - {'detail': '100 requests for albert-large per minute exceeded (remaining: 0).'}",
+        ),
+        (APIStatusError, 504, 10, "Error code: 504 - {'detail': 'Model is too busy.'}"),
+        (InternalServerError, 500, 10, "Error code: 500 - {'detail': ''}"),
+        (InternalServerError, 500, 10, "Error code: 500 - {'detail': 'ConnectError'}"),
+    ],
+)
 def test_ask_llm_rate_limit_error(error_class, status_code, retry_delay, error_message):
     """
     Test que ask_llm gère correctement les erreurs de rate limiting (429).
@@ -46,7 +54,11 @@ def test_ask_llm_rate_limit_error(error_class, status_code, retry_delay, error_m
         assert mock_create.call_count == 4
 
         # Vérifier le temps de sleep
-        expected_calls = [mock.call(retry_delay * 1.05), mock.call(retry_delay * 1.05 * 2), mock.call(retry_delay * 1.05 * 3)]
+        expected_calls = [
+            mock.call(retry_delay * 1.05),
+            mock.call(retry_delay * 1.05 * 2),
+            mock.call(retry_delay * 1.05 * 3),
+        ]
         m_sleep.assert_has_calls(expected_calls)
         assert len(m_sleep.mock_calls) == len(expected_calls)
 
