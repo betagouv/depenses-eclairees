@@ -45,9 +45,9 @@ CCAP_ATTRIBUTES = {
 
     "forme_marche": {
         "consigne": """FORME_MARCHE
-     Définition : La forme de passation des commandes, ou des marchés subséquents de ce marché.
+     Définition : La forme de passation des contrats ou sous-contrats de ce marché.
      Indices : 
-     - Rechercher la forme du marché dans un paragraphe sur la forme du marché ou sur la passation des commandes ou sur la passation de marchés subséquents.
+     - Rechercher la forme du marché dans un paragraphe sur la forme du marché (passation de commandes, lots, marchés subséquents, ...).
      - Si le marché est désigné comme un accord-cadre, il donne souvent lieu à des marchés subséquents (directement ou dans certains de ses lots).
      - (1) Si le marche ne comprend ni lot, ni marchés subséquents, alors :
         * Structure = 'simple'
@@ -56,11 +56,13 @@ CCAP_ATTRIBUTES = {
         * Structure = 'allotie'
         * Forme est une liste de json [{'numero_lot': numéro de lot, 'forme': {'structure': ..., 'forme': ...}}]
         * Appliquer le raisonnement pour chaque lot comme s'il était un nouveau marché en lui-même.
-            > Par exemple, le marché comporte 2 lots, un à bons de commande, et l'autre à marchés subséquents. On traite chaque lot comme s'il était un nouveau marché en lui-même.
-                > Le lot 1 est à bons de commande, on applique la consi1) : {'structure': 'simple', 'forme': 'à bons de commande'}
-                > Le lot 2 est à marchés subséquents, on applique la consigne (3) : {'structure': 'à marchés subséquents', 'forme': {'structure': 'simple', 'forme': 'à bons de commande' ou 'à tranches' ou 'forfaitaire'}}
+            * Soit les lots sont eux-mêmes des marchés indépendants, dans ce cas on applique (1) pour chaque lot : structure: "simple" et forme: "à bons de commande" ou "à tranches" ou "forfaitaire".
+            * Soit les lots permettent de passer des marchés subséquents (plusieurs sous-marchés), on applique la consigne (3) : dans ce cas chaque lot est structure: "à marchés subséquents" et forme: "à bons de commande" ou "à tranches" ou "forfaitaire".
+        > Par exemple, le marché comporte 2 lots, un à bons de commande, et l'autre à marchés subséquents. On traite chaque lot comme s'il était un nouveau marché en lui-même.
+            > Le lot 1 est à bons de commande, on applique la consi1) : {'structure': 'simple', 'forme': 'à bons de commande'}
+            > Le lot 2 est à marchés subséquents, on applique la consigne (3) : {'structure': 'à marchés subséquents', 'forme': 'à bons de commande' ou 'à tranches' ou 'forfaitaire'}
         * ATTENTION : S'il est mentionné "des marchés subséquents pour les lots ...", c'est que les lots sont "à marchés subséquents" (même si ce n'est pas explicitement mentionné dans la forme du marché).
-     - (3) Si le marché donne lieu à des marchés subséquents directement (et non que ses lots donnent lieu à des marchés subséquents) :
+     - (3) Si le marché donne lieu à des marchés subséquents directement (et non par l'intermédiaire de ses lots) :
         * Structure = 'à marchés subséquents'
         * Forme = un json {'structure': 'simple' 'forme': 'à bons de commande' ou 'à tranches' ou 'forfaitaire'} selon la forme des marchés subséquents.
      Format : un json {'structure': ..., 'forme': ...}. La forme est elle-même un json.
@@ -69,117 +71,107 @@ CCAP_ATTRIBUTES = {
         "output_field": "forme_marche",
         "schema":
         {
-        "type": "object",
-        "oneOf": [
-            {
-                "type": "object",
-                "properties": {
-                        "structure": {
-                        "type": "string",
-                        "enum": ["simple"]
-                    },
-                    "forme": {
-                        "type": "string",
-                        "enum": ["à bons de commande", "à tranches", "forfaitaire"]
-                    }
-                },
-                "required": ["structure", "forme"]
-            },
-            {
-                "type": "object",
-                "properties": {
-                    "structure": {
-                        "type": "string",
-                        "enum": ["allotie"]
-                    },
-                    "forme": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                            "numero_lot": {
-                                "type": "integer"
-                            },
-                            "forme": {
-                                "type": "object",
-                                "oneOf": [
-                                    {
-                                        "type": "object",
-                                        "properties": {
-                                            "structure": {
-                                                "type": "string",
-                                                "enum": ["simple"]
-                                            },
-                                            "forme": {
-                                                "type": "string",
-                                                "enum": ["à bons de commande", "à tranches", "forfaitaire"]
-                                            }
-                                        },
-                                        "required": ["structure", "forme"]
-                                    },
-                                    {
-                                        "type": "object",
-                                        "properties": {
-                                            "structure": {
-                                                "type": "string",
-                                                "enum": ["à marchés subséquents"]
-                                            },
-                                            "forme": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "structure": {
-                                                        "type": "string",
-                                                        "enum": ["simple"]
-                                                    },
-                                                    "forme": {
-                                                        "type": "string",
-                                                        "enum": ["à bons de commande", "à tranches", "forfaitaire"]
-                                                    }
-                                                },
-                                                "required": ["structure", "forme"]
-                                            }
-                                        },
-                                        "required": ["structure", "forme"]
-                                    }
-                                ]
-                            }
-                            },
-                            "required": ["numero_lot", "forme"]
+            "type": "object",
+            "oneOf": [
+                {
+                    "type": "object",
+                    "properties": {
+                            "structure": {
+                            "type": "string",
+                            "enum": ["simple"]
+                        },
+                        "forme": {
+                            "type": "string",
+                            "enum": ["à bons de commande", "à tranches", "forfaitaire"]
                         }
-                    }
-                },
-                "required": ["structure", "forme"]
-            },
-            {
-                "type": "object",
-                "properties": {
-                    "structure": {
-                    "type": "string",
-                    "enum": ["à marchés subséquents"]
                     },
-                    "forme": {
+                    "required": ["structure", "forme"]
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "structure": {
+                            "type": "string",
+                            "enum": ["allotie"]
+                        },
+                        "forme": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                "numero_lot": {
+                                    "type": "integer"
+                                },
+                                "forme": {
+                                    "type": "object",
+                                    "oneOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "structure": {
+                                                    "type": "string",
+                                                    "enum": ["simple"]
+                                                },
+                                                "forme": {
+                                                    "type": "string",
+                                                    "enum": ["à bons de commande", "à tranches", "forfaitaire"]
+                                                }
+                                            },
+                                            "required": ["structure", "forme"]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "structure": {
+                                                    "type": "string",
+                                                    "enum": ["à marchés subséquents"]
+                                                },
+                                                "forme": {
+                                                    "type": "string",
+                                                    "enum": ["à bons de commande", "à tranches", "forfaitaire"]
+                                                }
+                                            },
+                                            "required": ["structure", "forme"]
+                                        }
+                                    ]
+                                }
+                                },
+                                "required": ["numero_lot", "forme"]
+                            }
+                        }
+                    },
+                    "required": ["structure", "forme"]
+                },
+                {
                     "type": "object",
                     "properties": {
                         "structure": {
                         "type": "string",
-                        "enum": ["simple"]
+                        "enum": ["à marchés subséquents"]
                         },
                         "forme": {
-                        "type": "string",
-                        "enum": ["à bons de commande", "à tranches", "forfaitaire"]
+                        "type": "object",
+                        "properties": {
+                            "structure": {
+                            "type": "string",
+                            "enum": ["simple"]
+                            },
+                            "forme": {
+                            "type": "string",
+                            "enum": ["à bons de commande", "à tranches", "forfaitaire"]
+                            }
+                        },
+                        "required": ["structure", "forme"]
                         }
                     },
                     "required": ["structure", "forme"]
-                    }
-                },
-                "required": ["structure", "forme"]
-            }
-        ]
+                }
+            ]
         }
     },
 
-    "duree": {
-        "consigne": """DUREE
+    "duree_marche": {
+        "consigne": """DUREE_MARCHE
         Définition : Durée du marché totale exprimée en mois et extension possible.
         Indices :
         - Chercher dans le paragraphe indiquant la durée du marché ou le délai d'exécution des prestations.
@@ -199,7 +191,7 @@ CCAP_ATTRIBUTES = {
         Format : un json sous format suivant {"duree_initiale": "nombre entier de mois", "duree_reconduction": "nombre entier de mois", "nb_reconductions": "nombre entier de reconductions possibles", "delai_tranche_optionnelle": "nombre entier de mois"}
     """,
         "search": "Section du document qui décrit la durée du marché ou le délai d'exécution des prestations.",
-        "output_field": "duree",
+        "output_field": "duree_marche",
         "schema":
         {
             "type": "object",
@@ -301,9 +293,9 @@ CCAP_ATTRIBUTES = {
         "consigne": """CCAG
      Définition : Le CCAG en vigueur pour ce marché.
      Indices : 
-     - Le CCAG s'appliquant sur le maché est de la forme CCAG-XXXX. Le XXXXXX est l'acronyme du CCAG.
-     - Ne rien renvoyer si aucun CCAG n'est mentionné.
-     Format : CCAG-XXXX.
+     - Le CCAG s'appliquant sur le maché est de la forme CCAG-"XXXX". Le XXXX est l'acronyme du CCAG de référence : renvoyer XXXX.
+     - Si aucun CCAG n'est mentionné, renvoyer "".
+     Format : un acronyme de quelques lettres. Exemple : pour "CCAG-XX" renvoyer "XX".
 """,
         "search": "",
         "output_field": "ccag"

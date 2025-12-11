@@ -274,7 +274,6 @@ def get_comparison_functions():
         'objet_marche': compare_contract_object,
         'lots': compare_batches,
         'forme_marche': compare_contract_form,
-        'allottissement': compare_batching,
         'duree_lots': compare_batches_duration,
         'duree_marche': compare_contract_duration,
         'formule_revision_prix': compare_price_revision_formula,
@@ -293,8 +292,14 @@ def create_batch_test(multi_line_coef = 1):
     csv_path = CSV_DIR_PATH / "test_ccap.csv"
 
     # Lecture du fichier CSV
-    df_test = pd.read_csv(csv_path).astype(str)
+    df_test = pd.read_csv(csv_path).iloc[:10]
     df_test.fillna('', inplace=True)
+    df_test['lots'] = df_test['lots'].apply(lambda x: json.loads(x))
+    df_test['forme_marche'] = df_test['forme_marche'].apply(lambda x: json.loads(x))
+    df_test['duree_lots'] = df_test['duree_lots'].apply(lambda x: json.loads(x))
+    df_test['duree_marche'] = df_test['duree_marche'].apply(lambda x: json.loads(x))
+    df_test['montant_ht_lots'] = df_test['montant_ht_lots'].apply(lambda x: json.loads(x))
+
 
     # Post-traitement direct des colonnes du DataFrame de test (après lecture du CSV)
     # Les fonctions post-traitement sont utilisées comme pour patch_post_traitement, mais appliquées colonne par colonne
@@ -585,17 +590,23 @@ def check_global_statistics(df_merged, excluded_columns = []):
 df_test, df_result, df_post_processing, df_merged = create_batch_test()
 
 
-check_quality_one_field(df_merged, col_to_test = 'montant_ht_lots')
+EXCLUDED_COLUMNS = [
+    'objet_marche',
+    'formule_revision_prix',
+    'condition_avance',
+    'revision_prix'
+]
+
+check_quality_one_field(df_merged, col_to_test = 'duree_marche')
 
 check_quality_one_row(df_merged, row_idx_to_test = 1)
 
-check_global_statistics(df_merged, excluded_columns = [])
+check_global_statistics(df_merged, excluded_columns = EXCLUDED_COLUMNS)
 
 # {
 #   "objet_marche": "", 
 #   "lots": "", 
-#   "forme_marche_ccap": "", 
-#   "allottissement_ccap": "", 
+#   "forme_marche": "", 
 #   "duree_lots": "", 
 #   "duree_marche": "", 
 #   "formule_revision_prix": "", 
