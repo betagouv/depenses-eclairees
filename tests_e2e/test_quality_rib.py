@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 import logging
 from datetime import datetime
+import copy
 
 import sys
 sys.path.append(".")
@@ -67,7 +68,7 @@ def compare_account_owner(llm_val:str, ref_val:str):
         return llm_norm_no_space == ref_norm_no_space
 
 
-def compare_address(llm_val:str, ref_val:str):
+def compare_address(llm_val:dict[str, str], ref_val:dict[str, str]):
     """Compare l'adresse : comparaison des valeurs selon la structure JSON.
     
     Structure attendue : {
@@ -79,22 +80,18 @@ def compare_address(llm_val:str, ref_val:str):
         'pays': 'le pays'
     }
     """
-    # Gestion des valeurs vides/None/nan
-    if (llm_val == '' or llm_val is None or llm_val == 'nan') and (ref_val == '' or ref_val is None or ref_val == 'nan'):
+    if llm_val == {} and ref_val == {}:
         return True
-    if (llm_val == '' or llm_val is None or llm_val == 'nan') or (ref_val == '' or ref_val is None or ref_val == 'nan'):
+    if llm_val == {} or ref_val == {}:
         return False
-    
-    llm_dict = json.loads(llm_val)
-    ref_dict = json.loads(ref_val)
     
     # Liste des champs à comparer
     fields = ['numero_voie', 'nom_voie', 'complement_adresse', 'code_postal', 'ville', 'pays']
     
     # Comparer chaque champ
     for field in fields:
-        llm_field_val = llm_dict.get(field, '')
-        ref_field_val = ref_dict.get(field, '')
+        llm_field_val = llm_val.get(field, '')
+        ref_field_val = ref_val.get(field, '')
         
         # Normaliser les valeurs vides
         llm_field_val = llm_field_val.strip().title()
@@ -116,6 +113,9 @@ def compare_domiciliation(llm_val:str, ref_val:str):
 
 def patch_post_processing(df):
     df_patched = df.copy()
+    df_patched['llm_response'] = df_patched['llm_response'].apply(
+        lambda x: copy.deepcopy(x) if isinstance(x, dict) else x
+    )
     post_processing_functions = {
         'iban': post_processing_iban,
         'bic': post_processing_bic,
@@ -124,21 +124,18 @@ def patch_post_processing(df):
 
     for idx, row in df_patched.iterrows():
         llm_response = row.get('llm_response', None)
-        if llm_response is None or pd.isna(llm_response):
-            continue
-        llm_data = json.loads(llm_response) if isinstance(llm_response, str) else llm_response
         
-        for key in llm_data.keys():
+        for key in llm_response.keys():
             if key in post_processing_functions:
                 try:
-                    llm_data[key] = post_processing_functions[key](llm_data[key])
-                    df_patched.loc[idx, key] = json.dumps(llm_data[key])
+                    llm_response[key] = post_processing_functions[key](llm_response[key])
+                    df_patched.at[idx, key] = llm_response[key]
                 except Exception as e:
                     logger.warning(f"Error in post_processing_functions for {key}, idx: {idx}: {e}")
-                    llm_data[key] = ''
-                    df_patched.loc[idx, key] = ''
+                    llm_response[key] = None
+                    df_patched.at[idx, key] = None
 
-        df_patched.loc[idx, 'llm_response'] = json.dumps(llm_data)
+        df_patched.at[idx, 'llm_response'] = llm_response
 
     return df_patched
 
@@ -169,8 +166,9 @@ def create_batch_test(multi_line_coef = 1):
     csv_path = "/Users/dinum-284659/dev/data/test/test_rib.csv"
     
     # Lecture du fichier CSV
-    df_test = pd.read_csv(csv_path).astype(str)
+    df_test = pd.read_csv(csv_path)
     df_test.fillna('', inplace=True)
+    df_test['adresse_postale_titulaire'] = df_test['adresse_postale_titulaire'].apply(lambda x: json.loads(x))
 
     # Post-traitement direct des colonnes du DataFrame de test (après lecture du CSV)
     # Les fonctions post-traitement sont utilisées comme pour patch_post_traitement, mais appliquées colonne par colonne
@@ -241,7 +239,7 @@ def create_batch_test(multi_line_coef = 1):
     df_merged = df_merged.drop(columns=['_merge_key', 'filename_x'])
     df_merged = df_merged.rename(columns={'filename_y': 'filename'})
     
-    return df_merged
+    return df_test, df_result, df_post_processing, df_merged
 
 
 def check_quality_one_field(df_merged, col_to_test = 'iban'):
@@ -259,16 +257,12 @@ def check_quality_one_field(df_merged, col_to_test = 'iban'):
         filename = row.get('filename', 'unknown')
         
         # Parser le JSON de llm_response
-        llm_data = json.loads(row.get('llm_response', None))
+        llm_data = row.get('llm_response', None)
 
-        
         # Extraire les valeurs
         ref_val = row.get(col_to_test, None)
         llm_val = llm_data.get(col_to_test, None)
 
-        if isinstance(llm_val, dict):
-            llm_val = json.dumps(llm_val)
-        
         # Extraction des pbm OCR
         list_pbm_ocr = row.get('pbm_ocr', False)
         pbm_ocr = col_to_test in eval(list_pbm_ocr)
@@ -303,7 +297,7 @@ def check_quality_one_row(df_merged, row_idx_to_test = 0, excluded_columns = [])
         print(f"{'='*80}\n")
         
         # Parser le JSON de llm_response
-        llm_data = json.loads(row.get('llm_response', None))
+        llm_data = row.get('llm_response', None)
         
         # Comparer toutes les colonnes (sauf exclues)
         for col in get_comparison_functions().keys():
@@ -317,9 +311,6 @@ def check_quality_one_row(df_merged, row_idx_to_test = 0, excluded_columns = [])
             # Extraire les valeurs
             ref_val = row.get(col, None)
             llm_val = llm_data.get(col, None)
-            
-            if isinstance(llm_val, dict):
-                llm_val = json.dumps(llm_val)
             
             # Extraction des pbm OCR
             list_pbm_ocr = row.get('pbm_ocr', False)
@@ -387,33 +378,12 @@ def check_global_statistics(df_merged, excluded_columns = []):
                 # Si erreur lors de l'évaluation, on ignore
                 pass
             
-            # Parser le JSON de llm_response
-            try:
-                llm_response = row.get('llm_response', None)
-                if llm_response is None or pd.isna(llm_response):
-                    errors.append(f"{filename}: llm_response is None or NaN")
-                    matches.append(False)
-                    # Si pas de problème OCR, on compte aussi dans matches_no_ocr
-                    if not pbm_ocr:
-                        matches_no_ocr.append(False)
-                    continue
-                
-                llm_data = json.loads(llm_response) if isinstance(llm_response, str) else llm_response
-            except (json.JSONDecodeError, TypeError) as e:
-                errors.append(f"{filename}: JSON parsing error: {str(e)}")
-                matches.append(False)
-                # Si pas de problème OCR, on compte aussi dans matches_no_ocr
-                if not pbm_ocr:
-                    matches_no_ocr.append(False)
-                continue
+            # Récupérer le dict llm_response
+            llm_response = row.get('llm_response', None)
             
             # Extraire les valeurs
             ref_val = row.get(col, None)
-            llm_val = llm_data.get(col, None)
-            
-            # Convertir les dict en JSON string (cohérent avec la partie de débogage)
-            if isinstance(llm_val, dict):
-                llm_val = json.dumps(llm_val)
+            llm_val = llm_response.get(col, None)
             
             # Comparer les valeurs
             try:
@@ -481,7 +451,7 @@ def check_global_statistics(df_merged, excluded_columns = []):
     print(f"{'='*120}\n")
 
 
-df_merged = create_batch_test(3)
+df_test, df_result, df_post_processing, df_merged = create_batch_test()
 
 check_quality_one_field(df_merged, col_to_test = 'iban')
 

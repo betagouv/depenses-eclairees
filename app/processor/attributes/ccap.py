@@ -30,18 +30,17 @@ CCAP_ATTRIBUTES = {
         "search": "",
         "output_field": "lots",
         "schema":
-"""
-{
-    "type": "array",
-    "items": {
-        "type": "object",
-        "properties": {
-            "numero_lot": {"type": "integer"},
-            "titre_lot": {"type": "string"}
-        },
-        "required": ["numero_lot", "titre_lot"]
-    }
-}"""
+        {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "numero_lot": {"type": "integer"},
+                    "titre_lot": {"type": "string"}
+                },
+                "required": ["numero_lot", "titre_lot"]
+            }
+        }
     },
 
     "forme_marche": {
@@ -69,116 +68,114 @@ CCAP_ATTRIBUTES = {
         "search": "",
         "output_field": "forme_marche",
         "schema":
-"""
-{
-  "type": "object",
-  "oneOf": [
-    {
-      "type": "object",
-      "properties": {
-        "structure": {
-          "type": "string",
-          "enum": ["simple"]
-        },
-        "forme": {
-          "type": "string",
-          "enum": ["à bons de commande", "à tranches", "forfaitaire"]
-        }
-      },
-      "required": ["structure", "forme"]
-    },
-    {
-      "type": "object",
-      "properties": {
-        "structure": {
-          "type": "string",
-          "enum": ["allotie"]
-        },
-        "forme": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "numero_lot": {
-                "type": "integer"
-              },
-              "forme": {
+        {
+        "type": "object",
+        "oneOf": [
+            {
                 "type": "object",
-                "oneOf": [
-                    {
-                        "type": "object",
-                        "properties": {
-                            "structure": {
-                                "type": "string",
-                                "enum": ["simple"]
-                            },
-                            "forme": {
-                                "type": "string",
-                                "enum": ["à bons de commande", "à tranches", "forfaitaire"]
-                            }
-                        },
-                        "required": ["structure", "forme"]
+                "properties": {
+                        "structure": {
+                        "type": "string",
+                        "enum": ["simple"]
                     },
-                    {
-                        "type": "object",
-                        "properties": {
-                            "structure": {
-                                "type": "string",
-                                "enum": ["à marchés subséquents"]
+                    "forme": {
+                        "type": "string",
+                        "enum": ["à bons de commande", "à tranches", "forfaitaire"]
+                    }
+                },
+                "required": ["structure", "forme"]
+            },
+            {
+                "type": "object",
+                "properties": {
+                    "structure": {
+                        "type": "string",
+                        "enum": ["allotie"]
+                    },
+                    "forme": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                            "numero_lot": {
+                                "type": "integer"
                             },
                             "forme": {
                                 "type": "object",
-                                "properties": {
-                                    "structure": {
-                                        "type": "string",
-                                        "enum": ["simple"]
+                                "oneOf": [
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "structure": {
+                                                "type": "string",
+                                                "enum": ["simple"]
+                                            },
+                                            "forme": {
+                                                "type": "string",
+                                                "enum": ["à bons de commande", "à tranches", "forfaitaire"]
+                                            }
+                                        },
+                                        "required": ["structure", "forme"]
                                     },
-                                    "forme": {
-                                        "type": "string",
-                                        "enum": ["à bons de commande", "à tranches", "forfaitaire"]
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "structure": {
+                                                "type": "string",
+                                                "enum": ["à marchés subséquents"]
+                                            },
+                                            "forme": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "structure": {
+                                                        "type": "string",
+                                                        "enum": ["simple"]
+                                                    },
+                                                    "forme": {
+                                                        "type": "string",
+                                                        "enum": ["à bons de commande", "à tranches", "forfaitaire"]
+                                                    }
+                                                },
+                                                "required": ["structure", "forme"]
+                                            }
+                                        },
+                                        "required": ["structure", "forme"]
                                     }
-                                },
-                                "required": ["structure", "forme"]
+                                ]
                             }
-                        },
-                        "required": ["structure", "forme"]
+                            },
+                            "required": ["numero_lot", "forme"]
+                        }
                     }
-                ]
-              }
+                },
+                "required": ["structure", "forme"]
             },
-            "required": ["numero_lot", "forme"]
-          }
-        }
-      },
-      "required": ["structure", "forme"]
-    },
-    {
-      "type": "object",
-      "properties": {
-        "structure": {
-          "type": "string",
-          "enum": ["à marchés subséquents"]
-        },
-        "forme": {
-          "type": "object",
-          "properties": {
-            "structure": {
-              "type": "string",
-              "enum": ["simple"]
-            },
-            "forme": {
-              "type": "string",
-              "enum": ["à bons de commande", "à tranches", "forfaitaire"]
+            {
+                "type": "object",
+                "properties": {
+                    "structure": {
+                    "type": "string",
+                    "enum": ["à marchés subséquents"]
+                    },
+                    "forme": {
+                    "type": "object",
+                    "properties": {
+                        "structure": {
+                        "type": "string",
+                        "enum": ["simple"]
+                        },
+                        "forme": {
+                        "type": "string",
+                        "enum": ["à bons de commande", "à tranches", "forfaitaire"]
+                        }
+                    },
+                    "required": ["structure", "forme"]
+                    }
+                },
+                "required": ["structure", "forme"]
             }
-          },
-          "required": ["structure", "forme"]
+        ]
         }
-      },
-      "required": ["structure", "forme"]
-    }
-  ]
-}
-"""
     },
 
     "duree": {
@@ -204,17 +201,16 @@ CCAP_ATTRIBUTES = {
         "search": "Section du document qui décrit la durée du marché ou le délai d'exécution des prestations.",
         "output_field": "duree",
         "schema":
-"""
-{
-    "type": "object",
-    "properties": {
-        "duree_initiale": {"type": "integer"},
-        "duree_reconduction": {"type": "integer"},
-        "nb_reconductions": {"type": "integer"},
-        "delai_tranche_optionnelle": {"type": "integer"}
-    },
-    "required": ["duree_initiale", "duree_reconduction", "nb_reconductions", "delai_tranche_optionnelle"]
-}"""
+        {
+            "type": "object",
+            "properties": {
+                "duree_initiale": {"type": "integer"},
+                "duree_reconduction": {"type": "integer"},
+                "nb_reconductions": {"type": "integer"},
+                "delai_tranche_optionnelle": {"type": "integer"}
+            },
+            "required": ["duree_initiale", "duree_reconduction", "nb_reconductions", "delai_tranche_optionnelle"]
+        }
     },
 
 
@@ -232,32 +228,31 @@ CCAP_ATTRIBUTES = {
         "search": "",
         "output_field": "duree_lots",
         "schema":
-"""
-{
-    "type": "array",
-    "items": {
-        "type": "object",
-        "properties": {
-            "numero_lot": {"type": "integer"},
-            "duree_lot": {
-                "oneOf": [
-                    {"type": "string", "enum": ["identique à la durée du marché"]},
-                    {
-                        "type": "object",
-                        "properties": {
-                            "duree_initiale": {"type": "integer"},
-                            "duree_reconduction": {"type": "integer"},
-                            "nb_reconductions": {"type": "integer"},
-                            "delai_tranche_optionnelle": {"type": "integer"}
-                        },
-                        "required": ["duree_initiale", "duree_reconduction", "nb_reconductions", "delai_tranche_optionnelle"]
+        {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "numero_lot": {"type": "integer"},
+                    "duree_lot": {
+                        "oneOf": [
+                            {"type": "string", "enum": ["identique à la durée du marché"]},
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "duree_initiale": {"type": "integer"},
+                                    "duree_reconduction": {"type": "integer"},
+                                    "nb_reconductions": {"type": "integer"},
+                                    "delai_tranche_optionnelle": {"type": "integer"}
+                                },
+                                "required": ["duree_initiale", "duree_reconduction", "nb_reconductions", "delai_tranche_optionnelle"]
+                            }
+                        ]
                     }
-                ]
+                },
+                "required": ["numero_lot", "duree_lot"]
             }
-        },
-        "required": ["numero_lot", "duree_lot"]
-    }
-}"""
+        }
     },
 
     "montant_ht": {
@@ -288,19 +283,18 @@ CCAP_ATTRIBUTES = {
         "search": "",
         "output_field": "montant_ht_lots",
         "schema":
-"""
-{
-    "type": "array",
-    "items": {
-        "type": "object",
-        "properties": {
-            "numero_lot": {"type": "integer"},
-            "montant_ht_maximum": {"type": "integer"},
-            "type_montant": {"type": "string", "enum": ["annuel", "total"]}
-        },
-        "required": ["numero_lot", "montant_ht_maximum", "type_montant"]
-    }
-}"""
+        {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "numero_lot": {"type": "integer"},
+                    "montant_ht_maximum": {"type": "string"},
+                    "type_montant": {"type": "string", "enum": ["annuel", "total"]}
+                },
+                "required": ["numero_lot", "montant_ht_maximum", "type_montant"]
+            }
+        }
     },
 
     "ccag": {
@@ -354,22 +348,21 @@ CCAP_ATTRIBUTES = {
         "search": "avance accordée titulaire montant initial durée exécution remboursement précompte",
         "output_field": "condition_avance_ccap",
         "schema":
-"""
-{
-    "type": "object",
-    "properties": {
-        "condition_declenchement": {"type": "string"},
-        "montant_avance": {"type": "string"},
-        "montant_reference": {"type": "string"},
-        "remboursement": {"type": "string"}
-    },
-    "required": [
-        "condition_declenchement",
-        "montant_avance",
-        "montant_reference",
-        "remboursement"
-    ]
-}"""
+        {
+            "type": "object",
+            "properties": {
+                "condition_declenchement": {"type": "string"},
+                "montant_avance": {"type": "string"},
+                "montant_reference": {"type": "string"},
+                "remboursement": {"type": "string"}
+            },
+            "required": [
+                "condition_declenchement",
+                "montant_avance",
+                "montant_reference",
+                "remboursement"
+            ]
+        }
     }
 
 }

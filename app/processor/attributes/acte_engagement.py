@@ -305,15 +305,15 @@ Règles d’extraction :
         Indices :
         - Chercher dans le paragraphe indiquant la durée du marché ou le délai d'exécution des prestations.
         - Durée initiale : la durée du marché ferme (sans reconduction ou tranches optionnelles), en nombre de mois.
-            * En l'absence de précisions sur la durée ferme, renvoyer None
+            * En l'absence de précisions sur la durée ferme, renvoyer duree_initiale: None
             * Exemple : une durée de 1 an, renvoyer 12.
             * Pour une durée entre des dates clés, par exemple "jusqu'à la réunion de conclusion 6 mois après le lancement" : renvoyer 6 mois.
-                -> Attention : si ces dates clés sont insuffisamment documentées, renvoyer None
+                -> Attention : si ces dates clés sont insuffisamment documentées, renvoyer duree_initiale: None
         - Extension de durée possible : extenion maximale en nombre de mois.
-            * En l'absence d'informations claires, renvoyer None
+            * En l'absence d'informations claires, renvoyer duree_reconduction: 0
             * Si des reconductions sont précisées (ne pas confondre avec des tranches optionnelles qui sont gérées ci-dessous) :
-                1. duree_reconduction : Trouver la durée d'une reconduction (en nombre de mois). Si l'information n'est pas précisée, renvoyer None.
-                2. nb_reconductions : Trouver le nombre de reconductions possibles. Si l'information n'est pas précisée, renvoyer None.
+                1. duree_reconduction : Trouver la durée d'une reconduction (en nombre de mois). Si l'information n'est pas précisée, renvoyer 0.
+                2. nb_reconductions : Trouver le nombre de reconductions possibles. Si l'information n'est pas précisée, renvoyer 0.
             * Si des tranches optionnelles sont précisées : renvoyer la durée de l'ensemble des tranches optionnelles.
                 1. delai_tranche_optionnelle : Trouver la durée de l'ensemble des tranches optionnelles.
                     Exemple : 2 tranches optionnelles de 8 mois, renvoyer 8 + 8 = 16.
@@ -322,24 +322,26 @@ Règles d’extraction :
         "search": "Section du document qui décrit la durée du marché ou le délai d'exécution des prestations.",
         "output_field": "duree",
         "schema":
-            {"oneOf": [
-                {
-                    "type": "object",
-                    "properties": {
-                        "duree_initiale": {"type": "integer"},
-                        "duree_reconduction": {"type": "integer"},
-                        "nb_reconductions": {"type": "integer"},
-                        "delai_tranche_optionnelle": {"type": "integer"}
+            {
+                "type": "object",
+                "properties": {
+                    "duree_initiale": {
+                        "oneOf": [
+                            {"type": "integer"},
+                            {"type": "null"}
+                        ]
                     },
-                    "required": [
-                        "duree_initiale",
-                        "duree_reconduction",
-                        "nb_reconductions",
-                        "delai_tranche_optionnelle"
-                    ]
+                    "duree_reconduction": {"type": "integer"},
+                    "nb_reconductions": {"type": "integer"},
+                    "delai_tranche_optionnelle": {"type": "integer"}
                 },
-                {}
-            ]}
+                "required": [
+                    "duree_initiale",
+                    "duree_reconduction",
+                    "nb_reconductions",
+                    "delai_tranche_optionnelle"
+                ]
+            }
     },
 
     "duree_explication": {

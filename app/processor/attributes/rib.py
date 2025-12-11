@@ -60,7 +60,20 @@ RIB_ATTRIBUTES = {
      Format : un json sous format suivant : {'numero_voie': 'le numéro de voie', 'nom_voie': 'le nom de la voie', 'complement_adresse': 'le complément d'adresse éventuel', 'code_postal': 'le code postal', 'ville': 'la ville','pays': 'le pays'}
 """,
         "search": "",
-        "output_field": "adresse_postale_titulaire"
+        "output_field": "adresse_postale_titulaire",
+        "schema":
+        {
+            "type": "object",
+            "properties": {
+                "numero_voie": {"type": "string"},
+                "nom_voie": {"type": "string"},
+                "complement_adresse": {"type": "string"},
+                "code_postal": {"type": "string"},
+                "ville": {"type": "string"},
+                "pays": {"type": "string"}
+            },
+            "required": ["numero_voie", "nom_voie", "complement_adresse", "code_postal", "ville", "pays"]
+        }
     },
 
     "domiciliation": {

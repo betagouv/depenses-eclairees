@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 import logging
 from datetime import datetime
+import copy
 
 import sys
 sys.path.append(".")
@@ -28,34 +29,141 @@ def normalize_string(s):
     return s
 
 
-def compare_contract_object(llm_val: str, ref_val: str):
+def compare_contract_object(llm_val, ref_val, llm_model='albert-small'):
     """Compare l'objet du marché CCAP."""
-    return False
+    if llm_val == '' and ref_val == '':
+        return True
+    if llm_val == '' or ref_val == '':
+        return False
+    
+    try:
+        llm_env = LLMClient(api_key=ALBERT_API_KEY, base_url=ALBERT_BASE_URL, llm_model=llm_model)
+        system_prompt = "Vous êtes un expert en analyse sémantique de documents juridiques. Votre rôle est d'évaluer la proximité de sens entre deux descriptions d'objets."
+        user_prompt = f"""Compare les deux descriptions d'objet de marché suivantes et détermine si elles décrivent la même chose.
+
+    Valeur extraite par le LLM: {llm_val}
+    Valeur de référence: {ref_val}
+
+    Réponds UNIQUEMENT avec un JSON valide:
+    {{
+        "sont_proches": true ou false,
+        "explication": "brève explication"
+    }}"""
+        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
+        response = llm_env.ask_llm(messages=messages, response_format={"type": "json_object"}, temperature=0.2)
+        result, error = parse_json_response(response)
+        if error:
+            logger.warning(f"Error parsing LLM response for compare_contract_object: {error}")
+            return False
+        return bool(result.get("sont_proches", False))
+    except Exception as e:
+        logger.error(f"Error calling LLM for compare_contract_object: {e}")
+        return False
 
 
-def compare_batches(llm_val: str, ref_val: str):
+def compare_batches(llm_val:list[dict[str, str]], ref_val:list[dict[str, str]]):
     """Compare les lots du marché."""
-    return False
+    if llm_val == [] and ref_val == []:
+        return True
+
+    if len(llm_val) != len(ref_val):
+        return False
+    
+    for lot_llm in llm_val:
+        found = False
+        for lot_ref in ref_val:
+            if (lot_llm.get('numero_lot') == lot_ref.get('numero_lot') and 
+                normalize_string(lot_llm.get('titre_lot')) == normalize_string(lot_ref.get('titre_lot'))):
+                found = True
+                break
+        if not found:
+            return False
+    return True
 
 
-def compare_contract_form(llm_val: str, ref_val: str):
+def compare_contract_form(llm_val:dict, ref_val:dict):
     """Compare la forme du marché CCAP."""
+    if llm_val == {} and ref_val == {}:
+        return True
+    
+    if llm_val.get('structure') != ref_val.get('structure'):
+        return False
+    
+    llm_forme = llm_val.get('forme')
+    ref_forme = ref_val.get('forme')
+    
+    if isinstance(llm_forme, str) and isinstance(ref_forme, str):
+        return llm_forme == ref_forme
+    
+    if isinstance(llm_forme, list) and isinstance(ref_forme, list):
+        if len(llm_forme) != len(ref_forme):
+            return False
+        for forme_llm in llm_forme:
+            found = False
+            for forme_ref in ref_forme:
+                if (forme_llm.get('numero_lot') == forme_ref.get('numero_lot') and
+                    compare_contract_form(forme_llm.get('forme', {}), forme_ref.get('forme', {}))):
+                    found = True
+                    break
+            if not found:
+                return False
+        return True
+    
+    if isinstance(llm_forme, dict) and isinstance(ref_forme, dict):
+        return compare_contract_form(llm_forme, ref_forme)
+    
     return False
 
 
-def compare_batching(llm_val: str, ref_val: str):
-    """Compare l'allottissement."""
-    return False
-
-
-def compare_batches_duration(llm_val: str, ref_val: str):
+def compare_batches_duration(llm_val:list[dict], ref_val:list[dict]):
     """Compare la durée des lots."""
-    return False
+
+    if llm_val == [] and ref_val == []:
+        return True
+    
+    if len(llm_val) != len(ref_val):
+        return False
+    
+    for duree_llm in llm_val:
+        found = False
+        for duree_ref in ref_val:
+            if duree_llm.get('numero_lot') == duree_ref.get('numero_lot'):
+                llm_duree = duree_llm.get('duree_lot')
+                ref_duree = duree_ref.get('duree_lot')
+                if isinstance(llm_duree, str) and isinstance(ref_duree, str):
+                    if llm_duree == ref_duree:
+                        found = True
+                elif isinstance(llm_duree, dict) and isinstance(ref_duree, dict):
+                    if (llm_duree.get('duree_initiale') == ref_duree.get('duree_initiale') and
+                        llm_duree.get('duree_reconduction') == ref_duree.get('duree_reconduction') and
+                        llm_duree.get('nb_reconductions') == ref_duree.get('nb_reconductions') and
+                        llm_duree.get('delai_tranche_optionnelle') == ref_duree.get('delai_tranche_optionnelle')):
+                        found = True
+                break
+        if not found:
+            return False
+    return True
 
 
-def compare_contract_duration(llm_val: str, ref_val: str):
+def compare_contract_duration(llm_val:dict, ref_val:dict):
     """Compare la durée du marché."""
-    return False
+    if llm_val == {} and ref_val == {}:
+        return True
+    if llm_val == {} or ref_val == {}:
+        return False
+    
+    try:
+        if llm_val.get('duree_initiale') != ref_val.get('duree_initiale'):
+            return False
+        if llm_val.get('duree_reconduction') != ref_val.get('duree_reconduction'):
+            return False
+        if llm_val.get('nb_reconductions') != ref_val.get('nb_reconductions'):
+            return False
+        if llm_val.get('delai_tranche_optionnelle') != ref_val.get('delai_tranche_optionnelle'):
+            return False
+        return True
+    except (ValueError, TypeError):
+        return False
 
 
 def compare_price_revision_formula(llm_val: str, ref_val: str):
@@ -78,23 +186,50 @@ def compare_price_revision(llm_val: str, ref_val: str):
     return False
 
 
-def compare_batches_amount(llm_val: str, ref_val: str):
+def compare_batches_amount(llm_val:list[dict], ref_val:list[dict]):
     """Compare les montants HT des lots."""
-    return False
+    if llm_val == [] and ref_val == []:
+        return True
+    
+    if len(llm_val) != len(ref_val):
+        return False
+    
+    for montant_llm in llm_val:
+        found = False
+        for montant_ref in ref_val:
+            if (montant_llm.get('numero_lot') == montant_ref.get('numero_lot') and
+                montant_llm.get('montant_ht_maximum') == montant_ref.get('montant_ht_maximum') and
+                montant_llm.get('type_montant') == montant_ref.get('type_montant')):
+                found = True
+                break
+        if not found:
+            return False
+    return True
 
 
 def compare_amounts(llm_val: str, ref_val: str):
     """Compare les montants HT."""
-    return False
+    if llm_val == '' and ref_val == '':
+        return True
+    if llm_val == '' or ref_val == '':
+        return False
+    return normalize_string(str(llm_val)) == normalize_string(str(ref_val))
 
 
-def compare_global_contract(llm_val: str, ref_val: str):
+def compare_global_contract(llm_val, ref_val):
     """Compare le CCAG."""
-    return False
+    if llm_val == '' and ref_val == '':
+        return True
+    if llm_val == '' or ref_val == '':
+        return False
+    return normalize_string(str(llm_val)) == normalize_string(str(ref_val))
 
 
 def patch_post_processing(df):
     df_patched = df.copy()
+    df_patched['llm_response'] = df_patched['llm_response'].apply(
+        lambda x: copy.deepcopy(x) if isinstance(x, dict) else x
+    )
     post_processing_functions = {
 
 
@@ -104,19 +239,18 @@ def patch_post_processing(df):
         llm_response = row.get('llm_response', None)
         if llm_response is None or pd.isna(llm_response):
             continue
-        llm_data = json.loads(llm_response) if isinstance(llm_response, str) else llm_response
         
-        for key in llm_data.keys():
+        for key in llm_response.keys():
             if key in post_processing_functions:
                 try:
-                    llm_data[key] = post_processing_functions[key](llm_data[key])
-                    df_patched.loc[idx, key] = json.dumps(llm_data[key])
+                    llm_response[key] = post_processing_functions[key](llm_response[key])
+                    df_patched.at[idx, key] = llm_response[key]
                 except Exception as e:
                     logger.warning(f"Error in post_processing_functions for {key}, idx: {idx}: {e}")
-                    llm_data[key] = ''
-                    df_patched.loc[idx, key] = ''
+                    llm_response[key] = None
+                    df_patched.at[idx, key] = None
 
-        df_patched.loc[idx, 'llm_response'] = json.dumps(llm_data)
+        df_patched.at[idx, 'llm_response'] = llm_response
 
     return df_patched
 
@@ -223,7 +357,7 @@ def create_batch_test(multi_line_coef = 1):
     df_merged = df_merged.drop(columns=['_merge_key', 'filename_x'])
     df_merged = df_merged.rename(columns={'filename_y': 'filename'})
     
-    return df_merged
+    return df_test, df_result, df_post_processing, df_merged
 
 
 def check_quality_one_field(df_merged, col_to_test = 'objet_marche'):
@@ -240,16 +374,13 @@ def check_quality_one_field(df_merged, col_to_test = 'objet_marche'):
     for idx, row in df_merged.iterrows():
         filename = row.get('filename', 'unknown')
         
-        # Parser le JSON de llm_response
-        llm_data = json.loads(row.get('llm_response', None))
+        # Récupérer le dict llm_response
+        llm_data = row.get('llm_response', None)
 
         
         # Extraire les valeurs
         ref_val = row.get(col_to_test, None)
-        llm_val = llm_data.get(col_to_test, None)
-
-        if isinstance(llm_val, dict):
-            llm_val = json.dumps(llm_val)
+        llm_val = llm_data.get(col_to_test, None) if llm_data else None
         
         # Extraction des pbm OCR
         list_pbm_ocr = row.get('pbm_ocr', False)
@@ -284,8 +415,8 @@ def check_quality_one_row(df_merged, row_idx_to_test = 0, excluded_columns = [])
         print(f"Comparaison pour la ligne {row_idx_to_test} (fichier: {filename})")
         print(f"{'='*80}\n")
         
-        # Parser le JSON de llm_response
-        llm_data = json.loads(row.get('llm_response', None))
+        # Récupérer le dict llm_response
+        llm_data = row.get('llm_response', None)
         
         # Comparer toutes les colonnes (sauf exclues)
         for col in get_comparison_functions().keys():
@@ -298,10 +429,7 @@ def check_quality_one_row(df_merged, row_idx_to_test = 0, excluded_columns = [])
             
             # Extraire les valeurs
             ref_val = row.get(col, None)
-            llm_val = llm_data.get(col, None)
-            
-            if isinstance(llm_val, dict):
-                llm_val = json.dumps(llm_val)
+            llm_val = llm_data.get(col, None) if llm_data else None
             
             # Extraction des pbm OCR
             list_pbm_ocr = row.get('pbm_ocr', False)
@@ -369,20 +497,10 @@ def check_global_statistics(df_merged, excluded_columns = []):
                 # Si erreur lors de l'évaluation, on ignore
                 pass
             
-            # Parser le JSON de llm_response
-            try:
-                llm_response = row.get('llm_response', None)
-                if llm_response is None or pd.isna(llm_response):
-                    errors.append(f"{filename}: llm_response is None or NaN")
-                    matches.append(False)
-                    # Si pas de problème OCR, on compte aussi dans matches_no_ocr
-                    if not pbm_ocr:
-                        matches_no_ocr.append(False)
-                    continue
-                
-                llm_data = json.loads(llm_response) if isinstance(llm_response, str) else llm_response
-            except (json.JSONDecodeError, TypeError) as e:
-                errors.append(f"{filename}: JSON parsing error: {str(e)}")
+            # Récupérer le dict llm_response
+            llm_response = row.get('llm_response', None)
+            if llm_response is None or pd.isna(llm_response):
+                errors.append(f"{filename}: llm_response is None or NaN")
                 matches.append(False)
                 # Si pas de problème OCR, on compte aussi dans matches_no_ocr
                 if not pbm_ocr:
@@ -391,11 +509,7 @@ def check_global_statistics(df_merged, excluded_columns = []):
             
             # Extraire les valeurs
             ref_val = row.get(col, None)
-            llm_val = llm_data.get(col, None)
-            
-            # Convertir les dict en JSON string (cohérent avec la partie de débogage)
-            if isinstance(llm_val, dict):
-                llm_val = json.dumps(llm_val)
+            llm_val = llm_response.get(col, None)
             
             # Comparer les valeurs
             try:
@@ -463,10 +577,10 @@ def check_global_statistics(df_merged, excluded_columns = []):
     print(f"{'='*120}\n")
 
 
-df_merged = create_batch_test()
+df_test, df_result, df_post_processing, df_merged = create_batch_test()
 
 
-check_quality_one_field(df_merged, col_to_test = 'forme_marche')
+check_quality_one_field(df_merged, col_to_test = 'montant_ht_lots')
 
 check_quality_one_row(df_merged, row_idx_to_test = 1)
 

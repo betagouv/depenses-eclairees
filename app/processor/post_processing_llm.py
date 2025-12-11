@@ -174,11 +174,17 @@ def post_processing_duration(duration: dict[str, int]) -> dict[str, int]:
     # Vérification, ajout et format des clés pour qu'elles soient des entiers ou None
     fields = ['duree_initiale', 'duree_reconduction', 'nb_reconductions', 'delai_tranche_optionnelle']
     for field in fields:
-        value = duration.get(field, '')
-        # Vérifier le format : doit être un str représentant un entier ou ''
-        if not isinstance(value, int):
-            value = int(value)
+        value = duration.get(field, None)
+        # Vérifier le format : doit être un entier ou None
+        if not isinstance(value, int) and value is not None:
+            raise ValueError(f"Dans post_processing_duratiion : Le champ {field} n'est pas un entier ou None")
+        else:
             duration[field] = value
+
+    # Ajouter un test : si tous les champs de duration sont None ou 0, renvoyer {}
+    if all(duration.get(field, None) in (None, 0) for field in fields):
+        return {}
+
     return duration
 
 
@@ -200,9 +206,8 @@ def post_processing_siret(siret: str) -> str:
     # Si il reste seulement des chiffres et longueur 14, c'est ok
     if (siret.isdigit() and len(siret) == 14) or siret == '':
         return siret
-
-    # Si pas corrigible, on lève une erreur ValueError
-    raise ValueError("Le SIRET fourni n'est pas corrigible.")
+    else:
+        return ''
 
 
 def post_processing_other_bank_accounts(other_bank_accounts: list[dict[str, dict[str, str]]]) -> list[dict[str, dict[str, str]]]:
@@ -331,3 +336,5 @@ def post_processing_postal_address(postal_address: dict[str, str]) -> dict[str, 
     important_fields = ['numero_voie', 'nom_voie', 'code_postal', 'ville']
     if all(not normalized_address[field] for field in important_fields):
         return {}
+
+    return normalized_address

@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 import logging
 from datetime import datetime
+import copy
 
 import sys
 sys.path.append(".")
@@ -223,6 +224,9 @@ def compare_siren(llm_value, ref_value):
 def compare_mandatee_bank_account(llm_val:dict[str, str], ref_val:dict[str, str]):
     """Compare rib_mandataire : format JSON, comparaison des 5 champs."""
 
+    if llm_val == {} and ref_val == {}:
+        return True
+
     if llm_val == {} or ref_val == {}:
         return False
     
@@ -359,23 +363,21 @@ def compare_date(llm_value, ref_value):
 
 def compare_duration(llm_val, ref_val):
     """Compare duree : nombre de mois, comparaison exacte."""
-    llm_dict = json.loads(llm_val)
-    ref_dict = json.loads(ref_val)
-   
-    if (llm_dict == '' or llm_dict is None or llm_dict == 'nan') and (ref_dict == '' or ref_dict is None or ref_dict == 'nan'):
+
+    if llm_val == {} and ref_val == {}:
         return True
 
-    if (llm_dict == '' or llm_dict is None or llm_dict == 'nan') or (ref_dict == '' or ref_dict is None or ref_dict == 'nan'):
+    if llm_val == {} or ref_val == {}:
         return False
     
     try:
-        if llm_dict.get('duree_initiale', '') != ref_dict.get('duree_initiale', ''):
+        if llm_val.get('duree_initiale', None) != ref_val.get('duree_initiale', None):
             return False
-        if llm_dict.get('duree_reconduction', '') != ref_dict.get('duree_reconduction', ''):
+        if llm_val.get('duree_reconduction', None) != ref_val.get('duree_reconduction', None):
             return False
-        if llm_dict.get('nb_reconductions', '') != ref_dict.get('nb_reconductions', ''):
+        if llm_val.get('nb_reconductions', '') != ref_val.get('nb_reconductions', ''):
             return False
-        if llm_dict.get('delai_tranche_optionnelle', '') != ref_dict.get('delai_tranche_optionnelle', ''):
+        if llm_val.get('delai_tranche_optionnelle', '') != ref_val.get('delai_tranche_optionnelle', ''):
             return False
         return True
     except (ValueError, TypeError):
@@ -384,6 +386,9 @@ def compare_duration(llm_val, ref_val):
 
 def patch_post_processing(df):
     df_patched = df.copy()
+    df_patched['llm_response'] = df_patched['llm_response'].apply(
+        lambda x: copy.deepcopy(x) if isinstance(x, dict) else x
+    )
     post_processing_functions = {
         'rib_mandataire': post_processing_bank_account,
         'montant_ttc': post_processing_amount,
@@ -404,13 +409,13 @@ def patch_post_processing(df):
             if key in post_processing_functions:
                 try:
                     llm_response[key] = post_processing_functions[key](llm_response[key])
-                    df_patched.loc[idx, key] = llm_response[key]
+                    df_patched.at[idx, key] = llm_response[key]
                 except Exception as e:
                     logger.warning(f"Error in post_processing_functions for {key}, idx: {idx}: {e}")
                     llm_response[key] = None
-                    df_patched.loc[idx, key] = None
+                    df_patched.at[idx, key] = None
 
-        df_patched.loc[idx, 'llm_response'] = llm_response
+        df_patched.at[idx, 'llm_response'] = llm_response
 
     return df_patched
 
@@ -552,15 +557,11 @@ def check_quality_one_field(df_merged, col_to_test = 'duree'):
         filename = row.get('filename', 'unknown')
         
         # Parser le JSON de llm_response
-        llm_data = json.loads(row.get('llm_response', None))
+        llm_data = row.get('llm_response', None)
 
-        
         # Extraire les valeurs
         ref_val = row.get(col_to_test, None)
         llm_val = llm_data.get(col_to_test, None)
-
-        if isinstance(llm_val, dict):
-            llm_val = json.dumps(llm_val)
         
         # Extraction des pbm OCR
         list_pbm_ocr = row.get('pbm_ocr', False)
@@ -596,7 +597,7 @@ def check_quality_one_row(df_merged, row_idx_to_test = 0, excluded_columns = [])
         print(f"{'='*80}\n")
         
         # Parser le JSON de llm_response
-        llm_data = json.loads(row.get('llm_response', None))
+        llm_data = row.get('llm_response', None)
         
         # Comparer toutes les colonnes (sauf exclues)
         for col in get_comparison_functions().keys():
@@ -610,9 +611,6 @@ def check_quality_one_row(df_merged, row_idx_to_test = 0, excluded_columns = [])
             # Extraire les valeurs
             ref_val = row.get(col, None)
             llm_val = llm_data.get(col, None)
-            
-            if isinstance(llm_val, dict):
-                llm_val = json.dumps(llm_val)
             
             # Extraction des pbm OCR
             list_pbm_ocr = row.get('pbm_ocr', False)
@@ -680,33 +678,12 @@ def check_global_statistics(df_merged, excluded_columns = []):
                 # Si erreur lors de l'évaluation, on ignore
                 pass
             
-            # Parser le JSON de llm_response
-            try:
-                llm_response = row.get('llm_response', None)
-                if llm_response is None or pd.isna(llm_response):
-                    errors.append(f"{filename}: llm_response is None or NaN")
-                    matches.append(False)
-                    # Si pas de problème OCR, on compte aussi dans matches_no_ocr
-                    if not pbm_ocr:
-                        matches_no_ocr.append(False)
-                    continue
-                
-                llm_data = json.loads(llm_response) if isinstance(llm_response, str) else llm_response
-            except (json.JSONDecodeError, TypeError) as e:
-                errors.append(f"{filename}: JSON parsing error: {str(e)}")
-                matches.append(False)
-                # Si pas de problème OCR, on compte aussi dans matches_no_ocr
-                if not pbm_ocr:
-                    matches_no_ocr.append(False)
-                continue
+            # Récupérer le JSON de llm_response
+            llm_response = row.get('llm_response', None)
             
             # Extraire les valeurs
             ref_val = row.get(col, None)
-            llm_val = llm_data.get(col, None)
-            
-            # Convertir les dict en JSON string (cohérent avec la partie de débogage)
-            if isinstance(llm_val, dict):
-                llm_val = json.dumps(llm_val)
+            llm_val = llm_response.get(col, None)
             
             # Comparer les valeurs
             try:
