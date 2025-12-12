@@ -38,23 +38,27 @@ def test_post_processing_bank_account_missing_banque():
         post_processing_bank_account(bank_account)
 
 
-def test_post_processing_bank_account_no_iban_no_rib():
-    """Test sans IBAN ni les 4 champs RIB (doit lever une erreur)."""
+def test_post_processing_bank_account_no_iban_no_rib(caplog):
+    """Test sans IBAN ni les 4 champs RIB (doit logger un warning et retourner None)."""
     bank_account = {"banque": "Crédit Agricole"}
-    with pytest.raises(ValueError, match="doit contenir soit un IBAN"):
-        post_processing_bank_account(bank_account)
+    with caplog.at_level("WARNING"):
+        result = post_processing_bank_account(bank_account)
+    assert result is None
+    assert any("doit contenir soit un IBAN" in record.message for record in caplog.records)
 
 
-def test_post_processing_bank_account_incomplete_rib():
-    """Test avec seulement quelques champs RIB."""
+def test_post_processing_bank_account_incomplete_rib(caplog):
+    """Test avec seulement quelques champs RIB (doit logger un warning et retourner None)."""
     bank_account = {
         "banque": "Banque de France",
         "code_banque": "30001",
         "code_guichet": "00794",
         # Manque numero_compte et cle_rib
     }
-    with pytest.raises(ValueError, match="doit contenir soit un IBAN"):
-        post_processing_bank_account(bank_account)
+    with caplog.at_level("WARNING"):
+        result = post_processing_bank_account(bank_account)
+    assert result is None
+    assert any("doit contenir soit un IBAN" in record.message for record in caplog.records)
 
 
 def test_post_processing_bank_account_invalid_iban():

@@ -95,7 +95,7 @@ def compare_address(llm_val:dict[str, str], ref_val:dict[str, str]):
         
         # Normaliser les valeurs vides
         llm_field_val = llm_field_val.strip().title()
-        ref_field_val = llm_field_val.strip().title()
+        ref_field_val = ref_field_val.strip().title()
         
         # Comparer les valeurs du champ
         if llm_field_val != ref_field_val:

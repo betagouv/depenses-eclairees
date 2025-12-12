@@ -87,7 +87,9 @@ def create_response_format(df_attributes, classification):
             if schema_value:
                 if not isinstance(schema_value, dict):  
                     raise ValueError(f"Schema must be a dict (field={output_field})")  
-                properties[output_field] = schema_value
+                schema_to_use = schema_value
+
+        properties[output_field] = schema_to_use
     
     response_format = {
         "type": "json_schema",

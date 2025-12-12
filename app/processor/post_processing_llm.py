@@ -278,7 +278,9 @@ def post_processing_bic(bic: str) -> str:
 
 def normalize_text(text:str) -> str:
     """Normalise un texte : trim et capitalisation appropriée."""
-    # Retirer les espaces en début et fin
+    if not text:
+        return ''
+        # Retirer les espaces en début et fin
     text = text.strip()
     # Retirer les espaces multiples
     text = re.sub(r'\s+', ' ', text)
