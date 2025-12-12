@@ -310,10 +310,10 @@ Règles d’extraction :
             * Pour une durée entre des dates clés, par exemple "jusqu'à la réunion de conclusion 6 mois après le lancement" : renvoyer 6 mois.
                 -> Attention : si ces dates clés sont insuffisamment documentées, renvoyer duree_initiale: None
         - Extension de durée possible : extenion maximale en nombre de mois.
-            * En l'absence d'informations claires, renvoyer duree_reconduction: 0
+            * En l'absence d'informations claires, renvoyer duree_reconduction: None
             * Si des reconductions sont précisées (ne pas confondre avec des tranches optionnelles qui sont gérées ci-dessous) :
-                1. duree_reconduction : Trouver la durée d'une reconduction (en nombre de mois). Si l'information n'est pas précisée, renvoyer 0.
-                2. nb_reconductions : Trouver le nombre de reconductions possibles. Si l'information n'est pas précisée, renvoyer 0.
+                1. duree_reconduction : Trouver la durée d'une reconduction (en nombre de mois). Si l'information n'est pas précisée, renvoyer None.
+                2. nb_reconductions : Trouver le nombre de reconductions possibles (éventuellement 0). Si l'information n'est pas précisée, renvoyer None.
             * Si des tranches optionnelles sont précisées : renvoyer la durée de l'ensemble des tranches optionnelles.
                 1. delai_tranche_optionnelle : Trouver la durée de l'ensemble des tranches optionnelles.
                     Exemple : 2 tranches optionnelles de 8 mois, renvoyer 8 + 8 = 16.
@@ -325,15 +325,10 @@ Règles d’extraction :
             {
                 "type": "object",
                 "properties": {
-                    "duree_initiale": {
-                        "oneOf": [
-                            {"type": "integer"},
-                            {"type": "null"}
-                        ]
-                    },
-                    "duree_reconduction": {"type": "integer"},
-                    "nb_reconductions": {"type": "integer"},
-                    "delai_tranche_optionnelle": {"type": "integer"}
+                    "duree_initiale": {"type": ["integer", "null"]},
+                    "duree_reconduction": {"type": ["integer", "null"]},
+                    "nb_reconductions": {"type": ["integer", "null"]},
+                    "delai_tranche_optionnelle": {"type": ["integer", "null"]}
                 },
                 "required": [
                     "duree_initiale",

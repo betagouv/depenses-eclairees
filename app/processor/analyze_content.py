@@ -84,15 +84,9 @@ def create_response_format(df_attributes, classification):
         if 'schema' in df_filtered.columns:
             schema_value = row['schema']
             
-            # Si schema_value est défini et non vide
-            if pd.notna(schema_value) and schema_value:
-                # Si c'est une chaîne, essayer de la parser en JSON
-                if isinstance(schema_value, dict):
-                    try:
-                        schema_to_use = schema_value
-                    except (json.JSONDecodeError, TypeError):
-                        # Si le parsing échoue, garder le schéma par défaut (string)
-                        pass
+            # Si schema_value est un dictionnaire, bien défini
+            if isinstance(schema_value, dict):
+                schema_to_use = schema_value
         # Utiliser le schéma déterminé (soit celui de la colonne, soit le défaut)
         properties[output_field] = schema_to_use
     
