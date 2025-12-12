@@ -1,7 +1,6 @@
 import json
 import re
 import logging
-from tkinter.constants import NONE
 
 logger = logging.getLogger("docia." + __name__)
 
@@ -56,6 +55,8 @@ def post_processing_bank_account(bank_account_input: dict[str, str]) -> dict[str
         return None
 
     # Vérifie que rib contient la clé 'banque'
+    # Si la clé banque est absente, c'est souvent qu'il n'y a en fait pas de RIB dans le document.
+    # Pas de banque, mais un iban -> souvent une hallucination du LLM.
     if 'banque' not in bank_account_input:
         raise ValueError("Le paramètre 'rib' doit contenir la clé 'banque'")
 
@@ -78,7 +79,8 @@ def post_processing_bank_account(bank_account_input: dict[str, str]) -> dict[str
     
     # Si pas d'iban et pas les 4 champs, on renvoie une erreur.
     else:
-        raise ValueError("Le RIB doit contenir soit un IBAN, soit les champs code_banque, code_guichet, numero_compte et cle_rib.")
+        logger.warning("Le RIB doit contenir soit un IBAN, soit les champs code_banque, code_guichet, numero_compte et cle_rib.")
+        return None
     
     if iban:
         iban = re.sub(r'\s+', '', iban).upper() # Suppression des espaces et mise en majuscule
