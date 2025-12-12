@@ -64,7 +64,33 @@ def get_prompt_from_attributes(df_attributes: pd.DataFrame ):
   return question
 
 def create_response_format(df_attributes, classification):
-    l_output_field = select_attr(df_attributes, classification).output_field.tolist()
+    df_filtered = select_attr(df_attributes, classification)
+    
+    # Schéma par défaut : type string
+    default_schema = {"type": "string"}
+    
+    # Construire le dictionnaire des propriétés avec les schémas appropriés
+    properties = {}
+    l_output_field = []
+    
+    for idx, row in df_filtered.iterrows():
+        output_field = row['output_field']
+        l_output_field.append(output_field)
+        
+        # Par défaut, utiliser le schéma string
+        schema_to_use = default_schema
+        
+        # Si la colonne 'schema' existe et contient une valeur valide
+        if 'schema' in df_filtered.columns:
+            schema_value = row.get('schema')
+            
+            if schema_value:
+                if not isinstance(schema_value, dict):  
+                    raise ValueError(f"Schema must be a dict (field={output_field})")  
+                schema_to_use = schema_value
+
+        properties[output_field] = schema_to_use
+    
     response_format = {
         "type": "json_schema",
         "json_schema": {
@@ -72,12 +98,13 @@ def create_response_format(df_attributes, classification):
             "strict": True,
             "schema": {
                 "type": "object",
-                "properties": {output_field: {"type": "string"} for output_field in l_output_field},
-                "required": list(df_attributes.output_field)
+                "properties": properties,
+                "required": l_output_field
             }
         }
     }
     return response_format
+
 
 def df_analyze_content(api_key, 
                        base_url, 
@@ -127,7 +154,7 @@ def df_analyze_content(api_key,
             for attr in df_attributes.attribut:
                 result.update({f'{attr}': result["llm_response"].get(attr, '')})
         else:
-            print(f"Erreur lors de l'analyse du fichier {row["filename"]}: {result['json_error']}")
+            logger.error(f"Erreur lors de l'analyse du fichier {row["filename"]}: {result['json_error']}")
 
         return idx, result
 

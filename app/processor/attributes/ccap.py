@@ -28,14 +28,27 @@ CCAP_ATTRIBUTES = {
      Format : une liste de json [{'numero_lot': numéro du lot, 'titre_lot': l'intitulé du lot }, {...}]
 """,
         "search": "",
-        "output_field": "lots"
+        "output_field": "lots",
+        "schema":
+        {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "numero_lot": {"type": "integer"},
+                    "titre_lot": {"type": "string"}
+                },
+                "required": ["numero_lot", "titre_lot"]
+            }
+        }
     },
 
     "forme_marche": {
         "consigne": """FORME_MARCHE
      Définition : La forme de passation des commandes, ou des marchés subséquents de ce marché.
      Indices : 
-     - Rechercher la forme du marché dans un paragraphe sur la forme du marché ou sur la passation des commandes.
+     - Rechercher la forme du marché dans un paragraphe sur la forme du marché ou sur la passation des commandes ou sur la passation de marchés subséquents.
+     - Si le marché est désigné comme un accord-cadre, il donne souvent lieu à des marchés subséquents (directement ou dans certains de ses lots).
      - (1) Si le marche ne comprend ni lot, ni marchés subséquents, alors :
         * Structure = 'simple'
         * Forme = 'à bons de commande' ou 'à tranches' ou 'forfaitaire'
@@ -46,13 +59,123 @@ CCAP_ATTRIBUTES = {
             > Par exemple, le marché comporte 2 lots, un à bons de commande, et l'autre à marchés subséquents. On traite chaque lot comme s'il était un nouveau marché en lui-même.
                 > Le lot 1 est à bons de commande, on applique la consi1) : {'structure': 'simple', 'forme': 'à bons de commande'}
                 > Le lot 2 est à marchés subséquents, on applique la consigne (3) : {'structure': 'à marchés subséquents', 'forme': {'structure': 'simple', 'forme': 'à bons de commande' ou 'à tranches' ou 'forfaitaire'}}
+        * ATTENTION : S'il est mentionné "des marchés subséquents pour les lots ...", c'est que les lots sont "à marchés subséquents" (même si ce n'est pas explicitement mentionné dans la forme du marché).
      - (3) Si le marché donne lieu à des marchés subséquents directement (et non que ses lots donnent lieu à des marchés subséquents) :
         * Structure = 'à marchés subséquents'
         * Forme = un json {'structure': 'simple' 'forme': 'à bons de commande' ou 'à tranches' ou 'forfaitaire'} selon la forme des marchés subséquents.
      Format : un json {'structure': ..., 'forme': ...}. La forme est elle-même un json.
    """,
         "search": "",
-        "output_field": "forme_marche"
+        "output_field": "forme_marche",
+        "schema":
+        {
+        "type": "object",
+        "oneOf": [
+            {
+                "type": "object",
+                "properties": {
+                        "structure": {
+                        "type": "string",
+                        "enum": ["simple"]
+                    },
+                    "forme": {
+                        "type": "string",
+                        "enum": ["à bons de commande", "à tranches", "forfaitaire"]
+                    }
+                },
+                "required": ["structure", "forme"]
+            },
+            {
+                "type": "object",
+                "properties": {
+                    "structure": {
+                        "type": "string",
+                        "enum": ["allotie"]
+                    },
+                    "forme": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                            "numero_lot": {
+                                "type": "integer"
+                            },
+                            "forme": {
+                                "type": "object",
+                                "oneOf": [
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "structure": {
+                                                "type": "string",
+                                                "enum": ["simple"]
+                                            },
+                                            "forme": {
+                                                "type": "string",
+                                                "enum": ["à bons de commande", "à tranches", "forfaitaire"]
+                                            }
+                                        },
+                                        "required": ["structure", "forme"]
+                                    },
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "structure": {
+                                                "type": "string",
+                                                "enum": ["à marchés subséquents"]
+                                            },
+                                            "forme": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "structure": {
+                                                        "type": "string",
+                                                        "enum": ["simple"]
+                                                    },
+                                                    "forme": {
+                                                        "type": "string",
+                                                        "enum": ["à bons de commande", "à tranches", "forfaitaire"]
+                                                    }
+                                                },
+                                                "required": ["structure", "forme"]
+                                            }
+                                        },
+                                        "required": ["structure", "forme"]
+                                    }
+                                ]
+                            }
+                            },
+                            "required": ["numero_lot", "forme"]
+                        }
+                    }
+                },
+                "required": ["structure", "forme"]
+            },
+            {
+                "type": "object",
+                "properties": {
+                    "structure": {
+                    "type": "string",
+                    "enum": ["à marchés subséquents"]
+                    },
+                    "forme": {
+                    "type": "object",
+                    "properties": {
+                        "structure": {
+                        "type": "string",
+                        "enum": ["simple"]
+                        },
+                        "forme": {
+                        "type": "string",
+                        "enum": ["à bons de commande", "à tranches", "forfaitaire"]
+                        }
+                    },
+                    "required": ["structure", "forme"]
+                    }
+                },
+                "required": ["structure", "forme"]
+            }
+        ]
+        }
     },
 
     "duree": {
@@ -76,7 +199,18 @@ CCAP_ATTRIBUTES = {
         Format : un json sous format suivant {"duree_initiale": "nombre entier de mois", "duree_reconduction": "nombre entier de mois", "nb_reconductions": "nombre entier de reconductions possibles", "delai_tranche_optionnelle": "nombre entier de mois"}
     """,
         "search": "Section du document qui décrit la durée du marché ou le délai d'exécution des prestations.",
-        "output_field": "duree"
+        "output_field": "duree",
+        "schema":
+        {
+            "type": "object",
+            "properties": {
+                "duree_initiale": {"type": "integer"},
+                "duree_reconduction": {"type": "integer"},
+                "nb_reconductions": {"type": "integer"},
+                "delai_tranche_optionnelle": {"type": "integer"}
+            },
+            "required": ["duree_initiale", "duree_reconduction", "nb_reconductions", "delai_tranche_optionnelle"]
+        }
     },
 
 
@@ -86,15 +220,40 @@ CCAP_ATTRIBUTES = {
      Indices : 
      - S'il n'y pas de lots, renvoyer []
      - Dans la section spécifique de la durée du marché.
-     - Si la durée des lots est la même que celle du marché, renvoyer la valeur 'identique à la durée du marché'.
+     - Si la durée des lots est la même que celle du marché, renvoyer la valeur 'identique à la durée du marché' pour chacun des lots.
      - Si des spécifités sont précisées pour la durée des lots, renvoyer la durée de chaque lot sous format d'un json : 
         * {"duree_initiale": "nombre entier de mois", "duree_reconduction": "nombre entier de mois", "nb_reconductions": "nombre entier de reconductions possibles", "delai_tranche_optionnelle": "nombre entier de mois"}
-     Format : une liste de json [{"numero_lot": numéro du lot, "duree_lot": nombre de mois}, {...}].
+     Format : une liste de json [{"numero_lot": numéro du lot, "duree_lot": "string" ou objet json}, ...].
 """,
         "search": "",
-        "output_field": "duree_lots"
+        "output_field": "duree_lots",
+        "schema":
+        {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "numero_lot": {"type": "integer"},
+                    "duree_lot": {
+                        "oneOf": [
+                            {"type": "string", "enum": ["identique à la durée du marché"]},
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "duree_initiale": {"type": "integer"},
+                                    "duree_reconduction": {"type": "integer"},
+                                    "nb_reconductions": {"type": "integer"},
+                                    "delai_tranche_optionnelle": {"type": "integer"}
+                                },
+                                "required": ["duree_initiale", "duree_reconduction", "nb_reconductions", "delai_tranche_optionnelle"]
+                            }
+                        ]
+                    }
+                },
+                "required": ["numero_lot", "duree_lot"]
+            }
+        }
     },
-
 
     "montant_ht": {
         "consigne": """MONTANT_HT
@@ -122,7 +281,20 @@ CCAP_ATTRIBUTES = {
      Format : une liste de json au format suivant [{"numero_lot": le numéro du lot, 'montant_ht_maximum': le montant hors taxes maximum du lot, 'type_montant': 'annuel' ou 'total'}, {...}]
 """,
         "search": "",
-        "output_field": "montant_ht_lots"
+        "output_field": "montant_ht_lots",
+        "schema":
+        {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "numero_lot": {"type": "integer"},
+                    "montant_ht_maximum": {"type": "string"},
+                    "type_montant": {"type": "string", "enum": ["annuel", "total"]}
+                },
+                "required": ["numero_lot", "montant_ht_maximum", "type_montant"]
+            }
+        }
     },
 
     "ccag": {
@@ -174,7 +346,23 @@ CCAP_ATTRIBUTES = {
    Format : {'condition_declenchement':"", 'montant_avance':XX%, 'montant_reference':"", 'remboursement':XX%-XX%}
 """,
         "search": "avance accordée titulaire montant initial durée exécution remboursement précompte",
-        "output_field": "condition_avance_ccap"
+        "output_field": "condition_avance_ccap",
+        "schema":
+        {
+            "type": "object",
+            "properties": {
+                "condition_declenchement": {"type": "string"},
+                "montant_avance": {"type": "string"},
+                "montant_reference": {"type": "string"},
+                "remboursement": {"type": "string"}
+            },
+            "required": [
+                "condition_declenchement",
+                "montant_avance",
+                "montant_reference",
+                "remboursement"
+            ]
+        }
     }
 
 }
