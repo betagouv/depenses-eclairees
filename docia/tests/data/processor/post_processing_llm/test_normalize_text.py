@@ -1,5 +1,3 @@
-import pytest
-
 from app.processor.post_processing_llm import normalize_text
 
 

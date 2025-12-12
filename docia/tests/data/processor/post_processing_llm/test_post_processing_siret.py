@@ -1,5 +1,3 @@
-import pytest
-
 from app.processor.post_processing_llm import post_processing_siret
 
 
@@ -25,7 +23,7 @@ def test_post_processing_siret_float_format():
     """Test avec un SIRET au format float (ex: "12345678901234.0")."""
     siret = "12345678901234.0"
     assert post_processing_siret(siret) == "12345678901234"
-    
+
     siret = "12345678901234.00"
     assert post_processing_siret(siret) == "12345678901234"
 
