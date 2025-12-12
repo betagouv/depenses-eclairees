@@ -35,11 +35,13 @@ def home(request):
                     db_docs = db_docs.order_by("classification")
                     for db_doc in db_docs:
                         llm_response = db_doc.llm_response or {}
+                        ratio_extracted = compute_ratio_data_extraction(llm_response)
                         doc = {
                             "id": db_doc.id,
                             "title": f"[{db_doc.classification}] {db_doc.filename}",
                             "content": sorted([[key, value] for key, value in llm_response.items()]),
                             "url": db_doc.file.url if db_doc.file else "",
+                            "percent_data_extraction": format_ratio_to_percent(ratio_extracted),
                         }
                         if db_doc.llm_response:
                             documents.append(doc)
@@ -60,3 +62,15 @@ def home(request):
             "is_ratelimited": is_ratelimited,
         },
     )
+
+
+def compute_ratio_data_extraction(llm_response: dict) -> float:
+    total_keys = len(llm_response.keys())
+    total_extracted = len([x for x in llm_response.values() if x])
+    if total_keys == 0:
+        return 0
+    return total_extracted / total_keys
+
+
+def format_ratio_to_percent(value: float) -> str:
+    return f"{value * 100:.0f}%"
