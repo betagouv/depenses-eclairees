@@ -36,10 +36,10 @@ for doc_type, attributes_dict in DOC_TYPE_ATTRIBUTES_MAPPING.items():
     for attr_name, attr_def in attributes_dict.items():
         rows.append({
             "attribut": attr_name,
-            "consigne": attr_def.get("consigne", ""),
-            "search": attr_def.get("search", ""),
+            "consigne": attr_def.get("consigne", None),
+            "search": attr_def.get("search", None),
             "output_field": attr_def.get("output_field", attr_name),
-            "schema": attr_def.get("schema", ""),
+            "schema": attr_def.get("schema", None),
             "type_attachments": [doc_type]  # Chaque attribut est associé à son type de document
         })
 
