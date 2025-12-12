@@ -13,9 +13,8 @@ FICHE_NAVETTE_ATTRIBUTES = {
      Format : le nom de l'administration bénéficiaire en toutes lettres (pas d'acronymes si possible). 
 """,
         "search": "",
-        "output_field": "administration_bénéficiaire"
+        "output_field": "administration_bénéficiaire",
     },
-
     "objet": {
         "consigne": """OBJET
    Définition : l'objet de la commande ou du marché, c'est-à-dire ce qui a été acheté, ou le service fourni.
@@ -30,9 +29,8 @@ FICHE_NAVETTE_ATTRIBUTES = {
    - Si l'objet de la commande est incompréhensible, proposer un objet simple qui reflète le contenu de la commande.
 """,
         "search": "",
-        "output_field": "objet"
+        "output_field": "objet",
     },
-
     "societe_principale": {
         "consigne": """SOCIETE_PRINCIPALE  
      Définition : Société principale contractante avec l'administration publique ou ses représentants. Si un groupement est mentionné, extraire la société mandataire ou représentante.  
@@ -43,9 +41,8 @@ FICHE_NAVETTE_ATTRIBUTES = {
      Format : renvoyer le nom de la société telle qu'écrit dans le document.
 """,
         "search": "",
-        "output_field": "societe_principale"
+        "output_field": "societe_principale",
     },
-
     "montant_ht": {
         "consigne": """MONTANT_HT  
      Définition : Montant du marché hors taxes (également hors TVA).  
@@ -56,25 +53,22 @@ FICHE_NAVETTE_ATTRIBUTES = {
      Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
      """,
         "search": "",
-        "output_field": "montant_ht"
+        "output_field": "montant_ht",
     },
-
     "accord_cadre": {
         "consigne": """accord_cadre  
      Définition : Libellé de l'accord-cadre
      Indices : Repérer les expressions comme "Libellé accord-cadre".  
 """,
         "search": "",
-        "output_field": "accord_cadre"
+        "output_field": "accord_cadre",
     },
-
     "id_accord_cadre": {
         "consigne": """id_accord_cadre  
      Définition : Identifiant de l'accord cadre 
      Indices : Repérer les identifiants sous la forme "2022AMO0538402"
 """,
         "search": "",
-        "output_field": "id_accord_cadre"
+        "output_field": "id_accord_cadre",
     },
 }
-

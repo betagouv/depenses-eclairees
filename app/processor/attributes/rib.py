@@ -13,9 +13,8 @@ RIB_ATTRIBUTES = {
      Format : l'IBAN de 27 caractères avec espaces tous les 4 caractères (6 groupes de 4 et un groupe de 3)
 """,
         "search": "",
-        "output_field": "iban"
+        "output_field": "iban",
     },
-
     "bic": {
         "consigne": """BIC
      Définition : Code d'identification bancaire (BIC), généralement composé de 8 ou 11 caractères alphanumériques.
@@ -26,9 +25,8 @@ RIB_ATTRIBUTES = {
      Format : le BIC de 8 ou 11 caractères avec espaces tous les 4 caractères
 """,
         "search": "",
-        "output_field": "bic"
+        "output_field": "bic",
     },
-
     "titulaire_compte": {
         "consigne": """TITULAIRE_COMPTE
      Définition : Nom du titulaire du compte bancaire (personne physique ou morale).
@@ -40,9 +38,8 @@ RIB_ATTRIBUTES = {
      - Ne rien renvoyer si aucun nom de titulaire trouvé.
 """,
         "search": "",
-        "output_field": "titulaire_compte"
+        "output_field": "titulaire_compte",
     },
-
     "adresse_postale_titulaire": {
         "consigne": """ADRESSE_POSTALE_TITULAIRE  
      Définition : Adresse postale  de la société titulaire principale du marché (json).
@@ -61,8 +58,7 @@ RIB_ATTRIBUTES = {
 """,
         "search": "",
         "output_field": "adresse_postale_titulaire",
-        "schema":
-        {
+        "schema": {
             "type": "object",
             "properties": {
                 "numero_voie": {"type": "string"},
@@ -70,12 +66,11 @@ RIB_ATTRIBUTES = {
                 "complement_adresse": {"type": "string"},
                 "code_postal": {"type": "string"},
                 "ville": {"type": "string"},
-                "pays": {"type": "string"}
+                "pays": {"type": "string"},
             },
-            "required": ["numero_voie", "nom_voie", "complement_adresse", "code_postal", "ville", "pays"]
-        }
+            "required": ["numero_voie", "nom_voie", "complement_adresse", "code_postal", "ville", "pays"],
+        },
     },
-
     "domiciliation": {
         "consigne": """DOMICILIATION
      Définition : Domiciliation du compte bancaire (si effectuée).
@@ -85,9 +80,8 @@ RIB_ATTRIBUTES = {
      - Ne rien renvoyer si aucune domiciliation trouvée.
 """,
         "search": "",
-        "output_field": "domiciliation"
+        "output_field": "domiciliation",
     },
-
     "banque": {
         "consigne": """BANQUE
      Définition : Nom de la banque.
@@ -96,7 +90,6 @@ RIB_ATTRIBUTES = {
      - Ne rien renvoyer si aucune banque trouvée.
 """,
         "search": "",
-        "output_field": "banque"
+        "output_field": "banque",
     },
 }
-

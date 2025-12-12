@@ -6,7 +6,7 @@ Ce module contient les classes principales pour représenter :
 - Marche : Marchés publics
 """
 
-from .tiers import Tiers
 from .marche import Marche
+from .tiers import Tiers
 
-__all__ = ['Tiers', 'Marche']
+__all__ = ["Tiers", "Marche"]

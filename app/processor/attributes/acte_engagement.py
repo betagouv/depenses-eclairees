@@ -17,9 +17,8 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
    - Si l'objet de la commande est incompréhensible, proposer un objet simple qui reflète le contenu de la commande.
 """,
         "search": "",
-        "output_field": "objet_marche"
+        "output_field": "objet_marche",
     },
-
     "lot_concerne": {
         "consigne": """LOT_CONCERNE
    Définition : le lot du marché concerné par le contrat.
@@ -32,9 +31,8 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
    - Si aucun lot trouvé, renvoyer ''
 """,
         "search": "",
-        "output_field": "lot_concerne"
+        "output_field": "lot_concerne",
     },
-
     "administration_beneficiaire": {
         "consigne": """ADMINISTRATION_BENEFICIAIRE 
      Définition : Structure administrative ou publique qui bénéficie de la commande, ou qui achète la prestation.
@@ -51,9 +49,8 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
      Format : les différents niveaux de l'administration bénéficiaire en minuscule correctement écrit (et leurs acronymes entre parenthèses si disponibles), séparés par des tirets, . 
 """,
         "search": "",
-        "output_field": "administration_beneficiaire"
+        "output_field": "administration_beneficiaire",
     },
-
     "societe_principale": {
         "consigne": """SOCIETE_PRINCIPALE  
      Définition : Société principale contractante (titulaire). Si un groupement est mentionné, extraire la société mandataire ou représentante.  
@@ -64,9 +61,8 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
      Format : renvoyer le nom de la société.
 """,
         "search": "",
-        "output_field": "societe_principale"
+        "output_field": "societe_principale",
     },
-
     "siret_mandataire": {
         "consigne": """SIRET_MANDATAIRE  
    Définition : Numéro SIRET de la société principale, composé de 14 chiffres.  
@@ -78,9 +74,8 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
    Format : un numéro composé de 14 chiffres, sans espaces.  
 """,
         "search": "",
-        "output_field": "siret_mandataire"
+        "output_field": "siret_mandataire",
     },
-
     "siren_mandataire": {
         "consigne": """SIREN_MANDATAIRE
    Définition : numéro de SIREN du prestataire / du titulaire principal, composé de 9 chiffres
@@ -93,9 +88,8 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
    Format : un numéro composé de 9 chiffres, sans espaces ni caractères spéciaux
 """,
         "search": "",
-        "output_field": "siren_mandataire"
+        "output_field": "siren_mandataire",
     },
-
     "rib_mandataire": {
         "consigne": """RIB_MANDATAIRE
      Définition : Informations bancaires (IBAN en priorité) du compte à créditer indiqué dans l'acte d'engagement.
@@ -117,66 +111,53 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
 """,
         "search": "",
         "output_field": "rib_mandataire",
-        "schema":
-            {
-                "type": "object",
-                "oneOf": [
-                    {
-                        "type": "object",
-                        "properties": {
-                            "banque": {"type": "string"},
-                            "iban": {"type": "string"}
-                        },
-                        "required": ["banque", "iban"]
+        "schema": {
+            "type": "object",
+            "oneOf": [
+                {
+                    "type": "object",
+                    "properties": {"banque": {"type": "string"}, "iban": {"type": "string"}},
+                    "required": ["banque", "iban"],
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "banque": {"type": "string"},
+                        "code_banque": {"type": "string"},
+                        "code_guichet": {"type": "string"},
+                        "numero_compte": {"type": "string"},
+                        "cle_rib": {"type": "string"},
                     },
-                    {
-                        "type": "object",
-                        "properties": {
-                            "banque": {"type": "string"},
-                            "code_banque": {"type": "string"},
-                            "code_guichet": {"type": "string"},
-                            "numero_compte": {"type": "string"},
-                            "cle_rib": {"type": "string"}
-                        },
-                        "required": [
-                            "banque",
-                            "code_banque",
-                            "code_guichet",
-                            "numero_compte",
-                            "cle_rib"
-                        ]
-                    },
-                    {}
-                ]
-            }
+                    "required": ["banque", "code_banque", "code_guichet", "numero_compte", "cle_rib"],
+                },
+                {},
+            ],
+        },
     },
-
-#     "avance":{
-#         "consigne": """AVANCE
-#      Définition : Information sur la volonté du titulaire de recevoir ou non une avance.
-#      Indices :
-#      - Dans un paragraphe dédié au renoncement de l'avance, souvent sous la forme d'une case à cocher à gauche de la mention "Non" ou "Oui".
-#      - Attention l'extraction du texte peut être ambiguë, notamment pour les cases à cocher :
-#         * si une des cases est devenu 0 ou O, elle n'était probalement pas cochée : "Ef NON O oul", c'était probablement que "Non" était cochée.
-#         * si une des cases est devenu x ou X, elle était probablement cochée.
-#         * si la coche d'une case n'est pas clairement visible, renvoyer "Information insuffisante".
-#      - Ne rien renvoyer sur l'avance si aucune information sur l'avance trouvée.
-#      Format : "✓ Conserve le bénéfice de l'avance" ou "✗ Renonce au bénéfice de l'avance" ou "Information insuffisante
-# """,
-#         "search": "",
-#         "output_field": "avance"
-#     },
-
-    "citation_avance":{
+    #     "avance":{
+    #         "consigne": """AVANCE
+    #      Définition : Information sur la volonté du titulaire de recevoir ou non une avance.
+    #      Indices :
+    #      - Dans un paragraphe dédié au renoncement de l'avance, souvent sous la forme d'une case à cocher à gauche de la mention "Non" ou "Oui".
+    #      - Attention l'extraction du texte peut être ambiguë, notamment pour les cases à cocher :
+    #         * si une des cases est devenu 0 ou O, elle n'était probalement pas cochée : "Ef NON O oul", c'était probablement que "Non" était cochée.
+    #         * si une des cases est devenu x ou X, elle était probablement cochée.
+    #         * si la coche d'une case n'est pas clairement visible, renvoyer "Information insuffisante".
+    #      - Ne rien renvoyer sur l'avance si aucune information sur l'avance trouvée.
+    #      Format : "✓ Conserve le bénéfice de l'avance" ou "✗ Renonce au bénéfice de l'avance" ou "Information insuffisante
+    # """,
+    #         "search": "",
+    #         "output_field": "avance"
+    #     },
+    "citation_avance": {
         "consigne": """CITATION_AVANCE
      Définition : La question (souvent "Je renonce au bénéfice de l'avance :")et les réponses extraites du texte du document concernant l'avance.
      Format : La citation du texte du document telle quelle, sans aucune modification.
 """,
         "search": "",
-        "output_field": "citation_avance"
+        "output_field": "citation_avance",
     },
-
-    "cotraitants":{
+    "cotraitants": {
         "consigne": """COTRAITANTS
 Objectif : Extraire uniquement les entreprises réellement mentionnées comme cotraitantes (hors mandataire).
 Règles d’extraction :
@@ -191,21 +172,16 @@ Règles d’extraction :
 """,
         "search": "",
         "output_field": "cotraitants",
-        "schema":
-            {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "nom": {"type": "string"},
-                        "siret": {"type": "string"}
-                    },
-                    "required": ["nom", "siret"]
-                }
-            }
+        "schema": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {"nom": {"type": "string"}, "siret": {"type": "string"}},
+                "required": ["nom", "siret"],
+            },
+        },
     },
-
-    "sous_traitants":{
+    "sous_traitants": {
         "consigne": """SOUS_TRAITANTS
      Définition : Liste des sous-traitants du mandataire, s'il y en a.
      Indices : 
@@ -216,21 +192,16 @@ Règles d’extraction :
 """,
         "search": "Section du document qui décrit le groupement et les entreprises qui le composent.",
         "output_field": "sous_traitants",
-        "schema":
-            {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "nom": {"type": "string"},
-                        "siret": {"type": "string"}
-                    },
-                    "required": ["nom", "siret"]
-                }
-            }
+        "schema": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {"nom": {"type": "string"}, "siret": {"type": "string"}},
+                "required": ["nom", "siret"],
+            },
+        },
     },
-
-    "rib_autres":{
+    "rib_autres": {
         "consigne": """RIB_AUTRES
      Définition : RIB des autres entreprises du groupement, s'il y en a.
      Indices : 
@@ -245,27 +216,22 @@ Règles d’extraction :
 """,
         "search": "Section du document qui décrit le groupement et les entreprises qui le composent.",
         "output_field": "rib_autres",
-        "schema":
-            {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "societe": {"type": "string"},
-                        "rib": {
-                            "type": "object",
-                            "properties": {
-                                "banque": {"type": "string"},
-                                "iban": {"type": "string"}
-                            },
-                            "required": ["banque", "iban"]
-                        }
+        "schema": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "societe": {"type": "string"},
+                    "rib": {
+                        "type": "object",
+                        "properties": {"banque": {"type": "string"}, "iban": {"type": "string"}},
+                        "required": ["banque", "iban"],
                     },
-                    "required": ["societe", "rib"]
-                }
-            }
+                },
+                "required": ["societe", "rib"],
+            },
+        },
     },
-
     "montant_ht": {
         "consigne": """MONTANT_HT  
      Définition : Montant du marché hors taxes (également hors TVA).  
@@ -278,10 +244,9 @@ Règles d’extraction :
      - Ne rien envoyer si aucun montant HT trouvé.
      Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
 """,
-        "search": "",    
-        "output_field": "montant_ht"
+        "search": "",
+        "output_field": "montant_ht",
     },
-
     "montant_ttc": {
         "consigne": """MONTANT_TTC  
      Définition : Montant du marché toutes taxes comprises (avec TVA incluse).  
@@ -296,9 +261,8 @@ Règles d’extraction :
      Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
 """,
         "search": "",
-        "output_field": "montant_ttc"
+        "output_field": "montant_ttc",
     },
-
     "duree": {
         "consigne": """DUREE
         Définition : Durée du marché totale exprimée en mois et extension possible.
@@ -321,31 +285,23 @@ Règles d’extraction :
     """,
         "search": "Section du document qui décrit la durée du marché ou le délai d'exécution des prestations.",
         "output_field": "duree",
-        "schema":
-            {
-                "type": "object",
-                "properties": {
-                    "duree_initiale": {"type": ["integer", "null"]},
-                    "duree_reconduction": {"type": ["integer", "null"]},
-                    "nb_reconductions": {"type": ["integer", "null"]},
-                    "delai_tranche_optionnelle": {"type": ["integer", "null"]}
-                },
-                "required": [
-                    "duree_initiale",
-                    "duree_reconduction",
-                    "nb_reconductions",
-                    "delai_tranche_optionnelle"
-                ]
-            }
+        "schema": {
+            "type": "object",
+            "properties": {
+                "duree_initiale": {"type": ["integer", "null"]},
+                "duree_reconduction": {"type": ["integer", "null"]},
+                "nb_reconductions": {"type": ["integer", "null"]},
+                "delai_tranche_optionnelle": {"type": ["integer", "null"]},
+            },
+            "required": ["duree_initiale", "duree_reconduction", "nb_reconductions", "delai_tranche_optionnelle"],
+        },
     },
-
     "duree_explication": {
         "consigne": """DUREE_EXPLICATION
         Définition : Explique comment tu as calculé la durée ci-dessus""",
         "search": "Section du document qui décrit la durée du marché ou le délai d'exécution des prestations.",
-        "output_field": "duree_explication"
+        "output_field": "duree_explication",
     },
-
     "date_signature_mandataire": {
         "consigne": """DATE_SIGNATURE_MANDATAIRE
       Définition : Date de signature du document par le mandataire (entreprise prestataire principale). 
@@ -359,9 +315,8 @@ Règles d’extraction :
      Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
 """,
         "search": "",
-        "output_field": "date_signature_mandataire"
+        "output_field": "date_signature_mandataire",
     },
-
     "date_signature_administration": {
         "consigne": """DATE_SIGNATURE_ADMINISTRATION
       Définition : Date de signature du document par l'administration. 
@@ -375,9 +330,8 @@ Règles d’extraction :
      Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
 """,
         "search": "",
-        "output_field": "date_signature_administration"
+        "output_field": "date_signature_administration",
     },
-
     "date_notification": {
         "consigne": """DATE_NOTIFICATION
       Définition : Date de notification du marché aux mandataires. 
@@ -390,7 +344,6 @@ Règles d’extraction :
      Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
 """,
         "search": "",
-        "output_field": "date_notification"
+        "output_field": "date_notification",
     },
 }
-

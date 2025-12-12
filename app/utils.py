@@ -1,10 +1,10 @@
-import time as t
-import re
-import pandas as pd
 import json
-
-from contextlib import contextmanager
+import re
 import time
+import time as t
+from contextlib import contextmanager
+
+import pandas as pd
 
 from . import config_data
 
@@ -13,7 +13,7 @@ from . import config_data
 def log_execution_time(title, treshold=10):
     """
     A context manager that logs the execution time of a code block if it exceeds a specified threshold.
-    
+
     Args:
         title (str): Description of the operation being timed
         treshold (float, optional): Minimum execution time in seconds to trigger logging.
@@ -35,9 +35,9 @@ def log_execution_time(title, treshold=10):
         ellapsed = end_time - start_time
         # Only log if execution time exceeds threshold
         if ellapsed > treshold:
-            text = f'{title} took {ellapsed:.1f} seconds to execute'
+            text = f"{title} took {ellapsed:.1f} seconds to execute"
             if error:
-                text += f' with error: {str(error)}'
+                text += f" with error: {str(error)}"
             print(text)
 
     # Record start time before executing code block
@@ -54,16 +54,18 @@ def getDate():
     """
     Retourne la date du jour sous le format 'yyyy-mm-dd"
     """
-    date_ajd = str(t.localtime().tm_year)+"-"+str(t.localtime().tm_mon)+"-"+str(t.localtime().tm_mday)
+    date_ajd = str(t.localtime().tm_year) + "-" + str(t.localtime().tm_mon) + "-" + str(t.localtime().tm_mday)
     return date_ajd
+
 
 # Fonction pour compter le nombre de mots
 def count_words(text):
     """Compte le nombre de mots dans un texte"""
     if not text:
         return 0
-    words = re.findall(r'\w+', text)
+    words = re.findall(r"\w+", text)
     return len(words)
+
 
 def json_print(obj):
     """
@@ -86,28 +88,28 @@ def clean_nul_bytes(text: str) -> str:
     Clean NUL bytes (0x00) from text
     PostgreSQL doesn't allow NUL bytes in text fields.
     """
-    return text.replace('\x00', '')
+    return text.replace("\x00", "")
 
 
 def clean_nul_bytes_from_dataframe(df: pd.DataFrame, text_columns: list = None) -> pd.DataFrame:
     """
     Clean NUL bytes (0x00) from text columns in a DataFrame.
     PostgreSQL doesn't allow NUL bytes in text fields.
-    
+
     Args:
         df (pd.DataFrame): The DataFrame to clean
-        text_columns (list, optional): List of column names to clean. 
+        text_columns (list, optional): List of column names to clean.
                                      If None, will clean all object/string columns.
-    
+
     Returns:
         pd.DataFrame: A copy of the DataFrame with NUL bytes removed from text columns
     """
     df_clean = df.copy()
-    
+
     if text_columns is None:
         # Clean all object/string columns
-        text_columns = df_clean.select_dtypes(include=['object', 'string']).columns.tolist()
-    
+        text_columns = df_clean.select_dtypes(include=["object", "string"]).columns.tolist()
+
     for col in text_columns:
         if col in df_clean.columns:
             df_clean[col] = df_clean[col].astype(str).apply(clean_nul_bytes)

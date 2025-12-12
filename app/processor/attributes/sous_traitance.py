@@ -13,9 +13,8 @@ SOUS_TRAITANCE_ATTRIBUTES = {
      Format : le nom de l'administration bénéficiaire en toutes lettres (pas d'acronymes si possible). 
 """,
         "search": "",
-        "output_field": "administration_bénéficiaire"
+        "output_field": "administration_bénéficiaire",
     },
-
     "objet_marche": {
         "consigne": """OBJET_MARCHE
      Définition : Formulation synthétique de l'objet du marché.
@@ -24,9 +23,8 @@ SOUS_TRAITANCE_ATTRIBUTES = {
      - Identifier les formules comme "Objet du marché", "Le marché a pour objet", ou toute expression indiquant l'intitulé de la mission.  
 """,
         "search": "Section du document qui décrit l'objet du marché ou le contexte général de la consultation.",
-        "output_field": "objet_marche"
+        "output_field": "objet_marche",
     },
-
     "societe_principale": {
         "consigne": """SOCIETE_PRINCIPALE  
      Définition : Société principale contractante avec l'administration publique ou ses représentants. Si un groupement est mentionné, extraire la société mandataire ou représentante.  
@@ -37,9 +35,8 @@ SOUS_TRAITANCE_ATTRIBUTES = {
      Format : renvoyer le nom de la société telle qu'écrit dans le document.
 """,
         "search": "",
-        "output_field": "societe_principale"
+        "output_field": "societe_principale",
     },
-
     "adresse_postale_titulaire": {
         "consigne": """ADRESSE_POSTALE_TITULAIRE  
      Définition : Adresse postale complète de la société titulaire principale du marché.  
@@ -50,9 +47,8 @@ SOUS_TRAITANCE_ATTRIBUTES = {
      Format : adresse complète en bon français.
 """,
         "search": "",
-        "output_field": "adresse_postale_titulaire"
+        "output_field": "adresse_postale_titulaire",
     },
-
     "siret_titulaire": {
         "consigne": """SIRET_TITULAIRE  
    Définition : Numéro SIRET du titulaire principal du marché, composé de 14 chiffres.  
@@ -62,9 +58,8 @@ SOUS_TRAITANCE_ATTRIBUTES = {
    Format : un numéro composé de 14 chiffres, sans espaces.  
 """,
         "search": "",
-        "output_field": "siret_titulaire"
+        "output_field": "siret_titulaire",
     },
-
     "societe_sous_traitant": {
         "consigne": """SOCIETE_SOUS_TRAITANT  
      Définition : Société sous-traitante qui réalise une partie des prestations du marché.  
@@ -74,9 +69,8 @@ SOUS_TRAITANCE_ATTRIBUTES = {
      Format : renvoyer le nom de la société sous-traitante telle qu'écrit dans le document.
 """,
         "search": "",
-        "output_field": "societe_sous_traitant"
+        "output_field": "societe_sous_traitant",
     },
-
     "adresse_postale_sous_traitant": {
         "consigne": """ADRESSE_POSTALE_SOUS_TRAITANT  
      Définition : Adresse postale complète de la société sous-traitante.  
@@ -87,9 +81,8 @@ SOUS_TRAITANCE_ATTRIBUTES = {
      Format : adresse complète en bon français.
 """,
         "search": "",
-        "output_field": "adresse_postale_sous_traitant"
+        "output_field": "adresse_postale_sous_traitant",
     },
-
     "siret_sous_traitant": {
         "consigne": """SIRET_SOUS_TRAITANT  
    Définition : Numéro SIRET du sous-traitant, composé de 14 chiffres.  
@@ -99,9 +92,8 @@ SOUS_TRAITANCE_ATTRIBUTES = {
    Format : un numéro composé de 14 chiffres, sans espaces.  
 """,
         "search": "",
-        "output_field": "siret_sous_traitant"
+        "output_field": "siret_sous_traitant",
     },
-
     "montant_sous_traitance_ht": {
         "consigne": """MONTANT_SOUS_TRAITANCE_HT  
      Définition : Montant de la sous-traitance hors taxes (également hors TVA).  
@@ -112,9 +104,8 @@ SOUS_TRAITANCE_ATTRIBUTES = {
      Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
      """,
         "search": "",
-        "output_field": "montant_sous_traitance_ht"
+        "output_field": "montant_sous_traitance_ht",
     },
-
     "montant_sous_traitance_ttc": {
         "consigne": """MONTANT_SOUS_TRAITANCE_TTC  
      Définition : Montant de la sous-traitance toutes taxes comprises (ou avec TVA incluse).  
@@ -126,9 +117,8 @@ SOUS_TRAITANCE_ATTRIBUTES = {
      Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
 """,
         "search": "",
-        "output_field": "montant_sous_traitance_ttc"
+        "output_field": "montant_sous_traitance_ttc",
     },
-
     "description_prestations": {
         "consigne": """DESCRIPTION_PRESTATIONS
    Définition : Description des prestations de la commande ou du marché, structurée et compréhensible.
@@ -140,9 +130,8 @@ SOUS_TRAITANCE_ATTRIBUTES = {
    Format : en bon Français, reformulé si besoin.
    """,
         "search": "",
-        "output_field": "description_prestations"
+        "output_field": "description_prestations",
     },
-
     "date_signature": {
         "consigne": """DATE_SIGNATURE
       Définition : Date de signature du document par une des parties.  
@@ -153,7 +142,6 @@ SOUS_TRAITANCE_ATTRIBUTES = {
      Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
 """,
         "search": "",
-        "output_field": "date_signature"
+        "output_field": "date_signature",
     },
 }
-

@@ -11,9 +11,8 @@ KBIS_ATTRIBUTES = {
      - Ne rien renvoyer si aucune dénomination trouvée.
 """,
         "search": "",
-        "output_field": "denomination"
+        "output_field": "denomination",
     },
-
     "siren_kbis": {
         "consigne": """SIREN_KBIS
       Définition : Numéro SIREN de la personne morale dans l'extrait Kbis.
@@ -23,9 +22,8 @@ KBIS_ATTRIBUTES = {
       - Ne rien renvoyer si aucun numéro SIREN trouvé.
 """,
         "search": "",
-        "output_field": "siren"
+        "output_field": "siren",
     },
-
     "activite_principale": {
         "consigne": """ACTIVITE_PRINCIPALE
      Définition : Activité principale exercée (APE) de la société dans le répertoire SIRENE.
@@ -34,9 +32,8 @@ KBIS_ATTRIBUTES = {
      - Ne rien renvoyer si aucune activité principale trouvée.
 """,
         "search": "",
-        "output_field": "activite_principale"
+        "output_field": "activite_principale",
     },
-
     "adresse_postale_insee": {
         "consigne": """ADRESSE_POSTALE_INSEE
      Définition : Adresse postale de la société dans le répertoire SIRENE.
@@ -45,7 +42,6 @@ KBIS_ATTRIBUTES = {
      - Ne rien renvoyer si aucune adresse postale trouvée.
 """,
         "search": "",
-        "output_field": "adresse_postale_insee"
+        "output_field": "adresse_postale_insee",
     },
 }
-
