@@ -42,4 +42,4 @@ pytest --no-migrations docia
 
 ## Run linter / formatter
 
-ruff format docia; ruff check --fix docia
+ruff format; ruff check --fix

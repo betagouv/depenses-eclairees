@@ -17,9 +17,8 @@ AVENANT_ATTRIBUTES = {
    - Si l'objet de la commande est incompréhensible, proposer un objet simple qui reflète le contenu de la commande.
 """,
         "search": "",
-        "output_field": "objet"
+        "output_field": "objet",
     },
-
     "type_document": {
         "consigne": """TYPE_DOCUMENT
    Définition : catégorie juridique ou administrative du document.
@@ -30,9 +29,8 @@ AVENANT_ATTRIBUTES = {
    Format : en minuscule, sans accent, sans espace (ex: "devis", "acte_engagement", "bon_de_commande")
 """,
         "search": "",
-        "output_field": "type_document"
+        "output_field": "type_document",
     },
-
     "montant_ht": {
         "consigne": """MONTANT_HT  
      Définition : Montant du marché hors taxes (également hors TVA).  
@@ -43,9 +41,8 @@ AVENANT_ATTRIBUTES = {
      Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
      """,
         "search": "",
-        "output_field": "montant_ht"
+        "output_field": "montant_ht",
     },
-
     "montant_ttc": {
         "consigne": """MONTANT_TTC  
      Définition : Montant du marché toutes taxes comprises (ou avec TVA incluse).  
@@ -57,9 +54,8 @@ AVENANT_ATTRIBUTES = {
      Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
 """,
         "search": "",
-        "output_field": "montant_ttc"
+        "output_field": "montant_ttc",
     },
-
     "administration_beneficiaire": {
         "consigne": """ADMINISTRATION_BENEFICIAIRE 
      Définition : Structure administrative ou publique qui bénéficie de la commande, ou qui achète la prestation.
@@ -70,9 +66,8 @@ AVENANT_ATTRIBUTES = {
      Format : le nom de l'administration bénéficiaire en toutes lettres (pas d'acronymes si possible). 
 """,
         "search": "",
-        "output_field": "administration_bénéficiaire"
+        "output_field": "administration_bénéficiaire",
     },
-
     "description_prestations": {
         "consigne": """DESCRIPTION_PRESTATIONS
    Définition : Description des prestations de la commande ou du marché, structurée et compréhensible.
@@ -84,9 +79,8 @@ AVENANT_ATTRIBUTES = {
    Format : en bon Français, reformulé si besoin.
    """,
         "search": "",
-        "output_field": "description_prestations"
+        "output_field": "description_prestations",
     },
-
     "societe_principale": {
         "consigne": """SOCIETE_PRINCIPALE  
      Définition : Société principale contractante avec l'administration publique ou ses représentants. Si un groupement est mentionné, extraire la société mandataire ou représentante.  
@@ -97,9 +91,8 @@ AVENANT_ATTRIBUTES = {
      Format : renvoyer le nom de la société telle qu'écrit dans le document.
 """,
         "search": "",
-        "output_field": "societe_principale"
+        "output_field": "societe_principale",
     },
-
     "siret": {
         "consigne": """SIRET  
    Définition : Numéro SIRET de la société principale, composé de 14 chiffres.  
@@ -108,9 +101,8 @@ AVENANT_ATTRIBUTES = {
    Format : un numéro composé de 14 chiffres, sans espaces.  
 """,
         "search": "",
-        "output_field": "siret"
+        "output_field": "siret",
     },
-
     "siren": {
         "consigne": """SIREN
    Définition : numéro de SIREN du prestataire / du titulaire principal, composé de 9 chiffres
@@ -123,9 +115,8 @@ AVENANT_ATTRIBUTES = {
    Format : un numéro composé de 9 chiffres, sans espaces ni caractères spéciaux
 """,
         "search": "",
-        "output_field": "siren"
+        "output_field": "siren",
     },
-
     "date_signature": {
         "consigne": """DATE_SIGNATURE
       Définition : Date de signature du document par une des parties.  
@@ -136,7 +127,6 @@ AVENANT_ATTRIBUTES = {
      Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
 """,
         "search": "",
-        "output_field": "date_signature"
+        "output_field": "date_signature",
     },
 }
-

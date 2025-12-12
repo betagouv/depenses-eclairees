@@ -11,9 +11,8 @@ ATT_SIRENE_ATTRIBUTES = {
    Format : un numéro composé de 14 chiffres, sans espaces.  
 """,
         "search": "",
-        "output_field": "siret"
+        "output_field": "siret",
     },
-
     "siren": {
         "consigne": """SIREN
    Définition : numéro de SIREN du prestataire / du titulaire principal, composé de 9 chiffres
@@ -26,9 +25,8 @@ ATT_SIRENE_ATTRIBUTES = {
    Format : un numéro composé de 9 chiffres, sans espaces ni caractères spéciaux
 """,
         "search": "",
-        "output_field": "siren"
+        "output_field": "siren",
     },
-
     "denomination_insee": {
         "consigne": """DENOMINATION_INSEE
      Définition : Dénomination de la société dans le répertoire SIRENE.
@@ -37,9 +35,8 @@ ATT_SIRENE_ATTRIBUTES = {
      - Ne rien renvoyer si aucune dénomination trouvée.
 """,
         "search": "",
-        "output_field": "denomination"
+        "output_field": "denomination",
     },
-
     "activite_principale": {
         "consigne": """ACTIVITE_PRINCIPALE
      Définition : Activité principale exercée (APE) de la société dans le répertoire SIRENE.
@@ -48,9 +45,8 @@ ATT_SIRENE_ATTRIBUTES = {
      - Ne rien renvoyer si aucune activité principale trouvée.
 """,
         "search": "",
-        "output_field": "activite_principale"
+        "output_field": "activite_principale",
     },
-
     "adresse_postale_insee": {
         "consigne": """ADRESSE_POSTALE_INSEE
      Définition : Adresse postale de la société dans le répertoire SIRENE.
@@ -59,7 +55,6 @@ ATT_SIRENE_ATTRIBUTES = {
      - Ne rien renvoyer si aucune adresse postale trouvée.
 """,
         "search": "",
-        "output_field": "adresse_postale_insee"
+        "output_field": "adresse_postale_insee",
     },
 }
-

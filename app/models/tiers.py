@@ -2,15 +2,15 @@
 Module contenant la classe Tiers pour représenter les entités tierces.
 """
 
-from typing import Optional
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass
 class Tiers:
     """
     Classe représentant une entité tierce (entreprise, organisation, etc.).
-    
+
     Attributes:
         denomination (str): Dénomination de l'entité
         siret (Optional[str]): Numéro SIRET de l'entité
@@ -23,7 +23,7 @@ class Tiers:
         adresse_postale (Optional[str]): Adresse postale complète
         montant_sous_traitance (Optional[float]): Montant de sous-traitance en euros
     """
-    
+
     denomination: str
     siret: Optional[str] = None
     siren: Optional[str] = None
@@ -53,23 +53,23 @@ class Tiers:
             f"adresse_postale='{self.adresse_postale}', "
             f"montant_sous_traitance='{self.montant_sous_traitance}')"
         )
-    
+
     def to_dict(self) -> dict:
         """Convertit l'objet Tiers en dictionnaire."""
         return {
-            'denomination': self.denomination,
-            'siret': self.siret,
-            'siren': self.siren,
-            'iban': self.iban,
-            'bic': self.bic,
-            'domiciliation': self.domiciliation,
-            'num_tiers': self.num_tiers,
-            'activite_principale': self.activite_principale,
-            'adresse_postale': self.adresse_postale,
-            'montant_sous_traitance': self.montant_sous_traitance
+            "denomination": self.denomination,
+            "siret": self.siret,
+            "siren": self.siren,
+            "iban": self.iban,
+            "bic": self.bic,
+            "domiciliation": self.domiciliation,
+            "num_tiers": self.num_tiers,
+            "activite_principale": self.activite_principale,
+            "adresse_postale": self.adresse_postale,
+            "montant_sous_traitance": self.montant_sous_traitance,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: dict) -> 'Tiers':
+    def from_dict(cls, data: dict) -> "Tiers":
         """Crée un objet Tiers à partir d'un dictionnaire."""
         return cls(**data)

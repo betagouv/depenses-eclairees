@@ -17,9 +17,8 @@ DEVIS_ATTRIBUTES = {
    - Si l'objet de la commande est incompréhensible, proposer un objet simple qui reflète le contenu de la commande.
 """,
         "search": "",
-        "output_field": "objet"
+        "output_field": "objet",
     },
-
     "sujet": {
         "consigne": """SUJET
    Définition : sujet de la commande ou du marché, c'est-à-dire ce qui a été acheté, ou le service fourni.
@@ -33,9 +32,8 @@ DEVIS_ATTRIBUTES = {
    - Si l'objet du document est incompréhensible, proposer un objet de devis simple qui reflète le contenu des prestations.
 """,
         "search": "",
-        "output_field": "sujet"
+        "output_field": "sujet",
     },
-
     "type_document": {
         "consigne": """TYPE_DOCUMENT
    Définition : catégorie juridique ou administrative du document.
@@ -46,9 +44,8 @@ DEVIS_ATTRIBUTES = {
    Format : en minuscule, sans accent, sans espace (ex: "devis", "acte_engagement", "bon_de_commande")
 """,
         "search": "",
-        "output_field": "type_document"
+        "output_field": "type_document",
     },
-
     "montant_ht": {
         "consigne": """MONTANT_HT  
      Définition : Montant du marché hors taxes (également hors TVA).  
@@ -59,9 +56,8 @@ DEVIS_ATTRIBUTES = {
      Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
      """,
         "search": "",
-        "output_field": "montant_ht"
+        "output_field": "montant_ht",
     },
-
     "montant_ttc": {
         "consigne": """MONTANT_TTC  
      Définition : Montant du marché toutes taxes comprises (ou avec TVA incluse).  
@@ -73,9 +69,8 @@ DEVIS_ATTRIBUTES = {
      Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
 """,
         "search": "",
-        "output_field": "montant_ttc"
+        "output_field": "montant_ttc",
     },
-
     "administration_beneficiaire": {
         "consigne": """ADMINISTRATION_BENEFICIAIRE 
      Définition : Structure administrative ou publique qui bénéficie de la commande, ou qui achète la prestation.
@@ -86,9 +81,8 @@ DEVIS_ATTRIBUTES = {
      Format : le nom de l'administration bénéficiaire en toutes lettres (pas d'acronymes si possible). 
 """,
         "search": "",
-        "output_field": "administration_bénéficiaire"
+        "output_field": "administration_bénéficiaire",
     },
-
     "description_prestations": {
         "consigne": """DESCRIPTION_PRESTATIONS
    Définition : Description des prestations de la commande ou du marché, structurée et compréhensible.
@@ -100,9 +94,8 @@ DEVIS_ATTRIBUTES = {
    Format : en bon Français, reformulé si besoin.
    """,
         "search": "",
-        "output_field": "description_prestations"
+        "output_field": "description_prestations",
     },
-
     "numero_devis": {
         "consigne": """NUMERO_DEVIS
    - Chercher les mentions "N° de devis", "Devis n°", "Référence", "Réf."
@@ -111,9 +104,8 @@ DEVIS_ATTRIBUTES = {
    - Ne rien renvoyer si aucun identifiant trouvé
 """,
         "search": "",
-        "output_field": "numero_devis"
+        "output_field": "numero_devis",
     },
-
     "date_creation": {
         "consigne": """DATE_CREATION
       Définition : Date de création, d'édition ou de rédaction du document.  
@@ -125,9 +117,8 @@ DEVIS_ATTRIBUTES = {
       Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine 
 """,
         "search": "",
-        "output_field": "date_creation"
+        "output_field": "date_creation",
     },
-
     "date_signature": {
         "consigne": """DATE_SIGNATURE
       Définition : Date de signature du document par une des parties.  
@@ -138,9 +129,8 @@ DEVIS_ATTRIBUTES = {
      Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
 """,
         "search": "",
-        "output_field": "date_signature"
+        "output_field": "date_signature",
     },
-
     "societe_principale": {
         "consigne": """SOCIETE_PRINCIPALE  
      Définition : Société principale contractante avec l'administration publique ou ses représentants. Si un groupement est mentionné, extraire la société mandataire ou représentante.  
@@ -151,9 +141,8 @@ DEVIS_ATTRIBUTES = {
      Format : renvoyer le nom de la société telle qu'écrit dans le document.
 """,
         "search": "",
-        "output_field": "societe_principale"
+        "output_field": "societe_principale",
     },
-
     "siren": {
         "consigne": """SIREN
    Définition : numéro de SIREN du prestataire / du titulaire principal, composé de 9 chiffres
@@ -166,9 +155,8 @@ DEVIS_ATTRIBUTES = {
    Format : un numéro composé de 9 chiffres, sans espaces ni caractères spéciaux
 """,
         "search": "",
-        "output_field": "siren"
+        "output_field": "siren",
     },
-
     "siret": {
         "consigne": """SIRET  
    Définition : Numéro SIRET de la société principale, composé de 14 chiffres.  
@@ -177,9 +165,8 @@ DEVIS_ATTRIBUTES = {
    Format : un numéro composé de 14 chiffres, sans espaces.  
 """,
         "search": "",
-        "output_field": "siret"
+        "output_field": "siret",
     },
-
     "n_tva": {
         "consigne": """N_TVA
    Définition : numéro de TVA du prestataire / du titulaire principal
@@ -191,7 +178,6 @@ DEVIS_ATTRIBUTES = {
    Format : un identifiant composé de 2 lettres et 11 chiffres, sans espaces ni caractères spéciaux.
 """,
         "search": "",
-        "output_field": "n_tva"
+        "output_field": "n_tva",
     },
 }
-

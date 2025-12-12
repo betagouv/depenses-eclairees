@@ -12,9 +12,8 @@ CCTP_ATTRIBUTES = {
    - Ne commence pas ta réponse par "Le titre est" ou "Titre:".        
 """,
         "search": "titre principal du document en-tête première page",
-        "output_field": "titre"
+        "output_field": "titre",
     },
-
     "objet_marche": {
         "consigne": """OBJET_MARCHE
      Définition : Formulation synthétique de l'objet du marché.
@@ -23,9 +22,8 @@ CCTP_ATTRIBUTES = {
      - Identifier les formules comme "Objet du marché", "Le marché a pour objet", ou toute expression indiquant l'intitulé de la mission.  
 """,
         "search": "Section du document qui décrit l'objet du marché ou le contexte général de la consultation.",
-        "output_field": "objet_marche"
+        "output_field": "objet_marche",
     },
-
     "prestations": {
         "consigne": """PRESTATIONS
    - Crée un résumé CONCIS des prestations techniques attendues dans le cadre de ce marché.
@@ -35,9 +33,8 @@ CCTP_ATTRIBUTES = {
    - N'utilise pas de formulations comme "Ce marché concerne..." ou "Les prestations comprennent...".   
 """,
         "search": "description des prestations, liste des livrables, contenu du marché, spécifications",
-        "output_field": "prestations"
+        "output_field": "prestations",
     },
-
     "lots": {
         "consigne": """LOTS:
    - Vérifie la présence d'informations indiquant que le marché est divisé en plusieurs lots distincts.
@@ -50,7 +47,6 @@ CCTP_ATTRIBUTES = {
    - Exemple de format attendu: "Lot N°1: Gros œuvre; Lot N°2: Peinture; Lot N°3: Électricité"
 """,
         "search": "La décomposition du marché en plusieurs lots, la liste des lots et de leurs principales prestations.",
-        "output_field": "lots"
+        "output_field": "lots",
     },
 }
-

@@ -56,7 +56,24 @@ dev = [
 
 [tool.ruff]
 line-length = 120
-exclude = ["**/migrations/*.py"]
+exclude = [
+    "**/migrations/*.py",
+    "app/processor/extraction_text_from_attachments.py",
+    "app/processor/select_relevant_content.py",
+    "app/processor/attributes/ccap.py",
+    "app/processor/analyze_content.py",
+    "app/processor/synthesis.py",
+    "app/file_manager/__init__.py",
+    "app/file_manager/classifier.py",
+    "app/file_manager/cleaner.py",
+    "app/file_manager/statistics.py",
+    "app/grist/__init__.py",
+    "app/grist/grist_api.py",
+    "tests_e2e/test_quality_acte_engagement.py",
+    "tests_e2e/test_quality_ccap.py",
+    "tests_e2e/test_quality_rib.py",
+    "scripts/maj_grist_from_scalingo.py",
+]
 
 [tool.ruff.lint]
 select = [
@@ -81,6 +98,10 @@ section-order = [
 # Group all Django and Pandas imports into a separate section.
 django = ["django"]
 pandas = ["pandas", "numpy"]
+
+[tool.ruff.lint.per-file-ignores]
+# Ignore line too long in attributes definitions
+"app/processor/attributes/**.py" = ["E501"]
 
 
 [tool.pytest.ini_options]
