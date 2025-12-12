@@ -82,13 +82,12 @@ def create_response_format(df_attributes, classification):
         
         # Si la colonne 'schema' existe et contient une valeur valide
         if 'schema' in df_filtered.columns:
-            schema_value = row['schema']
+            schema_value = row.get('schema')
             
-            # Si schema_value est un dictionnaire, bien défini
-            if isinstance(schema_value, dict):
-                schema_to_use = schema_value
-        # Utiliser le schéma déterminé (soit celui de la colonne, soit le défaut)
-        properties[output_field] = schema_to_use
+            if schema_value:
+                if not isinstance(schema_value, dict):  
+                    raise ValueError(f"Schema must be a dict (field={output_field})")  
+                properties[output_field] = schema_value
     
     response_format = {
         "type": "json_schema",

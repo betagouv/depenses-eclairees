@@ -6,7 +6,7 @@ from tkinter.constants import NONE
 logger = logging.getLogger("docia." + __name__)
 
 
-def check_consistency_bank_account(iban: str) -> bool:
+def check_consistency_iban(iban: str) -> bool:
     """
     Vérifie la validité d'un IBAN selon la norme ISO 13616.
     Format accepté : Français 27 caractères, ou ''.
@@ -87,7 +87,7 @@ def post_processing_bank_account(bank_account_input: dict[str, str]) -> dict[str
 
     if not iban and not bank_name:
         return None
-    elif not check_consistency_bank_account(iban) :
+    elif not check_consistency_iban(iban) :
         return {'banque': bank_name, 'iban': None}
     else:
         return {'banque': bank_name, 'iban': iban}
@@ -259,7 +259,7 @@ def post_processing_iban(iban: str) -> str:
     Post-traitement de l'IBAN pour extraire les informations bancaires.
     """
     clean_iban = re.sub(r'\s+', '', iban).upper()
-    if(not check_consistency_bank_account(clean_iban)):
+    if(not check_consistency_iban(clean_iban)):
         return None
     return clean_iban if clean_iban else None
 
