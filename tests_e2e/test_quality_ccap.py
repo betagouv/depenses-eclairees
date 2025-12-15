@@ -594,26 +594,12 @@ EXCLUDED_COLUMNS = [
     'objet_marche',
     'formule_revision_prix',
     'condition_avance',
-    'revision_prix'
+    'revision_prix',
+    'index_reference'
 ]
 
-check_quality_one_field(df_merged, col_to_test = 'duree_marche')
+check_quality_one_field(df_merged, col_to_test = 'forme_marche')
 
 check_quality_one_row(df_merged, row_idx_to_test = 1)
 
 check_global_statistics(df_merged, excluded_columns = EXCLUDED_COLUMNS)
-
-# {
-#   "objet_marche": "", 
-#   "lots": "", 
-#   "forme_marche": "", 
-#   "duree_lots": "", 
-#   "duree_marche": "", 
-#   "formule_revision_prix": "", 
-#   "index_reference_ccap": "", 
-#   "condition_avance_ccap": "", 
-#   "revision_prix_ccap": "", 
-#   "montant_ht_lots_ccap": "", 
-#   "montant_ht_ccap": "", 
-#   "ccag_ccap": "" 
-# }
