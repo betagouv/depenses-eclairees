@@ -76,6 +76,7 @@ def launch_batch(
             "rib",
             "att_sirene",
             "kbis",
+            "ccap",
         ]
 
     # Create the batch processing record
