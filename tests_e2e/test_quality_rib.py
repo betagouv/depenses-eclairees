@@ -23,8 +23,8 @@ CSV_DIR_PATH = (PROJECT_PATH / ".." / "data" / "test").resolve()
 
 def normalize_string(s):
     """Normalise une chaîne de caractères : minuscule et sans caractères spéciaux."""
-    if pd.isna(s) or s == "":
-        return ""
+    if not s:
+        return None
     s = str(s).lower()
     # Supprime les caractères spéciaux (garde seulement les lettres, chiffres et espaces)
     s = re.sub(r'[^a-z0-9\s]', '', s)
@@ -35,20 +35,38 @@ def normalize_string(s):
 
 def compare_iban(llm_val:str, ref_val:str):
     """Compare l'IBAN : comparaison des valeurs."""
-    if (llm_val == '' or llm_val is None or llm_val == 'nan') and (ref_val == '' or ref_val is None or ref_val == 'nan'):
+    # Gestion des valeurs vides ou None
+    if not llm_val and not ref_val:
         return True
+
+    if not llm_val or not ref_val:
+        return False
+
     return llm_val == ref_val
 
 
 def compare_bic(llm_val:str, ref_val:str):
     """Compare le BIC : comparaison des valeurs."""
-    if (llm_val == '' or llm_val is None or llm_val == 'nan') and (ref_val == '' or ref_val is None or ref_val == 'nan'):
+    # Gestion des valeurs vides ou None
+    if not llm_val and not ref_val:
         return True
+
+    if not llm_val or not ref_val:
+        return False
+
     return llm_val == ref_val
 
 
 def compare_bank(llm_val:str, ref_val:str):
     """Compare la banque : comparaison des valeurs."""
+
+    # Gestion des valeurs vides ou None
+    if not llm_val and not ref_val:
+        return True
+
+    if not llm_val or not ref_val:
+        return False
+
     llm_norm = normalize_string(llm_val)
     ref_norm = normalize_string(ref_val)
 
@@ -62,6 +80,13 @@ def compare_bank(llm_val:str, ref_val:str):
 
 def compare_account_owner(llm_val:str, ref_val:str):
     """Compare le titulaire du compte : comparaison des valeurs."""
+    # Gestion des valeurs vides ou None
+    if not llm_val and not ref_val:
+        return True
+
+    if not llm_val or not ref_val:
+        return False
+    
     llm_norm = normalize_string(llm_val)
     ref_norm = normalize_string(ref_val)
 
@@ -85,9 +110,11 @@ def compare_address(llm_val:dict[str, str], ref_val:dict[str, str]):
         'pays': 'le pays'
     }
     """
-    if llm_val == {} and ref_val == {}:
+    # Gestion des valeurs vides ou None
+    if not llm_val and not ref_val:
         return True
-    if llm_val == {} or ref_val == {}:
+
+    if not llm_val or not ref_val:
         return False
     
     # Liste des champs à comparer
@@ -111,8 +138,13 @@ def compare_address(llm_val:dict[str, str], ref_val:dict[str, str]):
 
 def compare_domiciliation(llm_val:str, ref_val:str):
     """Compare la domiciliation : comparaison des valeurs."""
-    if (llm_val == '' or llm_val is None or llm_val == 'nan') and (ref_val == '' or ref_val is None or ref_val == 'nan'):
+    # Gestion des valeurs vides ou None
+    if not llm_val and not ref_val:
         return True
+
+    if not llm_val or not ref_val:
+        return False
+        
     return llm_val == ref_val
 
 
