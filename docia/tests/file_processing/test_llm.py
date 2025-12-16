@@ -16,6 +16,7 @@ from docia.file_processing.llm import LLMClient
             60,
             "Error code: 429 - {'detail': '100 requests for albert-large per minute exceeded (remaining: 0).'}",
         ),
+        (APIStatusError, 503, 10, "Error code: 503 - {'detail': 'Model is too busy, please try again later.'}"),
         (APIStatusError, 504, 10, "Error code: 504 - {'detail': 'Model is too busy.'}"),
         (InternalServerError, 500, 10, "Error code: 500 - {'detail': ''}"),
         (InternalServerError, 500, 10, "Error code: 500 - {'detail': 'ConnectError'}"),

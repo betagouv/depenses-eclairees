@@ -91,7 +91,7 @@ class LLMClient:
             except APIStatusError as e:
                 if e.status_code == 429:
                     effective_retry_delay = retry_delay
-                elif e.status_code in (500, 504):
+                elif 500 <= e.status_code < 600:
                     effective_retry_delay = retry_short_delay
                 else:
                     raise
