@@ -16,7 +16,7 @@ CCAP_ATTRIBUTES = {
  
 """,
         "search": "Section du document qui décrit l'objet du marché ou le contexte général de la consultation.",
-        "output_field": "objet_marche_ccap"
+        "output_field": "objet_marche"
     },
 
     "lots": {
@@ -172,108 +172,98 @@ CCAP_ATTRIBUTES = {
 #         }
 #     },
 
-    "forme_marche_2": {
-        "consigne": """FORME_MARCHE_2
-        Définition : Identifier la forme de passation du marché (ou des lots).
-
-        Étape 1 – Diagnostic global préalable (obligatoire avant la sortie) :
-        - Définir MARCHE_A_MARCHES_SUBSEQUENTS = "oui" si le marché, même globalement, mentionne des marchés subséquents, sinon "non".
-        - Définir MARCHE_ALLOTIE = "oui" si le document contient "lot", "LOT", "lot n°", "lot X", sinon "non".
-
-        Étape 2 – Application stricte de la règle :
-        - Si MARCHE_ALLOTIE = "oui" → structure = "allotie" et un item par lot dans "forme".
-        - Pour chaque lot :
-            * Si MARCHE_A_MARCHES_SUBSEQUENTS = "oui" → structure = "à marchés subséquents" (obligatoire, sans exception).
-            * Sinon → structure = "simple".
-            * Forme : 
-                - “à bons de commande” si mentionné,
-                - “à tranches” si mentionné,
-                - sinon “forfaitaire”.
-            * Tous les lots ont la même structure sauf mention contraire explicite dans un lot.
-        - Si MARCHE_ALLOTIE = "non" :
-            * structure = "à marchés subséquents" si MARCHE_A_MARCHES_SUBSEQUENTS = "oui",
-            * sinon structure = "simple".
-            * Forme selon bons de commande, tranches ou forfaitaire.
-
-        La réponse finale DOIT respecter exactement le schéma fourni.
+    "forme_marche": {
+        "consigne": """FORME_MARCHE
+        Définition : Identifier la forme de passation du marché.
+        Indices :
+        - Rechercher dans les sections de la forme du marché et dans celle définissant les lots.
+        - Si le marché comprend des lots, renvoyer : structure = "allotie" et forme = null
+        - Si le marché ne comprend pas de lots :
+            (1) Identifier la structure du marché :
+                * Si le marché donne lieu à des marchés subséquents (le document précise "pour les marchés subséquents, ..." ou "le marché donne lieu à des marchés subséquents"), structure = "à marchés subséquents"
+                * Sinon, structure = "simple"
+            (2) Identifier la forme du marché : parmi "à tranches", "à bons de commande" ou "forfaitaire" selon la forme de passation du marché.
+                * "à tranches" : si le marché est mentionne des "tranches" (tranches "fermes" ou "optionnelles")
+                * "à bons de commande" : si le marché est passé par bons de commande 
+                * "forfaitaire" : cas général s'il n'y a pas tranches ou de bons de commande mentionnés. 
+                La simple mention de "forfaitaire" est insuffisante, car les indemnités et pénalités sont toujours forfaitaires.
+        Format : un json {'structure': ..., 'forme': ...}.
    """,
         "search": "",
-        "output_field": "forme_marche_2",
+        "output_field": "forme_marche",
         "schema":
         {
             "type": "object",
             "oneOf": [
                 {
-                "type": "object",
-                "properties": {
-                    "structure": { "type": "string", "enum": ["simple"] },
-                    "forme": {
-                    "type": "string",
-                    "enum": ["à bons de commande", "à tranches", "forfaitaire"]
-                    }
-                },
-                "required": ["structure", "forme"]
+                    "type": "object",
+                    "properties": {
+                        "structure": { "type": "string", "enum": ["allotie"] },
+                        "forme": { "type": "null" }
+                    },
+                    "required": ["structure", "forme"]
                 },
                 {
-                "type": "object",
-                "properties": {
-                    "structure": { "type": "string", "enum": ["allotie"] },
-                    "forme": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                        "numero_lot": { "type": "integer" },
+                    "type": "object",
+                    "properties": {
+                        "structure": { "type": "string", "enum": ["simple"] },
                         "forme": {
-                            "type": "object",
-                            "oneOf": [
-                            {
-                                "type": "object",
-                                "properties": {
-                                "structure": { "type": "string", "enum": ["simple"] },
-                                "forme": {
-                                    "type": "string",
-                                    "enum": ["à bons de commande", "à tranches", "forfaitaire"]
-                                }
-                                },
-                                "required": ["structure", "forme"]
-                            },
-                            {
-                                "type": "object",
-                                "properties": {
-                                "structure": { "type": "string", "enum": ["à marchés subséquents"] },
-                                "forme": {
-                                    "type": "string",
-                                    "enum": ["à bons de commande", "à tranches", "forfaitaire"]
-                                }
-                                },
-                                "required": ["structure", "forme"]
-                            }
-                            ]
+                        "type": "string",
+                        "enum": ["à bons de commande", "à tranches", "forfaitaire"]
                         }
-                        },
-                        "required": ["numero_lot", "forme"]
-                    }
-                    }
-                },
-                "required": ["structure", "forme"]
+                    },
+                    "required": ["structure", "forme"]
                 },
                 {
-                "type": "object",
-                "properties": {
-                    "structure": { "type": "string", "enum": ["à marchés subséquents"] },
-                    "forme": {
-                    "type": "string",
-                    "enum": ["à bons de commande", "à tranches", "forfaitaire"]
-                    }
-                },
-                "required": ["structure", "forme"]
+                    "type": "object",
+                    "properties": {
+                        "structure": { "type": "string", "enum": ["à marchés subséquents"] },
+                        "forme": {
+                        "type": "string",
+                        "enum": ["à bons de commande", "à tranches", "forfaitaire"]
+                        }
+                    },
+                    "required": ["structure", "forme"]
                 }
             ]
-            }
-
+        }
     },
 
+    "forme_marche_lots": {
+        "consigne": """FORME_MARCHE_LOTS
+        Définition : Identifier la forme de passation des lots du marché (seulement si le marché est alloti).
+        Indices :
+        - Rechercher dans les sections de la forme du marché et dans celle définissant les lots. Si le marché ne comprend pas de lots, renvoyer [].
+        - Si la structure et les formes des lots ne sont pas spécifiquement définies, c'est que leurs structures et formes sont identiques à celles du marché.
+        - Pour chaque lot, identifier le numéro du lot.
+        - Pour chaque lot, identifier la structure de passation du lot : 
+            * Si le lot s'exécute par conclusion de marchés subséquents, structure = "à marchés subséquents".
+            * Si les termes "marchés subséquents" ne sont jamais mentionnés dans l'ensemble du document, structure = "simple".
+            * Sinon, structure = "simple"
+        - Puis identifier la forme du lot : parmi "à bons de commande", "à tranches" ou "forfaitaire" selon la forme de passation du lot.
+            * Une tranche est une sous-partie du lot. Les tranches sont fermes ou optionnelles (ou conditionnelles). S'il y a des tranches mentionnées pour ce lot : forme : "à tranches".
+            * Si le lot lui-même ou ses marchés subséquents s'exécutent par la passation de bons de commande : forme : "à bons de commande".
+            * Sinon, forme : "forfaitaire".
+        Format : une liste de json [{'numero_lot': numéro du lot, 'structure': structure, 'forme': forme}, {...}]
+   """,
+        "search": "",
+        "output_field": "forme_marche_lots",
+        "schema":
+        {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "numero_lot": { "type": "integer" },
+                    "structure": { "type": "string", "enum": ["simple", "à marchés subséquents"] },
+                    "forme": { "type": "string", "enum": ["à tranches", "à bons de commande","forfaitaire"] }
+                },
+                "required": ["numero_lot", "structure", "forme"]
+            }
+        }
+    },
+
+# Ajouter si durée préciser dans l'acte d'engagement, renvoyer None à chaque valeur.
     "duree_marche": {
         "consigne": """DUREE_MARCHE
         Définition : Durée du marché totale exprimée en mois et extension possible.
@@ -351,6 +341,7 @@ CCAP_ATTRIBUTES = {
         }
     },
 
+#Ajout si sans montant maximum explicite, renvoyer None
     "montant_ht": {
         "consigne": """MONTANT_HT
       Définition : Montant maximum du marché pour un marché non alloti.
@@ -474,6 +465,3 @@ CCAP_ATTRIBUTES = {
 #         "search": "",
 #         "output_field": "revision_prix"
 #     },
-
-
-

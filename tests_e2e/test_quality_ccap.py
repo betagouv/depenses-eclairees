@@ -91,33 +91,37 @@ def compare_contract_form(llm_val:dict, ref_val:dict):
     if llm_val == {} and ref_val == {}:
         return True
     
-    if llm_val.get('structure') != ref_val.get('structure'):
-        return False
-    
+    llm_structure = llm_val.get('structure')
+    ref_structure = ref_val.get('structure')
     llm_forme = llm_val.get('forme')
     ref_forme = ref_val.get('forme')
+
+    return (llm_structure == ref_structure and llm_forme == ref_forme)
     
-    if isinstance(llm_forme, str) and isinstance(ref_forme, str):
-        return llm_forme == ref_forme
-    
-    if isinstance(llm_forme, list) and isinstance(ref_forme, list):
-        if len(llm_forme) != len(ref_forme):
-            return False
-        for forme_llm in llm_forme:
-            found = False
-            for forme_ref in ref_forme:
-                if (forme_llm.get('numero_lot') == forme_ref.get('numero_lot') and
-                    compare_contract_form(forme_llm.get('forme', {}), forme_ref.get('forme', {}))):
-                    found = True
-                    break
-            if not found:
-                return False
+
+def compare_compare_contract_form_batches(llm_val:list[dict], ref_val:list[dict]):
+    """Compare la forme des lots du marché."""
+    if llm_val == [] and ref_val == []:
         return True
     
-    if isinstance(llm_forme, dict) and isinstance(ref_forme, dict):
-        return compare_contract_form(llm_forme, ref_forme)
+    if len(llm_val) != len(ref_val):
+        return False
     
-    return False
+    for lot_llm in llm_val:
+        found = False
+        for lot_ref in ref_val:
+            if lot_llm.get('numero_lot') == lot_ref.get('numero_lot'):
+                llm_structure = lot_llm.get('structure')
+                ref_structure = lot_ref.get('structure')
+                llm_forme = lot_llm.get('forme')
+                ref_forme = lot_ref.get('forme')
+                if llm_structure == ref_structure and llm_forme == ref_forme:
+                    found = True
+                    break
+                return False
+        if not found:
+            return False
+    return True
 
 
 def compare_batches_duration(llm_val:list[dict], ref_val:list[dict]):
@@ -274,6 +278,7 @@ def get_comparison_functions():
         'objet_marche': compare_contract_object,
         'lots': compare_batches,
         'forme_marche': compare_contract_form,
+        'forme_marche_lots': compare_compare_contract_form_batches,
         'duree_lots': compare_batches_duration,
         'duree_marche': compare_contract_duration,
         'formule_revision_prix': compare_price_revision_formula,
@@ -292,10 +297,11 @@ def create_batch_test(multi_line_coef = 1):
     csv_path = CSV_DIR_PATH / "test_ccap.csv"
 
     # Lecture du fichier CSV
-    df_test = pd.read_csv(csv_path).iloc[:10]
+    df_test = pd.read_csv(csv_path)
     df_test.fillna('', inplace=True)
     df_test['lots'] = df_test['lots'].apply(lambda x: json.loads(x))
     df_test['forme_marche'] = df_test['forme_marche'].apply(lambda x: json.loads(x))
+    df_test['forme_marche_lots'] = df_test['forme_marche_lots'].apply(lambda x: json.loads(x))
     df_test['duree_lots'] = df_test['duree_lots'].apply(lambda x: json.loads(x))
     df_test['duree_marche'] = df_test['duree_marche'].apply(lambda x: json.loads(x))
     df_test['montant_ht_lots'] = df_test['montant_ht_lots'].apply(lambda x: json.loads(x))
@@ -337,7 +343,7 @@ def create_batch_test(multi_line_coef = 1):
         api_key=ALBERT_API_KEY,
         base_url=ALBERT_BASE_URL,
         llm_model=llm_model,
-        df=df_analyze.iloc[:10],
+        df=df_analyze,
         df_attributes=ATTRIBUTES,
         max_workers=20,
         temperature=0.3,
@@ -399,7 +405,6 @@ def check_quality_one_field(df_merged, col_to_test = 'objet_marche'):
         # Comparer les valeurs
         try:
             match_result = comparison_func(llm_val, ref_val)
-            match_result = bool(match_result) if not isinstance(match_result, bool) else match_result
             status = "✅ MATCH" if match_result else "❌ NO MATCH"
             print(f"{status} | {filename} | OCR {"❌" if pbm_ocr else "✅"}")
             print(f"  LLM: {llm_val}")
@@ -598,8 +603,10 @@ EXCLUDED_COLUMNS = [
     'index_reference'
 ]
 
-check_quality_one_field(df_merged, col_to_test = 'forme_marche')
+check_quality_one_field(df_merged, col_to_test = 'lots')
 
-check_quality_one_row(df_merged, row_idx_to_test = 1)
+check_quality_one_row(df_merged, row_idx_to_test = 3)
 
 check_global_statistics(df_merged, excluded_columns = EXCLUDED_COLUMNS)
+
+
