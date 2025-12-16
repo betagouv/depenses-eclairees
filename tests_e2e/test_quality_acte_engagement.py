@@ -48,10 +48,10 @@ def compare_object(llm_value, ref_value, llm_model='albert-small'):
         bool: True si les objets sont sémantiquement proches, False sinon
     """
     # Gestion des valeurs vides ou None
-    if (llm_value == '' or llm_value is None or llm_value == 'nan') and (ref_value == '' or ref_value is None or ref_value == 'nan'):
+    if not llm_value and not ref_value:
         return True
     
-    if (llm_value == '' or llm_value is None or llm_value == 'nan') or (ref_value == '' or ref_value is None or ref_value == 'nan'):
+    if not llm_value or not ref_value:
         return False
     
     try:
@@ -122,10 +122,10 @@ def compare_beneficiary_administration(llm_value, ref_value, llm_model='albert-s
         bool: True si les administrations bénéficiaires sont identiques ou équivalentes, False sinon
     """
     # Gestion des valeurs vides ou None
-    if (llm_value == '' or llm_value is None or llm_value == 'nan') and (ref_value == '' or ref_value is None or ref_value == 'nan'):
+    if not llm_value and not ref_value:
         return True
 
-    if (llm_value == '' or llm_value is None or llm_value == 'nan') or (ref_value == '' or ref_value is None or ref_value == 'nan'):
+    if not llm_value or not ref_value:
         return False
 
     try:
@@ -197,6 +197,13 @@ def compare_beneficiary_administration(llm_value, ref_value, llm_model='albert-s
 
 def compare_main_company(llm_value, ref_value):
     """Compare societe_principale : comparaison de chaînes normalisées."""
+
+    if not llm_value and not ref_value:
+        return True
+
+    if not llm_value or not ref_value:
+        return False
+
     llm_norm = normalize_string(llm_value)
     ref_norm = normalize_string(ref_value)
 
@@ -210,8 +217,15 @@ def compare_main_company(llm_value, ref_value):
 
 def compare_siret(llm_value, ref_value):
     """Compare siret : comparaison exacte."""
-    if (llm_value == '' or llm_value is None or llm_value == 'nan') and (ref_value == '' or ref_value is None or ref_value == 'nan'):
+
+    # Gestion des valeurs vides ou None
+    if not llm_value and not ref_value:
         return True
+
+    if not llm_value or not ref_value:
+        return False
+
+
     llm_str = str(llm_value) if not pd.isna(llm_value) else ""
     ref_str = str(ref_value) if not pd.isna(ref_value) else ""
     return llm_str == ref_str
@@ -219,8 +233,13 @@ def compare_siret(llm_value, ref_value):
 
 def compare_siren(llm_value, ref_value):
     """Compare siren : comparaison exacte."""
-    if (llm_value == '' or llm_value is None or llm_value == 'nan') and (ref_value == '' or ref_value is None or ref_value == 'nan'):
+    # Gestion des valeurs vides ou None
+    if not llm_value and not ref_value:
         return True
+
+    if not llm_value or not ref_value:
+        return False
+
     llm_str = str(llm_value) if not pd.isna(llm_value) else ""
     ref_str = str(ref_value) if not pd.isna(ref_value) else ""
     return llm_str == ref_str
@@ -229,10 +248,11 @@ def compare_siren(llm_value, ref_value):
 def compare_mandatee_bank_account(llm_val:dict[str, str], ref_val:dict[str, str]):
     """Compare rib_mandataire : format JSON, comparaison des 5 champs."""
 
-    if llm_val == {} and ref_val == {}:
+    # Gestion des valeurs vides ou None
+    if not llm_val and not ref_val:
         return True
 
-    if llm_val == {} or ref_val == {}:
+    if not llm_val or not ref_val:
         return False
     
     # Si 'iban' est dans ref_dict et non vide, alors on compare les ibans (exact).
@@ -260,7 +280,11 @@ def compare_advance(llm_value, ref_value):
 
 def compare_co_contractors(llm_val:list[dict[str, str]], ref_val:list[dict[str, str]]):
     """Compare cotraitants : liste de json, renvoie True si tous les cotraitants LLM sont trouvés côté référence."""
-    if len(llm_val) != len(ref_val):
+    # Gestion des valeurs vides ou None
+    if not llm_val and not ref_val:
+        return True
+
+    if not llm_val or not ref_val:
         return False
     
     co_contractors_valid = True
@@ -285,7 +309,11 @@ def compare_co_contractors(llm_val:list[dict[str, str]], ref_val:list[dict[str, 
 
 def compare_subcontractors(llm_val:list[dict[str, str]], ref_val:list[dict[str, str]]):
     """Compare sous_traitants : liste de json, renvoie True si tous les sous_traitants LLM sont trouvés côté référence."""
-    if len(llm_val) != len(ref_val):
+    # Gestion des valeurs vides ou None
+    if not llm_val and not ref_val:
+        return True
+
+    if not llm_val or not ref_val:
         return False
     
     subcontractors_valid = True
@@ -310,7 +338,11 @@ def compare_subcontractors(llm_val:list[dict[str, str]], ref_val:list[dict[str, 
 
 def compare_other_bank_accounts(llm_val:list[dict[str, dict[str, str]]], ref_val:list[dict[str, dict[str, str]]]):
     """Compare rib_autres : liste de json, renvoie True si tous les comptes bancaires LLM sont trouvés côté référence."""
-    if len(llm_val) != len(ref_val):
+    # Gestion des valeurs vides ou None
+    if not llm_val and not ref_val:
+        return True
+
+    if not llm_val or not ref_val:
         return False
     
     bank_accounts_valid = True
@@ -335,15 +367,19 @@ def compare_other_bank_accounts(llm_val:list[dict[str, dict[str, str]]], ref_val
 
 def compare_amount(llm_val, ref_val):
     """Compare montant : comparaison des valeurs."""
-    if (llm_val == '') and (ref_val == ''):
+    # Gestion des valeurs vides ou None
+    if not llm_val and not ref_val:
         return True
+
+    if not llm_val or not ref_val:
+        return False
         
     return llm_val == ref_val
 
 
 def parse_date(date_str):
     """Parse une date au format DD/MM/YYYY ou autres formats courants."""
-    if pd.isna(date_str) or date_str == "":
+    if not date_str:
         return None
     date_str = str(date_str).strip()
     formats = ['%d/%m/%Y', '%Y-%m-%d', '%d-%m-%Y', '%Y/%m/%d']
@@ -369,20 +405,21 @@ def compare_date(llm_value, ref_value):
 def compare_duration(llm_val, ref_val):
     """Compare duree : nombre de mois, comparaison exacte."""
 
-    if llm_val == {} and ref_val == {}:
+    # Gestion des valeurs vides ou None
+    if not llm_val and not ref_val:
         return True
 
-    if llm_val == {} or ref_val == {}:
+    if not llm_val or not ref_val:
         return False
     
     try:
-        if llm_val.get('duree_initiale', None) != ref_val.get('duree_initiale', None):
+        if llm_val.get('duree_initiale') != ref_val.get('duree_initiale'):
             return False
-        if llm_val.get('duree_reconduction', None) != ref_val.get('duree_reconduction', None):
+        if llm_val.get('duree_reconduction') != ref_val.get('duree_reconduction'):
             return False
-        if llm_val.get('nb_reconductions', '') != ref_val.get('nb_reconductions', ''):
+        if llm_val.get('nb_reconductions') != ref_val.get('nb_reconductions'):
             return False
-        if llm_val.get('delai_tranche_optionnelle', '') != ref_val.get('delai_tranche_optionnelle', ''):
+        if llm_val.get('delai_tranche_optionnelle') != ref_val.get('delai_tranche_optionnelle'):
             return False
         return True
     except (ValueError, TypeError):
@@ -562,10 +599,10 @@ def check_quality_one_field(df_merged, col_to_test = 'duree'):
         filename = row.get('filename', 'unknown')
         
         # Parser le JSON de llm_response
-        llm_data = row.get('llm_response', None)
+        llm_data = row.get('llm_response')
 
         # Extraire les valeurs
-        ref_val = row.get(col_to_test, None)
+        ref_val = row.get(col_to_test)
         llm_val = llm_data.get(col_to_test, None)
         
         # Extraction des pbm OCR
