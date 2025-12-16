@@ -10,12 +10,17 @@ import copy
 import sys
 sys.path.append(".")
 
+from django.conf import settings
+
 from app.processor.analyze_content import df_analyze_content, LLMClient, parse_json_response
 from app.processor.attributes_query import ATTRIBUTES
 from app.ai_models.config_albert import ALBERT_API_KEY, ALBERT_BASE_URL
 from app.processor.post_processing_llm import *
 
 logger = logging.getLogger("docia." + __name__)
+
+PROJECT_PATH = settings.BASE_DIR
+CSV_DIR_PATH = (PROJECT_PATH / ".." / "data" / "test").resolve()
 
 def normalize_string(s):
     """Normalise une chaîne de caractères : minuscule et sans caractères spéciaux."""
@@ -452,7 +457,7 @@ def get_comparison_functions():
 def create_batch_test(multi_line_coef = 1):
     """Test de qualité des informations extraites par le LLM."""
     # Chemin vers le fichier CSV de test
-    csv_path = "/Users/dinum-284659/dev/data/test/test_acte_engagement.csv"
+    csv_path = CSV_DIR_PATH / "test_acte_engagement.csv"
     
     # Lecture du fichier CSV
     df_test = pd.read_csv(csv_path)
