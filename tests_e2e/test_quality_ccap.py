@@ -346,7 +346,7 @@ def create_batch_test(multi_line_coef = 1):
         df=df_analyze,
         df_attributes=ATTRIBUTES,
         max_workers=20,
-        temperature=0.3,
+        temperature=0.2,
         save_grist=False
     )
     
@@ -603,7 +603,7 @@ EXCLUDED_COLUMNS = [
     'index_reference'
 ]
 
-check_quality_one_field(df_merged, col_to_test = 'lots')
+check_quality_one_field(df_merged, col_to_test = 'duree_marche')
 
 check_quality_one_row(df_merged, row_idx_to_test = 3)
 
