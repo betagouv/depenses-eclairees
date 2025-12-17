@@ -3,6 +3,7 @@ import hashlib
 
 import factory.fuzzy
 
+from docia.file_processing.info_extraction import SUPPORTED_DOCUMENT_TYPES
 from docia.file_processing.models import (
     FileInfo,
     ProcessDocumentBatch,
@@ -19,6 +20,7 @@ class ProcessDocumentBatchFactory(factory.django.DjangoModelFactory):
 
     folder = factory.Sequence(lambda n: f"folder{n:0>3}")
     status = ProcessingStatus.PENDING
+    target_classifications = SUPPORTED_DOCUMENT_TYPES
 
 
 class ProcessDocumentJobFactory(factory.django.DjangoModelFactory):

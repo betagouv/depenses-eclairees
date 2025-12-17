@@ -4,9 +4,10 @@ from unittest.mock import patch
 import pytest
 
 from docia.file_processing.models import ProcessDocumentStep, ProcessDocumentStepType, ProcessingStatus
-from docia.file_processing.pipeline import launch_batch
+from docia.file_processing.pipeline import launch_batch, retry_batch_failures
 from docia.models import DataAttachment
 from docia.tests.factories.data import DataAttachmentFactory
+from docia.tests.factories.file_processing import ProcessDocumentBatchFactory, ProcessDocumentJobFactory
 
 
 @contextmanager
@@ -128,3 +129,51 @@ def test_launch_batch_specify_qs():
     batch.refresh_from_db()
     job1, job2 = batch.job_set.order_by("document__filename")
     assert [doc1, doc2] == [job1.document, job2.document]
+
+
+@pytest.mark.django_db
+def test_retry_batch():
+    batch = ProcessDocumentBatchFactory(status=ProcessingStatus.FAILURE)
+    # Jobs to retry (status=failure)
+    retry_job_1 = ProcessDocumentJobFactory(
+        batch=batch, status=ProcessingStatus.FAILURE, document__dossier=batch.folder
+    )
+    retry_job_2 = ProcessDocumentJobFactory(
+        batch=batch, status=ProcessingStatus.FAILURE, document__dossier=batch.folder
+    )
+    # Job not to retry (status!=failure)
+    ProcessDocumentJobFactory(batch=batch, status=ProcessingStatus.PENDING, document__dossier=batch.folder)
+    ProcessDocumentJobFactory(batch=batch, status=ProcessingStatus.STARTED, document__dossier=batch.folder)
+    ProcessDocumentJobFactory(batch=batch, status=ProcessingStatus.SUCCESS, document__dossier=batch.folder)
+    ProcessDocumentJobFactory(batch=batch, status=ProcessingStatus.CANCELLED, document__dossier=batch.folder)
+
+    with patch_extract_text(), patch_classify(), patch_extract_info():
+        new_batch, _result = retry_batch_failures(batch.id)
+
+    job1, job2 = new_batch.job_set.order_by("document__filename")
+    assert [job1.document, job2.document] == [retry_job_1.document, retry_job_2.document]
+
+
+@pytest.mark.django_db
+def test_retry_batch_with_cancelled():
+    batch = ProcessDocumentBatchFactory(status=ProcessingStatus.FAILURE)
+    # Jobs to retry (status=failure|cancelled)
+    retry_job_1 = ProcessDocumentJobFactory(
+        batch=batch, status=ProcessingStatus.FAILURE, document__dossier=batch.folder
+    )
+    retry_job_2 = ProcessDocumentJobFactory(
+        batch=batch, status=ProcessingStatus.CANCELLED, document__dossier=batch.folder
+    )
+    # Job not to retry (status=success)
+    ProcessDocumentJobFactory(batch=batch, status=ProcessingStatus.SUCCESS, document__dossier=batch.folder)
+
+    with patch_extract_text(), patch_classify(), patch_extract_info():
+        new_batch, _result = retry_batch_failures(batch.id, retry_cancelled=True)
+
+    new_batch.refresh_from_db()
+    assert new_batch.retry_of == batch
+    assert new_batch.folder == batch.folder
+    assert new_batch.target_classifications == batch.target_classifications
+
+    job1, job2 = new_batch.job_set.order_by("document__filename")
+    assert [job1.document, job2.document] == [retry_job_1.document, retry_job_2.document]

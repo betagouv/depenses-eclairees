@@ -20,7 +20,7 @@ def patch_extract_info():
 
 @pytest.mark.django_db
 def test_task_extract_info():
-    step = ProcessDocumentStepFactory(step_type=ProcessDocumentStepType.INFO_EXTRACTION)
+    step = ProcessDocumentStepFactory(step_type=ProcessDocumentStepType.INFO_EXTRACTION, job__document__classification="devis")
     with patch_extract_info():
         task_extract_info(step.id)
     step.refresh_from_db()

@@ -14,7 +14,7 @@ from celery.result import GroupResult
 
 from ..models import DataAttachment
 from .classification import task_classify_document
-from .info_extraction import task_extract_info
+from .info_extraction import SUPPORTED_DOCUMENT_TYPES, task_extract_info
 from .init_documents import init_documents_in_folder
 from .models import (
     ProcessDocumentBatch,
@@ -33,6 +33,7 @@ def launch_batch(
     target_classifications: list[str] = None,
     qs_documents: models.QuerySet | None = None,
     batch_id: str | None = None,
+    retry_of: ProcessDocumentBatch | None = None,
 ) -> (ProcessDocumentBatch, GroupResult):
     """
     Launch a batch processing job for documents with specified processing steps.
@@ -43,6 +44,8 @@ def launch_batch(
         step_types: List of processing step types to perform (text extraction, classification, etc.)
         target_classifications: Only process documents with these classification labels
         qs_documents: Optional pre-filtered document queryset to process specific documents
+        batch_id: Optional UUID to use for the batch instead of generating one
+        retry_of: Optional reference to original ProcessDocumentBatch being retried
 
     Returns:
         tuple: (ProcessDocumentBatch, Celery GroupResult)
@@ -66,18 +69,7 @@ def launch_batch(
 
     # Use default document types to process if none specified
     if target_classifications is None:
-        target_classifications = [
-            "devis",
-            "fiche_navette",
-            "acte_engagement",
-            "bon_de_commande",
-            "avenant",
-            "sous_traitance",
-            "rib",
-            "att_sirene",
-            "kbis",
-            "ccap",
-        ]
+        target_classifications = SUPPORTED_DOCUMENT_TYPES
 
     # Create the batch processing record
     batch = ProcessDocumentBatch(
@@ -85,6 +77,7 @@ def launch_batch(
         target_classifications=target_classifications,
         status=ProcessingStatus.STARTED,
         celery_task_id=str(uuid.uuid4()),
+        retry_of=retry_of,
     )
     if batch_id:
         batch.id = batch_id
@@ -121,6 +114,34 @@ def launch_batch(
 
     r = group(job_tasks).set(task_id=batch.celery_task_id)()
     return batch, r
+
+
+def retry_batch_failures(batch_id: str, retry_cancelled: bool = False) -> (ProcessDocumentBatch, GroupResult):
+    """Launch a new batch for failed documents in a previous batch.
+
+    All steps will be retried, regardless of their status.
+    /!\ This function does not check the previous batch steps so
+    all the default steps will be performed.
+
+    Args:
+        batch_id: UUID of the batch to retry failed jobs from
+        retry_cancelled: If True, also retry cancelled jobs in addition to failed ones
+
+    Returns:
+        tuple: (ProcessDocumentBatch, GroupResult) - New batch and its Celery group result
+    """
+    batch = ProcessDocumentBatch.objects.get(id=batch_id)
+    status_to_retry = [ProcessingStatus.FAILURE]
+    if retry_cancelled:
+        status_to_retry.append(ProcessingStatus.CANCELLED)
+    jobs_to_retry = batch.job_set.filter(status__in=status_to_retry)
+    qs_documents = DataAttachment.objects.filter(processdocumentjob__in=jobs_to_retry).distinct()
+    return launch_batch(
+        folder=batch.folder,
+        target_classifications=batch.target_classifications,
+        qs_documents=qs_documents,
+        retry_of=batch,
+    )
 
 
 def task_from_step_type(step_type: ProcessDocumentStepType):

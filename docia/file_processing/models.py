@@ -24,6 +24,7 @@ class ProcessDocumentBatch(BaseModel):
     target_classifications = ArrayField(models.CharField(max_length=255), null=True, blank=True)
     status = models.CharField(choices=ProcessingStatus.choices, default=ProcessingStatus.PENDING)
     celery_task_id = models.CharField(max_length=250, blank=True)
+    retry_of = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         return f"{self.folder} {self.status}"
