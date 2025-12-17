@@ -4,6 +4,7 @@ Handles batch processing of documents through various processing steps including
 classification, and information extraction using Celery tasks.
 """
 
+import logging
 import uuid
 
 from django.db import models
@@ -17,6 +18,7 @@ from .classification import task_classify_document
 from .info_extraction import SUPPORTED_DOCUMENT_TYPES, task_extract_info
 from .init_documents import init_documents_in_folder
 from .models import (
+    BATCH_STUCK_TIMEOUT,
     ProcessDocumentBatch,
     ProcessDocumentJob,
     ProcessDocumentStep,
@@ -25,11 +27,13 @@ from .models import (
 )
 from .text_extraction import task_extract_text
 
+logger = logging.getLogger(__name__)
+
 
 def launch_batch(
     *,
     folder: str = None,
-    step_types: list[str] = None,
+    step_types: list[ProcessDocumentStepType] = None,
     target_classifications: list[str] = None,
     qs_documents: models.QuerySet | None = None,
     batch_id: str | None = None,
@@ -142,6 +146,18 @@ def retry_batch_failures(batch_id: str, retry_cancelled: bool = False) -> (Proce
         qs_documents=qs_documents,
         retry_of=batch,
     )
+
+
+def close_and_retry_stuck_batches(timeout_seconds: int = BATCH_STUCK_TIMEOUT) -> list[tuple[str, str]]:
+    stuck_batches = ProcessDocumentBatch.objects.filter_stuck_batches(timeout_seconds=timeout_seconds)
+    results = []
+    for batch in stuck_batches:
+        logger.info(f"Closing and retrying stuck batch {batch.id} (last update: {batch.last_job_step_finished_at})")
+        cancel_batch(batch.id)
+        new_batch, _ = retry_batch_failures(batch.id, retry_cancelled=True)
+        logger.info(f"New batch {new_batch.id} launched for stuck batch {batch.id}")
+        results.append((batch.id, new_batch.id))
+    return results
 
 
 def task_from_step_type(step_type: ProcessDocumentStepType):

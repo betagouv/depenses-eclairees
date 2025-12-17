@@ -1,13 +1,18 @@
 from contextlib import contextmanager
+from unittest import mock
 from unittest.mock import patch
 
 import pytest
 
 from docia.file_processing.models import ProcessDocumentStep, ProcessDocumentStepType, ProcessingStatus
-from docia.file_processing.pipeline import launch_batch, retry_batch_failures
+from docia.file_processing.pipeline import close_and_retry_stuck_batches, launch_batch, retry_batch_failures
 from docia.models import DataAttachment
 from docia.tests.factories.data import DataAttachmentFactory
-from docia.tests.factories.file_processing import ProcessDocumentBatchFactory, ProcessDocumentJobFactory
+from docia.tests.factories.file_processing import (
+    ProcessDocumentBatchFactory,
+    ProcessDocumentJobFactory,
+    ProcessDocumentStepFactory,
+)
 
 
 @contextmanager
@@ -177,3 +182,22 @@ def test_retry_batch_with_cancelled():
 
     job1, job2 = new_batch.job_set.order_by("document__filename")
     assert [job1.document, job2.document] == [retry_job_1.document, retry_job_2.document]
+
+
+@pytest.mark.django_db
+def test_close_and_retry_stuck_batches():
+    batch = ProcessDocumentBatchFactory(status=ProcessingStatus.STARTED)
+    ProcessDocumentStepFactory(job__batch=batch, finished_at="2024-01-01")
+    with (
+        patch("docia.file_processing.pipeline.retry_batch_failures", autospec=True) as m_retry,
+        patch("docia.file_processing.pipeline.cancel_batch", autospec=True) as m_cancel,
+    ):
+        new_batch = ProcessDocumentBatchFactory()
+        m_retry.return_value = (new_batch, mock.Mock())
+
+        r = close_and_retry_stuck_batches()
+
+        m_cancel.assert_called_once_with(batch.id)
+        m_retry.assert_called_once_with(batch.id, retry_cancelled=True)
+
+        assert r == [(batch.id, new_batch.id)]
