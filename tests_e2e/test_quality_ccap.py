@@ -93,10 +93,12 @@ def compare_contract_form(llm_val:dict, ref_val:dict):
     
     llm_structure = llm_val.get('structure')
     ref_structure = ref_val.get('structure')
-    llm_forme = llm_val.get('forme')
-    ref_forme = ref_val.get('forme')
+    llm_tranches = llm_val.get('tranches')
+    ref_tranches = ref_val.get('tranches')
+    llm_forme_prix = llm_val.get('forme_prix')
+    ref_forme_prix = ref_val.get('forme_prix')
 
-    return (llm_structure == ref_structure and llm_forme == ref_forme)
+    return (llm_structure == ref_structure and llm_tranches == ref_tranches and llm_forme_prix == ref_forme_prix)
     
 
 def compare_compare_contract_form_batches(llm_val:list[dict], ref_val:list[dict]):
@@ -113,9 +115,11 @@ def compare_compare_contract_form_batches(llm_val:list[dict], ref_val:list[dict]
             if lot_llm.get('numero_lot') == lot_ref.get('numero_lot'):
                 llm_structure = lot_llm.get('structure')
                 ref_structure = lot_ref.get('structure')
-                llm_forme = lot_llm.get('forme')
-                ref_forme = lot_ref.get('forme')
-                if llm_structure == ref_structure and llm_forme == ref_forme:
+                llm_tranches = lot_llm.get('tranches')
+                ref_tranches = lot_ref.get('tranches')
+                llm_forme_prix = lot_llm.get('forme_prix')
+                ref_forme_prix = lot_ref.get('forme_prix')
+                if llm_structure == ref_structure and llm_tranches == ref_tranches and llm_forme_prix == ref_forme_prix:
                     found = True
                     break
                 return False
@@ -286,7 +290,7 @@ def get_comparison_functions():
         'condition_avance': compare_advance_conditions,
         'revision_prix': compare_price_revision,
         'montant_ht_lots': compare_batches_amount,
-        'montants_ht': compare_amounts,
+        'montant_ht': compare_amounts,
         'ccag': compare_global_contract,
     }
 
@@ -603,9 +607,9 @@ EXCLUDED_COLUMNS = [
     'index_reference'
 ]
 
-check_quality_one_field(df_merged, col_to_test = 'duree_marche')
+check_quality_one_field(df_merged, col_to_test = 'montant_ht_lots')
 
-check_quality_one_row(df_merged, row_idx_to_test = 3)
+check_quality_one_row(df_merged, row_idx_to_test = 7)
 
 check_global_statistics(df_merged, excluded_columns = EXCLUDED_COLUMNS)
 

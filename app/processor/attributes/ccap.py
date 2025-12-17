@@ -3,6 +3,20 @@ Définitions des attributs à extraire pour les documents de type "ccap".
 """
 
 CCAP_ATTRIBUTES = {
+    "intro": {
+        "consigne": """INTRODUCTION
+    Ce paragraphe donne des précisions et des définitions sur le document à analyser. Le champ introduction n'appelle pas de réponse, renvoyer null.
+    Définitions : 
+    - LOT : l'acheteur peut décomposer un besoin en lots séparés, chacun constituant une marché à part entière lors de l'attribution. Autrement dit, un lot est une fraction du besoin globla, chaque lot est juridiquement équivalent à un marché autonome.
+    - TRANCHE : un marché à tranches est un marché unique composé de plusieurs phases. La tranche ferme est celle pour laquelle l'acheteur s'engage contractuellement, les tranches optionnelles (ou conditionnelles) sont des parties supplementaires que l'acheteur peut faire exécuter plus tard.
+""",
+        "search": "",
+        "output_field": "intro",
+        "schema": {
+            "type": "null"
+        }
+    },
+    
     "objet_marche": {
         "consigne": """OBJET_MARCHE
     Définition : Formulation synthétique de l'objet du marché.
@@ -17,6 +31,22 @@ CCAP_ATTRIBUTES = {
 """,
         "search": "Section du document qui décrit l'objet du marché ou le contexte général de la consultation.",
         "output_field": "objet_marche"
+    },
+
+    "id_marche": {
+        "consigne": """ID_MARCHE
+    Définition : Identifiant unique du marché.
+    Indices : 
+    - Chercher dans le titre du document.
+    - L'identifiant n'est pas standardisé entre les administrations, mais il contient généralement : 
+        * L'année
+        * Une désignation du pouvoir adjudicateur
+        * Un numéro unique.
+    Format : un identifiant unique de la consultation.
+ 
+""",
+        "search": "",
+        "output_field": "id_marche"
     },
 
     "lots": {
@@ -35,7 +65,7 @@ CCAP_ATTRIBUTES = {
         "output_field": "lots",
         "schema":
         {
-            "type": "array",
+            "type": ["array", "null"],
             "items": {
                 "type": "object",
                 "properties": {
@@ -52,54 +82,50 @@ CCAP_ATTRIBUTES = {
         Définition : Identifier la forme de passation du marché.
         Indices :
         - Rechercher dans les sections de la forme du marché et dans celle définissant les lots.
-        - SI le marché comporte des lots (le champ LOTS n'est pas []), renvoyer : structure = "allotie" et forme = null
+        - SI le marché comporte des lots (le champ LOTS n'est pas []), renvoyer : structure = "allotie", tranches = null, forme_prix = null
         - OU ALORS si le marché ne comprend pas de lots (LOTS = [])
-            (1) Identifier la structure du marché :
+            (1) Identifier la structure d'exécution marché :
                 * Le marché donne lieu à des marchés subséquents (le document précise "pour les marchés subséquents, ..." ou "le marché donne lieu à des marchés subséquents"), structure = "à marchés subséquents"
+                * Si les termes "marchés subséquents" ne sont jamais mentionnés dans l'ensemble du document, structure = "simple".
                 * Sinon, structure = "simple"
-            (2) Identifier la forme du marché : parmi "à tranches", "à bons de commande" ou "forfaitaire" selon la forme de passation du marché.
-                * "à tranches" : si le marché prévoit au moins une "tranche" ferme ou une "tranche" optionnelle. Les tranches sont des sous-parties du marché.
-                * "à bons de commande" : si le marché s'exécute par la passation de bons de commande 
-                * "forfaitaire" : cas général s'il n'y a pas tranches ou de bons de commande mentionnés. 
-                La simple mention de "forfaitaire" est insuffisante, car les indemnités et pénalités sont toujours forfaitaires.
-        - L'allotissement du marché prime sur les subséquents : s'il y a des lots, la structure est allotie.
-        Format : un json {'structure': ..., 'forme': ...}.
+            (2) Identifier les tranches du marché :
+                * Si le marché comporte des tranches (cf définition dans l'introduction), renvoyer le nombre de tranches explicitement listées pour le marché (tranches fermes inclues).
+                * Si le marché n'a qu'une tranche ferme, renvoyer tranches = 1.
+                * Sinon, tranches = null.
+            (3) Identifier la forme des prix du marché : "unitaires", "forfaitaires" ou "mixtes". Regarder dans la section des prix et des documents annexes au ccap.
+                * Prix unitaires : les prix sont unitaires si le document précise que les prix sont unitaires, ou qu'il cite un document de bordereaux de prix unitaires (ou BPU).
+                * Prix forfaitaires : les prix sont forfaitaires si le document précise que les prix sont forfaitaires, ou qu'il cite un document de décomposition (globale) des prix forfaitaires (ou DGPF ou DPGF).
+                * Prix mixtes : les prix sont mixtes si le document précise que les prix sont mixtes, ou qu'ils sont à la fois unitaires et forfaitaires.
+                * Par défaut, la forme des prix est forfaitaire.
+        - ATTENTION : L'allotissement du marché prime sur les marchés subséquents pour ce champ : s'il y a des lots, la structure est "allotie", tranches = null, forme_prix = null. S'il y a une mention à des marchés subséquents, ce seront les lots qui auront une structure "à marchés subséquents".
+        Format : un json {'structure': ..., 'tranches': ..., 'forme_prix': ...}.
    """,
         "search": "",
         "output_field": "forme_marche",
         "schema":
         {
-            "type": "object",
+            "type": ["object", "null"],
             "oneOf": [
                 {
                     "type": "object",
                     "properties": {
                         "structure": { "type": "string", "enum": ["allotie"] },
-                        "forme": { "type": "null" }
+                        "tranches": { "type": "null" },
+                        "forme_prix": { "type": "null" }
                     },
-                    "required": ["structure", "forme"]
+                    "required": ["structure", "tranches", "forme_prix"]
                 },
                 {
                     "type": "object",
                     "properties": {
-                        "structure": { "type": "string", "enum": ["simple"] },
-                        "forme": {
-                        "type": "string",
-                        "enum": ["à bons de commande", "à tranches", "forfaitaire"]
+                        "structure": { "type": "string", "enum": ["simple", "à marchés subséquents"] },
+                        "tranches": { "type": ["integer", "null"] },
+                        "forme_prix": {
+                            "type": "string",
+                            "enum": ["unitaires", "forfaitaires", "mixtes"]
                         }
                     },
-                    "required": ["structure", "forme"]
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "structure": { "type": "string", "enum": ["à marchés subséquents"] },
-                        "forme": {
-                        "type": "string",
-                        "enum": ["à bons de commande", "à tranches", "forfaitaire"]
-                        }
-                    },
-                    "required": ["structure", "forme"]
+                    "required": ["structure", "tranches", "forme_prix"]
                 }
             ]
         }
@@ -113,28 +139,35 @@ CCAP_ATTRIBUTES = {
         - Si la structure et les formes des lots ne sont pas spécifiquement définies, c'est que leurs structures et formes sont identiques à celles du marché.
         - Pour chaque lot, identifier le numéro du lot.
         - Pour chaque lot, identifier la structure de passation du lot : 
+            * Si l'ensemble du marché s'exécute par marchés subséquents, ALORS pour chaque lot structure = "à marchés subséquents".
             * Si le lot s'exécute par conclusion de marchés subséquents, structure = "à marchés subséquents".
             * Si les termes "marchés subséquents" ne sont jamais mentionnés dans l'ensemble du document, structure = "simple".
             * Sinon, structure = "simple"
-        - Puis identifier la forme du lot : parmi "à bons de commande", "à tranches" ou "forfaitaire" selon la forme de passation du lot.
-            * Une tranche est une sous-partie du lot. Les tranches sont fermes ou optionnelles (ou conditionnelles). S'il y a des tranches mentionnées pour ce lot : forme : "à tranches".
-            * Si le lot lui-même ou ses marchés subséquents s'exécutent par la passation de bons de commande : forme : "à bons de commande".
-            * Sinon, forme : "forfaitaire".
-        Format : une liste de json [{'numero_lot': numéro du lot, 'structure': structure, 'forme': forme}, {...}]
+        - Pour chaque lot, identifier les tranches du lot, s'il y en a :
+            * Si le lot comporte des tranches (cf définition dans l'introduction), renvoyer le nombre de tranches explicitement listées pour le lot (tranches fermes inclues).
+            * Si le lot n'a qu'une tranche ferme, renvoyer tranches = 1.
+            * Sinon, tranches = null.
+        - Pour chaque lot, identifier la forme des prix du lot : "unitaires", "forfaitaires" ou "mixtes". Regarder dans la section des prix et des documents annexes au ccap.
+            * Prix mixtes : si les prestations de ce lot sont d'une part à prix forfaitaires et d'autre part à prix unitaires (les prix des prestations du lot évoquées à plusieurs endroits), ou encore que les prix sont dits mixtes pour ce lot.
+            * Prix unitaires : les prix sont unitaires si le document précise que les prix sont unitaires, ou qu'il cite un document de bordereaux de prix unitaires (ou BPU).
+            * Prix forfaitaires : les prix sont forfaitaires si le document précise que les prix sont forfaitaires, ou qu'il cite un document de décomposition (globale) des prix forfaitaires (ou DGPF ou DPGF).
+            * La qualification "mixtes" est prioritaire : dès lors qu’un même lot comporte à la fois des prestations à prix unitaires et à prix forfaitaires, la forme des prix du lot DOIT être "mixtes", même si les documents BPU ou DPGF sont cités. »
+        Format : une liste de json [{'numero_lot': numéro du lot, 'structure': structure, 'tranches': nombre de tranches, 'forme_prix': forme_prix, 'citation_tranches': citation_tranches}, {...}]
    """,
         "search": "",
         "output_field": "forme_marche_lots",
         "schema":
         {
-            "type": "array",
+            "type": ["array", "null"],
             "items": {
                 "type": "object",
                 "properties": {
                     "numero_lot": { "type": "integer" },
                     "structure": { "type": "string", "enum": ["simple", "à marchés subséquents"] },
-                    "forme": { "type": "string", "enum": ["à tranches", "à bons de commande","forfaitaire"] }
+                    "tranches": { "type": ["integer", "null"] },
+                    "forme_prix": { "type": "string", "enum": ["mixtes", "unitaires", "forfaitaires"] }
                 },
-                "required": ["numero_lot", "structure", "forme"]
+                "required": ["numero_lot", "structure", "tranches", "forme_prix"]
             }
         }
     },
@@ -164,7 +197,7 @@ CCAP_ATTRIBUTES = {
         "output_field": "duree_marche",
         "schema":
         {
-            "type": "object",
+            "type": ["object", "null"],
             "properties": {
                 "duree_initiale": {"type": "integer"},
                 "duree_reconduction": {"type": "integer"},
@@ -185,13 +218,14 @@ CCAP_ATTRIBUTES = {
      - Si la durée des lots est la même que celle du marché, renvoyer la valeur 'identique à la durée du marché' pour chacun des lots.
      - Si des spécifités sont précisées pour la durée des lots, renvoyer la durée de chaque lot sous format d'un json : 
         * {"duree_initiale": "nombre entier de mois", "duree_reconduction": "nombre entier de mois", "nb_reconductions": "nombre entier de reconductions possibles", "delai_tranche_optionnelle": "nombre entier de mois"}
+     - Si la durée sera précisée ultérieurement (dans l'acte d'engagement par exemple), renvoyer []
      Format : une liste de json [{"numero_lot": numéro du lot, "duree_lot": "string" ou objet json}, ...].
 """,
         "search": "",
         "output_field": "duree_lots",
         "schema":
         {
-            "type": "array",
+            "type": ["array", "null"],
             "items": {
                 "type": "object",
                 "properties": {
@@ -226,10 +260,10 @@ CCAP_ATTRIBUTES = {
      - Si le marché est alloti, ne rien renvoyer.
      - Si les montants HT sont annuels, il faut préciser le montant suivi de "HT/an".
      - Si les montants HT sont globaux, il faut préciser le montant suivi de "HT total".
-     Format : le montant en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales) suivi de HT/an ou HT total.
+     Format : le montant en "XXXX.XX" (sans séparateur de milliers, avec 2 décimales) sans unité monétaire.
 """,
         "search": "",
-        "output_field": "montants_ht"
+        "output_field": "montant_ht"
     },
 
 
@@ -238,16 +272,18 @@ CCAP_ATTRIBUTES = {
      Définition : Montant hors taxes maximum de chaque lot du marché.
      Indices : 
      - Dans la section spécifique des montants maximums hors taxes des lots du marché, ou dans la forme du marché.
-     - Si le marché est alloti, alors il y a un montant maximumpour chaque lot.
-     - Si le marché n'est pas alloti, renvoyer []
+     - Pour chaque lot, trouver le montant maximum hors taxe.
+     - Exceptions :
+        * Si le marché n'est pas alloti, renvoyer []
+        * Si le montant des lots est précisé ultérieurement (dans l'acte d'engagement par exemple), ou s'il n'y pas d'informations sur les montants maximums hors taxes, renvoyer []
      - Pour chaque montant hors taxes, indiquer si le montant maximum est annuel ou pour toute la durée du marché.
-     Format : une liste de json au format suivant [{"numero_lot": le numéro du lot, 'montant_ht_maximum': le montant hors taxes maximum du lot, 'type_montant': 'annuel' ou 'total'}, {...}]
+     Format : une liste de json au format suivant [{"numero_lot": le numéro du lot, 'montant_ht_maximum': le montant hors taxes maximum du lot en "XXXX.XX" (sans séparateur de milliers, avec 2 décimales) sans unité monétaire, 'type_montant': 'annuel' ou 'total'}, {...}]
 """,
         "search": "",
         "output_field": "montant_ht_lots",
         "schema":
         {
-            "type": "array",
+            "type": ["array", "null"],
             "items": {
                 "type": "object",
                 "properties": {
