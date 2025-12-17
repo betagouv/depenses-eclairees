@@ -269,17 +269,17 @@ Règles d’extraction :
         Indices :
         - Chercher dans le paragraphe indiquant la durée du marché ou le délai d'exécution des prestations.
         - Durée initiale : la durée du marché ferme (sans reconduction ou tranches optionnelles), en nombre de mois.
-            * En l'absence de précisions sur la durée ferme, renvoyer duree_initiale: None
+            * En l'absence de précisions sur la durée ferme, renvoyer duree_initiale: null
             * Exemple : une durée de 1 an, renvoyer 12.
             * Pour une durée entre des dates clés, par exemple "jusqu'à la réunion de conclusion 6 mois après le lancement" : renvoyer 6 mois.
-                -> Attention : si ces dates clés sont insuffisamment documentées, renvoyer duree_initiale: None
+                -> Attention : si ces dates clés sont insuffisamment documentées, renvoyer duree_initiale: null
         - Extension de durée possible : extenion maximale en nombre de mois.
-            * En l'absence d'informations claires, renvoyer duree_reconduction: None
+            * En l'absence d'informations claires, renvoyer duree_reconduction: null
             * Si des reconductions sont précisées (ne pas confondre avec des tranches optionnelles qui sont gérées ci-dessous) :
-                1. duree_reconduction : Trouver la durée d'une reconduction (en nombre de mois). Si l'information n'est pas précisée, renvoyer None.
-                2. nb_reconductions : Trouver le nombre de reconductions possibles (éventuellement 0). Si l'information n'est pas précisée, renvoyer None.
+                1. duree_reconduction : Trouver la durée d'une reconduction (en nombre de mois). Si l'information n'est pas précisée ou qu'il n'y a pas de reconduction, renvoyer null.
+                2. nb_reconductions : Trouver le nombre de reconductions possibles (éventuellement 0). Si l'information n'est pas précisée ou qu'il n'y a pas de reconduction, renvoyer null.
             * Si des tranches optionnelles sont précisées : renvoyer la durée de l'ensemble des tranches optionnelles.
-                1. delai_tranche_optionnelle : Trouver la durée de l'ensemble des tranches optionnelles.
+                1. delai_tranche_optionnelle : Trouver la durée de l'ensemble des tranches optionnelles. Si l'information n'est pas précisée ou qu'il n'y a pas de tranches optionnelles, renvoyer null.
                     Exemple : 2 tranches optionnelles de 8 mois, renvoyer 8 + 8 = 16.
         Format : un json sous format suivant {"duree_initiale": "nombre entier de mois", "duree_reconduction": "nombre entier de mois", "nb_reconductions": "nombre entier de reconductions possibles", "delai_tranche_optionnelle": "nombre entier de mois"}
     """,
