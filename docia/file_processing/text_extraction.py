@@ -19,6 +19,10 @@ class ExtractTextStepRunner(AbstractStepRunner):
             text, is_ocr, nb_words = processor.process_file(file_path, document.extension)
         except UnsupportedFileType as e:
             raise SkipStepException(str(e))
+
+        if not text:
+            raise Exception(f"Failed to extract text - empty result - {file_path}")
+
         document.text = text
         document.is_ocr = is_ocr
         document.nb_mot = nb_words
