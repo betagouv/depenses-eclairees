@@ -54,17 +54,17 @@ def test_batch():
     jobs = list(batch.job_set.order_by("document__filename"))
     for job in jobs:
         assert job.status == ProcessingStatus.SUCCESS
-        steps = list(job.step_set.all())
+        steps = list(job.step_set.order_by("order"))
         for step in steps:
             assert step.status == ProcessingStatus.SUCCESS
             assert step.error == ""
-        expected_step_types = [
-            ProcessDocumentStepType.TEXT_EXTRACTION,
-            ProcessDocumentStepType.CLASSIFICATION,
-            ProcessDocumentStepType.INFO_EXTRACTION,
+        expected_steps = [
+            (1, ProcessDocumentStepType.TEXT_EXTRACTION),
+            (2, ProcessDocumentStepType.CLASSIFICATION),
+            (3, ProcessDocumentStepType.INFO_EXTRACTION),
         ]
-        actual_step_types = [step.step_type for step in steps]
-        assert actual_step_types == expected_step_types
+        actual_step_types = [(step.order, step.step_type) for step in steps]
+        assert actual_step_types == expected_steps
 
 
 @pytest.mark.django_db

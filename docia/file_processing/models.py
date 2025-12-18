@@ -55,6 +55,7 @@ class ProcessDocumentBatchManager(models.Manager.from_queryset(ProcessDocumentBa
 class ProcessDocumentBatch(BaseModel):
     folder = models.CharField(max_length=100, null=True, blank=True)  # noqa: DJ001
     target_classifications = ArrayField(models.CharField(max_length=255), null=True, blank=True)
+    steps = ArrayField(models.CharField(max_length=255, choices=ProcessDocumentStepType.choices))
     status = models.CharField(choices=ProcessingStatus.choices, default=ProcessingStatus.PENDING)
     celery_task_id = models.CharField(max_length=250, blank=True)
     retry_of = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True)
@@ -82,6 +83,7 @@ class ProcessDocumentStep(BaseModel):
         ProcessDocumentJob, on_delete=models.CASCADE, related_name="step_set", related_query_name="step"
     )
     step_type = models.CharField(choices=ProcessDocumentStepType.choices)
+    order = models.PositiveIntegerField()
     status = models.CharField(choices=ProcessingStatus.choices)
     error = models.CharField(default="", blank=True)
     traceback = models.TextField(default="", blank=True)
@@ -89,6 +91,9 @@ class ProcessDocumentStep(BaseModel):
     started_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
     duration = models.DurationField(null=True, blank=True)
+
+    def get_next(self) -> "ProcessDocumentStep | None":
+        return self.job.step_set.filter(order__gt=self.order).order_by("order").first()
 
     def __str__(self):
         return f"{self.step_type} - {self.status}"

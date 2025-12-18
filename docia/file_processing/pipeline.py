@@ -30,6 +30,13 @@ from .text_extraction import task_extract_text
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_PROCESS_STEPS = [
+    ProcessDocumentStepType.TEXT_EXTRACTION,
+    ProcessDocumentStepType.CLASSIFICATION,
+    ProcessDocumentStepType.INFO_EXTRACTION,
+]
+
+
 def launch_batch(
     *,
     folder: str = None,
@@ -65,11 +72,7 @@ def launch_batch(
 
     # Use default processing steps if none specified
     if step_types is None:
-        step_types = [
-            ProcessDocumentStepType.TEXT_EXTRACTION,
-            ProcessDocumentStepType.CLASSIFICATION,
-            ProcessDocumentStepType.INFO_EXTRACTION,
-        ]
+        step_types = DEFAULT_PROCESS_STEPS
 
     # Use default document types to process if none specified
     if target_classifications is None:
@@ -79,6 +82,7 @@ def launch_batch(
     batch = ProcessDocumentBatch(
         folder=folder,
         target_classifications=target_classifications,
+        steps=step_types,
         status=ProcessingStatus.STARTED,
         celery_task_id=str(uuid.uuid4()),
         retry_of=retry_of,
@@ -99,10 +103,11 @@ def launch_batch(
         )
         jobs.append(job)
         step_tasks = []
-        for step_type in step_types:
+        for i, step_type in enumerate(step_types):
             step = ProcessDocumentStep(
                 job=job,
                 step_type=step_type,
+                order=i + 1,
                 status=ProcessingStatus.PENDING,
                 celery_task_id=str(uuid.uuid4()),
             )
@@ -124,8 +129,6 @@ def retry_batch_failures(batch_id: str, retry_cancelled: bool = False) -> (Proce
     """Launch a new batch for failed documents in a previous batch.
 
     All steps will be retried, regardless of their status.
-    /!\ This function does not check the previous batch steps so
-    all the default steps will be performed.
 
     Args:
         batch_id: UUID of the batch to retry failed jobs from
@@ -142,6 +145,7 @@ def retry_batch_failures(batch_id: str, retry_cancelled: bool = False) -> (Proce
     qs_documents = DataAttachment.objects.filter(processdocumentjob__in=jobs_to_retry).distinct()
     return launch_batch(
         folder=batch.folder,
+        step_types=batch.steps,
         target_classifications=batch.target_classifications,
         qs_documents=qs_documents,
         retry_of=batch,

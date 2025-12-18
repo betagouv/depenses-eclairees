@@ -4,7 +4,11 @@ import pytest
 from freezegun import freeze_time
 
 from docia.file_processing.models import BATCH_STUCK_TIMEOUT, ProcessDocumentBatch, ProcessingStatus
-from docia.tests.factories.file_processing import ProcessDocumentBatchFactory, ProcessDocumentStepFactory
+from docia.tests.factories.file_processing import (
+    ProcessDocumentBatchFactory,
+    ProcessDocumentJobFactory,
+    ProcessDocumentStepFactory,
+)
 
 
 @pytest.mark.django_db
@@ -30,3 +34,12 @@ def test_filter_stuck_batches():
 
     assert list(stuck_batches) == [batch_1]
     assert stuck_batches[0].last_job_step_finished_at == time_stuck
+
+
+@pytest.mark.django_db
+def test_get_next():
+    job = ProcessDocumentJobFactory()
+    step1 = ProcessDocumentStepFactory(job=job, order=1, status=ProcessingStatus.PENDING)
+    step2 = ProcessDocumentStepFactory(job=job, order=2, status=ProcessingStatus.PENDING)
+    next_step = step1.get_next()
+    assert next_step == step2
