@@ -11,6 +11,20 @@ from .utils import AbstractStepRunner, SkipStepException
 logger = logging.getLogger(__name__)
 
 
+SUPPORTED_DOCUMENT_TYPES = [
+    "devis",
+    "fiche_navette",
+    "acte_engagement",
+    "bon_de_commande",
+    "avenant",
+    "sous_traitance",
+    "rib",
+    "att_sirene",
+    "kbis",
+    "ccap",
+]
+
+
 class ExtractInfoStepRunner(AbstractStepRunner):
     def process(self, step: ProcessDocumentStep):
         document = step.job.document

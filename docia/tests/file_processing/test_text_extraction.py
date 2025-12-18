@@ -49,3 +49,25 @@ def test_skip_unsuported_file_type():
     # next step should be marked as skipped aswell
     step2.refresh_from_db()
     assert step2.status == ProcessingStatus.SKIPPED
+
+
+@pytest.mark.django_db
+def test_empty_text_extracted():
+    step = ProcessDocumentStepFactory(step_type=ProcessDocumentStepType.TEXT_EXTRACTION)
+    step2 = ProcessDocumentStepFactory(
+        step_type=ProcessDocumentStepType.CLASSIFICATION,
+        job=step.job,
+    )
+    with patch_extract_text() as m:
+        m.return_value = ("", False, 0)
+        task_extract_text(step.id)
+    step.refresh_from_db()
+    assert step.status == ProcessingStatus.FAILURE
+    assert step.error == f"Failed to extract text - empty result - {step.job.document.file.name}"
+    assert step.job.document.text is None
+    assert step.job.document.is_ocr is None
+    assert step.job.document.nb_mot is None
+
+    # next step should be marked as skipped
+    step2.refresh_from_db()
+    assert step2.status == ProcessingStatus.SKIPPED

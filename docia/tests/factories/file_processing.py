@@ -3,6 +3,7 @@ import hashlib
 
 import factory.fuzzy
 
+from docia.file_processing.info_extraction import SUPPORTED_DOCUMENT_TYPES
 from docia.file_processing.models import (
     FileInfo,
     ProcessDocumentBatch,
@@ -10,6 +11,7 @@ from docia.file_processing.models import (
     ProcessDocumentStep,
     ProcessingStatus,
 )
+from docia.file_processing.pipeline import DEFAULT_PROCESS_STEPS
 from docia.tests.factories.data import DataAttachmentFactory
 
 
@@ -18,7 +20,9 @@ class ProcessDocumentBatchFactory(factory.django.DjangoModelFactory):
         model = ProcessDocumentBatch
 
     folder = factory.Sequence(lambda n: f"folder{n:0>3}")
+    steps = DEFAULT_PROCESS_STEPS
     status = ProcessingStatus.PENDING
+    target_classifications = SUPPORTED_DOCUMENT_TYPES
 
 
 class ProcessDocumentJobFactory(factory.django.DjangoModelFactory):
@@ -35,6 +39,7 @@ class ProcessDocumentStepFactory(factory.django.DjangoModelFactory):
         model = ProcessDocumentStep
 
     job = factory.SubFactory(ProcessDocumentJobFactory)
+    order = 0
     status = ProcessingStatus.PENDING
 
 

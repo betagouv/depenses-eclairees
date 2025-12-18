@@ -14,3 +14,5 @@ last_extract
 /dump.rdb
 /notebooks
 /.vscode
+/tmp/
+

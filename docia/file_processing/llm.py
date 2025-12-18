@@ -4,9 +4,31 @@ import time
 
 from django.conf import settings
 
+import httpx
 from openai import APIStatusError, OpenAI
 
 logger = logging.getLogger(__name__)
+
+
+class LLMApiError(Exception):
+    message: str
+    status_code: int
+    body: any
+
+    def __init__(self, message: str, *, status_code: int, body: any):
+        super().__init__(message)
+        self.message = message
+        self.status_code = status_code
+
+    @classmethod
+    def from_api_error(cls, e: APIStatusError):
+        status_code = e.status_code
+        body = e.body
+        return cls(
+            f"Api Error: {status_code} - {e.body}",
+            status_code=e.status_code,
+            body=body,
+        )
 
 
 class LLMClient:
@@ -15,31 +37,20 @@ class LLMClient:
         llm_model: str,
         api_key: str | None = None,
         base_url: str | None = None,
+        http_client: httpx.Client | None = None,
     ):
         self.api_key = api_key or settings.ALBERT_API_KEY
         self.base_url = base_url or settings.ALBERT_BASE_URL
         self.llm_model = llm_model
 
         # Initialisation du client OpenAI
-        self.client = self._initialize_openai_client()
-
-    def _initialize_openai_client(self) -> OpenAI:
-        """
-        Initialise le client OpenAI avec la clé API fournie et éventuellement une URL de base personnalisée.
-
-        Returns:
-            Instance du client OpenAI
-        """
-        client_kwargs = {
-            "api_key": self.api_key,
+        self.client = OpenAI(
+            api_key=self.api_key,
+            base_url=self.base_url,
+            http_client=http_client,
             # Disable openai client retry feature, handle retry ourselves
-            "max_retries": 0,
-        }
-
-        if self.base_url:
-            client_kwargs["base_url"] = self.base_url
-
-        return OpenAI(**client_kwargs)
+            max_retries=0,
+        )
 
     def ask_llm(
         self,
@@ -94,7 +105,7 @@ class LLMClient:
                 elif 500 <= e.status_code < 600:
                     effective_retry_delay = retry_short_delay
                 else:
-                    raise
+                    raise LLMApiError.from_api_error(e) from e
 
                 if effective_retry_delay and attempt < max_retries:
                     rnd = 1 + (0.1 * random.random())  # Ajout d'un peu de random (10%)
@@ -104,6 +115,6 @@ class LLMClient:
                     )
                     time.sleep(wait_time)
                     continue  # Retry
-                raise
+                raise LLMApiError.from_api_error(e) from e
 
         return response
