@@ -47,7 +47,7 @@ class ExtractInfoStepRunner(AbstractStepRunner):
         document.save(update_fields=["llm_response", "json_error"])
 
 
-@shared_task(name="docia.analyze_document")
+@shared_task(name="docia.extract_info")
 def task_extract_info(step_id: str):
     runner = ExtractInfoStepRunner()
     return runner.run(step_id)

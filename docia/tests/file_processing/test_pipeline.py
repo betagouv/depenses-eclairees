@@ -5,7 +5,12 @@ from unittest.mock import patch
 import pytest
 
 from docia.file_processing.models import ProcessDocumentStep, ProcessDocumentStepType, ProcessingStatus
-from docia.file_processing.pipeline import close_and_retry_stuck_batches, launch_batch, retry_batch_failures
+from docia.file_processing.pipeline import (
+    cancel_batch,
+    close_and_retry_stuck_batches,
+    launch_batch,
+    retry_batch_failures,
+)
 from docia.models import DataAttachment
 from docia.tests.factories.data import DataAttachmentFactory
 from docia.tests.factories.file_processing import (
@@ -182,6 +187,44 @@ def test_retry_batch_with_cancelled():
 
     job1, job2 = new_batch.job_set.order_by("document__filename")
     assert [job1.document, job2.document] == [retry_job_1.document, retry_job_2.document]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("status", [ProcessingStatus.PENDING, ProcessingStatus.STARTED])
+def test_cancel_batch(status):
+    batch = ProcessDocumentBatchFactory(status=ProcessingStatus.STARTED)
+    job = ProcessDocumentJobFactory(status=status, batch=batch)
+    step = ProcessDocumentStepFactory(status=status, job__batch=batch)
+    cancel_batch(batch.id)
+    batch.refresh_from_db()
+    job.refresh_from_db()
+    step.refresh_from_db()
+    assert batch.status == ProcessingStatus.CANCELLED
+    assert job.status == ProcessingStatus.CANCELLED
+    assert step.status == ProcessingStatus.CANCELLED
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "status",
+    [
+        ProcessingStatus.SUCCESS,
+        ProcessingStatus.FAILURE,
+        ProcessingStatus.SKIPPED,
+        ProcessingStatus.CANCELLED,
+    ],
+)
+def test_cancel_batch_keep_done_status(status):
+    batch = ProcessDocumentBatchFactory(status=ProcessingStatus.STARTED)
+    job = ProcessDocumentJobFactory(status=status, batch=batch)
+    step = ProcessDocumentStepFactory(status=status, job__batch=batch)
+    cancel_batch(batch.id)
+    batch.refresh_from_db()
+    job.refresh_from_db()
+    step.refresh_from_db()
+    assert batch.status == ProcessingStatus.CANCELLED
+    assert job.status == status
+    assert step.status == status
 
 
 @pytest.mark.django_db
