@@ -36,9 +36,9 @@ def normalize_string(s):
 
 def compare_contract_object(llm_val, ref_val, llm_model='albert-small'):
     """Compare l'objet du marché CCAP."""
-    if llm_val == '' and ref_val == '':
+    if not llm_val and not ref_val:
         return True
-    if llm_val == '' or ref_val == '':
+    if not llm_val or not ref_val:
         return False
     
     try:
@@ -68,10 +68,10 @@ def compare_contract_object(llm_val, ref_val, llm_model='albert-small'):
 
 def compare_batches(llm_val:list[dict[str, str]], ref_val:list[dict[str, str]]):
     """Compare les lots du marché."""
-    if llm_val == [] and ref_val == []:
+    if not llm_val and not ref_val:
         return True
 
-    if len(llm_val) != len(ref_val):
+    if not llm_val or not ref_val:
         return False
     
     for lot_llm in llm_val:
@@ -88,43 +88,60 @@ def compare_batches(llm_val:list[dict[str, str]], ref_val:list[dict[str, str]]):
 
 def compare_contract_form(llm_val:dict, ref_val:dict):
     """Compare la forme du marché CCAP."""
-    if llm_val == {} and ref_val == {}:
+    if not llm_val and not ref_val:
         return True
-    
-    if llm_val.get('structure') != ref_val.get('structure'):
+        
+    if not llm_val or not ref_val:
         return False
     
-    llm_forme = llm_val.get('forme')
-    ref_forme = ref_val.get('forme')
+    llm_structure = llm_val.get('structure')
+    ref_structure = ref_val.get('structure')
+    llm_tranches = llm_val.get('tranches')
+    ref_tranches = ref_val.get('tranches')
+    llm_forme_prix = llm_val.get('forme_prix')
+    ref_forme_prix = ref_val.get('forme_prix')
+
+    return (llm_structure == ref_structure and llm_tranches == ref_tranches and llm_forme_prix == ref_forme_prix)
     
-    if isinstance(llm_forme, str) and isinstance(ref_forme, str):
-        return llm_forme == ref_forme
+
+def compare_compare_contract_form_batches(llm_val:list[dict], ref_val:list[dict]):
+    """Compare la forme des lots du marché."""
+    if not llm_val and not ref_val:
+        return True
+        
+    if not llm_val or not ref_val:
+        return False
     
-    if isinstance(llm_forme, list) and isinstance(ref_forme, list):
-        if len(llm_forme) != len(ref_forme):
-            return False
-        for forme_llm in llm_forme:
-            found = False
-            for forme_ref in ref_forme:
-                if (forme_llm.get('numero_lot') == forme_ref.get('numero_lot') and
-                    compare_contract_form(forme_llm.get('forme', {}), forme_ref.get('forme', {}))):
+    if len(llm_val) != len(ref_val):
+        return False
+    
+    for lot_llm in llm_val:
+        found = False
+        for lot_ref in ref_val:
+            if lot_llm.get('numero_lot') == lot_ref.get('numero_lot'):
+                llm_structure = lot_llm.get('structure')
+                ref_structure = lot_ref.get('structure')
+                llm_tranches = lot_llm.get('tranches')
+                ref_tranches = lot_ref.get('tranches')
+                llm_forme_prix = lot_llm.get('forme_prix')
+                ref_forme_prix = lot_ref.get('forme_prix')
+                if llm_structure == ref_structure and llm_tranches == ref_tranches and llm_forme_prix == ref_forme_prix:
                     found = True
                     break
-            if not found:
                 return False
-        return True
-    
-    if isinstance(llm_forme, dict) and isinstance(ref_forme, dict):
-        return compare_contract_form(llm_forme, ref_forme)
-    
-    return False
+        if not found:
+            return False
+    return True
 
 
 def compare_batches_duration(llm_val:list[dict], ref_val:list[dict]):
     """Compare la durée des lots."""
 
-    if llm_val == [] and ref_val == []:
+    if not llm_val and not ref_val:
         return True
+        
+    if not llm_val or not ref_val:
+        return False
     
     if len(llm_val) != len(ref_val):
         return False
@@ -152,9 +169,10 @@ def compare_batches_duration(llm_val:list[dict], ref_val:list[dict]):
 
 def compare_contract_duration(llm_val:dict, ref_val:dict):
     """Compare la durée du marché."""
-    if llm_val == {} and ref_val == {}:
+    if not llm_val and not ref_val:
         return True
-    if llm_val == {} or ref_val == {}:
+        
+    if not llm_val or not ref_val:
         return False
     
     try:
@@ -173,28 +191,56 @@ def compare_contract_duration(llm_val:dict, ref_val:dict):
 
 def compare_price_revision_formula(llm_val: str, ref_val: str):
     """Compare la formule de révision des prix."""
+    if not llm_val and not ref_val:
+        return True
+        
+    if not llm_val or not ref_val:
+        return False
+
     return False
 
 
 def compare_reference_index(llm_val: str, ref_val: str):
     """Compare l'index de référence."""
+
+    if not llm_val and not ref_val:
+        return True
+        
+    if not llm_val or not ref_val:
+        return False
+
     return False
 
 
 def compare_advance_conditions(llm_val: str, ref_val: str):
     """Compare les conditions d'avance CCAP."""
+    if not llm_val and not ref_val:
+        return True
+        
+    if not llm_val or not ref_val:
+        return False
+
     return False
 
 
 def compare_price_revision(llm_val: str, ref_val: str):
     """Compare la révision des prix."""
+    if not llm_val and not ref_val:
+        return True
+        
+    if not llm_val or not ref_val:
+        return False
+
     return False
 
 
 def compare_batches_amount(llm_val:list[dict], ref_val:list[dict]):
     """Compare les montants HT des lots."""
-    if llm_val == [] and ref_val == []:
+    if not llm_val and not ref_val:
         return True
+        
+    if not llm_val or not ref_val:
+        return False
     
     if len(llm_val) != len(ref_val):
         return False
@@ -214,19 +260,22 @@ def compare_batches_amount(llm_val:list[dict], ref_val:list[dict]):
 
 def compare_amounts(llm_val: str, ref_val: str):
     """Compare les montants HT."""
-    if llm_val == '' and ref_val == '':
+    if not llm_val and not ref_val:
         return True
-    if llm_val == '' or ref_val == '':
+    if not llm_val or not ref_val:
         return False
+
     return normalize_string(str(llm_val)) == normalize_string(str(ref_val))
 
 
 def compare_global_contract(llm_val, ref_val):
     """Compare le CCAG."""
-    if llm_val == '' and ref_val == '':
+    if not llm_val and not ref_val:
         return True
-    if llm_val == '' or ref_val == '':
+        
+    if not llm_val or not ref_val:
         return False
+
     return normalize_string(str(llm_val)) == normalize_string(str(ref_val))
 
 
@@ -274,7 +323,7 @@ def get_comparison_functions():
         'objet_marche': compare_contract_object,
         'lots': compare_batches,
         'forme_marche': compare_contract_form,
-        'allottissement': compare_batching,
+        'forme_marche_lots': compare_compare_contract_form_batches,
         'duree_lots': compare_batches_duration,
         'duree_marche': compare_contract_duration,
         'formule_revision_prix': compare_price_revision_formula,
@@ -282,7 +331,7 @@ def get_comparison_functions():
         'condition_avance': compare_advance_conditions,
         'revision_prix': compare_price_revision,
         'montant_ht_lots': compare_batches_amount,
-        'montants_ht': compare_amounts,
+        'montant_ht': compare_amounts,
         'ccag': compare_global_contract,
     }
 
@@ -293,8 +342,15 @@ def create_batch_test(multi_line_coef = 1):
     csv_path = CSV_DIR_PATH / "test_ccap.csv"
 
     # Lecture du fichier CSV
-    df_test = pd.read_csv(csv_path).astype(str)
+    df_test = pd.read_csv(csv_path)
     df_test.fillna('', inplace=True)
+    df_test['lots'] = df_test['lots'].apply(lambda x: json.loads(x))
+    df_test['forme_marche'] = df_test['forme_marche'].apply(lambda x: json.loads(x))
+    df_test['forme_marche_lots'] = df_test['forme_marche_lots'].apply(lambda x: json.loads(x))
+    df_test['duree_lots'] = df_test['duree_lots'].apply(lambda x: json.loads(x))
+    df_test['duree_marche'] = df_test['duree_marche'].apply(lambda x: json.loads(x))
+    df_test['montant_ht'] = df_test['montant_ht'].apply(lambda x: json.loads(x))
+    df_test['montant_ht_lots'] = df_test['montant_ht_lots'].apply(lambda x: json.loads(x))
 
     # Post-traitement direct des colonnes du DataFrame de test (après lecture du CSV)
     # Les fonctions post-traitement sont utilisées comme pour patch_post_traitement, mais appliquées colonne par colonne
@@ -325,14 +381,14 @@ def create_batch_test(multi_line_coef = 1):
     df_analyze['relevant_content'] = df_test['text']
     
     # Configuration du LLM
-    llm_model = 'albert-large'
+    llm_model = 'openweight-medium'
     
     # Analyse du contenu avec df_analyze_content
     df_result = df_analyze_content(
         api_key=ALBERT_API_KEY,
         base_url=ALBERT_BASE_URL,
         llm_model=llm_model,
-        df=df_analyze.iloc[:10],
+        df=df_analyze,
         df_attributes=ATTRIBUTES,
         max_workers=20,
         temperature=0.3,
@@ -394,7 +450,6 @@ def check_quality_one_field(df_merged, col_to_test = 'objet_marche'):
         # Comparer les valeurs
         try:
             match_result = comparison_func(llm_val, ref_val)
-            match_result = bool(match_result) if not isinstance(match_result, bool) else match_result
             status = "✅ MATCH" if match_result else "❌ NO MATCH"
             print(f"{status} | {filename} | OCR {"❌" if pbm_ocr else "✅"}")
             print(f"  LLM: {llm_val}")
@@ -585,24 +640,24 @@ def check_global_statistics(df_merged, excluded_columns = []):
 df_test, df_result, df_post_processing, df_merged = create_batch_test()
 
 
+EXCLUDED_COLUMNS = [
+    'objet_marche',
+    'formule_revision_prix',
+    'condition_avance',
+    'revision_prix',
+    'index_reference'
+]
+
 check_quality_one_field(df_merged, col_to_test = 'montant_ht_lots')
 
-check_quality_one_row(df_merged, row_idx_to_test = 1)
+check_quality_one_row(df_merged, row_idx_to_test = 18)
 
-check_global_statistics(df_merged, excluded_columns = [])
+check_global_statistics(df_merged, excluded_columns = EXCLUDED_COLUMNS)
 
-# {
-#   "objet_marche": "", 
-#   "lots": "", 
-#   "forme_marche_ccap": "", 
-#   "allottissement_ccap": "", 
-#   "duree_lots": "", 
-#   "duree_marche": "", 
-#   "formule_revision_prix": "", 
-#   "index_reference_ccap": "", 
-#   "condition_avance_ccap": "", 
-#   "revision_prix_ccap": "", 
-#   "montant_ht_lots_ccap": "", 
-#   "montant_ht_ccap": "", 
-#   "ccag_ccap": "" 
-# }
+
+llm = [{'numero_lot': 1, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 2, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 3, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 4, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 5, 'structure': 'simple', 'tranches': 1, 'forme_prix': 'forfaitaires'}, {'numero_lot': 6, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 7, 'structure': 'simple', 'tranches': 1, 'forme_prix': 'forfaitaires'}]
+ref = [{'numero_lot': 1, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 2, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 3, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 4, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 5, 'structure': 'simple', 'tranches': 1, 'forme_prix': 'forfaitaires'}, {'numero_lot': 6, 'structure': 'simple', 'tranches': 3, 'forme_prix': 'forfaitaires'}, {'numero_lot': 7, 'structure': 'simple', 'tranches': 1, 'forme_prix': 'forfaitaires'}]
+
+for i in range(len(llm)):
+    print(llm[i])
+    print(ref[i])
