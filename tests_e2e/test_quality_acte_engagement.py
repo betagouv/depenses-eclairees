@@ -544,7 +544,7 @@ def create_batch_test(multi_line_coef = 1):
     df_analyze['relevant_content'] = df_test['text']
     
     # Configuration du LLM
-    llm_model = 'albert-large'
+    llm_model = 'openweight-medium'
     
     # Analyse du contenu avec df_analyze_content
     df_result = df_analyze_content(
