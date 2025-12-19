@@ -9,6 +9,7 @@ import uuid
 
 from django.db import models
 from django.db.transaction import atomic
+from django.utils import timezone
 
 from celery import chain, group, shared_task
 from celery.result import GroupResult
@@ -187,16 +188,20 @@ def cancel_batch(batch_id: str):
 
     Updates all pending jobs and steps to cancelled status.
     """
+    status_to_cancel = [ProcessingStatus.PENDING, ProcessingStatus.STARTED]
+    now = timezone.now()
     with atomic():
+        ProcessDocumentStep.objects.filter(job__batch_id=batch_id).filter(status__in=status_to_cancel).update(
+            status=ProcessingStatus.CANCELLED,
+            updated_at=now,
+        )
+        ProcessDocumentJob.objects.filter(batch_id=batch_id).filter(status__in=status_to_cancel).update(
+            status=ProcessingStatus.CANCELLED,
+            updated_at=now,
+        )
         batch = ProcessDocumentBatch.objects.get(id=batch_id)
         batch.status = ProcessingStatus.CANCELLED
         batch.save()
-        ProcessDocumentJob.objects.filter(batch=batch).filter(status=ProcessingStatus.PENDING).update(
-            status=ProcessingStatus.CANCELLED
-        )
-        ProcessDocumentStep.objects.filter(job__batch=batch).filter(status=ProcessingStatus.PENDING).update(
-            status=ProcessingStatus.CANCELLED
-        )
 
 
 @shared_task
