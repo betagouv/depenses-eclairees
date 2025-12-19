@@ -8,6 +8,7 @@ from .file_processing.models import (  # noqa: F401
     ProcessDocumentJob,
     ProcessDocumentStep,
     ProcessingStatus,
+    RateGateState,
 )
 from .ratelimit.models import RateLimitCount  # noqa: F401
 from .tracking.models import TrackingEvent  # noqa: F401

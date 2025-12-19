@@ -391,3 +391,5 @@ MATOMO_URL = config.str("MATOMO_URL", default="")
 
 ALBERT_API_KEY = config.str("ALBERT_API_KEY")
 ALBERT_BASE_URL = config.str("ALBERT_BASE_URL")
+ALBERT_USE_RATE_LIMITER = config.bool("ALBERT_USE_RATE_LIMITER", default=False)
+ALBERT_RATE_PER_MINUTE = config.int("ALBERT_RATE_PER_MINUTE", default=100)
