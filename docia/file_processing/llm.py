@@ -7,6 +7,8 @@ from django.conf import settings
 import httpx
 from openai import APIStatusError, OpenAI
 
+from docia.file_processing.rategate.gate import RateGate
+
 logger = logging.getLogger(__name__)
 
 
@@ -38,10 +40,22 @@ class LLMClient:
         api_key: str | None = None,
         base_url: str | None = None,
         http_client: httpx.Client | None = None,
+        use_rate_limiter: bool | None = None,
+        rate_per_minute: int | None = None,
     ):
+        if use_rate_limiter is None:
+            use_rate_limiter = settings.ALBERT_USE_RATE_LIMITER
+        if rate_per_minute is None:
+            rate_per_minute = settings.ALBERT_RATE_PER_MINUTE
+
         self.api_key = api_key or settings.ALBERT_API_KEY
         self.base_url = base_url or settings.ALBERT_BASE_URL
         self.llm_model = llm_model
+
+        if use_rate_limiter:
+            self.limiter = RateGate(rate_per_minute, key=llm_model)
+        else:
+            self.limiter = None
 
         # Initialisation du client OpenAI
         self.client = OpenAI(
@@ -72,7 +86,8 @@ class LLMClient:
             response_format: Format de réponse à utiliser
             temperature: Température pour la génération (0.0 = déterministe)
             max_retries: Nombre maximum de tentatives en cas d'erreur 429 (défaut: 3)
-            retry_delay: Délai d'attente en secondes entre les tentatives (défaut: 60)
+            retry_delay: Délai d'attente en secondes entre les tentatives erreur rate limit (défaut: 60)
+            retry_short_delay: Délai d'attente en secondes entre les tentatives erreur 5XX (défaut: 10)
 
         Returns:
             Réponse du LLM
@@ -86,6 +101,8 @@ class LLMClient:
         response = ""
 
         for attempt in range(max_retries + 1):
+            if self.limiter:
+                self.limiter.wait_turn()
             try:
                 response = self.client.chat.completions.create(
                     model=self.llm_model,
