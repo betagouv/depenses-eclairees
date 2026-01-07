@@ -72,7 +72,7 @@ class ProcessDocumentJob(BaseModel):
     batch = models.ForeignKey(
         ProcessDocumentBatch, on_delete=models.CASCADE, related_name="job_set", related_query_name="job"
     )
-    document = models.ForeignKey("docia.DataAttachment", on_delete=models.CASCADE)
+    document = models.ForeignKey("docia.Document", on_delete=models.CASCADE)
     status = models.CharField(choices=ProcessingStatus.choices, default=ProcessingStatus.PENDING)
     celery_task_id = models.CharField(max_length=250, blank=True)
 

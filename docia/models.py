@@ -37,7 +37,7 @@ class DataEngagement(BaseModel):
         return f"{self.num_ej}"
 
 
-class DataAttachment(BaseModel):
+class Document(BaseModel):
     id = models.UUIDField(
         primary_key=True,
         db_default=RandomUUID(),
@@ -63,11 +63,6 @@ class DataAttachment(BaseModel):
     hash = models.CharField(null=True, blank=True)  # noqa: DJ001
     classification = models.CharField(max_length=255, null=True, blank=True)  # noqa: DJ001
     classification_type = models.CharField(max_length=255, null=True, blank=True)  # noqa: DJ001
-
-    class Meta:
-        db_table = "attachments"
-        verbose_name = "Attachment"
-        verbose_name_plural = "Attachments"
 
     def __str__(self):
         return self.file.name

@@ -11,8 +11,8 @@ from docia.file_processing.pipeline import (
     launch_batch,
     retry_batch_failures,
 )
-from docia.models import DataAttachment
-from docia.tests.factories.data import DataAttachmentFactory
+from docia.models import Document
+from docia.tests.factories.data import DocumentFactory
 from docia.tests.factories.file_processing import (
     ProcessDocumentBatchFactory,
     ProcessDocumentJobFactory,
@@ -41,9 +41,9 @@ def patch_extract_info():
 @pytest.mark.django_db
 def test_batch():
     folder = "batch_1234"
-    doc1 = DataAttachmentFactory(dossier=folder, filename="doc1.pdf")
-    doc2 = DataAttachmentFactory(dossier=folder, filename="doc2.pdf")
-    _doc_should_not_be_processed = DataAttachmentFactory()
+    doc1 = DocumentFactory(dossier=folder, filename="doc1.pdf")
+    doc2 = DocumentFactory(dossier=folder, filename="doc2.pdf")
+    _doc_should_not_be_processed = DocumentFactory()
 
     with patch_extract_text() as m_text, patch_classify() as m_classify, patch_extract_info() as m_info:
         batch, result = launch_batch(folder=folder)
@@ -75,8 +75,8 @@ def test_batch():
 @pytest.mark.django_db
 def test_batch_error_handling():
     folder = "batch_1234"
-    DataAttachmentFactory(dossier=folder, filename="doc1.pdf", text="")
-    DataAttachmentFactory(dossier=folder, filename="doc2.pdf")
+    DocumentFactory(dossier=folder, filename="doc1.pdf", text="")
+    DocumentFactory(dossier=folder, filename="doc2.pdf")
 
     def mock_extract_text(self, step: ProcessDocumentStep):
         if step.job.document.filename == "doc2.pdf":
@@ -114,9 +114,9 @@ def test_batch_error_handling():
 @pytest.mark.django_db
 def test_launch_batch_filter_documents_by_classifications_and_folder():
     folder = "batch_1234"
-    DataAttachmentFactory(dossier=folder, filename="doc1.pdf")
-    DataAttachmentFactory(dossier=folder, filename="doc2.pdf")
-    _doc_should_not_be_processed = DataAttachmentFactory(dossier=folder)
+    DocumentFactory(dossier=folder, filename="doc1.pdf")
+    DocumentFactory(dossier=folder, filename="doc2.pdf")
+    _doc_should_not_be_processed = DocumentFactory(dossier=folder)
 
     with patch_extract_text(), patch_classify(), patch_extract_info():
         batch, _result = launch_batch(folder=folder, target_classifications=["kbis", "devis"])
@@ -128,11 +128,11 @@ def test_launch_batch_filter_documents_by_classifications_and_folder():
 @pytest.mark.django_db
 def test_launch_batch_specify_qs():
     folder = "batch_1234"
-    doc1 = DataAttachmentFactory(dossier=folder, filename="doc1.pdf")
-    doc2 = DataAttachmentFactory(dossier=folder, filename="doc2.pdf")
-    _doc_should_not_be_processed = DataAttachmentFactory(dossier=folder)
+    doc1 = DocumentFactory(dossier=folder, filename="doc1.pdf")
+    doc2 = DocumentFactory(dossier=folder, filename="doc2.pdf")
+    _doc_should_not_be_processed = DocumentFactory(dossier=folder)
 
-    qs = DataAttachment.objects.filter(id__in=(doc1.id, doc2.id))
+    qs = Document.objects.filter(id__in=(doc1.id, doc2.id))
     with patch_extract_text(), patch_classify(), patch_extract_info():
         batch, _result = launch_batch(qs_documents=qs)
 

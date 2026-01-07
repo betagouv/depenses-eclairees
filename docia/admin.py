@@ -106,8 +106,8 @@ class UserAdmin(auth_admin.UserAdmin):
     search_fields = ("id", "sub", "admin_email", "email", "full_name")
 
 
-@admin.register(models.DataAttachment)
-class DataAttachmentAdmin(admin.ModelAdmin):
+@admin.register(models.Document)
+class DocumentAdmin(admin.ModelAdmin):
     list_display = (
         "id",
         "filename",
