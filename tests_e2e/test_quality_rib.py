@@ -243,8 +243,6 @@ def create_batch_test(multi_line_coef = 1):
     
     # Analyse du contenu avec df_analyze_content
     df_result = df_analyze_content(
-        api_key=ALBERT_API_KEY,
-        base_url=ALBERT_BASE_URL,
         llm_model=llm_model,
         df=df_analyze,
         df_attributes=ATTRIBUTES,

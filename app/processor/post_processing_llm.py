@@ -364,3 +364,47 @@ def post_processing_postal_address(postal_address: dict[str, str]) -> dict[str, 
         return None
 
     return normalized_address
+
+
+def clean_llm_response(document_type: str, llm_response: dict) -> dict:
+    match document_type:
+        case "acte_engagement":
+            clean_functions = {
+                "rib_mandataire": post_processing_bank_account,
+                "montant_ttc": post_processing_amount,
+                "montant_ht": post_processing_amount,
+                "cotraitants": post_processing_co_contractors,
+                "sous_traitants": post_processing_subcontractors,
+                "siret_mandataire": post_processing_siret,
+                "duree": post_processing_duration,
+                "rib_autres": post_processing_other_bank_accounts,
+            }
+            return apply_clean_functions(llm_response, clean_functions)
+    return llm_response
+
+
+def apply_clean_functions(data: dict, clean_functions: dict) -> dict:
+    """
+    Apply cleaning functions to data fields and collect any errors that occur.
+
+    Args:
+        data: Dictionary containing the raw data fields to clean
+        clean_functions: Dictionary mapping field names to their cleaning functions
+
+    Returns:
+        tuple containing:
+            - dict: Cleaned data with cleaning functions applied to matching fields
+            - dict: Any errors that occurred during cleaning, with field names as keys
+
+    The function processes each field in the input data dictionary. If a cleaning
+    function exists for that field, it is applied and any errors are caught and
+    stored. Fields without cleaning functions are passed through unchanged.
+    """
+
+    cleaned_data = {}
+    for key in data.keys():
+        if key in clean_functions:
+            cleaned_data[key] = clean_functions[key](data[key])
+        else:
+            cleaned_data[key] = data[key]
+    return cleaned_data

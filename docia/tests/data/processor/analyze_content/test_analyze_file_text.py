@@ -1,4 +1,3 @@
-import json
 from unittest.mock import patch
 
 from app.processor.analyze_content import analyze_file_text
@@ -12,19 +11,10 @@ def test_analyze_file_text():
             "activite_principale": "Acivité test",
             "adresse_postale_insee": "1 rue du chocolat",
         }
-        m.return_value = json.dumps(data)
+        m.return_value = data
         r = analyze_file_text("Hello World", document_type="kbis")
         assert r == {
             "llm_response": data,
+            "extracted_data": data,
             "json_error": None,
-        }
-
-
-def test_analyze_file_text_bad_json():
-    with patch("app.processor.analyze_content.LLMClient.ask_llm", autospec=True) as m:
-        m.return_value = '{"wrong json"}'
-        r = analyze_file_text("Hello World", document_type="kbis")
-        assert r == {
-            "llm_response": None,
-            "json_error": "Format JSON invalide: Expecting ':' delimiter: line 1 column 14 (char 13)",
         }

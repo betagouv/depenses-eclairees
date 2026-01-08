@@ -1,3 +1,4 @@
+import json
 import logging
 import random
 import time
@@ -74,7 +75,7 @@ class LLMClient:
         max_retries: int = 3,
         retry_delay: float = 60,
         retry_short_delay: float = 10,
-    ) -> str:
+    ) -> str | dict:
         """
         Interroge le LLM avec un prompt système et utilisateur.
         En cas d'erreur de rate limiting (429), attend et réessaye automatiquement.
@@ -134,4 +135,7 @@ class LLMClient:
                     continue  # Retry
                 raise LLMApiError.from_api_error(e) from e
 
-        return response
+        if response_format:
+            return json.loads(response)
+        else:
+            return response

@@ -2,41 +2,17 @@
 Analyse le contexte fourni en utilisant l'api et les modèles d'IA. Prend en entrée un contexte (plus ou moins long)
 Contexte = parfois tout le texte extrait, parfois seulement une liste de chunks concaténés.
 """
-
 import pandas as pd
-import json
 import logging
-import re
 from concurrent.futures import ThreadPoolExecutor
 
 from tqdm import tqdm
 
 from docia.file_processing.llm import LLMClient
 from .attributes_query import select_attr, ATTRIBUTES
-from app.utils import getDate
-from app.grist import update_records_in_grist
-from app.grist import API_KEY_GRIST, URL_TABLE_ATTACHMENTS
-from ..data.sql.sql import bulk_update_attachments
+from .post_processing_llm import clean_llm_response
 
 logger = logging.getLogger("docia." + __name__)
-
-
-# Fonction pour extraire le JSON de la réponse
-def parse_json_response(response_text):
-    try:
-        # Recherche d'un objet JSON dans la réponse
-        json_pattern = r'(\{.*\})'
-        json_matches = re.search(json_pattern, response_text, re.DOTALL)
-
-        if json_matches:
-            json_str = json_matches.group(1)
-            # Analyse du JSON
-            data = json.loads(json_str)
-            return data, None
-        else:
-            return None, "Aucun JSON trouvé dans la réponse"
-    except json.JSONDecodeError as e:
-        return None, f"Format JSON invalide: {str(e)}"
 
 
 # Fonction pour générer le prompt à partir des attributs à chercher
@@ -106,30 +82,20 @@ def create_response_format(df_attributes, classification):
     return response_format
 
 
-def df_analyze_content(api_key, 
-                       base_url, 
-                       llm_model, 
+def df_analyze_content(llm_model,
                        df: pd.DataFrame, 
                        df_attributes: pd.DataFrame, 
                        temperature: float = 0.0, 
-                       max_workers: int = 4, 
-                       save_path: str = None, 
-                       directory_path: str = None,
-                       save_grist: bool = False) -> pd.DataFrame:
+                       max_workers: int = 4) -> pd.DataFrame:
     """
     Analyse le contenu d'un DataFrame en parallèle en utilisant l'API LLM.
-    
-    Args:
-        df: DataFrame contenant les textes à analyser
-        question: Question à poser au LLM pour chaque texte
-        temperature: Température pour la génération (0.0 = déterministe)
-        max_workers: Nombre maximum de threads pour l'exécution parallèle
-        
+
     Returns:
         DataFrame avec les réponses du LLM ajoutées
     """
     dfResult = df.copy()
     dfResult['llm_response'] = None
+    dfResult['extracted_data'] = None
     dfResult['json_error'] = None
 
     for attr in df_attributes.attribut:
@@ -140,15 +106,17 @@ def df_analyze_content(api_key,
         row = df.loc[idx]
         classification = row['classification']
         try:
-            result = analyze_file_text(row["filename"], row["relevant_content"] or row["text"],
-                                       df_attributes, classification,
-                                       llm_model=llm_model, temperature=temperature)
+            result = analyze_file_text(row["relevant_content"] or row["text"],
+                                       classification,
+                                       llm_model=llm_model,
+                                       temperature=temperature)
         except Exception as e:
             result = {
                 'llm_response': None,
+                'extracted_data': None,
                 'json_error': f"Erreur lors de l'analyse: {str(e)}"
             }
-            print(f"Erreur lors de l'analyse du fichier {row['filename']}: {e}")
+            logger.exception(f"Erreur lors de l'analyse du fichier {row['filename']}: {e}")
 
         if not result["json_error"]:
             for attr in df_attributes.attribut:
@@ -165,21 +133,6 @@ def df_analyze_content(api_key,
             idx, result = future.result()
             for key, value in result.items():
                 dfResult.at[idx, key] = value
-                
-    try:
-        if(save_grist):
-            update_records_in_grist(dfResult, 
-                              key_column='filename', 
-                              table_url=URL_TABLE_ATTACHMENTS,
-                              api_key=API_KEY_GRIST,
-                              columns_to_update=['llm_response', 'json_error'])
-
-        if(save_path != None and directory_path != None):
-                dfResult.to_csv(f'{save_path}/contentanalyzed_{directory_path.split("/")[-1]}_{getDate()}.csv', index = False)
-                print(f"Liste des fichiers sauvegardées dans {save_path}/contentanalyzed_{directory_path.split("/")[-1]}_{getDate()}.csv")
-    
-    except Exception as e:
-        print(f"Erreur lors de la sauvegarde des fichiers : {e}")
 
     return dfResult
 
@@ -197,6 +150,17 @@ def analyze_file_text(text: str, document_type: str, llm_model: str = 'albert-la
     Returns:
         Réponse du LLM à la question posée
     """
+    response = analyze_file_text_llm(text, document_type, llm_model, temperature)
+    data = clean_llm_response(document_type, response)
+
+    return {
+        "llm_response": response,
+        "extracted_data": data,
+        "json_error": None,
+    }
+
+
+def analyze_file_text_llm(text: str, document_type: str, llm_model: str = 'albert-large', temperature: float = 0.0):
 
     llm_env = LLMClient(llm_model)
 
@@ -216,15 +180,4 @@ def analyze_file_text(text: str, document_type: str, llm_model: str = 'albert-la
 
     response = llm_env.ask_llm(messages, response_format, temperature)
 
-    data, error = parse_json_response(response)
-
-    result = {
-        'llm_response': data,
-        'json_error': error
-    }
-    return result
-
-
-def save_df_analyze_content_result(df: pd.DataFrame):
-    bulk_update_attachments(df, ['llm_response', 'json_error'])
-
+    return response

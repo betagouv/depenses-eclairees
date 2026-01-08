@@ -1,20 +1,20 @@
 import json
-import re
-from datetime import datetime
 import pandas as pd
-import pytest
-import logging
 from datetime import datetime
-import copy
 
 import sys
 sys.path.append(".")
 
+import django
+import os
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'docia.settings')
+django.setup()
+
+
 from django.conf import settings
 
-from app.processor.analyze_content import df_analyze_content, LLMClient, parse_json_response
+from app.processor.analyze_content import df_analyze_content, LLMClient
 from app.processor.attributes_query import ATTRIBUTES
-from app.ai_models.config_albert import ALBERT_API_KEY, ALBERT_BASE_URL
 from app.processor.post_processing_llm import *
 
 logger = logging.getLogger("docia." + __name__)
@@ -56,11 +56,7 @@ def compare_object(llm_value, ref_value, llm_model='albert-small'):
     
     try:
         # Création d'une instance LLMEnvironment
-        llm_env = LLMClient(
-            api_key=ALBERT_API_KEY,
-            base_url=ALBERT_BASE_URL,
-            llm_model=llm_model
-        )
+        llm_env = LLMClient(llm_model=llm_model)
         
         # Construction du prompt pour demander l'avis du LLM
         system_prompt = "Vous êtes un expert en analyse sémantique de documents juridiques. Votre rôle est d'évaluer la proximité de sens entre deux descriptions d'objets."
@@ -92,15 +88,8 @@ def compare_object(llm_value, ref_value, llm_model='albert-small'):
         
         # Appel au LLM avec format JSON forcé
         # Température 0.2 : permet de la nuance dans l'évaluation sémantique tout en gardant de la cohérence
-        response = llm_env.ask_llm(messages=messages, response_format=response_format, temperature=0.2)
-        
-        # Parsing de la réponse JSON avec la fonction parse_json_response
-        result, error = parse_json_response(response)
-        
-        if error:
-            logger.warning(f"Error parsing LLM response for compare_object: {error}. Response: {response}")
-            return False
-        
+        result = llm_env.ask_llm(messages=messages, response_format=response_format, temperature=0.2)
+
         # print("Réponse LLM : ", result.get("explication", ""))
 
         return bool(result.get("sont_proches", False))
@@ -130,11 +119,7 @@ def compare_beneficiary_administration(llm_value, ref_value, llm_model='albert-s
 
     try:
         # Création d'une instance LLMEnvironment
-        llm_env = LLMClient(
-            api_key=ALBERT_API_KEY,
-            base_url=ALBERT_BASE_URL,
-            llm_model=llm_model
-        )
+        llm_env = LLMClient(llm_model=llm_model)
 
         # Construction du prompt pour demander l'avis du LLM
         system_prompt = (
@@ -175,16 +160,7 @@ def compare_beneficiary_administration(llm_value, ref_value, llm_model='albert-s
         response_format = {"type": "json_object"}
 
         # Appel au LLM avec format JSON forcé, température basse pour fiabilité
-        response = llm_env.ask_llm(messages=messages, response_format=response_format, temperature=0.2)
-
-        # Parsing de la réponse JSON avec la fonction parse_json_response
-        result, error = parse_json_response(response)
-
-        if error:
-            logger.warning(
-                f"Error parsing LLM response for compare_beneficiary_administration: {error}. Response: {response}"
-            )
-            return False
+        result = llm_env.ask_llm(messages=messages, response_format=response_format, temperature=0.2)
 
         # print("LLM explanation for administration_beneficiaire: ", result.get("explication", ""))
 
@@ -426,41 +402,6 @@ def compare_duration(llm_val, ref_val):
         return False
 
 
-def patch_post_processing(df):
-    df_patched = df.copy()
-    df_patched['llm_response'] = df_patched['llm_response'].apply(
-        lambda x: copy.deepcopy(x) if isinstance(x, dict) else x
-    )
-    post_processing_functions = {
-        'rib_mandataire': post_processing_bank_account,
-        'montant_ttc': post_processing_amount,
-        'montant_ht': post_processing_amount,
-        'cotraitants': post_processing_co_contractors,
-        'sous_traitants': post_processing_subcontractors,
-        'siret_mandataire': post_processing_siret,
-        'duree': post_processing_duration,
-        'rib_autres': post_processing_other_bank_accounts
-    }
-
-    for idx, row in df_patched.iterrows():
-        llm_response = row.get('llm_response', None)
-        if llm_response is None or pd.isna(llm_response):
-            continue
-        
-        for key in llm_response.keys():
-            if key in post_processing_functions:
-                try:
-                    llm_response[key] = post_processing_functions[key](llm_response[key])
-                    df_patched.at[idx, key] = llm_response[key]
-                except Exception as e:
-                    logger.warning(f"Error in post_processing_functions for {key}, idx: {idx}: {e}")
-                    llm_response[key] = None
-                    df_patched.at[idx, key] = None
-
-        df_patched.at[idx, 'llm_response'] = llm_response
-
-    return df_patched
-
 # Mapping des colonnes vers leurs fonctions de comparaison
 def get_comparison_functions():
     """
@@ -548,30 +489,25 @@ def create_batch_test(multi_line_coef = 1):
     
     # Analyse du contenu avec df_analyze_content
     df_result = df_analyze_content(
-        api_key=ALBERT_API_KEY,
-        base_url=ALBERT_BASE_URL,
         llm_model=llm_model,
         df=df_analyze,
         df_attributes=ATTRIBUTES,
         max_workers=20,
         temperature=0.3,
-        save_grist=False
     )
-    
-    df_post_processing = patch_post_processing(df_result)
 
     # Fusion des résultats avec les valeurs de référence
     # Pour éviter le produit cartésien lorsque filename est dupliqué, on utilise l'index
     # Les deux dataframes ont le même nombre de lignes et le même ordre
-    df_post_processing_reset = df_post_processing[['filename', 'llm_response']].reset_index(drop=True)
+    df_result_reset = df_result[['filename', 'extracted_data']].reset_index(drop=True)
     df_test_reset = df_test.reset_index(drop=True)
     
     # Ajout d'un identifiant unique basé sur l'index pour le merge
-    df_post_processing_reset['_merge_key'] = df_post_processing_reset.index
+    df_result_reset['_merge_key'] = df_result_reset.index
     df_test_reset['_merge_key'] = df_test_reset.index
     
     # Merge sur l'identifiant unique plutôt que sur filename
-    df_merged = df_post_processing_reset.merge(
+    df_merged = df_result_reset.merge(
         df_test_reset,
         on='_merge_key',
         how='inner'
@@ -580,8 +516,8 @@ def create_batch_test(multi_line_coef = 1):
     # Suppression de la colonne temporaire et de la colonne filename dupliquée
     df_merged = df_merged.drop(columns=['_merge_key', 'filename_x'])
     df_merged = df_merged.rename(columns={'filename_y': 'filename'})
-    
-    return df_test, df_result, df_post_processing, df_merged
+
+    return df_test, df_result, df_merged
 
 
 def check_quality_one_field(df_merged, col_to_test = 'duree'):
@@ -599,7 +535,7 @@ def check_quality_one_field(df_merged, col_to_test = 'duree'):
         filename = row.get('filename', 'unknown')
         
         # Parser le JSON de llm_response
-        llm_data = row.get('llm_response')
+        llm_data = row.get('extracted_data')
 
         # Extraire les valeurs
         ref_val = row.get(col_to_test)
@@ -639,7 +575,7 @@ def check_quality_one_row(df_merged, row_idx_to_test = 0, excluded_columns = [])
         print(f"{'='*80}\n")
         
         # Parser le JSON de llm_response
-        llm_data = row.get('llm_response', None)
+        llm_data = row.get('extracted_data', None)
         
         # Comparer toutes les colonnes (sauf exclues)
         for col in get_comparison_functions().keys():
@@ -721,7 +657,7 @@ def check_global_statistics(df_merged, excluded_columns = []):
                 pass
             
             # Récupérer le JSON de llm_response
-            llm_response = row.get('llm_response', None)
+            llm_response = row.get('extracted_data', None)
             
             # Extraire les valeurs
             ref_val = row.get(col, None)
@@ -793,7 +729,7 @@ def check_global_statistics(df_merged, excluded_columns = []):
     print(f"{'='*120}\n")
 
 
-df_test, df_result, df_post_processing, df_merged = create_batch_test()
+df_test, df_result, df_merged = create_batch_test()
 
 EXCLUDED_COLUMNS = [
     'objet_marche', 
