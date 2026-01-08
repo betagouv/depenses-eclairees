@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
 
 from docia.file_processing.llm import LLMClient
-from .attributes_query import select_attr
+from .attributes_query import select_attr, ATTRIBUTES
 from app.utils import getDate
 from app.grist import update_records_in_grist
 from app.grist import API_KEY_GRIST, URL_TABLE_ATTACHMENTS
@@ -184,13 +184,13 @@ def df_analyze_content(api_key,
     return dfResult
 
 
-def analyze_file_text(filename: str, text: str, df_attributes: pd.DataFrame, classification: str, llm_model: str = 'albert-large', temperature: float = 0.0):
+def analyze_file_text(text: str, document_type: str, llm_model: str = 'albert-large', temperature: float = 0.0):
     """
-    Analyse le contexte fourni en utilisant l'API LLM.
+    Analyse le texte pour extraire des informations.
 
     Args:
-        context: Contexte à analyser (texte complet ou liste de chunks)
-        question: Question à poser au LLM
+        text: Texte à analyser
+        df_attributes: Question à poser au LLM
         response_format: Format de réponse à utiliser
         temperature: Température pour la génération (0.0 = déterministe)
 
@@ -200,11 +200,11 @@ def analyze_file_text(filename: str, text: str, df_attributes: pd.DataFrame, cla
 
     llm_env = LLMClient(llm_model)
 
-    question = get_prompt_from_attributes(select_attr(df_attributes, classification))
-    response_format = create_response_format(df_attributes, classification)
+    question = get_prompt_from_attributes(select_attr(ATTRIBUTES, document_type))
+    response_format = create_response_format(ATTRIBUTES, document_type)
 
     if not text:
-        raise ValueError("Le contexte est vide.")
+        raise ValueError("Le texte est vide.")
 
     system_prompt = "Vous êtes un assistant IA qui analyse des documents juridiques."
     user_prompt = f"Analyse le contexte suivant et réponds à la question : {question}\n\nContexte : {text}"

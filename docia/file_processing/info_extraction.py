@@ -3,7 +3,6 @@ import logging
 from celery import shared_task
 
 from app.processor import analyze_content as processor
-from app.processor.attributes_query import ATTRIBUTES
 
 from .models import ProcessDocumentStep
 from .utils import AbstractStepRunner, SkipStepException
@@ -28,7 +27,6 @@ SUPPORTED_DOCUMENT_TYPES = [
 class ExtractInfoStepRunner(AbstractStepRunner):
     def process(self, step: ProcessDocumentStep):
         document = step.job.document
-        file_path = document.file.name
 
         classification = document.classification
         target_classifications = step.job.batch.target_classifications
@@ -37,9 +35,7 @@ class ExtractInfoStepRunner(AbstractStepRunner):
             raise SkipStepException(f"Not in target classifications: {classification}.")
 
         result = processor.analyze_file_text(
-            file_path,
             document.relevant_content or document.text,
-            ATTRIBUTES,
             document.classification,
         )
         document.llm_response = result["llm_response"]
