@@ -12,7 +12,7 @@ from docia.file_processing.models import (
     ProcessingStatus,
 )
 from docia.file_processing.pipeline import DEFAULT_PROCESS_STEPS
-from docia.tests.factories.data import DataAttachmentFactory
+from docia.tests.factories.data import DocumentFactory
 
 
 class ProcessDocumentBatchFactory(factory.django.DjangoModelFactory):
@@ -30,7 +30,7 @@ class ProcessDocumentJobFactory(factory.django.DjangoModelFactory):
         model = ProcessDocumentJob
 
     batch = factory.SubFactory(ProcessDocumentBatchFactory)
-    document = factory.SubFactory(DataAttachmentFactory)
+    document = factory.SubFactory(DocumentFactory)
     status = ProcessingStatus.PENDING
 
 

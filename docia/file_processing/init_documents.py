@@ -7,7 +7,7 @@ from django.db.transaction import atomic
 from celery import group, shared_task
 
 from app.file_manager import cleaner as processor
-from docia.models import DataAttachment, DataBatch, DataEngagement
+from docia.models import DataBatch, DataEngagement, Document
 
 from .models import FileInfo
 
@@ -70,7 +70,7 @@ def bulk_create_engagements(num_ejs):
 
 def bulk_create_attachments(files_info: list[FileInfo]):
     attachments = [
-        DataAttachment(
+        Document(
             filename=row.filename,
             extension=row.extension,
             dossier=row.folder,
@@ -81,7 +81,7 @@ def bulk_create_attachments(files_info: list[FileInfo]):
         )
         for row in files_info
     ]
-    DataAttachment.objects.bulk_create(attachments, batch_size=200, ignore_conflicts=True)
+    Document.objects.bulk_create(attachments, batch_size=200, ignore_conflicts=True)
 
 
 def bulk_create_batches(num_ejs, batch):

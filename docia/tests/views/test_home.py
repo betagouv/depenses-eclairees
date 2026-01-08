@@ -3,14 +3,14 @@ from django.contrib.auth.models import Permission
 import pytest
 
 from docia.permissions import ALLOWED_BATCHES, ALLOWED_EJ_NUMBERS
-from docia.tests.factories.data import DataAttachmentFactory, DataBatchFactory, DataEngagementFactory
+from docia.tests.factories.data import DataBatchFactory, DataEngagementFactory, DocumentFactory
 from docia.tests.factories.users import UserFactory
 from docia.views import compute_ratio_data_extraction, format_ratio_to_percent
 
 
 def create_ej_and_document(**kwargs):
     ej = DataEngagementFactory(**kwargs)
-    a = DataAttachmentFactory(ej=ej)
+    a = DocumentFactory(ej=ej)
     return ej, a
 
 
@@ -48,7 +48,7 @@ def test_restrict_no_permission(client):
 @pytest.fixture
 def user_with_permission():
     user = UserFactory()
-    user.user_permissions.add(Permission.objects.get(codename="view_dataattachment"))
+    user.user_permissions.add(Permission.objects.get(codename="view_document"))
     return user
 
 

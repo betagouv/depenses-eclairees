@@ -14,7 +14,7 @@ from django.utils import timezone
 from celery import chain, group, shared_task
 from celery.result import GroupResult
 
-from ..models import DataAttachment
+from ..models import Document
 from .classification import task_classify_document
 from .info_extraction import SUPPORTED_DOCUMENT_TYPES, task_extract_info
 from .init_documents import init_documents_in_folder
@@ -65,7 +65,7 @@ def launch_batch(
 
     # Get all documents if no queryset provided
     if qs_documents is None:
-        qs_documents = DataAttachment.objects.all()
+        qs_documents = Document.objects.all()
 
     # Filter documents by folder if specified
     if folder:
@@ -143,7 +143,7 @@ def retry_batch_failures(batch_id: str, retry_cancelled: bool = False) -> (Proce
     if retry_cancelled:
         status_to_retry.append(ProcessingStatus.CANCELLED)
     jobs_to_retry = batch.job_set.filter(status__in=status_to_retry)
-    qs_documents = DataAttachment.objects.filter(processdocumentjob__in=jobs_to_retry).distinct()
+    qs_documents = Document.objects.filter(processdocumentjob__in=jobs_to_retry).distinct()
     return launch_batch(
         folder=batch.folder,
         step_types=batch.steps,

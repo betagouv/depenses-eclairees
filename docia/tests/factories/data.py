@@ -1,6 +1,6 @@
 import factory
 
-from docia.models import DataAttachment, DataBatch, DataEngagement
+from docia.models import DataBatch, DataEngagement, Document
 
 
 class DataEngagementFactory(factory.django.DjangoModelFactory):
@@ -18,9 +18,9 @@ class DataBatchFactory(factory.django.DjangoModelFactory):
     ej = factory.SubFactory(DataEngagementFactory)
 
 
-class DataAttachmentFactory(factory.django.DjangoModelFactory):
+class DocumentFactory(factory.django.DjangoModelFactory):
     class Meta:
-        model = DataAttachment
+        model = Document
 
     filename = factory.Sequence(lambda n: f"file_{n:0>3}.txt")
     dossier = factory.Sequence(lambda n: f"raw/folder{n // 5:0>3}")

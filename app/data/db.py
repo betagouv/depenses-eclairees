@@ -1,6 +1,6 @@
 import pandas as pd
 
-from docia.models import DataAttachment, DataBatch, DataEngagement
+from docia.models import DataBatch, DataEngagement, Document
 
 
 def bulk_create_batches(df: pd.DataFrame, batch_size=100):
@@ -34,7 +34,7 @@ def bulk_create_engagements(df: pd.DataFrame, batch_size=100):
 
 def bulk_create_attachments(df: pd.DataFrame, batch_size=100):
     attachments = [
-        DataAttachment(
+        Document(
             filename=row["filename"],
             extension=row["extension"],
             dossier=row["dossier"],
@@ -46,4 +46,4 @@ def bulk_create_attachments(df: pd.DataFrame, batch_size=100):
         )
         for row in df.to_dict(orient="records")
     ]
-    DataAttachment.objects.bulk_create(attachments, batch_size=batch_size, ignore_conflicts=True)
+    Document.objects.bulk_create(attachments, batch_size=batch_size, ignore_conflicts=True)

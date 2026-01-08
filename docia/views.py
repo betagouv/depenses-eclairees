@@ -3,7 +3,7 @@ import logging
 from django.shortcuts import render
 
 from . import forms
-from .models import DataAttachment
+from .models import Document
 from .permissions import user_can_view_ej
 from .ratelimit.services import check_rate_limit_for_user
 
@@ -31,7 +31,7 @@ def home(request):
                 if not user_can_view_ej(request.user, num_ej):
                     logger.warning(f"PermissionDenied: User {request.user.email} cannot view EJ {num_ej}")
                 else:
-                    db_docs = DataAttachment.objects.filter(ej_id=form.cleaned_data["num_ej"])
+                    db_docs = Document.objects.filter(ej_id=form.cleaned_data["num_ej"])
                     db_docs = db_docs.order_by("classification")
                     for db_doc in db_docs:
                         llm_response = db_doc.llm_response or {}
