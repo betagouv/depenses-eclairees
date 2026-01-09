@@ -58,7 +58,7 @@ def _bulk_update_by_key(df, table, columns, key_column):
 
 
 def bulk_update_attachments(df, columns):
-    _bulk_update_by_key(df, "attachments", columns, "filename")
+    _bulk_update_by_key(df, "docia_document", columns, "filename")
 
 
 def bulk_update_engagements(df, columns):
@@ -68,7 +68,7 @@ def bulk_update_engagements(df, columns):
 def select_attachments(columns, offset, limit, where, order_by=None):
     order_by = order_by or ["filename", "extension", "hash"]
     SQL = f"""
-    SELECT {", ".join(columns)} FROM attachments
+    SELECT {", ".join(columns)} FROM docia_document
     WHERE {where}
     ORDER BY {", ".join(order_by)}
     OFFSET {offset}

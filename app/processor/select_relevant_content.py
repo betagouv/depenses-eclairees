@@ -4,7 +4,7 @@ Soit on veux faire de l'embedding pour sélectionner seulement les parties perti
 
 Prend en entrée du texte et 
 """
-
+from types import NoneType
 import pandas as pd
 import numpy as np
 from openai import OpenAI
@@ -110,7 +110,8 @@ class RAGEnvironment:
 
     def _split_text_into_chunks(self,
         text: str,
-        doc_id: str = ""
+        doc_id: str = "",
+        chunk_id_list: Optional[List[str]] = None
     ) -> List[Dict[str, str]]:
         """
         Divise un texte en morceaux (chunks) de taille fixe avec un chevauchement optionnel.
@@ -148,13 +149,22 @@ class RAGEnvironment:
             end = min(start + self.chunk_size, text_length)
             chunk_text = text[start:end]
 
-            chunks.append({
-                "text": chunk_text,
-                "doc_id": doc_id,
-                "chunk_id": f"{doc_id}_{chunk_id}" if doc_id else str(chunk_id),
-                "start_char": start,
-                "end_char": end
-            })
+            if chunk_id_list:
+                chunks.append({
+                    "text": chunk_text,
+                    "doc_id": doc_id,
+                    "chunk_id": chunk_id_list[chunk_id],
+                    "start_char": start,
+                    "end_char": end
+                })
+            else:
+                chunks.append({
+                    "text": chunk_text,
+                    "doc_id": doc_id,
+                    "chunk_id": f"{doc_id}_{chunk_id}" if doc_id else str(chunk_id),
+                    "start_char": start,
+                    "end_char": end
+                })
 
             # Calcul du prochain start
             start += self.chunk_size - self.chunk_overlap
@@ -289,14 +299,14 @@ class RAGEnvironment:
             # Fallback: retourner des vecteurs nuls
             return np.zeros((len(texts), self.embedding_dimension), dtype=np.float32)
 
-    def add_documents(self, texts: Union[List[str], Dict[str, str]], doc_ids: Optional[List[str]] = None) -> None:
+    def add_documents(self, texts: Union[List[str], Dict[str, str]], doc_ids: Optional[List[str]] = None, chunk_id_list: Optional[List[str]] = None) -> None:        
         """
         Ajoute des documents à l'environnement RAG.
         
         Args:
             texts: Liste de textes ou dictionnaire {id: texte}
             doc_ids: Liste d'identifiants de documents (facultatif, utilisé si texts est une liste)
-        
+            chunk_id_list: Liste d'identifiants de chunks (facultatif, utilisé si texts est une liste)
         Returns: (ajout AMA)
             chunks
             index
@@ -356,7 +366,7 @@ class RAGEnvironment:
                     
                     # Création des chunks avec gestion d'erreur
                     try:
-                        doc_chunks = self._split_text_into_chunks(text, doc_id)
+                        doc_chunks = self._split_text_into_chunks(text, doc_id, chunk_id_list)
                         if doc_chunks:
                             new_chunks.extend(doc_chunks)
                             # logger.info(f"Document {doc_id} découpé en {len(doc_chunks)} chunks")
@@ -713,7 +723,7 @@ class RAGEnvironment:
             
             return results
 
-    def get_relevant_context(self, query, top_k=None, hybrid_weight=None, add_first_chunk=False) -> str:
+    def get_relevant_context(self, query, top_k=None, hybrid_weight=None, add_first_chunk=False, return_results=False) -> str:
         """
         Obtient un contexte pertinent pour une requête en combinant les meilleurs chunks.
         
@@ -741,7 +751,8 @@ class RAGEnvironment:
                 return ""
             
             # Trier les résultats par doc_id et position dans le document
-            results.sort(key=lambda x: (x["chunk"]["doc_id"], x["chunk"]["start_char"]))
+            # results.sort(key=lambda x: (x["chunk"]["doc_id"], x["chunk"]["start_char"]))
+            # results.sort(key=lambda x: x["score"], reverse=True)
             
             # Joindre les chunks
             relevant_chunks = [result["text"] for result in results]
@@ -761,7 +772,8 @@ class RAGEnvironment:
             max_context_length = self.max_car
             if len(context) > max_context_length:
                 context = context[:max_context_length]
-                
+            if return_results:
+                return context, results
             return context
             
         except Exception as e:
