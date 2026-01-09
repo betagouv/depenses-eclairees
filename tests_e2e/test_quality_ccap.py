@@ -5,9 +5,15 @@ import pytest
 import logging
 from datetime import datetime
 import copy
+import os
+import django
 
 import sys
 sys.path.append(".")
+
+# Setup Django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'docia.settings')
+django.setup()
 
 from django.conf import settings
 
@@ -15,6 +21,7 @@ from app.processor.analyze_content import df_analyze_content, LLMClient, parse_j
 from app.processor.attributes_query import ATTRIBUTES
 from app.ai_models.config_albert import ALBERT_API_KEY, ALBERT_BASE_URL
 from app.processor.post_processing_llm import *
+from app.utils import json_print
 
 logger = logging.getLogger("docia." + __name__)
 
@@ -104,7 +111,7 @@ def compare_contract_form(llm_val:dict, ref_val:dict):
     return (llm_structure == ref_structure and llm_tranches == ref_tranches and llm_forme_prix == ref_forme_prix)
     
 
-def compare_compare_contract_form_batches(llm_val:list[dict], ref_val:list[dict]):
+def compare_contract_form_batches(llm_val:list[dict], ref_val:list[dict]):
     """Compare la forme des lots du marché."""
     if not llm_val and not ref_val:
         return True
@@ -268,6 +275,127 @@ def compare_amounts(llm_val: str, ref_val: str):
     return normalize_string(str(llm_val)) == normalize_string(str(ref_val))
 
 
+################################################################################
+## Fonctions d'extraction pour le nouveau format unifié "lots"
+################################################################################
+
+def extract_batches_titles_from_unified_format(lots: list[dict]) -> list[dict]:
+    """Extrait les titres des lots depuis le format unifié."""
+    if not lots:
+        return []
+    return [
+        {
+            "numero_lot": lot.get("numero_lot"),
+            "titre_lot": lot.get("titre")
+        }
+        for lot in lots
+        if lot.get("numero_lot") is not None
+    ]
+
+
+def extract_batches_form_from_unified_format(lots: list[dict]) -> list[dict]:
+    """Extrait la forme des lots depuis le format unifié."""
+    if not lots:
+        return []
+    result = []
+    for lot in lots:
+        numero_lot = lot.get("numero_lot")
+        if numero_lot is not None:
+            forme = lot.get("forme")
+            if forme:  # Si forme n'est pas None
+                result.append({
+                    "numero_lot": numero_lot,
+                    "structure": forme.get("structure"),
+                    "tranches": forme.get("tranches"),
+                    "forme_prix": forme.get("forme_prix")
+                })
+    return result
+
+
+def extract_batches_duration_from_unified_format(lots: list[dict]) -> list[dict]:
+    """Extrait la durée des lots depuis le format unifié."""
+    if not lots:
+        return []
+    return [
+        {
+            "numero_lot": lot.get("numero_lot"),
+            "duree_lot": lot.get("duree_lot")
+        }
+        for lot in lots
+        if lot.get("numero_lot") is not None
+    ]
+
+
+def extract_batches_amount_from_unified_format(lots: list[dict]) -> list[dict]:
+    """Extrait les montants des lots depuis le format unifié."""
+    if not lots:
+        return []
+    result = []
+    for lot in lots:
+        numero_lot = lot.get("numero_lot")
+        if numero_lot is not None:
+            montant_ht = lot.get("montant_ht")
+            if montant_ht:  # Si montant_ht n'est pas None
+                result.append({
+                    "numero_lot": numero_lot,
+                    "montant_ht_maximum": montant_ht.get("montant_ht_maximum"),
+                    "type_montant": montant_ht.get("type_montant")
+                })
+    return result
+
+
+################################################################################
+## Nouvelles fonctions de comparaison pour le format unifié "lots"
+################################################################################
+
+def compare_unified_batches_titles(llm_val: list[dict], ref_val: list[dict]):
+    """Compare les titres des lots depuis le format unifié."""
+    if not llm_val and not ref_val:
+        return True
+    if not llm_val or not ref_val:
+        return False
+    
+    llm_titles = extract_batches_titles_from_unified_format(llm_val)
+    ref_titles = extract_batches_titles_from_unified_format(ref_val)
+    return compare_batches(llm_titles, ref_titles)
+
+
+def compare_unified_batches_form(llm_val: list[dict], ref_val: list[dict]):
+    """Compare la forme des lots depuis le format unifié."""
+    if not llm_val and not ref_val:
+        return True
+    if not llm_val or not ref_val:
+        return False
+    
+    llm_form = extract_batches_form_from_unified_format(llm_val)
+    ref_form = extract_batches_form_from_unified_format(ref_val)
+    return compare_contract_form_batches(llm_form, ref_form)
+
+
+def compare_unified_batches_duration(llm_val: list[dict], ref_val: list[dict]):
+    """Compare la durée des lots depuis le format unifié."""
+    if not llm_val and not ref_val:
+        return True
+    if not llm_val or not ref_val:
+        return False
+    
+    llm_duration = extract_batches_duration_from_unified_format(llm_val)
+    ref_duration = extract_batches_duration_from_unified_format(ref_val)
+    return compare_batches_duration(llm_duration, ref_duration)
+
+
+def compare_unified_batches_amount(llm_val: list[dict], ref_val: list[dict]):
+    """Compare les montants des lots depuis le format unifié."""
+    if not llm_val and not ref_val:
+        return True
+    if not llm_val or not ref_val:
+        return False
+    
+    llm_amount = extract_batches_amount_from_unified_format(llm_val)
+    ref_amount = extract_batches_amount_from_unified_format(ref_val)
+    return compare_batches_amount(llm_amount, ref_amount)
+
+
 def compare_global_contract(llm_val, ref_val):
     """Compare le CCAG."""
     if not llm_val and not ref_val:
@@ -284,7 +412,7 @@ def patch_post_processing(df):
     df_patched['llm_response'] = df_patched['llm_response'].apply(
         lambda x: copy.deepcopy(x) if isinstance(x, dict) else x
     )
-    post_processing_functions = {
+    post_processing_functions_values = {
 
 
     }
@@ -295,9 +423,9 @@ def patch_post_processing(df):
             continue
         
         for key in llm_response.keys():
-            if key in post_processing_functions:
+            if key in post_processing_functions_values:
                 try:
-                    llm_response[key] = post_processing_functions[key](llm_response[key])
+                    llm_response[key] = post_processing_functions_values[key](llm_response[key])
                     df_patched.at[idx, key] = llm_response[key]
                 except Exception as e:
                     logger.warning(f"Error in post_processing_functions for {key}, idx: {idx}: {e}")
@@ -305,6 +433,21 @@ def patch_post_processing(df):
                     df_patched.at[idx, key] = None
 
         df_patched.at[idx, 'llm_response'] = llm_response
+
+
+    # Post-traitement de structure
+    post_processing_functions_structure = {
+        'lots': post_processing_structure_batches
+    }
+
+    for idx, row in df_patched.iterrows():
+        llm_response = row.get('llm_response', None)
+        if llm_response is None or pd.isna(llm_response):
+            continue
+        
+        for key in post_processing_functions_structure:
+            llm_response_processed = post_processing_functions_structure[key](llm_response)
+            df_patched.at[idx, 'llm_response'] = llm_response_processed
 
     return df_patched
 
@@ -321,37 +464,48 @@ def get_comparison_functions():
     """
     return {
         'objet_marche': compare_contract_object,
-        'lots': compare_batches,
-        'forme_marche': compare_contract_form,
-        'forme_marche_lots': compare_compare_contract_form_batches,
-        'duree_lots': compare_batches_duration,
+        'titre_lots': compare_unified_batches_titles,  # Titre depuis le format unifié
+        'forme_marche_lots': compare_unified_batches_form,   # Forme depuis le format unifié
+        'duree_lots': compare_unified_batches_duration,  # Durée depuis le format unifié
+        'montant_ht_lots': compare_unified_batches_amount,  # Montant depuis le format unifié
         'duree_marche': compare_contract_duration,
         'formule_revision_prix': compare_price_revision_formula,
         'index_reference': compare_reference_index,
         'condition_avance': compare_advance_conditions,
         'revision_prix': compare_price_revision,
-        'montant_ht_lots': compare_batches_amount,
         'montant_ht': compare_amounts,
         'ccag': compare_global_contract,
+    }
+
+
+def get_batches_extraction_functions():
+    """
+    Retourne le dictionnaire des fonctions d'extraction.
+    """
+    return {
+        'titre_lots': extract_batches_titles_from_unified_format,
+        'forme_marche_lots': extract_batches_form_from_unified_format,
+        'duree_lots': extract_batches_duration_from_unified_format,
+        'montant_ht_lots': extract_batches_amount_from_unified_format,
     }
 
 
 def create_batch_test(multi_line_coef = 1):
     """Test de qualité des informations extraites par le LLM."""
     # Chemin vers le fichier CSV de test
-    csv_path = CSV_DIR_PATH / "test_ccap.csv"
+    csv_path = CSV_DIR_PATH / "test_ccap_v2.csv"
 
     # Lecture du fichier CSV
     df_test = pd.read_csv(csv_path)
     df_test.fillna('', inplace=True)
     df_test['lots'] = df_test['lots'].apply(lambda x: json.loads(x))
-    df_test['forme_marche'] = df_test['forme_marche'].apply(lambda x: json.loads(x))
+    df_test['titre_lots'] = df_test['titre_lots'].apply(lambda x: json.loads(x))
     df_test['forme_marche_lots'] = df_test['forme_marche_lots'].apply(lambda x: json.loads(x))
     df_test['duree_lots'] = df_test['duree_lots'].apply(lambda x: json.loads(x))
+    df_test['montant_ht_lots'] = df_test['montant_ht_lots'].apply(lambda x: json.loads(x))
+    df_test['forme_marche'] = df_test['forme_marche'].apply(lambda x: json.loads(x))
     df_test['duree_marche'] = df_test['duree_marche'].apply(lambda x: json.loads(x))
     df_test['montant_ht'] = df_test['montant_ht'].apply(lambda x: json.loads(x))
-    df_test['montant_ht_lots'] = df_test['montant_ht_lots'].apply(lambda x: json.loads(x))
-
     # Post-traitement direct des colonnes du DataFrame de test (après lecture du CSV)
     # Les fonctions post-traitement sont utilisées comme pour patch_post_traitement, mais appliquées colonne par colonne
     POST_PROCESSING_FUNCTIONS = {
@@ -391,7 +545,7 @@ def create_batch_test(multi_line_coef = 1):
         df=df_analyze,
         df_attributes=ATTRIBUTES,
         max_workers=20,
-        temperature=0.3,
+        temperature=0.1,
         save_grist=False
     )
     
@@ -439,9 +593,16 @@ def check_quality_one_field(df_merged, col_to_test = 'objet_marche'):
         llm_data = row.get('llm_response', None)
 
         
-        # Extraire les valeurs
-        ref_val = row.get(col_to_test, None)
-        llm_val = llm_data.get(col_to_test, None) if llm_data else None
+        # Extraire les valeurs selon le format
+        # Si on teste un sous-champ du nouveau format 'lots'
+        if col_to_test in ['titre_lots', 'forme_marche_lots', 'duree_lots', 'montant_ht_lots']:
+            # Extraire 'lots' depuis llm_response et référence
+            llm_val = llm_data.get('lots', None) if llm_data else None
+            ref_val = row.get('lots', None)  # La référence peut aussi être au format unifié
+        else:
+            # Format classique
+            ref_val = row.get(col_to_test, None)
+            llm_val = llm_data.get(col_to_test, None) if llm_data else None
         
         # Extraction des pbm OCR
         list_pbm_ocr = row.get('pbm_ocr', False)
@@ -452,14 +613,24 @@ def check_quality_one_field(df_merged, col_to_test = 'objet_marche'):
             match_result = comparison_func(llm_val, ref_val)
             status = "✅ MATCH" if match_result else "❌ NO MATCH"
             print(f"{status} | {filename} | OCR {"❌" if pbm_ocr else "✅"}")
-            print(f"  LLM: {llm_val}")
-            print(f"  REF: {ref_val}")
-            print()
+            if col_to_test in ['titre_lots', 'forme_marche_lots', 'duree_lots', 'montant_ht_lots']:
+                print(f"  LLM: {get_batches_extraction_functions()[col_to_test](llm_val)}")
+                print(f"  REF: {get_batches_extraction_functions()[col_to_test](ref_val)}")
+                print()
+            else:
+                print(f"  LLM: {llm_val}")
+                print(f"  REF: {ref_val}")
+                print()
         except Exception as e:
             print(f"❌ ERREUR | {filename}: {str(e)} | OCR {"❌" if pbm_ocr else "✅"}")
-            print(f"  LLM: {llm_val}")
-            print(f"  REF: {ref_val}")
-            print()
+            if col_to_test in ['titre_lots', 'forme_marche_lots', 'duree_lots', 'montant_ht_lots']:
+                print(f"  LLM: {get_batches_extraction_functions()[col_to_test](llm_val)}")
+                print(f"  REF: {get_batches_extraction_functions()[col_to_test](ref_val)}")
+                print()
+            else:
+                print(f"  LLM: {llm_val}")
+                print(f"  REF: {ref_val}")
+                print()
 
 
 def check_quality_one_row(df_merged, row_idx_to_test = 0, excluded_columns = []):
@@ -482,14 +653,26 @@ def check_quality_one_row(df_merged, row_idx_to_test = 0, excluded_columns = [])
         for col in get_comparison_functions().keys():
             if col in excluded_columns:
                 continue
-            if col not in df_merged.columns:
-                continue
+            # Pour les nouveaux champs du format unifié, vérifier si 'lots' existe
+            if col in ['titre_lots', 'forme_marche_lots', 'duree_lots', 'montant_ht_lots']:
+                if 'lots' not in df_merged.columns:
+                    continue
+            else:
+                if col not in df_merged.columns:
+                    continue
             
             comparison_func = get_comparison_functions()[col]
             
-            # Extraire les valeurs
-            ref_val = row.get(col, None)
-            llm_val = llm_data.get(col, None) if llm_data else None
+            # Extraire les valeurs selon le format
+            # Si on teste un sous-champ du nouveau format 'lots'
+            if col in ['titre_lots', 'forme_marche_lots', 'duree_lots', 'montant_ht_lots']:
+                # Extraire 'lots' depuis llm_response et référence
+                llm_val = llm_data.get('lots', None) if llm_data else None
+                ref_val = row.get('lots', None)  # La référence peut aussi être au format unifié
+            else:
+                # Format classique
+                ref_val = row.get(col, None)
+                llm_val = llm_data.get(col, None) if llm_data else None
             
             # Extraction des pbm OCR
             list_pbm_ocr = row.get('pbm_ocr', False)
@@ -501,14 +684,24 @@ def check_quality_one_row(df_merged, row_idx_to_test = 0, excluded_columns = [])
                 match_result = bool(match_result) if not isinstance(match_result, bool) else match_result
                 status = "✅ MATCH" if match_result else "❌ NO MATCH"
                 print(f"{status} | {col} | OCR {"❌" if pbm_ocr else "✅"}")
-                print(f"  LLM: {llm_val}")
-                print(f"  REF: {ref_val}")
-                print()
+                if col in ['titre_lots', 'forme_marche_lots', 'duree_lots', 'montant_ht_lots']:
+                    print(f"  LLM: {get_batches_extraction_functions()[col](llm_val)}")
+                    print(f"  REF: {get_batches_extraction_functions()[col](ref_val)}")
+                    print()
+                else:
+                    print(f"  LLM: {llm_val}")
+                    print(f"  REF: {ref_val}")
+                    print()
             except Exception as e:
                 print(f"❌ ERREUR | {col}: {str(e)} | OCR {"❌" if pbm_ocr else "✅"}")
-                print(f"  LLM: {llm_val}")
-                print(f"  REF: {ref_val}")
-                print()
+                if col in ['titre_lots', 'forme_marche_lots', 'duree_lots', 'montant_ht_lots']:
+                    print(f"  LLM: {get_batches_extraction_functions()[col](llm_val)}")
+                    print(f"  REF: {get_batches_extraction_functions()[col](ref_val)}")
+                    print()
+                else:
+                    print(f"  LLM: {llm_val}")
+                    print(f"  REF: {ref_val}")
+                    print()
     else:
         print(f"\n❌ Index {row_idx_to_test} invalide. Le DataFrame contient {len(df_merged)} lignes.\n")
     
@@ -530,9 +723,14 @@ def check_global_statistics(df_merged, excluded_columns = []):
         if col in excluded_columns:
             continue
         
-        # Vérifier si la colonne existe dans le CSV de référence
-        if col not in df_merged.columns:
-            continue
+        # Pour les nouveaux champs du format unifié, vérifier si 'lots' existe
+        if col in ['titre_lots', 'forme_marche_lots', 'duree_lots', 'montant_ht_lots']:
+            if 'lots' not in df_merged.columns:
+                continue
+        else:
+            # Vérifier si la colonne existe dans le CSV de référence
+            if col not in df_merged.columns:
+                continue
         
         comparison_func = get_comparison_functions()[col]
         matches = []
@@ -567,9 +765,16 @@ def check_global_statistics(df_merged, excluded_columns = []):
                     matches_no_ocr.append(False)
                 continue
             
-            # Extraire les valeurs
-            ref_val = row.get(col, None)
-            llm_val = llm_response.get(col, None)
+            # Extraire les valeurs selon le format
+            # Si on teste un sous-champ du nouveau format 'lots'
+            if col in ['titre_lots', 'forme_marche_lots', 'duree_lots', 'montant_ht_lots']:
+                # Extraire 'lots' depuis llm_response et référence
+                llm_val = llm_response.get('lots', None)
+                ref_val = row.get('lots', None)  # La référence peut aussi être au format unifié
+            else:
+                # Format classique
+                ref_val = row.get(col, None)
+                llm_val = llm_response.get(col, None)
             
             # Comparer les valeurs
             try:
@@ -648,16 +853,26 @@ EXCLUDED_COLUMNS = [
     'index_reference'
 ]
 
-check_quality_one_field(df_merged, col_to_test = 'montant_ht_lots')
+check_quality_one_field(df_merged, col_to_test = 'forme_marche_lots')
 
 check_quality_one_row(df_merged, row_idx_to_test = 18)
 
 check_global_statistics(df_merged, excluded_columns = EXCLUDED_COLUMNS)
 
 
-llm = [{'numero_lot': 1, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 2, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 3, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 4, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 5, 'structure': 'simple', 'tranches': 1, 'forme_prix': 'forfaitaires'}, {'numero_lot': 6, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 7, 'structure': 'simple', 'tranches': 1, 'forme_prix': 'forfaitaires'}]
-ref = [{'numero_lot': 1, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 2, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 3, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 4, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 5, 'structure': 'simple', 'tranches': 1, 'forme_prix': 'forfaitaires'}, {'numero_lot': 6, 'structure': 'simple', 'tranches': 3, 'forme_prix': 'forfaitaires'}, {'numero_lot': 7, 'structure': 'simple', 'tranches': 1, 'forme_prix': 'forfaitaires'}]
+# llm = [{'numero_lot': 1, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 2, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 3, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 4, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 5, 'structure': 'simple', 'tranches': 1, 'forme_prix': 'forfaitaires'}, {'numero_lot': 6, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 7, 'structure': 'simple', 'tranches': 1, 'forme_prix': 'forfaitaires'}]
+# ref = [{'numero_lot': 1, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 2, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 3, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 4, 'structure': 'simple', 'tranches': 2, 'forme_prix': 'forfaitaires'}, {'numero_lot': 5, 'structure': 'simple', 'tranches': 1, 'forme_prix': 'forfaitaires'}, {'numero_lot': 6, 'structure': 'simple', 'tranches': 3, 'forme_prix': 'forfaitaires'}, {'numero_lot': 7, 'structure': 'simple', 'tranches': 1, 'forme_prix': 'forfaitaires'}]
 
-for i in range(len(llm)):
-    print(llm[i])
-    print(ref[i])
+# for i in range(len(llm)):
+#     print(llm[i])
+#     print(ref[i])
+
+
+# for idx, row in df_test.iterrows():
+#     batches_titles = row.get('lots', None)
+#     batches_shape = row.get('forme_marche_lots', None)
+#     batches_duration = row.get('duree_lots', None)
+#     batches_amount = row.get('montant_ht_lots', None)
+
+#     batches = create_batches_dict(batches_titles, batches_shape, batches_duration, batches_amount)
+#     print(json.dumps(batches, ensure_ascii=False))

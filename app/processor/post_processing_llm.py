@@ -1,3 +1,4 @@
+import copy
 import logging
 import re
 
@@ -364,3 +365,135 @@ def post_processing_postal_address(postal_address: dict[str, str]) -> dict[str, 
         return None
 
     return normalized_address
+
+
+################################################################################
+## CCAP : post-traitement des informations
+
+def create_batches_dict(batches_titles: list[dict], batches_shape: list[dict], batches_duration: list[dict], batches_amount: list[dict]) -> list[dict]:
+    """
+    Post-traitement des lots pour rassembler l'ensemble des informations sur les lots.
+    """
+    # Créer un dictionnaire temporaire indexé par numéro de lot pour fusionner les données
+    batches_dict = {}
+    
+    # Fonction helper pour initialiser un lot avec tous les champs à None
+    def initialize_batch(batch_number: int) -> dict:
+        return {
+            "numero_lot": batch_number,
+            "titre": None,
+            "forme": {
+                "structure": None,
+                "tranches": None,
+                "forme_prix": None
+            },
+            "duree_lot": None,
+            "montant_ht": {
+                "montant_ht_maximum": None,
+                "type_montant": None
+            }
+        }
+    
+    # Collecter tous les numéros de lots de toutes les sources
+    all_batch_numbers = set()
+    
+    if batches_titles:
+        for batch_item in batches_titles:
+            batch_number = batch_item.get("numero_lot")
+            if batch_number:
+                all_batch_numbers.add(batch_number)
+    
+    if batches_shape:
+        for batch_item in batches_shape:
+            batch_number = batch_item.get("numero_lot")
+            if batch_number:
+                all_batch_numbers.add(batch_number)
+    
+    if batches_duration:
+        for batch_item in batches_duration:
+            batch_number = batch_item.get("numero_lot")
+            if batch_number:
+                all_batch_numbers.add(batch_number)
+    
+    if batches_amount:
+        for batch_item in batches_amount:
+            batch_number = batch_item.get("numero_lot")
+            if batch_number:
+                all_batch_numbers.add(batch_number)
+    
+    # Initialiser tous les lots avec des valeurs None
+    for batch_number in all_batch_numbers:
+        batches_dict[batch_number] = initialize_batch(batch_number)
+    
+    # Traiter les titres des lots
+    if batches_titles:
+        for batch_item in batches_titles:
+            batch_number = batch_item.get("numero_lot")
+            if batch_number:
+                batches_dict[batch_number]["titre"] = batch_item.get("titre_lot")
+    
+    # Traiter la forme des lots
+    if batches_shape:
+        for batch_item in batches_shape:
+            batch_number = batch_item.get("numero_lot")
+            if batch_number:
+                batches_dict[batch_number]["forme"] = {
+                    "structure": batch_item.get("structure"),
+                    "tranches": batch_item.get("tranches"),
+                    "forme_prix": batch_item.get("forme_prix")
+                }
+    
+    # Traiter la durée des lots
+    if batches_duration:
+        for batch_item in batches_duration:
+            batch_number = batch_item.get("numero_lot")
+            if batch_number:
+                duration = batch_item.get("duree_lot")
+                # Si la durée est une chaîne "identique à celle du marché", on la garde telle quelle
+                if isinstance(duration, str):
+                    batches_dict[batch_number]["duree_lot"] = duration
+                # Sinon, c'est un dictionnaire avec les détails
+                elif isinstance(duration, dict):
+                    batches_dict[batch_number]["duree_lot"] = duration
+    
+    # Traiter les montants des lots
+    if batches_amount:
+        for batch_item in batches_amount:
+            batch_number = batch_item.get("numero_lot")
+            if batch_number:
+                batches_dict[batch_number]["montant_ht"] = {
+                    "montant_ht_maximum": batch_item.get("montant_ht_maximum"),
+                    "type_montant": batch_item.get("type_montant")
+                }
+    
+    # Convertir le dictionnaire en liste triée par numéro de lot
+    batches_result = [batches_dict[key] for key in sorted(batches_dict.keys())]
+    
+    return batches_result
+
+def post_processing_structure_batches(llm_response: dict) -> dict:
+    """
+    Post-traitement de la structure des lots pour extraire les informations sur les lots.
+    """
+    if not llm_response:
+        return None
+
+    batches_titles = llm_response.get('lots', None)
+    batches_shape = llm_response.get('forme_marche_lots', None)
+    batches_duration = llm_response.get('duree_lots', None)
+    batches_amount = llm_response.get('montant_ht_lots', None)
+
+    batches = create_batches_dict(batches_titles, batches_shape, batches_duration, batches_amount)
+
+    llm_response_changed = {}
+    # Supprimer les champs individuels de llm_response en créant une copie indépendante
+    for field in llm_response.keys():
+        if field not in ['lots', 'forme_marche_lots', 'duree_lots', 'montant_ht_lots']:
+            # Créer une copie profonde pour éviter les références partagées
+            llm_response_changed[field] = copy.deepcopy(llm_response[field])
+    
+    # Ajouter le champ 'lots' qui contient toutes ces informations à la place
+    llm_response_changed['lots'] = batches
+
+    return llm_response_changed
+
