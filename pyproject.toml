@@ -70,9 +70,6 @@ exclude = [
     "app/file_manager/statistics.py",
     "app/grist/__init__.py",
     "app/grist/grist_api.py",
-    "tests_e2e/test_quality_acte_engagement.py",
-    "tests_e2e/test_quality_ccap.py",
-    "tests_e2e/test_quality_rib.py",
     "scripts/maj_grist_from_scalingo.py",
 ]
 

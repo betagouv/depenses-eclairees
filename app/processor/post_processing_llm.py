@@ -378,13 +378,12 @@ CLEAN_FUNCTIONS = {
         "duree": post_processing_duration,
         "rib_autres": post_processing_other_bank_accounts,
     },
-
     # RIB
     "rib": {
         "iban": post_processing_iban,
         "bic": post_processing_bic,
-        "adresse_postale_titulaire": post_processing_postal_address
-    }
+        "adresse_postale_titulaire": post_processing_postal_address,
+    },
 }
 
 

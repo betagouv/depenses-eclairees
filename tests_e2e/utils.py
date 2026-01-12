@@ -1,4 +1,5 @@
 import re
+
 import pandas as pd
 
 from app.processor.analyze_content import df_analyze_content
@@ -12,9 +13,9 @@ def normalize_string(s):
         return ""
     s = str(s).lower()
     # Supprime les caractères spéciaux (garde seulement les lettres, chiffres et espaces)
-    s = re.sub(r'[^a-z0-9\s]', '', s)
+    s = re.sub(r"[^a-z0-9\s]", "", s)
     # Supprime les espaces multiples
-    s = re.sub(r'\s+', ' ', s).strip()
+    s = re.sub(r"\s+", " ", s).strip()
     return s
 
 
@@ -32,9 +33,9 @@ def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, mult
 
     # Création du DataFrame pour l'analyse
     df_analyze = pd.DataFrame()
-    df_analyze['filename'] = df_test['filename']
-    df_analyze['classification'] = document_type
-    df_analyze['relevant_content'] = df_test['text']
+    df_analyze["filename"] = df_test["filename"]
+    df_analyze["classification"] = document_type
+    df_analyze["relevant_content"] = df_test["text"]
 
     # Analyse du contenu avec df_analyze_content
     df_result = df_analyze_content(
@@ -47,23 +48,19 @@ def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, mult
     # Fusion des résultats avec les valeurs de référence
     # Pour éviter le produit cartésien lorsque filename est dupliqué, on utilise l'index
     # Les deux dataframes ont le même nombre de lignes et le même ordre
-    df_result_reset = df_result[['filename', 'extracted_data']].reset_index(drop=True)
+    df_result_reset = df_result[["filename", "extracted_data"]].reset_index(drop=True)
     df_test_reset = df_test.reset_index(drop=True)
 
     # Ajout d'un identifiant unique basé sur l'index pour le merge
-    df_result_reset['_merge_key'] = df_result_reset.index
-    df_test_reset['_merge_key'] = df_test_reset.index
+    df_result_reset["_merge_key"] = df_result_reset.index
+    df_test_reset["_merge_key"] = df_test_reset.index
 
     # Merge sur l'identifiant unique plutôt que sur filename
-    df_merged = df_result_reset.merge(
-        df_test_reset,
-        on='_merge_key',
-        how='inner'
-    )
+    df_merged = df_result_reset.merge(df_test_reset, on="_merge_key", how="inner")
 
     # Suppression de la colonne temporaire et de la colonne filename dupliquée
-    df_merged = df_merged.drop(columns=['_merge_key', 'filename_x'])
-    df_merged = df_merged.rename(columns={'filename_y': 'filename'})
+    df_merged = df_merged.drop(columns=["_merge_key", "filename_x"])
+    df_merged = df_merged.rename(columns={"filename_y": "filename"})
 
     return df_test, df_result, df_merged
 
@@ -79,28 +76,28 @@ def check_quality_one_field(df_merged, col_to_test, comparison_func):
 
     # Boucle de comparaison simple
     for idx, row in df_merged.iterrows():
-        filename = row.get('filename', 'unknown')
+        filename = row.get("filename", "unknown")
 
-        llm_data = row.get('extracted_data', None)
+        llm_data = row.get("extracted_data", None)
 
         # Extraire les valeurs
         ref_val = row.get(col_to_test, None)
         llm_val = llm_data.get(col_to_test, None) if llm_data else None
 
         # Extraction des pbm OCR
-        list_pbm_ocr = row.get('pbm_ocr', False)
-        pbm_ocr = col_to_test in eval(list_pbm_ocr)
+        list_pbm_ocr = eval(row["pbm_ocr"]) or []
+        pbm_ocr = col_to_test in list_pbm_ocr
 
         # Comparer les valeurs
         try:
             match_result = comparison_func(llm_val, ref_val)
             status = "✅ MATCH" if match_result else "❌ NO MATCH"
-            print(f"{status} | {filename} | OCR {"❌" if pbm_ocr else "✅"}")
+            print(f"{status} | {filename} | OCR {'❌' if pbm_ocr else '✅'}")
             print(f"  LLM: {llm_val}")
             print(f"  REF: {ref_val}")
             print()
         except Exception as e:
-            print(f"❌ ERREUR | {filename}: {str(e)} | OCR {"❌" if pbm_ocr else "✅"}")
+            print(f"❌ ERREUR | {filename}: {str(e)} | OCR {'❌' if pbm_ocr else '✅'}")
             print(f"  LLM: {llm_val}")
             print(f"  REF: {ref_val}")
             print()
@@ -114,13 +111,13 @@ def check_quality_one_row(df_merged, row_idx_to_test, comparison_functions, excl
 
     if row_idx_to_test < len(df_merged):
         row = df_merged.iloc[row_idx_to_test]
-        filename = row.get('filename', 'unknown')
+        filename = row.get("filename", "unknown")
 
         print(f"\n{'=' * 80}")
         print(f"Comparaison pour la ligne {row_idx_to_test} (fichier: {filename})")
         print(f"{'=' * 80}\n")
 
-        llm_data = row.get('extracted_data', None)
+        llm_data = row.get("extracted_data", None)
 
         # Comparer toutes les colonnes (sauf exclues)
         for col in comparison_functions.keys():
@@ -136,26 +133,25 @@ def check_quality_one_row(df_merged, row_idx_to_test, comparison_functions, excl
             llm_val = llm_data.get(col, None)
 
             # Extraction des pbm OCR
-            list_pbm_ocr = row.get('pbm_ocr', False)
-            pbm_ocr = col in eval(list_pbm_ocr)
+            list_pbm_ocr = eval(row["pbm_ocr"]) or []
+            pbm_ocr = col in list_pbm_ocr
 
             # Comparer les valeurs
             try:
                 match_result = comparison_func(llm_val, ref_val)
                 match_result = bool(match_result) if not isinstance(match_result, bool) else match_result
                 status = "✅ MATCH" if match_result else "❌ NO MATCH"
-                print(f"{status} | {col} | OCR {"❌" if pbm_ocr else "✅"}")
+                print(f"{status} | {col} | OCR {'❌' if pbm_ocr else '✅'}")
                 print(f"  LLM: {llm_val}")
                 print(f"  REF: {ref_val}")
                 print()
             except Exception as e:
-                print(f"❌ ERREUR | {col}: {str(e)} | OCR {"❌" if pbm_ocr else "✅"}")
+                print(f"❌ ERREUR | {col}: {str(e)} | OCR {'❌' if pbm_ocr else '✅'}")
                 print(f"  LLM: {llm_val}")
                 print(f"  REF: {ref_val}")
                 print()
     else:
         print(f"\n❌ Index {row_idx_to_test} invalide. Le DataFrame contient {len(df_merged)} lignes.\n")
-
 
 
 def check_global_statistics(df_merged, comparison_functions, excluded_columns=None):
@@ -188,18 +184,16 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
 
         # Comparer toutes les lignes pour cette colonne
         for idx, row in df_merged.iterrows():
-            filename = row.get('filename', 'unknown')
+            filename = row.get("filename", "unknown")
 
             # Vérifier les erreurs OCR pour cette colonne
             pbm_ocr = False
-            list_pbm_ocr = row.get('pbm_ocr', False)
-            if list_pbm_ocr and list_pbm_ocr != False:
-                pbm_ocr_list = eval(list_pbm_ocr) if isinstance(list_pbm_ocr, str) else list_pbm_ocr
-                if col in pbm_ocr_list:
-                    ocr_errors_count += 1
-                    pbm_ocr = True
+            list_pbm_ocr = eval(row["pbm_ocr"]) or []
+            if col in list_pbm_ocr:
+                ocr_errors_count += 1
+                pbm_ocr = True
 
-            extracted_data = row.get('extracted_data', None)
+            extracted_data = row.get("extracted_data", None)
             if extracted_data is None or pd.isna(extracted_data):
                 errors.append(f"{filename}: extracted_data is None or NaN")
                 matches.append(False)
@@ -239,36 +233,58 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
         accuracy_no_ocr = matches_no_ocr_count / total_no_ocr if total_no_ocr > 0 else 0.0
 
         results[col] = {
-            'total': total,
-            'matches': matches_count,
-            'errors': errors_count,
-            'ocr_errors': ocr_errors_count,
-            'accuracy': accuracy,
-            'accuracy_no_ocr': accuracy_no_ocr,
-            'total_no_ocr': total_no_ocr,
-            'matches_no_ocr': matches_no_ocr_count
+            "total": total,
+            "matches": matches_count,
+            "errors": errors_count,
+            "ocr_errors": ocr_errors_count,
+            "accuracy": accuracy,
+            "accuracy_no_ocr": accuracy_no_ocr,
+            "total_no_ocr": total_no_ocr,
+            "matches_no_ocr": matches_no_ocr_count,
         }
 
     # Affichage des statistiques
     print(
-        f"{'Colonne':<35} | {'Total':<6} | {'Matches':<8} | {'Erreurs':<8} | {'OCR Errors':<10} | {'Accuracy':<10} | {'Accuracy (no OCR)':<18}")
+        " | ".join(
+            [
+                f"{'Colonne':<35}",
+                f"{'Total':<6}",
+                f"{'Matches':<8}",
+                f"{'Erreurs':<8}",
+                f"{'OCR Errors':<10}",
+                f"{'Accuracy':<10}",
+                f"{'Accuracy (no OCR)':<18}",
+            ]
+        )
+    )
     print("-" * 120)
 
     for col, result in results.items():
         print(
-            f"{col:<35} | {result['total']:<6} | {result['matches']:<8} | {result['errors']:<8} | {result['ocr_errors']:<10} | {result['accuracy'] * 100:>6.2f}% | {result['accuracy_no_ocr'] * 100:>14.2f}%")
+            " | ".join(
+                [
+                    f"{col:<35}",
+                    f"{result['total']:<6}",
+                    f"{result['matches']:<8}",
+                    f"{result['errors']:<8}",
+                    f"{result['ocr_errors']:<10}",
+                    f"{result['accuracy'] * 100:>6.2f}%",
+                    f"{result['accuracy_no_ocr'] * 100:>14.2f}%",
+                ]
+            )
+        )
 
     print(f"\n{'=' * 120}")
     print("Résumé global:")
-    total_comparisons = sum(r['total'] for r in results.values())
-    total_matches = sum(r['matches'] for r in results.values())
-    total_errors = sum(r['errors'] for r in results.values())
-    total_ocr_errors = sum(r['ocr_errors'] for r in results.values())
+    total_comparisons = sum(r["total"] for r in results.values())
+    total_matches = sum(r["matches"] for r in results.values())
+    total_errors = sum(r["errors"] for r in results.values())
+    total_ocr_errors = sum(r["ocr_errors"] for r in results.values())
     global_accuracy = total_matches / total_comparisons if total_comparisons > 0 else 0.0
 
     # Calculer l'accuracy globale sans OCR
-    total_no_ocr = sum(r['total_no_ocr'] for r in results.values())
-    total_matches_no_ocr = sum(r['matches_no_ocr'] for r in results.values())
+    total_no_ocr = sum(r["total_no_ocr"] for r in results.values())
+    total_matches_no_ocr = sum(r["matches_no_ocr"] for r in results.values())
     global_accuracy_no_ocr = total_matches_no_ocr / total_no_ocr if total_no_ocr > 0 else 0.0
 
     print(f"Total de comparaisons: {total_comparisons}")
