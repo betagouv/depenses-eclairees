@@ -82,9 +82,9 @@ def create_response_format(df_attributes, classification):
     return response_format
 
 
-def df_analyze_content(llm_model,
-                       df: pd.DataFrame, 
-                       df_attributes: pd.DataFrame, 
+def df_analyze_content(df: pd.DataFrame,
+                       df_attributes: pd.DataFrame,
+                       llm_model: str|None = None,
                        temperature: float = 0.0, 
                        max_workers: int = 4) -> pd.DataFrame:
     """
@@ -105,11 +105,15 @@ def df_analyze_content(llm_model,
     def process_row(idx):
         row = df.loc[idx]
         classification = row['classification']
+        kwargs = dict(
+            text=row["relevant_content"] or row["text"],
+            document_type=classification,
+            temperature=temperature
+        )
+        if llm_model:
+            kwargs["llm_model"] = llm_model
         try:
-            result = analyze_file_text(row["relevant_content"] or row["text"],
-                                       classification,
-                                       llm_model=llm_model,
-                                       temperature=temperature)
+            result = analyze_file_text(**kwargs)
         except Exception as e:
             result = {
                 'llm_response': None,

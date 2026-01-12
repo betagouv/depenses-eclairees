@@ -1,36 +1,28 @@
 import json
-import re
-import pandas as pd
-import pytest
-import logging
 from datetime import datetime
 import copy
-
+import os
 import sys
-sys.path.append(".")
 
+import django
 from django.conf import settings
 
-from app.processor.analyze_content import df_analyze_content, LLMClient, parse_json_response
+import pandas as pd
+
+sys.path.append(".")
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'docia.settings')
+django.setup()
+
+from app.processor.analyze_content import df_analyze_content, LLMClient
 from app.processor.attributes_query import ATTRIBUTES
-from app.ai_models.config_albert import ALBERT_API_KEY, ALBERT_BASE_URL
 from app.processor.post_processing_llm import *
+
+from tests_e2e.utils import normalize_string
 
 logger = logging.getLogger("docia." + __name__)
 
 PROJECT_PATH = settings.BASE_DIR
 CSV_DIR_PATH = (PROJECT_PATH / ".." / "data" / "test").resolve()
-
-def normalize_string(s):
-    """Normalise une chaîne de caractères : minuscule et sans caractères spéciaux."""
-    if not s:
-        return None
-    s = str(s).lower()
-    # Supprime les caractères spéciaux (garde seulement les lettres, chiffres et espaces)
-    s = re.sub(r'[^a-z0-9\s]', '', s)
-    # Supprime les espaces multiples
-    s = re.sub(r'\s+', ' ', s).strip()
-    return s
 
 
 def compare_iban(llm_val:str, ref_val:str):
@@ -247,8 +239,7 @@ def create_batch_test(multi_line_coef = 1):
         df=df_analyze,
         df_attributes=ATTRIBUTES,
         max_workers=20,
-        temperature=0.3,
-        save_grist=False
+        temperature=0.1,
     )
     
     df_post_processing = patch_post_processing(df_result)

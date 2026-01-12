@@ -1,37 +1,27 @@
 import json
-import pandas as pd
 from datetime import datetime
-
+import logging
+import os
 import sys
-sys.path.append(".")
 
 import django
-import os
+from django.conf import settings
+
+import pandas as pd
+
+sys.path.append(".")
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'docia.settings')
 django.setup()
 
+from app.processor.analyze_content import LLMClient
 
-from django.conf import settings
-
-from app.processor.analyze_content import df_analyze_content, LLMClient
-from app.processor.attributes_query import ATTRIBUTES
-from app.processor.post_processing_llm import *
+from tests_e2e.utils import normalize_string, analyze_content_quality_test, check_quality_one_field, \
+    check_quality_one_row, check_global_statistics
 
 logger = logging.getLogger("docia." + __name__)
 
 PROJECT_PATH = settings.BASE_DIR
 CSV_DIR_PATH = (PROJECT_PATH / ".." / "data" / "test").resolve()
-
-def normalize_string(s):
-    """Normalise une chaîne de caractères : minuscule et sans caractères spéciaux."""
-    if pd.isna(s) or s == "":
-        return ""
-    s = str(s).lower()
-    # Supprime les caractères spéciaux (garde seulement les lettres, chiffres et espaces)
-    s = re.sub(r'[^a-z0-9\s]', '', s)
-    # Supprime les espaces multiples
-    s = re.sub(r'\s+', ' ', s).strip()
-    return s
 
 
 def compare_object(llm_value, ref_value, llm_model='albert-small'):
@@ -88,7 +78,7 @@ def compare_object(llm_value, ref_value, llm_model='albert-small'):
         
         # Appel au LLM avec format JSON forcé
         # Température 0.2 : permet de la nuance dans l'évaluation sémantique tout en gardant de la cohérence
-        result = llm_env.ask_llm(messages=messages, response_format=response_format, temperature=0.2)
+        result = llm_env.ask_llm(messages=messages, response_format=response_format, temperature=0)
 
         # print("Réponse LLM : ", result.get("explication", ""))
 
@@ -160,7 +150,7 @@ def compare_beneficiary_administration(llm_value, ref_value, llm_model='albert-s
         response_format = {"type": "json_object"}
 
         # Appel au LLM avec format JSON forcé, température basse pour fiabilité
-        result = llm_env.ask_llm(messages=messages, response_format=response_format, temperature=0.2)
+        result = llm_env.ask_llm(messages=messages, response_format=response_format, temperature=0)
 
         # print("LLM explanation for administration_beneficiaire: ", result.get("explication", ""))
 
@@ -402,9 +392,9 @@ def compare_duration(llm_val, ref_val):
         return False
 
 
-# Mapping des colonnes vers leurs fonctions de comparaison
 def get_comparison_functions():
-    """
+    """ Mapping des colonnes vers leurs fonctions de comparaison
+
     Retourne le dictionnaire des fonctions de comparaison.
     Cette fonction garantit que les références pointent toujours vers les dernières versions des fonctions,
     même après un rechargement de module.
@@ -449,284 +439,7 @@ def create_batch_test(multi_line_coef = 1):
     df_test['siret_mandataire'] = df_test['siret_mandataire'].astype(str).apply(lambda x: x.split('.')[0])
     df_test['siren_mandataire'] = df_test['siren_mandataire'].astype(str).apply(lambda x: x.split('.')[0])
 
-    # Post-traitement direct des colonnes du DataFrame de test (après lecture du CSV)
-    # Les fonctions post-traitement sont utilisées comme pour patch_post_traitement, mais appliquées colonne par colonne
-    POST_PROCESSING_FUNCTIONS = {
-        'rib_mandataire': post_processing_bank_account,
-        'cotraitants': post_processing_co_contractors,
-        'sous_traitants': post_processing_subcontractors,
-        'duree': post_processing_duration,
-        'montant_ttc': post_processing_amount,
-        'montant_ht': post_processing_amount,
-        'siret_mandataire': post_processing_siret
-        # Ajouter ici d'autres champs si besoin dans le futur
-    }
-
-    print(datetime.now())
-    
-    for col, post_process_func in POST_PROCESSING_FUNCTIONS.items():
-        if col in df_test.columns:
-            for idx, val in df_test[col].items():
-                try:
-                    # On conserve le même format qu'en production: JSON str
-                    df_test.at[idx, col] = post_process_func(val)
-                except Exception as e:
-                    logger.warning(f"Error in post-processing DF_TEST for column {col} at index {idx}: {e}")
-                    df_test.at[idx, col] = ''
-    
-    if multi_line_coef > 1:
-        df_test = pd.concat([df_test for x in range(multi_line_coef)]).reset_index(drop=True)
-
-        
-    # Création du DataFrame pour l'analyse
-    df_analyze = pd.DataFrame()
-    df_analyze['filename'] = df_test['filename']
-    df_analyze['classification'] = 'acte_engagement'
-    df_analyze['relevant_content'] = df_test['text']
-    
-    # Configuration du LLM
-    llm_model = 'openweight-medium'
-    
-    # Analyse du contenu avec df_analyze_content
-    df_result = df_analyze_content(
-        llm_model=llm_model,
-        df=df_analyze,
-        df_attributes=ATTRIBUTES,
-        max_workers=20,
-        temperature=0.3,
-    )
-
-    # Fusion des résultats avec les valeurs de référence
-    # Pour éviter le produit cartésien lorsque filename est dupliqué, on utilise l'index
-    # Les deux dataframes ont le même nombre de lignes et le même ordre
-    df_result_reset = df_result[['filename', 'extracted_data']].reset_index(drop=True)
-    df_test_reset = df_test.reset_index(drop=True)
-    
-    # Ajout d'un identifiant unique basé sur l'index pour le merge
-    df_result_reset['_merge_key'] = df_result_reset.index
-    df_test_reset['_merge_key'] = df_test_reset.index
-    
-    # Merge sur l'identifiant unique plutôt que sur filename
-    df_merged = df_result_reset.merge(
-        df_test_reset,
-        on='_merge_key',
-        how='inner'
-    )
-    
-    # Suppression de la colonne temporaire et de la colonne filename dupliquée
-    df_merged = df_merged.drop(columns=['_merge_key', 'filename_x'])
-    df_merged = df_merged.rename(columns={'filename_y': 'filename'})
-
-    return df_test, df_result, df_merged
-
-
-def check_quality_one_field(df_merged, col_to_test = 'duree'):
-    # ============================================================================
-    # COMPARAISON POUR UNE COLONNE SPÉCIFIQUE
-    # ============================================================================
-    
-    comparison_func = get_comparison_functions()[col_to_test]
-    print(f"\n{'='*80}")
-    print(f"Comparaison pour la colonne: {col_to_test}")
-    print(f"{'='*80}\n")
-    
-    # Boucle de comparaison simple
-    for idx, row in df_merged.iterrows():
-        filename = row.get('filename', 'unknown')
-        
-        # Parser le JSON de llm_response
-        llm_data = row.get('extracted_data')
-
-        # Extraire les valeurs
-        ref_val = row.get(col_to_test)
-        llm_val = llm_data.get(col_to_test, None)
-        
-        # Extraction des pbm OCR
-        list_pbm_ocr = row.get('pbm_ocr', False)
-        pbm_ocr = col_to_test in eval(list_pbm_ocr)
-
-        # Comparer les valeurs
-        try:
-            match_result = comparison_func(llm_val, ref_val)
-            match_result = bool(match_result) if not isinstance(match_result, bool) else match_result
-            status = "✅ MATCH" if match_result else "❌ NO MATCH"
-            print(f"{status} | {filename} | OCR {"❌" if pbm_ocr else "✅"}")
-            print(f"  LLM: {llm_val}")
-            print(f"  REF: {ref_val}")
-            print()
-        except Exception as e:
-            print(f"❌ ERREUR | {filename}: {str(e)} | OCR {"❌" if pbm_ocr else "✅"}")
-            print(f"  LLM: {llm_val}")
-            print(f"  REF: {ref_val}")
-            print()
-    
-
-def check_quality_one_row(df_merged, row_idx_to_test = 0, excluded_columns = []):
-    # ============================================================================
-    # COMPARAISON POUR UNE LIGNE SPÉCIFIQUE
-    # ============================================================================
-    
-    if row_idx_to_test < len(df_merged):
-        row = df_merged.iloc[row_idx_to_test]
-        filename = row.get('filename', 'unknown')
-        
-        print(f"\n{'='*80}")
-        print(f"Comparaison pour la ligne {row_idx_to_test} (fichier: {filename})")
-        print(f"{'='*80}\n")
-        
-        # Parser le JSON de llm_response
-        llm_data = row.get('extracted_data', None)
-        
-        # Comparer toutes les colonnes (sauf exclues)
-        for col in get_comparison_functions().keys():
-            if col in excluded_columns:
-                continue
-            if col not in df_merged.columns:
-                continue
-            
-            comparison_func = get_comparison_functions()[col]
-            
-            # Extraire les valeurs
-            ref_val = row.get(col, None)
-            llm_val = llm_data.get(col, None)
-            
-            # Extraction des pbm OCR
-            list_pbm_ocr = row.get('pbm_ocr', False)
-            pbm_ocr = col in eval(list_pbm_ocr)
-
-            # Comparer les valeurs
-            try:
-                match_result = comparison_func(llm_val, ref_val)
-                match_result = bool(match_result) if not isinstance(match_result, bool) else match_result
-                status = "✅ MATCH" if match_result else "❌ NO MATCH"
-                print(f"{status} | {col} | OCR {"❌" if pbm_ocr else "✅"}")
-                print(f"  LLM: {llm_val}")
-                print(f"  REF: {ref_val}")
-                print()
-            except Exception as e:
-                print(f"❌ ERREUR | {col}: {str(e)} | OCR {"❌" if pbm_ocr else "✅"}")
-                print(f"  LLM: {llm_val}")
-                print(f"  REF: {ref_val}")
-                print()
-    else:
-        print(f"\n❌ Index {row_idx_to_test} invalide. Le DataFrame contient {len(df_merged)} lignes.\n")
-    
-
-def check_global_statistics(df_merged, excluded_columns = []):
-    # ============================================================================
-    # STATISTIQUES GLOBALES DE COMPARAISON
-    # ============================================================================
-    
-    print(f"\n{'='*80}")
-    print("STATISTIQUES GLOBALES DE COMPARAISON")
-    print(f"{'='*80}\n")
-    
-    results = {}
-    
-    # Comparaison pour chaque colonne (sauf exclues)
-    for col in get_comparison_functions().keys():
-        # Ignorer les colonnes exclues
-        if col in excluded_columns:
-            continue
-        
-        # Vérifier si la colonne existe dans le CSV de référence
-        if col not in df_merged.columns:
-            continue
-        
-        comparison_func = get_comparison_functions()[col]
-        matches = []
-        errors = []
-        ocr_errors_count = 0
-        matches_no_ocr = []
-        
-        # Comparer toutes les lignes pour cette colonne
-        for idx, row in df_merged.iterrows():
-            filename = row.get('filename', 'unknown')
-            
-            # Vérifier les erreurs OCR pour cette colonne
-            pbm_ocr = False
-            try:
-                list_pbm_ocr = row.get('pbm_ocr', False)
-                if list_pbm_ocr and list_pbm_ocr != False:
-                    pbm_ocr_list = eval(list_pbm_ocr) if isinstance(list_pbm_ocr, str) else list_pbm_ocr
-                    if col in pbm_ocr_list:
-                        ocr_errors_count += 1
-                        pbm_ocr = True
-            except Exception:
-                # Si erreur lors de l'évaluation, on ignore
-                pass
-            
-            # Récupérer le JSON de llm_response
-            llm_response = row.get('extracted_data', None)
-            
-            # Extraire les valeurs
-            ref_val = row.get(col, None)
-            llm_val = llm_response.get(col, None)
-            
-            # Comparer les valeurs
-            try:
-                match_result = comparison_func(llm_val, ref_val)
-                match_result = bool(match_result) if not isinstance(match_result, bool) else match_result
-                matches.append(match_result)
-                # Si pas de problème OCR, on ajoute aussi à matches_no_ocr
-                if not pbm_ocr:
-                    matches_no_ocr.append(match_result)
-            except Exception as e:
-                errors.append(f"{filename}: Error in comparison_func: {str(e)}")
-                matches.append(False)
-                # Si pas de problème OCR, on ajoute aussi à matches_no_ocr
-                if not pbm_ocr:
-                    matches_no_ocr.append(False)
-        
-        # Calculer les statistiques pour cette colonne
-        total = len(matches)
-        matches_count = sum(matches)
-        errors_count = len(errors)
-        accuracy = matches_count / total if total > 0 else 0.0
-        
-        # Calculer l'accuracy sans OCR (seulement sur les comparaisons sans problème OCR)
-        total_no_ocr = len(matches_no_ocr)
-        matches_no_ocr_count = sum(matches_no_ocr)
-        accuracy_no_ocr = matches_no_ocr_count / total_no_ocr if total_no_ocr > 0 else 0.0
-        
-        results[col] = {
-            'total': total,
-            'matches': matches_count,
-            'errors': errors_count,
-            'ocr_errors': ocr_errors_count,
-            'accuracy': accuracy,
-            'accuracy_no_ocr': accuracy_no_ocr,
-            'total_no_ocr': total_no_ocr,
-            'matches_no_ocr': matches_no_ocr_count
-        }
-    
-    # Affichage des statistiques
-    print(f"{'Colonne':<35} | {'Total':<6} | {'Matches':<8} | {'Erreurs':<8} | {'OCR Errors':<10} | {'Accuracy':<10} | {'Accuracy (no OCR)':<18}")
-    print("-" * 120)
-    
-    for col, result in results.items():
-        print(f"{col:<35} | {result['total']:<6} | {result['matches']:<8} | {result['errors']:<8} | {result['ocr_errors']:<10} | {result['accuracy']*100:>6.2f}% | {result['accuracy_no_ocr']*100:>14.2f}%")
-    
-    print(f"\n{'='*120}")
-    print("Résumé global:")
-    total_comparisons = sum(r['total'] for r in results.values())
-    total_matches = sum(r['matches'] for r in results.values())
-    total_errors = sum(r['errors'] for r in results.values())
-    total_ocr_errors = sum(r['ocr_errors'] for r in results.values())
-    global_accuracy = total_matches / total_comparisons if total_comparisons > 0 else 0.0
-    
-    # Calculer l'accuracy globale sans OCR
-    total_no_ocr = sum(r['total_no_ocr'] for r in results.values())
-    total_matches_no_ocr = sum(r['matches_no_ocr'] for r in results.values())
-    global_accuracy_no_ocr = total_matches_no_ocr / total_no_ocr if total_no_ocr > 0 else 0.0
-    
-    print(f"Total de comparaisons: {total_comparisons}")
-    print(f"Total de matches: {total_matches}")
-    print(f"Total d'erreurs: {total_errors}")
-    print(f"Total d'erreurs OCR: {total_ocr_errors}")
-    print(f"Accuracy globale: {global_accuracy*100:.2f}%")
-    print(f"Accuracy globale (sans OCR): {global_accuracy_no_ocr*100:.2f}% ({total_matches_no_ocr}/{total_no_ocr})")
-    print(f"{'='*120}\n")
+    return analyze_content_quality_test(df_test, "acte_engagement", multi_line_coef=multi_line_coef)
 
 
 df_test, df_result, df_merged = create_batch_test()
@@ -737,10 +450,13 @@ EXCLUDED_COLUMNS = [
     'avance'
 ]
 
-check_quality_one_field(df_merged, col_to_test = 'rib_mandataire')
 
-check_quality_one_row(df_merged, row_idx_to_test = 0, excluded_columns = EXCLUDED_COLUMNS)
+comparison_functions = get_comparison_functions()
 
-check_quality_one_field(df_merged, col_to_test = 'cotraitants')
+check_quality_one_field(df_merged, 'rib_mandataire', comparison_functions['rib_mandataire'])
 
-check_global_statistics(df_merged, excluded_columns = EXCLUDED_COLUMNS)
+check_quality_one_row(df_merged, 0, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
+
+check_quality_one_field(df_merged, 'cotraitants', comparison_functions['cotraitants'])
+
+check_global_statistics(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
