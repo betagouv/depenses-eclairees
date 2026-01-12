@@ -1,6 +1,4 @@
 import json
-from datetime import datetime
-import copy
 import os
 import sys
 import logging
@@ -14,9 +12,7 @@ sys.path.append(".")
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'docia.settings')
 django.setup()
 
-from app.processor.analyze_content import df_analyze_content, LLMClient
-from app.processor.attributes_query import ATTRIBUTES
-from app.processor.post_processing_llm import *
+from app.processor.analyze_content import LLMClient
 
 from tests_e2e.utils import normalize_string, analyze_content_quality_test, check_quality_one_field, \
     check_quality_one_row, check_global_statistics
@@ -312,6 +308,7 @@ def create_batch_test(multi_line_coef = 1):
     df_test['montant_ht'] = df_test['montant_ht'].apply(lambda x: json.loads(x))
     df_test['montant_ht_lots'] = df_test['montant_ht_lots'].apply(lambda x: json.loads(x))
 
+    # Lancement du test
     return analyze_content_quality_test(df_test, "ccap", multi_line_coef=multi_line_coef)
 
 

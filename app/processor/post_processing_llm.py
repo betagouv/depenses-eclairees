@@ -366,21 +366,34 @@ def post_processing_postal_address(postal_address: dict[str, str]) -> dict[str, 
     return normalized_address
 
 
+CLEAN_FUNCTIONS = {
+    # Acte d'engagement
+    "acte_engagement": {
+        "rib_mandataire": post_processing_bank_account,
+        "montant_ttc": post_processing_amount,
+        "montant_ht": post_processing_amount,
+        "cotraitants": post_processing_co_contractors,
+        "sous_traitants": post_processing_subcontractors,
+        "siret_mandataire": post_processing_siret,
+        "duree": post_processing_duration,
+        "rib_autres": post_processing_other_bank_accounts,
+    },
+
+    # RIB
+    "rib": {
+        "iban": post_processing_iban,
+        "bic": post_processing_bic,
+        "adresse_postale_titulaire": post_processing_postal_address
+    }
+}
+
+
 def clean_llm_response(document_type: str, llm_response: dict) -> dict:
-    match document_type:
-        case "acte_engagement":
-            clean_functions = {
-                "rib_mandataire": post_processing_bank_account,
-                "montant_ttc": post_processing_amount,
-                "montant_ht": post_processing_amount,
-                "cotraitants": post_processing_co_contractors,
-                "sous_traitants": post_processing_subcontractors,
-                "siret_mandataire": post_processing_siret,
-                "duree": post_processing_duration,
-                "rib_autres": post_processing_other_bank_accounts,
-            }
-            return apply_clean_functions(llm_response, clean_functions)
-    return llm_response
+    clean_functions = CLEAN_FUNCTIONS.get(document_type, None)
+    if clean_functions:
+        return apply_clean_functions(llm_response, clean_functions)
+    else:
+        return llm_response
 
 
 def apply_clean_functions(data: dict, clean_functions: dict) -> dict:

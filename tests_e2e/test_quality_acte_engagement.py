@@ -429,7 +429,6 @@ def create_batch_test(multi_line_coef = 1):
     
     # Lecture du fichier CSV
     df_test = pd.read_csv(csv_path)
-
     df_test.fillna('', inplace=True)
     df_test['rib_mandataire'] = df_test['rib_mandataire'].apply(lambda x: json.loads(x))
     df_test['cotraitants'] = df_test['cotraitants'].apply(lambda x: json.loads(x))
@@ -439,6 +438,7 @@ def create_batch_test(multi_line_coef = 1):
     df_test['siret_mandataire'] = df_test['siret_mandataire'].astype(str).apply(lambda x: x.split('.')[0])
     df_test['siren_mandataire'] = df_test['siren_mandataire'].astype(str).apply(lambda x: x.split('.')[0])
 
+    # Lancement du test
     return analyze_content_quality_test(df_test, "acte_engagement", multi_line_coef=multi_line_coef)
 
 
