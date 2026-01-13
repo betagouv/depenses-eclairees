@@ -2,8 +2,8 @@ import re
 
 import pandas as pd
 
-from docia.file_processing.processor import ATTRIBUTES
 from docia.file_processing.processor.analyze_content import df_analyze_content
+from docia.file_processing.processor.attributes_query import ATTRIBUTES
 from docia.file_processing.processor.post_processing_llm import clean_llm_response
 
 
