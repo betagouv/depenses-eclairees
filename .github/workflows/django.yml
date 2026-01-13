@@ -56,4 +56,4 @@ jobs:
       - name: Run ruff format
         run: poetry run ruff format --check
       - name: Run tests
-        run: poetry run pytest --no-migrations docia
+        run: poetry run pytest --no-migrations tests

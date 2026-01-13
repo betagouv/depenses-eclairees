@@ -2,7 +2,7 @@ import pandas as pd
 import os
 import numpy as np
 import re
-from .utils_file_manager import extract_num_EJ
+from .cleaner import extract_num_EJ
 
 def getStatistics(dfFiles, df_ground_truth):
     try:

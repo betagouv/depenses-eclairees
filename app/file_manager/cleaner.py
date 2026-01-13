@@ -1,5 +1,4 @@
 import logging
-import mimetypes
 import os
 import unicodedata
 import zipfile
@@ -7,7 +6,6 @@ from pathlib import Path
 import shutil
 import re
 
-import olefile
 import pandas as pd
 import hashlib
 from tqdm import tqdm
@@ -15,8 +13,7 @@ import magic
 
 from django.core.files.storage import default_storage
 
-from docia.file_processing.files_utils import get_corrected_extension
-from .utils_file_manager import extract_num_EJ
+from docia.file_processing.sync.files_utils import get_corrected_extension
 from app.utils import getDate
 from app.grist import post_new_data_to_grist, post_data_to_grist_multiple_keys
 from app.grist import URL_TABLE_ATTACHMENTS, URL_TABLE_ENGAGEMENTS, URL_TABLE_BATCH, API_KEY_GRIST
@@ -24,6 +21,24 @@ from app.data.db import bulk_create_batches, bulk_create_engagements, bulk_creat
 
 
 logger = logging.getLogger("docia." + __name__)
+
+
+def extract_num_EJ(filename: str) -> str:
+    """
+    Extrait les 10 premiers chiffres du nom du fichier et les convertit en int.
+
+    Args:
+        filename (str): Nom du fichier à analyser
+
+    Returns:
+        int: Les 10 premiers chiffres trouvés ou NaN si moins de 10 chiffres
+    """
+    # Extraire tous les chiffres du nom de fichier
+    m = re.search(r"^\d{10}", filename)
+    if m:
+        return m.group(0)
+    else:
+        raise ValueError(f"num_ej missing in filename {filename}")
 
 
 def unzip_all_files(source_dir, target_dir=None):

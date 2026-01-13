@@ -56,6 +56,7 @@ class Document(BaseModel):
     relevant_content = models.TextField(null=True, blank=True)  # noqa: DJ001
     is_embedded = models.BooleanField(null=True, blank=True)
     llm_response = models.JSONField(null=True, blank=True)
+    structured_data = models.JSONField(null=True, blank=True)
     json_error = models.CharField(null=True, blank=True)  # noqa: DJ001
     date_creation = models.DateField(null=True, blank=True)  # noqa: DJ001
     batch = models.CharField(null=True, blank=True)  # noqa: DJ001
