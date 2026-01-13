@@ -1,0 +1,14 @@
+# An .aiignore file follows the same syntax as a .gitignore file.
+# .gitignore documentation: https://git-scm.com/docs/gitignore
+
+.DS_Store
+*.log
+
+.env
+__pycache__
+/.idea/
+.~lock*
+/celerybeat-schedule
+/dump.rdb
+/notes.txt
+/tmp/
