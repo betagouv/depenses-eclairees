@@ -52,6 +52,9 @@ dev = [
     "pytest-responses",
     "pytest-ruff",
     "ruff",
+
+    # stubs
+    "pandas-stubs",
 ]
 
 
