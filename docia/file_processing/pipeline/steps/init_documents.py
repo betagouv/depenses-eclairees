@@ -7,9 +7,8 @@ from django.db.transaction import atomic
 from celery import group, shared_task
 
 from app.file_manager import cleaner as processor
-from docia.models import DataBatch, DataEngagement, Document
-
 from docia.file_processing.models import FileInfo
+from docia.models import DataBatch, DataEngagement, Document
 
 logger = logging.getLogger(__name__)
 

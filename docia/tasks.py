@@ -2,11 +2,14 @@ import logging
 
 from celery import shared_task
 
+from docia.file_processing.pipeline.steps import (
+    task_analyze_content,  # noqa: F401
+    task_extract_text,  # noqa: F401
+)
 from docia.file_processing.pipeline.steps.classification import task_classify_document  # noqa: F401
-from docia.file_processing.pipeline.steps import task_analyze_content  # noqa: F401
 from docia.file_processing.pipeline.steps.init_documents import task_chunk_init_documents  # noqa: F401
+
 from .file_processing.pipeline import task_launch_batch  # noqa: F401
-from docia.file_processing.pipeline.steps import task_extract_text  # noqa: F401
 
 logger = logging.getLogger(__name__)
 

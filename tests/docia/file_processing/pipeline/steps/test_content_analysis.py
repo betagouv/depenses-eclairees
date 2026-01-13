@@ -3,8 +3,8 @@ from unittest.mock import patch
 
 import pytest
 
-from docia.file_processing.pipeline.steps.content_analysis import task_analyze_content
 from docia.file_processing.models import ProcessDocumentStepType, ProcessingStatus
+from docia.file_processing.pipeline.steps.content_analysis import task_analyze_content
 from tests.factories.file_processing import ProcessDocumentStepFactory
 
 

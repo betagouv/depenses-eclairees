@@ -22,7 +22,9 @@ from tests.factories.file_processing import (
 
 @contextmanager
 def patch_extract_text():
-    with patch("docia.file_processing.pipeline.steps.text_extraction.ExtractTextStepRunner.process", autospec=True) as m:
+    with patch(
+        "docia.file_processing.pipeline.steps.text_extraction.ExtractTextStepRunner.process", autospec=True
+    ) as m:
         yield m
 
 
@@ -34,7 +36,9 @@ def patch_classify():
 
 @contextmanager
 def patch_extract_info():
-    with patch("docia.file_processing.pipeline.steps.content_analysis.AnalyzeContentStepRunner.process", autospec=True) as m:
+    with patch(
+        "docia.file_processing.pipeline.steps.content_analysis.AnalyzeContentStepRunner.process", autospec=True
+    ) as m:
         yield m
 
 

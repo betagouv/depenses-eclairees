@@ -3,9 +3,9 @@ from django.contrib.auth.models import Permission
 import pytest
 
 from docia.permissions import ALLOWED_BATCHES, ALLOWED_EJ_NUMBERS
+from docia.views import compute_ratio_data_extraction, format_ratio_to_percent
 from tests.factories.data import DataBatchFactory, DataEngagementFactory, DocumentFactory
 from tests.factories.users import UserFactory
-from docia.views import compute_ratio_data_extraction, format_ratio_to_percent
 
 
 def create_ej_and_document(**kwargs):

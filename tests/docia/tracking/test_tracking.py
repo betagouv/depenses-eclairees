@@ -5,8 +5,8 @@ import pytest
 from freezegun import freeze_time
 from rest_framework.test import APIClient
 
-from tests.factories.users import UserFactory
 from docia.tracking.models import TrackingEvent
+from tests.factories.users import UserFactory
 
 User = get_user_model()
 now = "2025-10-08T10:00:00+00:00"

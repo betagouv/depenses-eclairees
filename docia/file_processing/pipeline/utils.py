@@ -6,7 +6,12 @@ from django.db.models import Count
 from celery.result import GroupResult
 from tqdm.autonotebook import tqdm
 
-from docia.file_processing.models import ProcessDocumentBatch, ProcessDocumentStep, ProcessDocumentStepType, ProcessingStatus
+from docia.file_processing.models import (
+    ProcessDocumentBatch,
+    ProcessDocumentStep,
+    ProcessDocumentStepType,
+    ProcessingStatus,
+)
 
 logger = logging.getLogger(__name__)
 

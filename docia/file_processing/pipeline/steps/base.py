@@ -75,7 +75,7 @@ class AbstractStepRunner(ABC):
 
             # Finish batch if needed
             if not step.job.batch.job_set.filter(
-                    status__in=[ProcessingStatus.PENDING, ProcessingStatus.STARTED]
+                status__in=[ProcessingStatus.PENDING, ProcessingStatus.STARTED]
             ).exists():
                 if step.job.batch.job_set.filter(status=ProcessingStatus.FAILURE).exists():
                     step.job.batch.status = ProcessingStatus.FAILURE

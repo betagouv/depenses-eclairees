@@ -1,4 +1,2 @@
-
-
 class SkipStepException(Exception):
     pass

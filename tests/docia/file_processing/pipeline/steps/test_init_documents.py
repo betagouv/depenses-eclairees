@@ -3,8 +3,8 @@ from unittest.mock import patch
 
 import pytest
 
-from docia.file_processing.pipeline.steps.init_documents import get_files_info, init_documents_in_folder, listdir_chunk
 from docia.file_processing.models import FileInfo
+from docia.file_processing.pipeline.steps.init_documents import get_files_info, init_documents_in_folder, listdir_chunk
 from docia.models import DataBatch, DataEngagement
 from tests.factories.file_processing import FileInfoFactory
 

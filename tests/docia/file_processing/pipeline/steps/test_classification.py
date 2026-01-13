@@ -3,8 +3,8 @@ from unittest.mock import patch
 
 import pytest
 
-from docia.file_processing.pipeline.steps.classification import task_classify_document
 from docia.file_processing.models import ProcessDocumentStepType, ProcessingStatus
+from docia.file_processing.pipeline.steps.classification import task_classify_document
 from tests.factories.file_processing import ProcessDocumentStepFactory
 
 
