@@ -21,7 +21,7 @@ def patch_extract_info():
 @pytest.mark.django_db
 def test_task_extract_info():
     step = ProcessDocumentStepFactory(
-        step_type=ProcessDocumentStepType.INFO_EXTRACTION, job__document__classification="devis"
+        step_type=ProcessDocumentStepType.content_analysis, job__document__classification="devis"
     )
     with patch_extract_info():
         task_extract_info(step.id)
@@ -35,7 +35,7 @@ def test_task_extract_info():
 @pytest.mark.django_db
 def test_do_process_based_on_classification():
     step = ProcessDocumentStepFactory(
-        step_type=ProcessDocumentStepType.INFO_EXTRACTION,
+        step_type=ProcessDocumentStepType.CONTENT_ANALYSIS,
         job__batch__target_classifications=["kbis"],
         job__document__classification="kbis",
     )
@@ -52,7 +52,7 @@ def test_do_process_based_on_classification():
 @pytest.mark.django_db
 def test_skip_based_on_classification():
     step = ProcessDocumentStepFactory(
-        step_type=ProcessDocumentStepType.INFO_EXTRACTION,
+        step_type=ProcessDocumentStepType.CONTENT_ANALYSIS,
         job__batch__target_classifications=["kbis"],
         job__document__classification="devis",
     )
