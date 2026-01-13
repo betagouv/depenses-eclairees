@@ -5,7 +5,7 @@ import httpx
 import pytest
 from openai._base_client import SyncHttpxClientWrapper
 
-from docia.file_processing.llm import LLMApiError, LLMClient
+from docia.file_processing.llm.client import LLMApiError, LLMClient
 
 
 @pytest.mark.parametrize(

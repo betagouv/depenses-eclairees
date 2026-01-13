@@ -3,7 +3,7 @@ import hashlib
 
 import factory.fuzzy
 
-from docia.file_processing.content_analysis import SUPPORTED_DOCUMENT_TYPES
+from docia.file_processing.pipeline.steps.content_analysis import SUPPORTED_DOCUMENT_TYPES
 from docia.file_processing.models import (
     FileInfo,
     ProcessDocumentBatch,
@@ -11,7 +11,7 @@ from docia.file_processing.models import (
     ProcessDocumentStep,
     ProcessingStatus,
 )
-from docia.file_processing.pipeline import DEFAULT_PROCESS_STEPS
+from docia.file_processing.pipeline.pipeline import DEFAULT_PROCESS_STEPS
 from docia.tests.factories.data import DocumentFactory
 
 

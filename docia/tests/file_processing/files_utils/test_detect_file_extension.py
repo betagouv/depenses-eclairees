@@ -5,7 +5,7 @@ from unittest import mock
 
 import pytest
 
-from docia.file_processing.files_utils import detect_file_extension_from_content
+from docia.file_processing.sync.files_utils import detect_file_extension_from_content
 
 ASSETS_DIR = Path(__file__).resolve().parent / "assets"
 

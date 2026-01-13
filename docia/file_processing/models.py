@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from docia.common.models import BaseModel
 
-from .rategate.models import RateGateState  # noqa: F401
+from .llm.rategate.models import RateGateState  # noqa: F401
 
 
 class ProcessingStatus(models.TextChoices):

@@ -1,6 +1,6 @@
 import pytest
 
-from app.processor.post_processing_llm import post_processing_bank_account
+from docia.file_processing.processor.post_processing_llm import post_processing_bank_account
 
 
 def test_post_processing_bank_account_with_iban():

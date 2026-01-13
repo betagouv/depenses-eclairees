@@ -3,10 +3,10 @@ import sys
 
 from django.core.management.base import BaseCommand, CommandError
 
-from docia.file_processing.init_documents import init_documents_in_folder
+from docia.file_processing.pipeline.steps.init_documents import init_documents_in_folder
 from docia.file_processing.models import ProcessingStatus
 from docia.file_processing.pipeline import launch_batch
-from docia.file_processing.utils import display_batch_progress, display_group_progress, get_batch_progress
+from docia.file_processing.pipeline.utils import display_batch_progress, display_group_progress, get_batch_progress
 
 logger = logging.getLogger(__name__)
 

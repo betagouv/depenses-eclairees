@@ -1,4 +1,4 @@
-from app.processor.post_processing_llm import post_processing_bic
+from docia.file_processing.processor.post_processing_llm import post_processing_bic
 
 
 def test_post_processing_bic_valid_8_chars():

@@ -2,10 +2,10 @@ import logging
 
 from celery import shared_task
 
-from app.processor import analyze_content as processor
+from docia.file_processing.processor import analyze_content as processor
 
-from .models import ProcessDocumentStep
-from .utils import AbstractStepRunner, SkipStepException
+from docia.file_processing.models import ProcessDocumentStep
+from docia.file_processing.pipeline.steps.base import AbstractStepRunner, SkipStepException
 
 logger = logging.getLogger(__name__)
 

@@ -14,11 +14,11 @@ from django.utils import timezone
 from celery import chain, group, shared_task
 from celery.result import GroupResult
 
-from ..models import Document
-from .classification import task_classify_document
-from .content_analysis import SUPPORTED_DOCUMENT_TYPES, task_analyze_content
-from .init_documents import init_documents_in_folder
-from .models import (
+from docia.models import Document
+from docia.file_processing.pipeline.steps.classification import task_classify_document
+from docia.file_processing.pipeline.steps.content_analysis import SUPPORTED_DOCUMENT_TYPES, task_analyze_content
+from docia.file_processing.pipeline.steps.init_documents import init_documents_in_folder
+from docia.file_processing.models import (
     BATCH_STUCK_TIMEOUT,
     ProcessDocumentBatch,
     ProcessDocumentJob,
@@ -26,7 +26,7 @@ from .models import (
     ProcessDocumentStepType,
     ProcessingStatus,
 )
-from .text_extraction import task_extract_text
+from docia.file_processing.pipeline.steps.text_extraction import task_extract_text
 
 logger = logging.getLogger(__name__)
 

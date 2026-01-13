@@ -1,4 +1,4 @@
-from app.processor.extraction_text_from_attachments import extract_text_from_pdf
+from docia.file_processing.processor.extraction_text_from_attachments import extract_text_from_pdf
 
 from .utils import ASSETS_DIR, assert_similar_text
 

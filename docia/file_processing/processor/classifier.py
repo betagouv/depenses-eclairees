@@ -1,14 +1,15 @@
 import logging
 import pandas as pd
 import tqdm
+import re
+import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 
-from docia.file_processing.llm import LLMClient
-from .utils_file_manager import normalize_text
+from docia.file_processing.llm.client import LLMClient
 from app.utils import getDate
 from app.grist import update_records_in_grist
 from app.grist import URL_TABLE_ATTACHMENTS, API_KEY_GRIST
-from ..data.sql.sql import bulk_update_attachments
+from app.data.sql.sql import bulk_update_attachments
 
 
 logger = logging.getLogger("docia." + __name__)
@@ -497,3 +498,12 @@ DIC_CLASS_FILE_BY_NAME = {
         "description": "Avenant d'un 'Acte d'engagement' (autre document spécifique). L'avenant a souvent la même forme qu'un acte d'engagement et comprend 'avenant' dans son titre.."
     }
 }
+
+
+def normalize_text(text):
+    text = unicodedata.normalize("NFD", text)
+    text = "".join(char for char in text if unicodedata.category(char) != "Mn")
+    text = text.lower()
+    text = re.sub(r"[_\-]+", " ", text)  # remplace _ et - par espace
+    text = re.sub(r"[^a-z0-9\s]", "", text)  # supprime la ponctuation
+    return re.sub(r"\s+", " ", text)  # espaces multiples

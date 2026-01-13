@@ -3,15 +3,15 @@ from unittest.mock import patch
 
 import pytest
 
-from app.processor.extraction_text_from_attachments import UnsupportedFileType
+from docia.file_processing.processor.extraction_text_from_attachments import UnsupportedFileType
 from docia.file_processing.models import ProcessDocumentStepType, ProcessingStatus
-from docia.file_processing.text_extraction import task_extract_text
+from docia.file_processing.pipeline.steps.text_extraction import task_extract_text
 from docia.tests.factories.file_processing import ProcessDocumentStepFactory
 
 
 @contextmanager
 def patch_extract_text():
-    with patch("app.processor.extraction_text_from_attachments.process_file", autospec=True) as m:
+    with patch("docia.file_processing.processor.extraction_text_from_attachments.process_file", autospec=True) as m:
         m.return_value = ("Hello World", False, 2)
         yield m
 

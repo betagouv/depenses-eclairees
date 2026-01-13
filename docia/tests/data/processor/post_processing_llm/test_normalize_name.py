@@ -1,4 +1,4 @@
-from app.processor.post_processing_llm import normalize_name
+from docia.file_processing.processor.post_processing_llm import normalize_name
 
 
 def test_normalize_name_simple():

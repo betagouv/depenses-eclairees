@@ -3,14 +3,14 @@ from unittest.mock import patch
 
 import pytest
 
-from docia.file_processing.content_analysis import task_analyze_content
+from docia.file_processing.pipeline.steps.content_analysis import task_analyze_content
 from docia.file_processing.models import ProcessDocumentStepType, ProcessingStatus
 from docia.tests.factories.file_processing import ProcessDocumentStepFactory
 
 
 @contextmanager
 def patch_analyze_content():
-    with patch("app.processor.analyze_content.analyze_file_text", autospec=True) as m:
+    with patch("docia.file_processing.processor.analyze_content.analyze_file_text", autospec=True) as m:
         m.return_value = {
             "llm_response": {"nom": "Toto  ."},
             "structured_data": {"nom": "Toto"},

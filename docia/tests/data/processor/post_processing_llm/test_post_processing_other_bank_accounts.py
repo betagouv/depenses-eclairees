@@ -1,6 +1,6 @@
 import pytest
 
-from app.processor.post_processing_llm import post_processing_other_bank_accounts
+from docia.file_processing.processor.post_processing_llm import post_processing_other_bank_accounts
 
 
 def test_post_processing_other_bank_accounts_valid():

@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from docia.file_processing.init_documents import get_files_info, init_documents_in_folder, listdir_chunk
+from docia.file_processing.pipeline.steps.init_documents import get_files_info, init_documents_in_folder, listdir_chunk
 from docia.file_processing.models import FileInfo
 from docia.models import DataBatch, DataEngagement
 from docia.tests.factories.file_processing import FileInfoFactory
@@ -13,7 +13,7 @@ from docia.tests.factories.file_processing import FileInfoFactory
 def test_init_documents_in_folder():
     with (
         patch("django.core.files.storage.default_storage.listdir", autospec=True) as m_listdir,
-        patch("docia.file_processing.init_documents.get_files_info", autospec=True) as m_get_files_info,
+        patch("docia.file_processing.pipeline.steps.init_documents.get_files_info", autospec=True) as m_get_files_info,
     ):
         m_listdir.return_value = ([], ["doc1.pdf", "doc2.pdf"])
         file_info_1 = FileInfoFactory(filename="doc1.pdf", num_ej="ej1")
@@ -38,7 +38,7 @@ def test_init_documents_in_folder():
 def test_init_documents_in_folder_chunking(number_of_files, chunks, chunk_size):
     with (
         patch("django.core.files.storage.default_storage.listdir", autospec=True) as m_listdir,
-        patch("docia.file_processing.init_documents.get_files_info", autospec=True) as m_get_files_info,
+        patch("docia.file_processing.pipeline.steps.init_documents.get_files_info", autospec=True) as m_get_files_info,
     ):
         m_listdir.return_value = ([], [f"doc{i}.pdf" for i in range(1, number_of_files)])
         m_get_files_info.return_value = []
@@ -88,7 +88,7 @@ def test_get_files_info():
 
     with (
         patch("app.file_manager.cleaner.get_file_initial_info", autospec=True) as m_get_file_info,
-        patch("docia.file_processing.init_documents.listdir_chunk", autospec=True) as m_listdir,
+        patch("docia.file_processing.pipeline.steps.init_documents.listdir_chunk", autospec=True) as m_listdir,
     ):
         m_get_file_info.side_effect = mock_get_file_initial_info
         m_listdir.return_value = ["doc1.pdf", "doc2.pdf"]

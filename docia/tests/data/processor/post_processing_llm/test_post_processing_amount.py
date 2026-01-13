@@ -1,4 +1,4 @@
-from app.processor.post_processing_llm import post_processing_amount
+from docia.file_processing.processor.post_processing_llm import post_processing_amount
 
 
 def test_post_processing_amount_with_euro_symbol():

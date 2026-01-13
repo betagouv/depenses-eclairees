@@ -4,7 +4,7 @@ import random
 import pytest
 from PIL import Image, ImageEnhance, ImageFilter
 
-from app.processor.extraction_text_from_attachments import extract_text_from_image
+from docia.file_processing.processor.extraction_text_from_attachments import extract_text_from_image
 
 from .utils import ASSETS_DIR, assert_similar_text
 

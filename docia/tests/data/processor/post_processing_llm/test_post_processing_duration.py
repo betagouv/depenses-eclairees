@@ -1,6 +1,6 @@
 import pytest
 
-from app.processor.post_processing_llm import post_processing_duration
+from docia.file_processing.processor.post_processing_llm import post_processing_duration
 
 
 def test_post_processing_duration_valid():

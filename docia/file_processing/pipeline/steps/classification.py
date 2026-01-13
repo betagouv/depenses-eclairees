@@ -2,11 +2,11 @@ import logging
 
 from celery import shared_task
 
-from app.file_manager import DIC_CLASS_FILE_BY_NAME
-from app.file_manager import classifier as processor
+from docia.file_processing.processor.classifier import DIC_CLASS_FILE_BY_NAME
+from docia.file_processing.processor import classifier as processor
 
-from .models import ProcessDocumentStep
-from .utils import AbstractStepRunner
+from docia.file_processing.models import ProcessDocumentStep
+from docia.file_processing.pipeline.steps.base import AbstractStepRunner
 
 logger = logging.getLogger(__name__)
 

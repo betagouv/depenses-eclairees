@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from tqdm import tqdm
 
-from docia.file_processing.llm import LLMClient
+from ..llm.client import LLMClient
 from .attributes_query import select_attr, ATTRIBUTES
 from .post_processing_llm import clean_llm_response
 

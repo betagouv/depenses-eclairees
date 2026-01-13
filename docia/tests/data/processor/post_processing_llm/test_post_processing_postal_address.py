@@ -1,6 +1,6 @@
 import pytest
 
-from app.processor.post_processing_llm import post_processing_postal_address
+from docia.file_processing.processor.post_processing_llm import post_processing_postal_address
 
 
 def test_post_processing_postal_address_valid():

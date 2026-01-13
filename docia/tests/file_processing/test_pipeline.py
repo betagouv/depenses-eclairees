@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from docia.file_processing.models import ProcessDocumentStep, ProcessDocumentStepType, ProcessingStatus
-from docia.file_processing.pipeline import (
+from docia.file_processing.pipeline.pipeline import (
     cancel_batch,
     close_and_retry_stuck_batches,
     launch_batch,
@@ -22,19 +22,19 @@ from docia.tests.factories.file_processing import (
 
 @contextmanager
 def patch_extract_text():
-    with patch("docia.file_processing.text_extraction.ExtractTextStepRunner.process", autospec=True) as m:
+    with patch("docia.file_processing.pipeline.steps.text_extraction.ExtractTextStepRunner.process", autospec=True) as m:
         yield m
 
 
 @contextmanager
 def patch_classify():
-    with patch("docia.file_processing.classification.ClassifyStepRunner.process", autospec=True) as m:
+    with patch("docia.file_processing.pipeline.steps.classification.ClassifyStepRunner.process", autospec=True) as m:
         yield m
 
 
 @contextmanager
 def patch_extract_info():
-    with patch("docia.file_processing.content_analysis.AnalyzeContentStepRunner.process", autospec=True) as m:
+    with patch("docia.file_processing.pipeline.steps.content_analysis.AnalyzeContentStepRunner.process", autospec=True) as m:
         yield m
 
 
@@ -232,8 +232,8 @@ def test_close_and_retry_stuck_batches():
     batch = ProcessDocumentBatchFactory(status=ProcessingStatus.STARTED)
     ProcessDocumentStepFactory(job__batch=batch, finished_at="2024-01-01")
     with (
-        patch("docia.file_processing.pipeline.retry_batch_failures", autospec=True) as m_retry,
-        patch("docia.file_processing.pipeline.cancel_batch", autospec=True) as m_cancel,
+        patch("docia.file_processing.pipeline.pipeline.retry_batch_failures", autospec=True) as m_retry,
+        patch("docia.file_processing.pipeline.pipeline.cancel_batch", autospec=True) as m_cancel,
     ):
         new_batch = ProcessDocumentBatchFactory()
         m_retry.return_value = (new_batch, mock.Mock())

@@ -9,7 +9,7 @@ from celery import group, shared_task
 from app.file_manager import cleaner as processor
 from docia.models import DataBatch, DataEngagement, Document
 
-from .models import FileInfo
+from docia.file_processing.models import FileInfo
 
 logger = logging.getLogger(__name__)
 

@@ -4,8 +4,8 @@ from unittest.mock import patch
 import pytest
 from freezegun import freeze_time
 
-from docia.file_processing.rategate.gate import RateGate
-from docia.file_processing.rategate.models import RateGateState
+from docia.file_processing.llm.rategate.gate import RateGate
+from docia.file_processing.llm.rategate.models import RateGateState
 
 
 @pytest.fixture
@@ -25,7 +25,7 @@ def frozen_datetime():
 @pytest.fixture
 def mock_pg_clock(frozen_datetime):
     """Mock the pg_clock_timestamp function to return a fixed time"""
-    with patch("docia.file_processing.rategate.gate.pg_clock_timestamp") as mock:
+    with patch("docia.file_processing.llm.rategate.gate.pg_clock_timestamp") as mock:
         mock.return_value = frozen_datetime
         yield mock
 
@@ -210,7 +210,7 @@ def test_with_freezegun():
     # Use freezegun to set the time
     frozen_now = datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
-    with patch("docia.file_processing.rategate.gate.pg_clock_timestamp", autospec=True) as mock_pg_clock:
+    with patch("docia.file_processing.llm.rategate.gate.pg_clock_timestamp", autospec=True) as mock_pg_clock:
         with freeze_time(frozen_now):
             # Mock pg_clock_timestamp to return the freezegun time
             mock_pg_clock.return_value = frozen_now

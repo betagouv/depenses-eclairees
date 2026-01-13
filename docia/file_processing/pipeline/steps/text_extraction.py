@@ -2,11 +2,11 @@ import logging
 
 from celery import shared_task
 
-from app.processor import extraction_text_from_attachments as processor
-from app.processor.extraction_text_from_attachments import UnsupportedFileType
-
-from .models import ProcessDocumentStep, ProcessingStatus
-from .utils import AbstractStepRunner, SkipStepException
+from docia.file_processing.pipeline.steps.exceptions import SkipStepException
+from docia.file_processing.processor import extraction_text_from_attachments as processor
+from docia.file_processing.processor.extraction_text_from_attachments import UnsupportedFileType
+from docia.file_processing.models import ProcessDocumentStep, ProcessingStatus
+from docia.file_processing.pipeline.steps.base import AbstractStepRunner
 
 logger = logging.getLogger(__name__)
 

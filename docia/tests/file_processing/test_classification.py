@@ -3,14 +3,14 @@ from unittest.mock import patch
 
 import pytest
 
-from docia.file_processing.classification import task_classify_document
+from docia.file_processing.pipeline.steps.classification import task_classify_document
 from docia.file_processing.models import ProcessDocumentStepType, ProcessingStatus
 from docia.tests.factories.file_processing import ProcessDocumentStepFactory
 
 
 @contextmanager
 def patch_classify():
-    with patch("app.file_manager.classifier.classify_file_with_llm", autospec=True) as m:
+    with patch("docia.file_processing.processor.classifier.classify_file_with_llm", autospec=True) as m:
         m.return_value = "kbis"
         yield m
 

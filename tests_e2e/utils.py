@@ -2,9 +2,9 @@ import re
 
 import pandas as pd
 
-from app.processor.analyze_content import df_analyze_content
-from app.processor.attributes_query import ATTRIBUTES
-from app.processor.post_processing_llm import clean_llm_response
+from docia.file_processing.processor.analyze_content import df_analyze_content
+from docia.file_processing.processor import ATTRIBUTES
+from docia.file_processing.processor.post_processing_llm import clean_llm_response
 
 
 def normalize_string(s):

@@ -8,7 +8,7 @@ from django.conf import settings
 import httpx
 from openai import APIStatusError, OpenAI
 
-from docia.file_processing.rategate.gate import RateGate
+from docia.file_processing.llm.rategate.gate import RateGate
 
 logger = logging.getLogger(__name__)
 

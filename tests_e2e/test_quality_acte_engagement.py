@@ -13,7 +13,7 @@ sys.path.append(".")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
 django.setup()
 
-from app.processor.analyze_content import LLMClient  # noqa: E402
+from docia.file_processing.processor.analyze_content import LLMClient  # noqa: E402
 from tests_e2e.utils import (  # noqa: E402
     analyze_content_quality_test,
     check_global_statistics,

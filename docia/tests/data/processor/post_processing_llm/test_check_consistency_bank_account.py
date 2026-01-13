@@ -1,4 +1,4 @@
-from app.processor.post_processing_llm import check_consistency_iban
+from docia.file_processing.processor.post_processing_llm import check_consistency_iban
 
 
 def test_check_consistency_iban_valid_iban():

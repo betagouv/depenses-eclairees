@@ -1,4 +1,4 @@
-from app.processor.post_processing_llm import post_processing_siret
+from docia.file_processing.processor.post_processing_llm import post_processing_siret
 
 
 def test_post_processing_siret_valid():
