@@ -340,9 +340,9 @@ SHELL_AUTO_IMPORTS = [
     "datetime",
     ("pprint", ("pprint",)),
     ("docia", ("tasks", "models")),
-    ("docia.file_processing.init_documents", ("init_documents_in_folder",)),
+    ("docia.file_processing.pipeline.steps.init_documents", ("init_documents_in_folder",)),
     (
-        "docia.file_processing.pipeline",
+        "docia.file_processing.pipeline.pipeline",
         (
             "launch_batch",
             "init_documents_and_launch_batch",
@@ -351,7 +351,7 @@ SHELL_AUTO_IMPORTS = [
             "close_and_retry_stuck_batches",
         ),
     ),
-    ("docia.file_processing.utils", "*"),
+    ("docia.file_processing.pipeline.utils", "*"),
 ]
 
 
