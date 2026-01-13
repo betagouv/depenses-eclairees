@@ -12,8 +12,8 @@ from docia.file_processing.pipeline.pipeline import (
     retry_batch_failures,
 )
 from docia.models import Document
-from docia.tests.factories.data import DocumentFactory
-from docia.tests.factories.file_processing import (
+from tests.factories.data import DocumentFactory
+from tests.factories.file_processing import (
     ProcessDocumentBatchFactory,
     ProcessDocumentJobFactory,
     ProcessDocumentStepFactory,

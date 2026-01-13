@@ -12,7 +12,7 @@ from docia.file_processing.models import (
     ProcessingStatus,
 )
 from docia.file_processing.pipeline.pipeline import DEFAULT_PROCESS_STEPS
-from docia.tests.factories.data import DocumentFactory
+from tests.factories.data import DocumentFactory
 
 
 class ProcessDocumentBatchFactory(factory.django.DjangoModelFactory):

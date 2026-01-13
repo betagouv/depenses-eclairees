@@ -6,7 +6,7 @@ import pandas as pd
 
 from app.data.db import bulk_create_attachments, bulk_create_batches, bulk_create_engagements
 from docia.models import DataBatch, DataEngagement, Document
-from docia.tests.factories.data import DataBatchFactory, DataEngagementFactory
+from tests.factories.data import DataBatchFactory, DataEngagementFactory
 
 
 @pytest.mark.django_db

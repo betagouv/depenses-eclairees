@@ -4,7 +4,7 @@ import pytest
 from freezegun import freeze_time
 
 from docia.file_processing.models import BATCH_STUCK_TIMEOUT, ProcessDocumentBatch, ProcessingStatus
-from docia.tests.factories.file_processing import (
+from tests.factories.file_processing import (
     ProcessDocumentBatchFactory,
     ProcessDocumentJobFactory,
     ProcessDocumentStepFactory,

@@ -6,7 +6,7 @@ import pytest
 from docia.file_processing.processor.extraction_text_from_attachments import UnsupportedFileType
 from docia.file_processing.models import ProcessDocumentStepType, ProcessingStatus
 from docia.file_processing.pipeline.steps.text_extraction import task_extract_text
-from docia.tests.factories.file_processing import ProcessDocumentStepFactory
+from tests.factories.file_processing import ProcessDocumentStepFactory
 
 
 @contextmanager

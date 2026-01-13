@@ -5,7 +5,7 @@ import pytest
 from freezegun import freeze_time
 from rest_framework.test import APIClient
 
-from docia.tests.factories.users import UserFactory
+from tests.factories.users import UserFactory
 from docia.tracking.models import TrackingEvent
 
 User = get_user_model()

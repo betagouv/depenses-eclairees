@@ -37,7 +37,7 @@ brew install tesseract # ocr (pytesseract)
 
 ## Run tests
 
-pytest --no-migrations docia
+pytest --no-migrations tests
 
 
 ## Run linter / formatter

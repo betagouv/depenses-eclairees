@@ -6,7 +6,7 @@ import pytest
 from docia.file_processing.pipeline.steps.init_documents import get_files_info, init_documents_in_folder, listdir_chunk
 from docia.file_processing.models import FileInfo
 from docia.models import DataBatch, DataEngagement
-from docia.tests.factories.file_processing import FileInfoFactory
+from tests.factories.file_processing import FileInfoFactory
 
 
 @pytest.mark.django_db

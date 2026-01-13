@@ -2,7 +2,7 @@ import pytest
 
 from docia.file_processing.models import ProcessDocumentStepType, ProcessingStatus
 from docia.file_processing.pipeline.utils import get_batch_progress
-from docia.tests.factories.file_processing import ProcessDocumentBatchFactory, ProcessDocumentJobFactory
+from tests.factories.file_processing import ProcessDocumentBatchFactory, ProcessDocumentJobFactory
 
 
 @pytest.mark.django_db

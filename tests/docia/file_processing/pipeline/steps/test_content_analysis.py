@@ -5,7 +5,7 @@ import pytest
 
 from docia.file_processing.pipeline.steps.content_analysis import task_analyze_content
 from docia.file_processing.models import ProcessDocumentStepType, ProcessingStatus
-from docia.tests.factories.file_processing import ProcessDocumentStepFactory
+from tests.factories.file_processing import ProcessDocumentStepFactory
 
 
 @contextmanager

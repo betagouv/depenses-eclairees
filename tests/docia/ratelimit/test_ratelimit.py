@@ -5,7 +5,7 @@ from freezegun import freeze_time
 
 from docia.ratelimit.models import RateLimitCount
 from docia.ratelimit.services import check_rate_limit, check_rate_limit_for_user
-from docia.tests.factories.users import UserFactory
+from tests.factories.users import UserFactory
 
 now = "2025-10-08T10:00:00+00:00"
 now_plus_1h = "2025-10-08T11:00:00+00:00"
