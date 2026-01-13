@@ -24,7 +24,7 @@ SUPPORTED_DOCUMENT_TYPES = [
 ]
 
 
-class ExtractDataStepRunner(AbstractStepRunner):
+class AnalyzeContentStepRunner(AbstractStepRunner):
     def process(self, step: ProcessDocumentStep):
         document = step.job.document
 
@@ -40,11 +40,11 @@ class ExtractDataStepRunner(AbstractStepRunner):
         )
         document.llm_response = result["llm_response"]
         document.json_error = result["json_error"]
-        document.structured_data = result["extracted_data"]
-        document.save(update_fields=["llm_response", "json_error"])
+        document.structured_data = result["structured_data"]
+        document.save(update_fields=["llm_response", "structured_data", "json_error"])
 
 
-@shared_task(name="docia.extract_data")
-def task_extract_data(step_id: str):
-    runner = ExtractDataStepRunner()
+@shared_task(name="docia.analyse_content")
+def task_analyze_content(step_id: str):
+    runner = AnalyzeContentStepRunner()
     return runner.run(step_id)

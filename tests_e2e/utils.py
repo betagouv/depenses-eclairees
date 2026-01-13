@@ -48,7 +48,7 @@ def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, mult
     # Fusion des résultats avec les valeurs de référence
     # Pour éviter le produit cartésien lorsque filename est dupliqué, on utilise l'index
     # Les deux dataframes ont le même nombre de lignes et le même ordre
-    df_result_reset = df_result[["filename", "extracted_data"]].reset_index(drop=True)
+    df_result_reset = df_result[["filename", "llm_response", "structured_data"]].reset_index(drop=True)
     df_test_reset = df_test.reset_index(drop=True)
 
     # Ajout d'un identifiant unique basé sur l'index pour le merge
@@ -78,7 +78,7 @@ def check_quality_one_field(df_merged, col_to_test, comparison_func):
     for idx, row in df_merged.iterrows():
         filename = row.get("filename", "unknown")
 
-        llm_data = row.get("extracted_data", None)
+        llm_data = row.get("structured_data", None)
 
         # Extraire les valeurs
         ref_val = row.get(col_to_test, None)
@@ -117,7 +117,7 @@ def check_quality_one_row(df_merged, row_idx_to_test, comparison_functions, excl
         print(f"Comparaison pour la ligne {row_idx_to_test} (fichier: {filename})")
         print(f"{'=' * 80}\n")
 
-        llm_data = row.get("extracted_data", None)
+        llm_data = row.get("structured_data", None)
 
         # Comparer toutes les colonnes (sauf exclues)
         for col in comparison_functions.keys():
@@ -193,9 +193,9 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
                 ocr_errors_count += 1
                 pbm_ocr = True
 
-            extracted_data = row.get("extracted_data", None)
-            if extracted_data is None or pd.isna(extracted_data):
-                errors.append(f"{filename}: extracted_data is None or NaN")
+            structured_data = row.get("structured_data", None)
+            if structured_data is None or pd.isna(structured_data):
+                errors.append(f"{filename}: structured_data is None or NaN")
                 matches.append(False)
                 # Si pas de problème OCR, on compte aussi dans matches_no_ocr
                 if not pbm_ocr:
@@ -204,7 +204,7 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
 
             # Extraire les valeurs
             ref_val = row.get(col, None)
-            llm_val = extracted_data.get(col, None)
+            llm_val = structured_data.get(col, None)
 
             # Comparer les valeurs
             try:

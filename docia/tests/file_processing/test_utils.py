@@ -19,7 +19,7 @@ def test_get_batch_progress():
         "steps": {
             ProcessDocumentStepType.TEXT_EXTRACTION: {"progress": 0, "errors": 0, "skipped": 0, "total": 0},
             ProcessDocumentStepType.CLASSIFICATION: {"progress": 0, "errors": 0, "skipped": 0, "total": 0},
-            ProcessDocumentStepType.INFO_EXTRACTION: {"progress": 0, "errors": 0, "skipped": 0, "total": 0},
+            ProcessDocumentStepType.CONTENT_ANALYSIS: {"progress": 0, "errors": 0, "skipped": 0, "total": 0},
         },
     }
 

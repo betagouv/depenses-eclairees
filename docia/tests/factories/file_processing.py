@@ -3,7 +3,7 @@ import hashlib
 
 import factory.fuzzy
 
-from docia.file_processing.info_extraction import SUPPORTED_DOCUMENT_TYPES
+from docia.file_processing.content_analysis import SUPPORTED_DOCUMENT_TYPES
 from docia.file_processing.models import (
     FileInfo,
     ProcessDocumentBatch,

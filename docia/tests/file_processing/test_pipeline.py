@@ -34,7 +34,7 @@ def patch_classify():
 
 @contextmanager
 def patch_extract_info():
-    with patch("docia.file_processing.info_extraction.ExtractInfoStepRunner.process", autospec=True) as m:
+    with patch("docia.file_processing.content_analysis.AnalyzeContentStepRunner.process", autospec=True) as m:
         yield m
 
 
@@ -66,7 +66,7 @@ def test_batch():
         expected_steps = [
             (1, ProcessDocumentStepType.TEXT_EXTRACTION),
             (2, ProcessDocumentStepType.CLASSIFICATION),
-            (3, ProcessDocumentStepType.INFO_EXTRACTION),
+            (3, ProcessDocumentStepType.CONTENT_ANALYSIS),
         ]
         actual_step_types = [(step.order, step.step_type) for step in steps]
         assert actual_step_types == expected_steps

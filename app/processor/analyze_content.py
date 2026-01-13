@@ -95,7 +95,7 @@ def df_analyze_content(df: pd.DataFrame,
     """
     dfResult = df.copy()
     dfResult['llm_response'] = None
-    dfResult['extracted_data'] = None
+    dfResult['structured_data'] = None
     dfResult['json_error'] = None
 
     for attr in df_attributes.attribut:
@@ -117,7 +117,7 @@ def df_analyze_content(df: pd.DataFrame,
         except Exception as e:
             result = {
                 'llm_response': None,
-                'extracted_data': None,
+                'structured_data': None,
                 'json_error': f"Erreur lors de l'analyse: {str(e)}"
             }
             logger.exception(f"Erreur lors de l'analyse du fichier {row['filename']}: {e}")
@@ -159,7 +159,7 @@ def analyze_file_text(text: str, document_type: str, llm_model: str = 'albert-la
 
     return {
         "llm_response": response,
-        "extracted_data": data,
+        "structured_data": data,
         "json_error": None,
     }
 

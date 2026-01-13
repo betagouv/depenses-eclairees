@@ -101,7 +101,7 @@ def get_batch_progress_per_step(batch):
     for step_type in [
         ProcessDocumentStepType.TEXT_EXTRACTION,
         ProcessDocumentStepType.CLASSIFICATION,
-        ProcessDocumentStepType.INFO_EXTRACTION,
+        ProcessDocumentStepType.CONTENT_ANALYSIS,
     ]:
         step_counters[step_type] = {
             "progress": 0,
@@ -184,9 +184,9 @@ def display_batch_progress(batch_id: str):
         ) as pbar_classification,
         tqdm(
             desc="info extraction",
-            total=progress["steps"][ProcessDocumentStepType.INFO_EXTRACTION]["total"],
+            total=progress["steps"][ProcessDocumentStepType.CONTENT_ANALYSIS]["total"],
             position=3,
-        ) as pbar_info_extraction,
+        ) as pbar_content_analysis,
     ):
         while True:
             progress = get_batch_progress(batch_id)
@@ -202,10 +202,10 @@ def display_batch_progress(batch_id: str):
                 errors=progress["steps"][ProcessDocumentStepType.CLASSIFICATION]["errors"],
                 skipped=progress["steps"][ProcessDocumentStepType.CLASSIFICATION]["skipped"],
             )
-            pbar_info_extraction.n = progress["steps"][ProcessDocumentStepType.INFO_EXTRACTION]["progress"]
-            pbar_info_extraction.set_postfix(
-                errors=progress["steps"][ProcessDocumentStepType.INFO_EXTRACTION]["errors"],
-                skipped=progress["steps"][ProcessDocumentStepType.INFO_EXTRACTION]["skipped"],
+            pbar_content_analysis.n = progress["steps"][ProcessDocumentStepType.CONTENT_ANALYSIS]["progress"]
+            pbar_content_analysis.set_postfix(
+                errors=progress["steps"][ProcessDocumentStepType.CONTENT_ANALYSIS]["errors"],
+                skipped=progress["steps"][ProcessDocumentStepType.CONTENT_ANALYSIS]["skipped"],
             )
             if progress["status"] in [ProcessingStatus.SUCCESS, ProcessingStatus.FAILURE, ProcessingStatus.CANCELLED]:
                 break

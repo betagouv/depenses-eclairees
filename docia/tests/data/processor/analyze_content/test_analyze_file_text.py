@@ -15,6 +15,6 @@ def test_analyze_file_text():
         r = analyze_file_text("Hello World", document_type="kbis")
         assert r == {
             "llm_response": data,
-            "extracted_data": data,
+            "structured_data": data,
             "json_error": None,
         }

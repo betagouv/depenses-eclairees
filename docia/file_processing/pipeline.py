@@ -16,7 +16,7 @@ from celery.result import GroupResult
 
 from ..models import Document
 from .classification import task_classify_document
-from .info_extraction import SUPPORTED_DOCUMENT_TYPES, task_extract_info
+from .content_analysis import SUPPORTED_DOCUMENT_TYPES, task_analyze_content
 from .init_documents import init_documents_in_folder
 from .models import (
     BATCH_STUCK_TIMEOUT,
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_PROCESS_STEPS = [
     ProcessDocumentStepType.TEXT_EXTRACTION,
     ProcessDocumentStepType.CLASSIFICATION,
-    ProcessDocumentStepType.INFO_EXTRACTION,
+    ProcessDocumentStepType.CONTENT_ANALYSIS,
 ]
 
 
@@ -173,8 +173,8 @@ def task_from_step_type(step_type: ProcessDocumentStepType):
         return task_extract_text
     elif step_type == ProcessDocumentStepType.CLASSIFICATION:
         return task_classify_document
-    elif step_type == ProcessDocumentStepType.INFO_EXTRACTION:
-        return task_extract_info
+    elif step_type == ProcessDocumentStepType.CONTENT_ANALYSIS:
+        return task_analyze_content
     else:
         raise ValueError(f"Unknown step type {step_type}")
 
