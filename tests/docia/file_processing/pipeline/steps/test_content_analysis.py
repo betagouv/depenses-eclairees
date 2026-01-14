@@ -24,6 +24,7 @@ def test_task_analyze_content():
     step = ProcessDocumentStepFactory(
         step_type=ProcessDocumentStepType.CONTENT_ANALYSIS, job__document__classification="devis"
     )
+    last_updated_at = step.job.document.updated_at
     with patch_analyze_content():
         task_analyze_content(step.id)
     step.refresh_from_db()
@@ -32,6 +33,7 @@ def test_task_analyze_content():
     assert step.job.document.llm_response == {"nom": "Toto  ."}
     assert step.job.document.structured_data == {"nom": "Toto"}
     assert step.job.document.json_error is None
+    assert step.job.document.updated_at > last_updated_at
 
 
 @pytest.mark.django_db

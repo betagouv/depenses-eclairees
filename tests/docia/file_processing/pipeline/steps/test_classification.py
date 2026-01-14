@@ -18,6 +18,7 @@ def patch_classify():
 @pytest.mark.django_db
 def test_task_classification():
     step = ProcessDocumentStepFactory(step_type=ProcessDocumentStepType.CLASSIFICATION)
+    last_updated_at = step.job.document.updated_at
     with patch_classify():
         task_classify_document(step.id)
     step.refresh_from_db()
@@ -25,3 +26,4 @@ def test_task_classification():
     assert step.error == ""
     assert step.job.document.classification == "kbis"
     assert step.job.document.classification_type == "llm"
+    assert step.job.document.updated_at > last_updated_at

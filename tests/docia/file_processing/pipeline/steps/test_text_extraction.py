@@ -19,6 +19,7 @@ def patch_extract_text():
 @pytest.mark.django_db
 def test_task_extract_info():
     step = ProcessDocumentStepFactory(step_type=ProcessDocumentStepType.TEXT_EXTRACTION)
+    last_updated_at = step.job.document.updated_at
     with patch_extract_text():
         task_extract_text(step.id)
     step.refresh_from_db()
@@ -27,6 +28,7 @@ def test_task_extract_info():
     assert step.job.document.text == "Hello World"
     assert not step.job.document.is_ocr
     assert step.job.document.nb_mot == 2
+    assert step.job.document.updated_at > last_updated_at
 
 
 @pytest.mark.django_db
