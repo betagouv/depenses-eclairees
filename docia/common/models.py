@@ -33,10 +33,10 @@ class BaseModel(models.Model):
     def save(
         self,
         *,
-        force_insert = False,
-        force_update = False,
-        using = None,
-        update_fields = None,
+        force_insert=False,
+        force_update=False,
+        using=None,
+        update_fields=None,
     ):
         """
         Overrides the default save method to ensure the 'updated_at' field is always updated
@@ -61,10 +61,10 @@ class BaseModel(models.Model):
             elif "updated_at" not in update_fields:
                 update_fields.append("updated_at")
         return super().save(
-            force_insert = force_insert,
-            force_update = force_update,
-            using = None,
-            update_fields = update_fields,
+            force_insert=force_insert,
+            force_update=force_update,
+            using=None,
+            update_fields=update_fields,
         )
 
 

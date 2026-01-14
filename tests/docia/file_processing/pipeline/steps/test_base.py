@@ -27,7 +27,7 @@ def _test_skip(step, caplog):
     runner = DummyStepRunner()
     with (
         mock.patch.object(runner, "process", return_value=ProcessingStatus.FAILURE, autospec=True) as m,
-        caplog.at_level(logging.INFO, logger="docia")
+        caplog.at_level(logging.INFO, logger="docia"),
     ):
         runner.run(step.id)
         m.assert_not_called()
@@ -65,7 +65,7 @@ def test_skip_if_job_cancelled(caplog):
         ProcessingStatus.SUCCESS,
         ProcessingStatus.FAILURE,
         ProcessingStatus.SKIPPED,
-    ]
+    ],
 )
 @pytest.mark.django_db
 def test_skip_if_job_already_processed(status, caplog):
