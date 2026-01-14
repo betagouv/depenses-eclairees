@@ -140,3 +140,81 @@ def test_format_ratio_to_percent():
     # Small values are rounded properly
     assert format_ratio_to_percent(0.01) == "1%"
     assert format_ratio_to_percent(0.001) == "0%"  # Rounds to 0
+
+
+@pytest.mark.django_db
+def test_acte_engagement(client):
+    ej, doc = create_ej_and_document()
+    doc.classification = "acte_engagement"
+    doc.structured_data = {
+        "duree": {
+            "duree_initiale": 12,
+            "nb_reconductions": None,
+            "duree_reconduction": None,
+            "delai_tranche_optionnelle": 24,
+        },
+        "montant_ht": "40123.50",
+        "montant_ttc": "60123.50",
+        "rib_autres": [
+            {
+                "societe": "[[rib_autres.0.societe]]",
+                "rib": {"banque": "[[rib_autres.0.rib.banque]]", "iban": "[[rib_autres.0.rib.iban]]"},
+            },
+            {
+                "societe": "[[rib_autres.1.societe]]",
+                "rib": {"banque": "[[rib_autres.1.rib.banque]]", "iban": "[[rib_autres.1.rib.iban]]"},
+            },
+        ],
+        "cotraitants": [
+            {"nom": "[[cotraitants.0.nom]]", "siret": "[[cotraitants.0.siret]]"},
+            {"nom": "[[cotraitants.1.nom]]", "siret": "[[cotraitants.1.siret]]"},
+        ],
+        "sous_traitants": [
+            {"nom": "[[sous_traitants.0.nom]]", "siret": "[[sous_traitants.0.siret]]"},
+            {"nom": "[[sous_traitants.1.nom]]", "siret": "[[sous_traitants.1.siret]]"},
+        ],
+        "lot_concerne": "[[lot_concerne]]",
+        "objet_marche": "[[objet_marche]]",
+        "rib_mandataire": {"iban": "[[rib_mandataire.iban]]", "banque": "[[rib_mandataire.banque]]"},
+        "siren_mandataire": "[[siren_mandataire]]",
+        "siret_mandataire": "[[siret_mandataire]]",
+        "date_notification": "[[date_notification]]",
+        "societe_principale": "[[societe_principale]]",
+        "date_signature_mandataire": "[[date_signature_mandataire]]",
+        "administration_beneficiaire": "[[administration_beneficiaire]]",
+        "date_signature_administration": "[[date_signature_administration]]",
+    }
+    doc.save()
+    user = UserFactory(is_superuser=True)
+    client.force_login(user)
+    response = client.get(f"/?num_ej={ej.num_ej}")
+    assert response.status_code == 200
+    with open("/tmp/toto.html", "w") as f:
+        f.write(response.text)
+    assert "[[rib_autres.0.societe]]" in response.text
+    assert "[[rib_autres.0.rib.banque]]" in response.text
+    assert "[[rib_autres.0.rib.iban]]" in response.text
+    assert "[[rib_autres.1.societe]]" in response.text
+    assert "[[rib_autres.1.rib.banque]]" in response.text
+    assert "[[rib_autres.1.rib.iban]]" in response.text
+    assert "[[cotraitants.0.nom]]" in response.text
+    assert "[[cotraitants.0.siret]]" in response.text
+    assert "[[cotraitants.1.nom]]" in response.text
+    assert "[[cotraitants.1.siret]]" in response.text
+    assert "[[sous_traitants.0.nom]]" in response.text
+    assert "[[sous_traitants.0.siret]]" in response.text
+    assert "[[sous_traitants.1.nom]]" in response.text
+    assert "[[sous_traitants.1.siret]]" in response.text
+    assert "[[lot_concerne]]" in response.text
+    assert "[[objet_marche]]" in response.text
+    assert "[[rib_mandataire.iban]]" in response.text
+    assert "[[rib_mandataire.banque]]" in response.text
+    assert "[[siren_mandataire]]" in response.text
+    assert "[[siret_mandataire]]" in response.text
+    assert "[[date_notification]]" in response.text
+    assert "[[societe_principale]]" in response.text
+    assert "[[date_signature_mandataire]]" in response.text
+    assert "[[administration_beneficiaire]]" in response.text
+    assert "[[date_signature_administration]]" in response.text
+    assert "40123.50" in response.text  # Montant total ht
+    assert "60123.50" in response.text  # Montant total ttc
