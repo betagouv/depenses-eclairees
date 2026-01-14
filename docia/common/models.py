@@ -30,6 +30,43 @@ class BaseModel(models.Model):
     class Meta:
         abstract = True
 
+    def save(
+        self,
+        *,
+        force_insert = False,
+        force_update = False,
+        using = None,
+        update_fields = None,
+    ):
+        """
+        Overrides the default save method to ensure the 'updated_at' field is always updated
+        unless explicitly excluded.
+
+        Args:
+            force_insert (bool): If True, forces the creation of a new record.
+            force_update (bool): If True, forces the update of an existing record.
+            using (str): The database alias to use for the query.
+            update_fields (list): The list of fields to update. If provided, only these fields
+                                 will be updated. If 'updated_at' is not in the list, it will
+                                 be added unless explicitly excluded with '-updated_at'.
+
+        Returns:
+            None
+        """
+        if update_fields:
+            # Remove '-updated_at' from update_fields if present to allow updating 'updated_at'
+            if "-updated_at" in update_fields:
+                update_fields.remove("-updated_at")
+            # Add 'updated_at' to update_fields if not already present to ensure it's updated
+            elif "updated_at" not in update_fields:
+                update_fields.append("updated_at")
+        return super().save(
+            force_insert = force_insert,
+            force_update = force_update,
+            using = None,
+            update_fields = update_fields,
+        )
+
 
 class UserManager(auth_models.UserManager):
     """Custom manager for User model with additional methods."""
