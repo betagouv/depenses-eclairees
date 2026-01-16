@@ -10,6 +10,8 @@ import zipfile
 
 from django.core.files.storage import default_storage
 
+from docia.file_processing.processor.pdf_drawings import add_drawings_to_pdf
+
 from PIL import Image
 import docx2txt
 import pymupdf
@@ -128,8 +130,10 @@ def extract_text_from_pdf(file_content: bytes, word_threshold=50):
     """
     doc = pymupdf.Document(stream=file_content)
 
-    # Essayer d'extraire directement le texte
-    text = "\n".join([page.get_text() for page in doc]).strip()
+    doc_with_drawings = add_drawings_to_pdf(doc)
+
+    # Essayer d'extraire directement le texte dans l'ordre vertical
+    text = "\n".join([page.get_text(sort=True) for page in doc_with_drawings]).strip()
     is_ocr_used = False
 
     # Compter les mots dans le texte extrait
