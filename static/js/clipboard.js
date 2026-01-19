@@ -1,17 +1,59 @@
 document.addEventListener('DOMContentLoaded', function() {
   console.log('Setup clipboard buttons');
 
+  const DEBUG = false;
+  function debug(...arg) {
+    if (DEBUG) {
+      console.debug(...arg);
+    }
+  }
+
   const numEj = /num_ej=([0-9]+)/.exec(window.location.search)[1];
 
-  // Find all tables
-  const tables = document.querySelectorAll('.copyable table');
-  // Process each table
-  tables.forEach(function(table) {
+  initStandAloneButtons();
+  initTables();
+
+
+  /// FUNCTIONS
+
+  function initTables() {
+    // Find all containers
+    const tableContainers = document.querySelectorAll('.copyable');
+    tableContainers.forEach(function (container) {
+      const tables = container.querySelectorAll('.copyable table');
+      // Process each table
+      tables.forEach(function (table) {
+        // If there are headers in table, it's a full table
+        if (!!table.querySelector('th')) {
+          initTableFull(table);
+        }
+        // If no table headers, it's a key / value table (2 cols)
+        else {
+          initTableKeyValue(table);
+        }
+      });
+    });
+  }
+
+  function initStandAloneButtons() {
+    // Find all buttons
+    const copyButtons = document.querySelectorAll('.btn-copy.btn-copy-standalone');
+    copyButtons.forEach(function(button) {
+      const fieldName = button.getAttribute('x-copy-fieldname');
+      const copyValue = button.getAttribute('x-copy-value');
+      addOnClickListener(button, fieldName, copyValue);
+    });
+  }
+
+  /**
+   * Simple table, 2 columns, first column contains keys, second column contains values
+   */
+  function initTableKeyValue(table) {
     // Find all rows in the table
     const rows = table.querySelectorAll('tr');
 
     // Process each row
-    rows.forEach(function(row) {
+    rows.forEach(function (row) {
       // Get all cells in the row
       const cells = row.querySelectorAll('td');
 
@@ -31,27 +73,69 @@ document.addEventListener('DOMContentLoaded', function() {
           return;
         }
 
-        // Create the copy button
-        const copyButton = document.createElement('button');
-        copyButton.textContent = 'Copier';
-        copyButton.className = 'btn-copy fr-badge fr-badge--sm fr-ml-1w copy-' + fieldName;
-        copyButton.style.fontSize = '12px';
-        copyButton.style.padding = '2px 6px';
-
-        // Add click event to copy content
-        copyButton.addEventListener('click', function(e) {
-          e.stopPropagation();
-          copyToClipboard(cellContent, copyButton);
-          trackEvent('interaction', 'copy', fieldName, numEj);
-        });
+        const copyButton = createCopyButton(fieldName, cellContent);
 
         // Add button to the cell
         secondCell.appendChild(copyButton);
       }
     });
-  });
+  }
+
+  function initTableFull(table) {
+    // Headers
+    const headers = Array.from(table.querySelectorAll('th')).map(el => el.textContent.trim());
+
+    // Find all rows in the table
+    const rows = table.querySelectorAll('tr');
+
+    // Process each row
+    rows.forEach(function (row) {
+      // Get all cells in the row
+      const cells = row.querySelectorAll('td');
+
+      cells.forEach(function(cell, cellIdx) {
+        const fieldName = headers[cellIdx];
+
+        // Store the original content
+        const cellContent = cell.textContent.trim();
+
+        // Ignore empty cells
+        if (!cellContent) {
+          return;
+        }
+
+        // Create the copy button
+        const copyButton = createCopyButton(fieldName, cellContent);
+
+        // Add button to the cell
+        cell.appendChild(copyButton);
+      });
+    });
+  }
+
+  function createCopyButton(fieldName, cellContent) {
+    // Create the copy button
+    const copyButton = document.createElement('button');
+    copyButton.textContent = 'Copier';
+    copyButton.className = 'btn-copy fr-badge fr-badge--sm fr-ml-1w';
+    copyButton.setAttribute('x-copy-fieldname', JSON.stringify(fieldName));
+
+    // Add click event to copy content
+    addOnClickListener(copyButton, fieldName, cellContent);
+
+    return copyButton;
+  }
+
+  function addOnClickListener(copyButton, fieldName, copyValue) {
+    copyButton.addEventListener('click', function (e) {
+      e.stopPropagation();
+      copyToClipboard(copyValue, copyButton);
+      trackEvent('interaction', 'copy', fieldName, numEj);
+    });
+  }
 
   function copyToClipboard(cellContent, copyButton) {
+    debug('copy', cellContent, copyButton);
     // Cross-browser clipboard copy
     if (navigator.clipboard && window.isSecureContext) {
       // For modern browsers in secure contexts
@@ -130,6 +214,7 @@ document.addEventListener('DOMContentLoaded', function() {
    * Sends a tracking event to the server using fetch API
    */
   function trackEvent(category, action, name, numEj) {
+    debug('track event [category:', category, '] [action:', action, '] [name:', name, '] [numEj:', numEj, ']');
     // Create the full payload
     const payload = {
       category: category,

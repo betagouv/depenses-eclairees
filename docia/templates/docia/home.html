@@ -39,10 +39,7 @@
               {{ doc.title }} ({{ doc.percent_data_extraction }})
             </button>
           </h3>
-          <div class="fr-collapse" id="{{ doc.id }}" data-fr-js-collapse="true" style="--collapse: -48px;">
-            <a href="{{ doc.url }}" target="_blank">voir</a>
-            {% dsfr_table content=doc.content extra_classes='fr-table--bordered fr-table--no-scroll copyable' %}
-          </div>
+          {% include "docia/details_ej/sections/section.html" with doc=doc %}
         </section>
       {% endfor %}
       {% if unprocessed %}
