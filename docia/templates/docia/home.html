@@ -39,7 +39,7 @@
               {{ doc.title }} ({{ doc.percent_data_extraction }})
             </button>
           </h3>
-          {% include "docia/details_ej/sections/section.html" with doc=doc %}
+          {% include "docia/details_ej/documents/document.html" with doc=doc %}
         </section>
       {% endfor %}
       {% if unprocessed %}

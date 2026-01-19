@@ -3,9 +3,9 @@
   <a href="{{ doc.url }}" target="_blank">voir</a>
   <div>
   {% if doc.classification == "acte_engagement" %}
-    {% include "docia/details_ej/sections/acte_engagement/section_acte_engagement.html" with doc=doc %}
+    {% include "docia/details_ej/documents/acte_engagement/document_acte_engagement.html" with doc=doc %}
   {% else %}
-    {% include "docia/details_ej/sections/default/section_default.html" with doc=doc %}
+    {% include "docia/details_ej/documents/default/document_default.html" with doc=doc %}
   {% endif %}
   </div>
 </div>
