@@ -25,6 +25,7 @@ Install C libraries
 ```bash
 brew install libmagic  # file detection (python-magic)
 brew install tesseract # ocr (pytesseract)
+brew install tesseract-lang # install fra language for tesseract
 ```
 
 
