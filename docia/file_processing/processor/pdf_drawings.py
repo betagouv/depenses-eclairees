@@ -268,7 +268,7 @@ def deduce_checkbox_caracters_from_groups(drawings, groups):
                 
                 # Calculer le centre du groupe
                 center = get_group_center(drawings, group)
-                center = (center[0], center[1]-5) # on décale le centre vers le haut de 10 points pour que la check box apparaisse avant le texte.
+                center = (center[0], center[1]-5) # on décale le centre vers le haut pour que la check box apparaisse avant le texte.
 
                 # Déterminer le caractère à utiliser
                 if total_segments >= 2:
