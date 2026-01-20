@@ -149,8 +149,8 @@ def test_acte_engagement(client):
     doc.structured_data = {
         "duree": {
             "duree_initiale": 12,
-            "nb_reconductions": None,
-            "duree_reconduction": None,
+            "nb_reconductions": 3,
+            "duree_reconduction": 8,
             "delai_tranche_optionnelle": 24,
         },
         "montant_ht": "40123.50",
@@ -189,8 +189,6 @@ def test_acte_engagement(client):
     client.force_login(user)
     response = client.get(f"/?num_ej={ej.num_ej}")
     assert response.status_code == 200
-    with open("/tmp/toto.html", "w") as f:
-        f.write(response.text)
     assert "[[rib_autres.0.societe]]" in response.text
     assert "[[rib_autres.0.rib.banque]]" in response.text
     assert "[[rib_autres.0.rib.iban]]" in response.text
@@ -218,3 +216,126 @@ def test_acte_engagement(client):
     assert "[[date_signature_administration]]" in response.text
     assert "40123.50" in response.text  # Montant total ht
     assert "60123.50" in response.text  # Montant total ttc
+    assert "8 mois" in response.text
+
+
+@pytest.mark.django_db
+def test_ccap_without_lots(client):
+    ej, doc = create_ej_and_document()
+    doc.classification = "ccap"
+    doc.structured_data = {
+        "ccag": "[[ccag]]",
+        "lots": [],
+        "intro": None,
+        "id_marche": "[[id_marche]]",
+        "duree_lots": [],
+        "montant_ht": "101234",
+        "duree_marche": {
+            "duree_initiale": 12,
+            "nb_reconductions": 1,
+            "duree_reconduction": 6,
+            "delai_tranche_optionnelle": 3,
+        },
+        "forme_marche": {"tranches": None, "structure": "simple", "forme_prix": "forfaitaires"},
+        "objet_marche": "[[objet_marche]]",
+        "montant_ht_lots": [],
+        "forme_marche_lots": [],
+        "condition_avance_ccap": {
+            "remboursement": "65%-100%",
+            "montant_avance": "30%",
+            "montant_reference": "montant annuel",
+            "condition_declenchement": "Avance systématique",
+        },
+    }
+    doc.save()
+    user = UserFactory(is_superuser=True)
+    client.force_login(user)
+    response = client.get(f"/?num_ej={ej.num_ej}")
+    assert response.status_code == 200
+    assert "[[ccag]]" in response.text
+    assert "[[id_marche]]" in response.text
+    assert "101234" in response.text
+    assert "[[objet_marche]]" in response.text
+    assert "65%-100%" in response.text
+    assert "30%" in response.text
+    assert "montant annuel" in response.text
+    assert "Avance systématique" in response.text
+    assert "forfaitaires" in response.text
+
+
+@pytest.mark.django_db
+def test_ccap_with_lots(client):
+    ej, doc = create_ej_and_document()
+    doc.classification = "ccap"
+    doc.structured_data = {
+        "ccag": "[[ccag]]",
+        "lots": [
+            {
+                "titre": "[[lots.0.titre]]",
+                "numero_lot": 1,
+                "forme_marche": {"tranches": None, "structure": "simple", "forme_prix": "forfaitaires"},
+                "duree_marche": {
+                    "duree_initiale": 12,
+                    "nb_reconductions": 1,
+                    "duree_reconduction": 6,
+                    "delai_tranche_optionnelle": 3,
+                },
+                "montant_ht": "1111",
+                "montant_ttc": "2222",
+            },
+            {
+                "titre": "[[lots.1.titre]]",
+                "numero_lot": 2,
+                "forme_marche": {"tranches": None, "structure": "simple", "forme_prix": "forfaitaires"},
+                "duree_marche": {
+                    "duree_initiale": 12,
+                    "nb_reconductions": 1,
+                    "duree_reconduction": 6,
+                    "delai_tranche_optionnelle": 3,
+                },
+                "montant_ht": "3333",
+                "montant_ttc": "4444",
+            },
+        ],
+        "intro": None,
+        "id_marche": "[[id_marche]]",
+        "duree_lots": [],
+        "montant_ht": "101234",
+        "duree_marche": {
+            "duree_initiale": 12,
+            "nb_reconductions": 1,
+            "duree_reconduction": 6,
+            "delai_tranche_optionnelle": 3,
+        },
+        "forme_marche": {"tranches": None, "structure": "simple", "forme_prix": "forfaitaires"},
+        "objet_marche": "[[objet_marche]]",
+        "montant_ht_lots": [],
+        "forme_marche_lots": [],
+        "condition_avance_ccap": {
+            "remboursement": "65%-100%",
+            "montant_avance": "30%",
+            "montant_reference": "montant annuel",
+            "condition_declenchement": "Avance systématique",
+        },
+    }
+    doc.save()
+    user = UserFactory(is_superuser=True)
+    client.force_login(user)
+    response = client.get(f"/?num_ej={ej.num_ej}")
+    assert response.status_code == 200
+    assert "[[ccag]]" in response.text
+    assert "[[id_marche]]" in response.text
+    assert "[[objet_marche]]" in response.text
+    assert "65%-100%" in response.text
+    assert "30%" in response.text
+    assert "montant annuel" in response.text
+    assert "Avance systématique" in response.text
+    assert "forfaitaires" in response.text
+
+    # Lots
+    assert "Lot 1&nbsp;: [[lots.0.titre]]" in response.text
+    assert "Lot 2&nbsp;: [[lots.1.titre]]" in response.text
+    assert "1111" in response.text
+    assert "2222" in response.text
+    assert "3333" in response.text
+    assert "4444" in response.text

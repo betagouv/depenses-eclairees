@@ -1,0 +1,62 @@
+{% load dsfr_tags static docia %}
+
+
+<div class="fr-container">
+  <div class="fr-grid-row fr-grid-row--gutters">
+
+    <div class="fr-col-md-4 fr-col-12">
+      <div>
+        <h4>Forme</h4>
+        <ul>
+          <li>
+            <b>Marchés subséquents</b>
+            {% if data.forme_marche.structure == "à marchés subséquents" %}
+              Oui
+            {% else %}
+              Non
+            {% endif %}
+          </li>
+          <li>
+            <b>Décomposition par tranches</b>
+            {% if data.forme_marche.tranches %}
+              {{ data.forme_marche.tranches }}
+            {% else %}
+              Non
+            {% endif %}
+          </li>
+          <li>
+            {% with title="Prix" field_name="forme_marche.forme_prix" %}
+              {% include "docia/details_ej/blocks/attribute.html" %}
+            {% endwith %}
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="fr-col-md-4 fr-col-12">
+      {% with data=data.duree_marche %}
+        {% include "docia/details_ej/blocks/duree.html" %}
+      {% endwith %}
+    </div>
+
+    <div class="fr-col-md-4 fr-col-12">
+      <div>
+        <h4>Montants</h4>
+        <ul>
+          <li>
+            {% with title="HT" field_name="montant_ht" %}
+              {% include "docia/details_ej/blocks/attribute.html" %}
+            {% endwith %}
+          </li>
+          <li>
+            {% with title="TTC" field_name="montant_ttc" %}
+              {% include "docia/details_ej/blocks/attribute.html" %}
+            {% endwith %}
+          </li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+
