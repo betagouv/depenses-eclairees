@@ -1,0 +1,30 @@
+<div>
+  <h4>Durée</h4>
+  <ul>
+    <li>
+      {% with title="Initiale" field_name="duree_initiale" %}
+        {% include "docia/details_ej/blocks/attribute.html" %}
+      {% endwith %}
+    </li>
+    <li>
+      {% with title="Reconductions possibles" field_name="nb_reconductions" %}
+        {% include "docia/details_ej/blocks/attribute.html" %}
+      {% endwith %}
+    </li>
+    <li>
+      {% with title="Durée d'une reconduction" field_name="duree_reconduction" suffix=" mois" %}
+        {% include "docia/details_ej/blocks/attribute.html" %}
+      {% endwith %}
+    </li>
+    <li>
+      {% with title="Délais des tranches" field_name="delai_tranche_optionnelle" %}
+        {% include "docia/details_ej/blocks/attribute.html" %}
+      {% endwith %}
+    </li>
+    <li>
+      {% with title="Date de fin de validité" field_name="todo" %}
+        {% include "docia/details_ej/blocks/attribute.html" %}
+      {% endwith %}
+    </li>
+  </ul>
+</div>

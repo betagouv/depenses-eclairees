@@ -1,0 +1,47 @@
+{% load dsfr_tags static docia %}
+
+<h2 class="fr-mt-5v">Contrat</h2>
+
+<div class="fr-mb-10v">
+  {% with title="Objet" field_name="objet_marche" %}
+    {% include "docia/details_ej/blocks/attribute.html" %}
+  {% endwith %}
+  <br/>
+  {% with title="Identifiant" field_name="id_marche" %}
+    {% include "docia/details_ej/blocks/attribute.html" %}
+  {% endwith %}
+  <br/>
+  {% with title="CCAG" field_name="ccag" %}
+    {% include "docia/details_ej/blocks/attribute.html" %}
+  {% endwith %}
+  <br/>
+  {% with title="Conditions d'avance" field_name="condition_avance_ccap" %}
+    {% include "docia/details_ej/blocks/attribute.html" %}
+  {% endwith %}
+  <br/>
+
+  <b>Décomposition en lots</b>
+  {% if doc.data.lots %}
+    Oui
+  {% else %}
+    Non
+  {% endif %}
+
+</div>
+
+
+<div>
+  {% if data.lots %}
+    {% for lot in data.lots %}
+      <h3>Lot {{ lot.numero_lot }}&nbsp;: {{ lot.titre }}</h3>
+      <div>
+        {% with data=lot %}
+          {% include "docia/details_ej/documents/ccap/ccap_lot.html" %}
+        {% endwith %}
+      </div>
+    {% endfor %}
+  {% else %}
+    {% include "docia/details_ej/documents/ccap/ccap_lot.html" %}
+  {% endif %}
+</div>
+

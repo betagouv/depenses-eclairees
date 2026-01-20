@@ -1,9 +1,9 @@
 {% load docia %}
 
 <b>{{ title }}&nbsp;:</b>
-{% with value=doc.data|get_item:field_name %}
+{% with value=data|get_item:field_name %}
   {% if value %}
-    {{ value }}
+    {{ value }}{{ suffix }}
     {% include "docia/blocks/button_copy.html" with id=field_name value=value %}
   {% else %}
     [Non trouvé]

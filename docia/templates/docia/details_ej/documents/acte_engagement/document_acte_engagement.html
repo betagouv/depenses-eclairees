@@ -31,7 +31,7 @@
 
     <div class="fr-col-md-4 fr-col-12">
       <div>
-        <h3>Dates de signature</h3>
+        <h4>Dates de signature</h4>
         <ul>
           <li>
             {% with title="Mandataire" field_name="date_signature_mandataire" %}
@@ -53,41 +53,14 @@
     </div>
 
     <div class="fr-col-md-4 fr-col-12">
-      <div>
-        <h3>Durée</h3>
-        <ul>
-          <li>
-            {% with title="Initiale" field_name="duree.duree_initiale" %}
-              {% include "docia/details_ej/blocks/attribute.html" %}
-            {% endwith %}
-          </li>
-          <li>
-            {% with title="Nombre de reconductions possibles" field_name="nb_reconduction" %}
-              {% include "docia/details_ej/blocks/attribute.html" %}
-            {% endwith %}
-          </li>
-          <li>
-            {% with title="Durée d'une reconduction" field_name="duree_reconduction" %}
-              {% include "docia/details_ej/blocks/attribute.html" %}
-            {% endwith %}
-          </li>
-          <li>
-            {% with title="Délais des tranches" field_name="delai_tranche_optionnelle" %}
-              {% include "docia/details_ej/blocks/attribute.html" %}
-            {% endwith %}
-          </li>
-          <li>
-            {% with title="Date de fin de validité" field_name="todo" %}
-              {% include "docia/details_ej/blocks/attribute.html" %}
-            {% endwith %}
-          </li>
-        </ul>
-      </div>
+      {% with data=data.duree %}
+        {% include "docia/details_ej/blocks/duree.html" %}
+      {% endwith %}
     </div>
 
     <div class="fr-col-md-4 fr-col-12">
       <div>
-        <h3>Mandataire</h3>
+        <h4>Mandataire</h4>
         <ul>
           <li>
             {% with title="Raison sociale" field_name="societe_principale" %}
@@ -124,30 +97,30 @@
 
 
 {# Cotraitants #}
-{% if doc.data.cotraitants %}
+{% if data.cotraitants %}
   <div>
     <h2>Cotraitants</h2>
-    {% with table_data=doc.data.cotraitants|list_of_dicts_as_table:formatting_data.cotraitants.table_columns %}
+    {% with table_data=data.cotraitants|list_of_dicts_as_table:formatting_data.cotraitants.table_columns %}
       {% dsfr_table content=table_data.rows header=table_data.headers extra_classes='fr-table--bordered fr-table--no-scroll copyable copyable-all-cells' %}
     {% endwith %}
   </div>
 {% endif %}
 
 {# Sous-Traitants #}
-{% if doc.data.sous_traitants %}
+{% if data.sous_traitants %}
   <div>
     <h2>Sous-traitants</h2>
-    {% with table_data=doc.data.sous_traitants|list_of_dicts_as_table:formatting_data.sous_traitants.table_columns %}
+    {% with table_data=data.sous_traitants|list_of_dicts_as_table:formatting_data.sous_traitants.table_columns %}
       {% dsfr_table content=table_data.rows header=table_data.headers extra_classes='fr-table--bordered fr-table--no-scroll copyable copyable-all-cells' %}
     {% endwith %}
   </div>
 {% endif %}
 
 {# RIB #}
-{% if doc.data.rib_autres %}
+{% if data.rib_autres %}
   <div>
     <h2>RIB</h2>
-    {% with table_data=doc.data.rib_autres|list_of_dicts_as_table:formatting_data.rib_autres.table_columns %}
+    {% with table_data=data.rib_autres|list_of_dicts_as_table:formatting_data.rib_autres.table_columns %}
       {% dsfr_table content=table_data.rows header=table_data.headers extra_classes='fr-table--bordered fr-table--no-scroll copyable copyable-all-cells' %}
     {% endwith %}
   </div>
