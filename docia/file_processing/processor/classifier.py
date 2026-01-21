@@ -11,6 +11,8 @@ from app.data.sql.sql import bulk_update_attachments
 from app.grist import API_KEY_GRIST, URL_TABLE_ATTACHMENTS, update_records_in_grist
 from app.utils import getDate
 from docia.file_processing.llm.client import LLMClient
+from app.data.sql.sql import bulk_update_attachments
+
 
 logger = logging.getLogger("docia." + __name__)
 
@@ -96,9 +98,8 @@ def create_classification_prompt(filename: str, text: str, list_classification: 
     return prompt, system_prompt
 
 
-def classify_file_with_llm(
-    filename: str, text: str, list_classification: dict, llm_model: str = "openweight-medium"
-) -> str:
+def classify_file_with_llm(filename: str, text: str, list_classification: dict,
+                           llm_model: str = 'openweight-medium') -> str:
     """
     Classifie un fichier en fonction de son contenu en utilisant un LLM.
 
@@ -126,97 +127,66 @@ def classify_file_with_llm(
 
     response = llm_env.ask_llm(messages=messages, model=llm_model, response_format=response_format)
 
-    # Convertir la réponse en clé de classification
-    for key, value in list_classification.items():
-        if value["nom_complet"] == response:
-            return key
+    
+    # Convertir la (nouvelle) réponse (list) en clé de classification (on prend la première catégorie trouvée)
+    if not response or not isinstance(response, list):
+        return 'Non classifié'
 
-    return "Non classifié"
+    reversed_classification_ref = {value['nom_complet']: key for key, value in list_classification.items()}
+    result_classif_keys = []
+    for classif in response:
+        key_classif = reversed_classification_ref.get(classif)
+        if key_classif:
+            result_classif_keys.append(key_classif)
+
+    return result_classif_keys
 
 
-def classify_files(
-    dfFiles: pd.DataFrame,
-    list_classification: dict,
-    classification_type: str = "name",
-    api_key: str = None,
-    base_url: str = None,
-    llm_model: str = "openweight-medium",
-    max_workers: int = 4,
-    save_path: str = None,
-    save_grist: bool = False,
-    directory_path: str = None,
-) -> pd.DataFrame:
+def classify_files(dfFiles: pd.DataFrame, list_classification: dict,
+                  api_key: str = None, base_url: str = None, llm_model: str = 'openweight-medium',
+                  max_workers: int = 4) -> pd.DataFrame:
     """
     Classifie les fichiers d'un DataFrame entre les différentes pièces jointes possibles.
 
     Args:
         dfFiles (pd.DataFrame): DataFrame contenant les noms des fichiers et leurs n° d'EJ
         list_classification (dict): Dictionnaire de classification
-        classification_type (str): Type de classification ("name" ou "llm")
         api_key (str): Clé API pour le LLM (requis si classification_type="llm")
         base_url (str): URL de base pour le LLM (requis si classification_type="llm")
         llm_model (str): Modèle LLM à utiliser (par défaut: 'openweight-medium')
         max_workers (int): Nombre maximum de threads pour l'exécution parallèle (par défaut: 4)
-        save_path (str): Chemin pour sauvegarder les résultats
-        save_grist (bool): Sauvegarder dans Grist
-        directory_path (str): Chemin du répertoire
-
+        
     Returns:
         pd.DataFrame: DataFrame contenant les informations sur les fichiers avec les colonnes:
             - classification: Type de document classifié (ex: 'devis', 'facture', 'Non classifié')
-            - classification_type: Méthode de classification utilisée ('name' ou 'llm')
     """
     dfFilesClassified = dfFiles.copy(deep=False)
-    dfFilesClassified["classification"] = None
-    dfFilesClassified["classification_type"] = None
+    dfFilesClassified['classification'] = None
 
     # Fonction pour traiter une ligne
     def process_row(idx):
         row = dfFilesClassified.loc[idx]
-        filename = row["filename"]
-
-        result = {"classification": None, "classification_type": None}
-
+        filename = row['filename']
+        
+        result = {
+            'classification': None
+        }
+        
+        text = row['text']
         try:
-            if classification_type == "name":
-                file_classification = classify_file_with_name(
-                    filename=filename, list_classification=list_classification
-                )
-                result["classification"] = file_classification[0]
-                result["classification_type"] = "name"
-            elif classification_type == "llm":
-                if api_key is None or base_url is None:
-                    raise ValueError("api_key et base_url sont requis pour la classification LLM")
-
-                # Vérifier si le texte est disponible dans le DataFrame
-                if "text" not in dfFilesClassified.columns:
-                    raise ValueError(
-                        "La colonne 'text' est requise pour la classification LLM. Utilisez d'abord df_extract_text."
-                    )
-
-                text = row["text"]
-                try:
-                    file_classification = classify_file_with_llm(
-                        filename=filename,
-                        text=text,
-                        list_classification=list_classification,
-                        api_key=api_key,
-                        base_url=base_url,
-                        llm_model=llm_model,
-                    )
-                except Exception as e:
-                    logger.exception("Erreur lors de la classification LLM de %r: %s", filename, e)
-                    file_classification = "Non classifié"
-                result["classification"] = file_classification
-                result["classification_type"] = "llm"
-            else:
-                raise ValueError("classification_type doit être 'name' ou 'llm'")
-
+            list_classifications = classify_file_with_llm(
+                filename=filename,
+                text=text,
+                list_classification=list_classification,
+                api_key=api_key,
+                base_url=base_url,
+                llm_model=llm_model
+            )
         except Exception as e:
-            print(f"Erreur lors de la classification du fichier {filename}: {e}")
-            result["classification"] = "Non classifié"
-            result["classification_type"] = classification_type
-
+            logger.exception("Erreur lors de la classification LLM de %r: %s", filename, e)
+            list_classifications = ['Non classifié']
+        result['classification'] = list_classifications
+    
         return idx, result
 
     # Traitement parallèle avec ThreadPoolExecutor
@@ -230,23 +200,6 @@ def classify_files(
 
     # dfFilesClassified = dfFilesClassified.astype(str)
     print(f"Nombre de fichiers classifiés : {dfFilesClassified['classification'].value_counts()}")
-
-    try:
-        if save_grist:
-            update_records_in_grist(
-                dfFilesClassified,
-                key_column="filename",
-                table_url=URL_TABLE_ATTACHMENTS,
-                api_key=API_KEY_GRIST,
-                columns_to_update=["classification", "classification_type"],
-            )
-
-        if save_path:
-            full_save_path = f"{save_path}/dfFichiersClassifiés_{directory_path.split('/')[-1]}_{getDate()}.csv"
-            dfFilesClassified.to_csv(full_save_path, index=False)
-            print(f"Liste des fichiers sauvegardées dans {full_save_path}")
-    except Exception as e:
-        print(f"Liste de fichiers non sauvegardées. Exception soulevée : {e}")
 
     return dfFilesClassified
 
