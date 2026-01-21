@@ -55,7 +55,7 @@ def create_batch_test(multi_line_coef=1):
 
     # Analyse du contenu avec df_analyze_content
     df_result = classify_files(
-        dfFiles=df_classified,
+        dfFiles=df_classified.iloc[:10],
         list_classification=DIC_CLASS_FILE_BY_NAME
     )
 

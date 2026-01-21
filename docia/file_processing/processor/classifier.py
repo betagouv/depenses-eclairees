@@ -119,8 +119,17 @@ def classify_file_with_llm(filename: str, text: str, list_classification: dict,
     prompt, system_prompt = create_classification_prompt(filename, text, list_classification)
 
     response_format = {
-        "type": "array", 
-        "items": {"type": "string"}
+        "type": "json_schema",
+        "json_schema": {
+            "name": "ClassificationList",
+            "strict": True,
+            "schema": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            }
+        }
     }
 
     messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
@@ -172,7 +181,7 @@ def classify_files(dfFiles: pd.DataFrame, list_classification: dict,
         
         text = row['text']
         try:
-            list_classifications = classify_file_with_llm(
+            response_classif = classify_file_with_llm(
                 filename=filename,
                 text=text,
                 list_classification=list_classification,
@@ -180,8 +189,8 @@ def classify_files(dfFiles: pd.DataFrame, list_classification: dict,
             )
         except Exception as e:
             logger.exception("Erreur lors de la classification LLM de %r: %s", filename, e)
-            list_classifications = ['Non classifié']
-        result['classification'] = list_classifications
+            response_classif = ['Non classifié']
+        result['classification'] = response_classif
     
         return idx, result
 
