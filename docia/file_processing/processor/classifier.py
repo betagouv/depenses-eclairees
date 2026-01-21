@@ -143,7 +143,7 @@ def classify_file_with_llm(filename: str, text: str, list_classification: dict,
 
 
 def classify_files(dfFiles: pd.DataFrame, list_classification: dict,
-                  api_key: str = None, base_url: str = None, llm_model: str = 'openweight-medium',
+                  llm_model: str = 'openweight-medium',
                   max_workers: int = 4) -> pd.DataFrame:
     """
     Classifie les fichiers d'un DataFrame entre les différentes pièces jointes possibles.
@@ -151,8 +151,6 @@ def classify_files(dfFiles: pd.DataFrame, list_classification: dict,
     Args:
         dfFiles (pd.DataFrame): DataFrame contenant les noms des fichiers et leurs n° d'EJ
         list_classification (dict): Dictionnaire de classification
-        api_key (str): Clé API pour le LLM (requis si classification_type="llm")
-        base_url (str): URL de base pour le LLM (requis si classification_type="llm")
         llm_model (str): Modèle LLM à utiliser (par défaut: 'openweight-medium')
         max_workers (int): Nombre maximum de threads pour l'exécution parallèle (par défaut: 4)
         
@@ -178,8 +176,6 @@ def classify_files(dfFiles: pd.DataFrame, list_classification: dict,
                 filename=filename,
                 text=text,
                 list_classification=list_classification,
-                api_key=api_key,
-                base_url=base_url,
                 llm_model=llm_model
             )
         except Exception as e:
