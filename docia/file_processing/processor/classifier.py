@@ -71,6 +71,31 @@ def classify_file_with_name(filename: str, list_classification={"devis": {"words
     )
 
 
+def create_classification_prompt(filename: str, text: str, list_classification: dict) -> str:
+    system_prompt = "Vous êtes un assistant qui aide à classer des fichiers en fonction de leur contenu."
+    prompt = f"""
+    A partir du contenu du fichier, vous devez déterminer à quelles catégories le document appartient parmi les catégories suivantes. 
+    La réponse est une liste de catégories possibles, classée par ordre de correspondance avec le contenu du document.
+    
+    Voici la liste des catégories possibles :
+    {',\n'.join([f"'{v['nom_complet']}': {v['description']}" if v['description']!='' else f"'{v['nom_complet']}'" for v in list_classification.values()])}
+    
+    Le titre du document est un élément essentiel pour la classification.
+    Si le type de document ne correspond à aucune des catégories, répondez "Non classifié".
+    
+    Voici le nom du document (attention celui-ci peut être trompeur, il faut aussi regarder le contenu) : '{filename}'
+    
+    Voici la première page du document :
+    <DEBUT PAGE>
+    '{text[:2000]}'
+    <FIN PAGE>
+
+    Format : répondez par une liste de catégories possibles (sans autre texte ni ponctuation).
+    """
+
+    return prompt, system_prompt
+
+
 def classify_file_with_llm(
     filename: str, text: str, list_classification: dict, llm_model: str = "openweight-medium"
 ) -> str:
@@ -90,37 +115,16 @@ def classify_file_with_llm(
     """
     llm_env = LLMClient()
 
-    system_prompt = "Vous êtes un assistant qui aide à classer des fichiers en fonction de leur contenu."
+    prompt, system_prompt = create_classification_prompt(filename, text, list_classification)
 
-    prompt = f"""
-A partir du contenu du fichier, vous devez déterminer à quelle catégorie le document appartient 
-parmi les catégories suivantes.
-    {
-        ",\n".join(
-            [
-                f"'{v['nom_complet']}': {v['description']}" if v["description"] != "" else f"'{v['nom_complet']}'"
-                for v in list_classification.values()
-            ]
-        )
+    response_format = {
+        "type": "array", 
+        "items": {"type": "string"}
     }
-
-Le titre du document est un élément essentiel pour la classification.
-Si le type de document ne correspond à aucune des catégories, répondez "Non classifié".
-
-Voici le nom du document (attention celui-ci peut être trompeur, il faut aussi regarder le contenu) : '{filename}'
-
-Voici la première page du document :
-
-DEBUT PAGE>>>
-'{text[:2000]}'
-<<<FIN PAGE
-
-Répondez UNIQUEMENT par le nom de la catégorie, sans autre texte ni ponctuation.
-    """
 
     messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
 
-    response = llm_env.ask_llm(messages=messages, model=llm_model)
+    response = llm_env.ask_llm(messages=messages, model=llm_model, response_format=response_format)
 
     # Convertir la réponse en clé de classification
     for key, value in list_classification.items():
