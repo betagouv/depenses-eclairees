@@ -372,7 +372,7 @@ def post_processing_postal_address(postal_address: dict[str, str]) -> dict[str, 
 
 
 def create_lots(
-        titles: list[dict], contract_forms: list[dict], durations: list[dict], amounts: list[dict]
+    titles: list[dict], contract_forms: list[dict], durations: list[dict], amounts: list[dict]
 ) -> list[dict]:
     """
     Post-traitement des lots pour rassembler l'ensemble des informations sur les lots.

@@ -14,6 +14,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
 django.setup()
 
 from docia.file_processing.processor.analyze_content import LLMClient  # noqa: E402
+from tests_e2e.test_quality_rib import compare_iban  # noqa: E402
 from tests_e2e.utils import (  # noqa: E402
     analyze_content_quality_test,
     check_global_statistics,
@@ -21,7 +22,6 @@ from tests_e2e.utils import (  # noqa: E402
     check_quality_one_row,
     normalize_string,
 )
-from tests_e2e.test_quality_rib import compare_iban  # noqa: E402
 
 logger = logging.getLogger("docia." + __name__)
 
@@ -262,7 +262,9 @@ def compare_co_contractors(llm_val: list[dict[str, str]], ref_val: list[dict[str
         for i, search_item in enumerate(search_list):
             if i in excluded:
                 continue
-            if compare_main_company(search_item["nom"], item["nom"]) and compare_siret(search_item["siret"], item["siret"]):
+            if compare_main_company(search_item["nom"], item["nom"]) and compare_siret(
+                search_item["siret"], item["siret"]
+            ):
                 return i
         return None
 

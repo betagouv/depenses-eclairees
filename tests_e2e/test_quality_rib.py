@@ -18,7 +18,8 @@ from tests_e2e.utils import (  # noqa: E402
     check_global_statistics,
     check_quality_one_field,
     check_quality_one_row,
-    normalize_string, remove_accents,
+    normalize_string,
+    remove_accents,
 )
 
 logger = logging.getLogger("docia." + __name__)
@@ -130,6 +131,7 @@ def compare_address(llm_val: dict[str, str], ref_val: dict[str, str]):
             s = re.sub(r"[-']", " ", s)
             s = re.sub(r"\s\s", " ", s)
             return s
+
         llm_field_val = _normalize(llm_field_val)
         ref_field_val = _normalize(ref_field_val)
 

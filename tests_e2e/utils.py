@@ -7,7 +7,6 @@ import pandas as pd
 
 from docia.file_processing.processor.analyze_content import df_analyze_content
 from docia.file_processing.processor.attributes_query import ATTRIBUTES
-from docia.file_processing.processor.post_processing_llm import clean_llm_response
 
 
 def remove_accents(text: str) -> str:
@@ -57,9 +56,9 @@ def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, mult
     # Vérification du cache
     cache_file = f"/tmp/cache_results_{document_type}.json"
     if use_cache and os.path.exists(cache_file):
-            with open(cache_file, "r") as f:
-                cached_data = json.load(f)
-            df_result = pd.DataFrame(cached_data)
+        with open(cache_file, "r") as f:
+            cached_data = json.load(f)
+        df_result = pd.DataFrame(cached_data)
     else:
         # Analyse du contenu avec df_analyze_content
         df_result = df_analyze_content(
@@ -125,10 +124,7 @@ def _get_value_by_dotted_key(data, key):
         if key == "*":
             if not isinstance(data, list):
                 return None
-            return [
-                _get_value_by_dotted_key(item, key_suffix)
-                for item in data
-            ]
+            return [_get_value_by_dotted_key(item, key_suffix) for item in data]
         else:
             return _get_value_by_dotted_key(data.get(key), key_suffix)
 
