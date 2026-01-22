@@ -17,7 +17,9 @@ from docia.file_processing.processor.pdf_drawings import (
     is_square,
     points_to_cm,
     find_nearby_drawings,
+    add_drawings_to_pdf,
 )
+from .utils import ASSETS_DIR
 
 
 def test_get_drawing_center():
@@ -352,4 +354,20 @@ def test_add_drawings_to_pdf():
     assert new_doc is not None
     assert len(new_doc) == 0
     new_doc.close()
+    doc.close()
+
+
+def test_add_checkbox_drawings_in_text_from_pdf():
+    """Test l'ajout de checkboxes dans le texte à partir d'un PDF réel."""
+    # Charger le PDF checkbox.pdf
+    pdf_path = ASSETS_DIR / "checkbox.pdf"
+    doc = pymupdf.Document(pdf_path)
+    doc_with_drawings = add_drawings_to_pdf(doc)
+    
+    new_text = doc_with_drawings[0].get_text(sort=True)
+    has_checkbox = '[X]     Le signataire' in new_text and '[ ]           m’engage sur' in new_text
+
+    assert has_checkbox
+    
+    doc_with_drawings.close()
     doc.close()
