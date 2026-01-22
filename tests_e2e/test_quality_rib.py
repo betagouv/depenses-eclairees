@@ -187,14 +187,15 @@ def create_batch_test(multi_line_coef=1):
     return analyze_content_quality_test(df_test, "rib", multi_line_coef=multi_line_coef)
 
 
-df_test, df_result, df_merged = create_batch_test()
+if __name__ == "__main__":
+    df_test, df_result, df_merged = create_batch_test()
 
-comparison_functions = get_comparison_functions()
+    comparison_functions = get_comparison_functions()
 
-check_quality_one_field(df_merged, "iban", comparison_functions["iban"])
-check_quality_one_field(df_merged, "titulaire_compte", comparison_functions["titulaire_compte"])
-check_quality_one_field(df_merged, "adresse_postale_titulaire", comparison_functions["adresse_postale_titulaire"])
+    check_quality_one_field(df_merged, "iban", comparison_functions)
+    check_quality_one_field(df_merged, "titulaire_compte", comparison_functions)
+    check_quality_one_field(df_merged, "adresse_postale_titulaire", comparison_functions)
 
-check_quality_one_row(df_merged, 26, comparison_functions)
+    check_quality_one_row(df_merged, 26, comparison_functions)
 
-check_global_statistics(df_merged, comparison_functions, excluded_columns=["domiciliation", "banque"])
+    check_global_statistics(df_merged, comparison_functions, excluded_columns=["domiciliation", "banque"])

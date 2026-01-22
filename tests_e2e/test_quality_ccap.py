@@ -295,18 +295,18 @@ def create_batch_test(multi_line_coef=1):
         df_test[col] = df_test[col].apply(lambda x: json.loads(x))
 
     # Lancement du test
-    return analyze_content_quality_test(df_test, "ccap", multi_line_coef=multi_line_coef, skip_clean=True)
+    return analyze_content_quality_test(df_test, "ccap", multi_line_coef=multi_line_coef)
 
 
-df_test, df_result, df_merged = create_batch_test()
+if __name__ == "__main__":
+    df_test, df_result, df_merged = create_batch_test()
 
+    EXCLUDED_COLUMNS = ["objet_marche", "formule_revision_prix", "condition_avance", "revision_prix", "index_reference"]
 
-EXCLUDED_COLUMNS = ["objet_marche", "formule_revision_prix", "condition_avance", "revision_prix", "index_reference"]
+    comparison_functions = get_comparison_functions()
 
-comparison_functions = get_comparison_functions()
+    check_quality_one_field(df_merged, "lots.*.montant_ht", comparison_functions)
 
-check_quality_one_field(df_merged, "lots.*.montant_ht", comparison_functions["lots.*.montant_ht"])
+    check_quality_one_row(df_merged, 18, comparison_functions)
 
-check_quality_one_row(df_merged, 18, comparison_functions)
-
-check_global_statistics(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
+    check_global_statistics(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)

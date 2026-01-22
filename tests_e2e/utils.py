@@ -1,3 +1,5 @@
+import json
+import os
 import re
 import unicodedata
 
@@ -33,15 +35,15 @@ def normalize_string(s):
     return s
 
 
-def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, multi_line_coef=1, skip_clean=False):
-    """Test de qualité des informations extraites par le LLM."""
+def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, multi_line_coef=1, use_cache=True):
+    """Test de qualité des informations extraites par le LLM.
 
-    # Nettoyage des colonnes du DataFrame de test (après lecture du CSV)
-    if not skip_clean:
-        for idx, row in df_test.iterrows():
-            cleaned_data = clean_llm_response(document_type, row.to_dict())
-            for key, value in cleaned_data.items():
-                df_test.at[idx, key] = value
+    Args:
+        df_test: DataFrame contenant les données de test.
+        document_type: Type de document à analyser.
+        multi_line_coef: Coefficient de multiplication des lignes.
+        use_cache: Si True, utilise le cache pour éviter de relancer l'analyse.
+    """
 
     if multi_line_coef > 1:
         df_test = pd.concat([df_test for x in range(multi_line_coef)]).reset_index(drop=True)
@@ -52,13 +54,26 @@ def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, mult
     df_analyze["classification"] = document_type
     df_analyze["relevant_content"] = df_test["text"]
 
-    # Analyse du contenu avec df_analyze_content
-    df_result = df_analyze_content(
-        df=df_analyze,
-        df_attributes=ATTRIBUTES,
-        max_workers=10,
-        temperature=0.1,
-    )
+    # Vérification du cache
+    cache_file = f"/tmp/cache_results_{document_type}.json"
+    if use_cache and os.path.exists(cache_file):
+            with open(cache_file, "r") as f:
+                cached_data = json.load(f)
+            df_result = pd.DataFrame(cached_data)
+    else:
+        # Analyse du contenu avec df_analyze_content
+        df_result = df_analyze_content(
+            df=df_analyze,
+            df_attributes=ATTRIBUTES,
+            max_workers=10,
+            temperature=0.1,
+        )
+
+    # Sauvegarde des résultats dans le cache
+    if use_cache:
+        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+        with open(cache_file, "w") as f:
+            json.dump(df_result.to_dict(orient="records"), f)
 
     # Fusion des résultats avec les valeurs de référence
     # Pour éviter le produit cartésien lorsque filename est dupliqué, on utilise l'index
@@ -118,10 +133,12 @@ def _get_value_by_dotted_key(data, key):
             return _get_value_by_dotted_key(data.get(key), key_suffix)
 
 
-def check_quality_one_field(df_merged, col_to_test, comparison_func):
+def check_quality_one_field(df_merged, col_to_test, comparison_functions):
     # ============================================================================
     # COMPARAISON POUR UNE COLONNE SPÉCIFIQUE
     # ============================================================================
+
+    comparison_func = comparison_functions[col_to_test]
 
     print(f"\n{'=' * 80}")
     print(f"Comparaison pour la colonne: {col_to_test}")
@@ -145,13 +162,13 @@ def check_quality_one_field(df_merged, col_to_test, comparison_func):
             match_result = comparison_func(llm_val, ref_val)
             status = "✅ MATCH" if match_result else "❌ NO MATCH"
             print(f"{status} | {filename} | OCR {'❌' if pbm_ocr else '✅'}")
-            print(f"  LLM: {llm_val}")
-            print(f"  REF: {ref_val}")
+            print(f"  LLM: {llm_val!r}")
+            print(f"  REF: {ref_val!r}")
             print()
         except Exception as e:
             print(f"❌ ERREUR | {filename}: {str(e)} | OCR {'❌' if pbm_ocr else '✅'}")
-            print(f"  LLM: {llm_val}")
-            print(f"  REF: {ref_val}")
+            print(f"  LLM: {llm_val!r}")
+            print(f"  REF: {ref_val!r}")
             print()
 
 

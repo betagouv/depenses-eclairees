@@ -462,7 +462,7 @@ def post_processing_object_ccap(data: dict) -> dict:
 CLEAN_FUNCTIONS = {
     # Acte d'engagement
     "acte_engagement": {
-        "fields:": {
+        "fields": {
             "rib_mandataire": post_processing_bank_account,
             "montant_ttc": post_processing_amount,
             "montant_ht": post_processing_amount,
@@ -475,7 +475,7 @@ CLEAN_FUNCTIONS = {
     },
     # RIB
     "rib": {
-        "fields:": {
+        "fields": {
             "iban": post_processing_iban,
             "bic": post_processing_bic,
             "adresse_postale_titulaire": post_processing_postal_address,
