@@ -61,7 +61,7 @@ def compare_contract_object(llm_val, ref_val, llm_model="albert-small"):
         return False
 
 
-def compare_batches(llm_val: list[dict[str, str]], ref_val: list[dict[str, str]]):
+def compare_lots_title(llm_val: list[dict[str, str]], ref_val: list[dict[str, str]]):
     """Compare les lots du marché."""
     if not llm_val and not ref_val:
         return True
@@ -69,15 +69,11 @@ def compare_batches(llm_val: list[dict[str, str]], ref_val: list[dict[str, str]]
     if not llm_val or not ref_val:
         return False
 
-    for lot_llm in llm_val:
-        found = False
-        for lot_ref in ref_val:
-            if lot_llm.get("numero_lot") == lot_ref.get("numero_lot") and normalize_string(
-                lot_llm.get("titre_lot")
-            ) == normalize_string(lot_ref.get("titre_lot")):
-                found = True
-                break
-        if not found:
+    if len(llm_val) != len(ref_val):
+        return False
+
+    for ref, llm in zip(ref_val, llm_val):
+        if normalize_string(ref) != normalize_string(llm):
             return False
     return True
 
@@ -100,7 +96,7 @@ def compare_contract_form(llm_val: dict, ref_val: dict):
     return llm_structure == ref_structure and llm_tranches == ref_tranches and llm_forme_prix == ref_forme_prix
 
 
-def compare_compare_contract_form_batches(llm_val: list[dict], ref_val: list[dict]):
+def compare_lots_contract_form(llm_val: list[dict], ref_val: list[dict]):
     """Compare la forme des lots du marché."""
     if not llm_val and not ref_val:
         return True
@@ -111,26 +107,13 @@ def compare_compare_contract_form_batches(llm_val: list[dict], ref_val: list[dic
     if len(llm_val) != len(ref_val):
         return False
 
-    for lot_llm in llm_val:
-        found = False
-        for lot_ref in ref_val:
-            if lot_llm.get("numero_lot") == lot_ref.get("numero_lot"):
-                llm_structure = lot_llm.get("structure")
-                ref_structure = lot_ref.get("structure")
-                llm_tranches = lot_llm.get("tranches")
-                ref_tranches = lot_ref.get("tranches")
-                llm_forme_prix = lot_llm.get("forme_prix")
-                ref_forme_prix = lot_ref.get("forme_prix")
-                if llm_structure == ref_structure and llm_tranches == ref_tranches and llm_forme_prix == ref_forme_prix:
-                    found = True
-                    break
-                return False
-        if not found:
+    for ref, llm in zip(ref_val, llm_val):
+        if not compare_contract_form(llm, ref):
             return False
     return True
 
 
-def compare_batches_duration(llm_val: list[dict], ref_val: list[dict]):
+def compare_lots_duration(llm_val: list[dict], ref_val: list[dict]):
     """Compare la durée des lots."""
 
     if not llm_val and not ref_val:
@@ -142,25 +125,19 @@ def compare_batches_duration(llm_val: list[dict], ref_val: list[dict]):
     if len(llm_val) != len(ref_val):
         return False
 
-    for duree_llm in llm_val:
-        found = False
-        for duree_ref in ref_val:
-            if duree_llm.get("numero_lot") == duree_ref.get("numero_lot"):
-                llm_duree = duree_llm.get("duree_lot")
-                ref_duree = duree_ref.get("duree_lot")
-                if isinstance(llm_duree, str) and isinstance(ref_duree, str):
-                    if llm_duree == ref_duree:
-                        found = True
-                elif isinstance(llm_duree, dict) and isinstance(ref_duree, dict):
-                    if (
-                        llm_duree.get("duree_initiale") == ref_duree.get("duree_initiale")
-                        and llm_duree.get("duree_reconduction") == ref_duree.get("duree_reconduction")
-                        and llm_duree.get("nb_reconductions") == ref_duree.get("nb_reconductions")
-                        and llm_duree.get("delai_tranche_optionnelle") == ref_duree.get("delai_tranche_optionnelle")
-                    ):
-                        found = True
-                break
-        if not found:
+    for ref_duree, llm_duree in zip(llm_val, ref_val):
+        if isinstance(llm_duree, str) and isinstance(ref_duree, str):
+            if llm_duree != ref_duree:
+                return False
+        elif isinstance(llm_duree, dict) and isinstance(ref_duree, dict):
+            if not (
+                llm_duree.get("duree_initiale") == ref_duree.get("duree_initiale")
+                and llm_duree.get("duree_reconduction") == ref_duree.get("duree_reconduction")
+                and llm_duree.get("nb_reconductions") == ref_duree.get("nb_reconductions")
+                and llm_duree.get("delai_tranche_optionnelle") == ref_duree.get("delai_tranche_optionnelle")
+            ):
+                return False
+        else:
             return False
     return True
 
@@ -210,7 +187,7 @@ def compare_reference_index(llm_val: str, ref_val: str):
     return False
 
 
-def compare_advance_conditions(llm_val: str, ref_val: str):
+def compare_advance_condition(llm_val: str, ref_val: str):
     """Compare les conditions d'avance CCAP."""
     if not llm_val and not ref_val:
         return True
@@ -232,7 +209,7 @@ def compare_price_revision(llm_val: str, ref_val: str):
     return False
 
 
-def compare_batches_amount(llm_val: list[dict], ref_val: list[dict]):
+def compare_lots_amount(llm_val: list[dict], ref_val: list[dict]):
     """Compare les montants HT des lots."""
     if not llm_val and not ref_val:
         return True
@@ -258,7 +235,7 @@ def compare_batches_amount(llm_val: list[dict], ref_val: list[dict]):
     return True
 
 
-def compare_amounts(llm_val: str, ref_val: str):
+def compare_amount(llm_val: str, ref_val: str):
     """Compare les montants HT."""
     if not llm_val and not ref_val:
         return True
@@ -291,17 +268,17 @@ def get_comparison_functions():
     """
     return {
         "objet_marche": compare_contract_object,
-        "lots": compare_batches,
         "forme_marche": compare_contract_form,
-        "forme_marche_lots": compare_compare_contract_form_batches,
-        "duree_lots": compare_batches_duration,
+        "lots.*.titre": compare_lots_title,
+        "lots.*.forme": compare_lots_contract_form,
+        "lots.*.duree_lot": compare_lots_duration,
+        "lots.*.montant_ht": compare_lots_amount,
         "duree_marche": compare_contract_duration,
         "formule_revision_prix": compare_price_revision_formula,
         "index_reference": compare_reference_index,
-        "condition_avance": compare_advance_conditions,
+        "condition_avance": compare_advance_condition,
         "revision_prix": compare_price_revision,
-        "montant_ht_lots": compare_batches_amount,
-        "montant_ht": compare_amounts,
+        "montant_ht": compare_amount,
         "ccag": compare_global_contract,
     }
 
@@ -314,16 +291,11 @@ def create_batch_test(multi_line_coef=1):
     # Lecture du fichier CSV
     df_test = pd.read_csv(csv_path)
     df_test.fillna("", inplace=True)
-    df_test["lots"] = df_test["lots"].apply(lambda x: json.loads(x))
-    df_test["forme_marche"] = df_test["forme_marche"].apply(lambda x: json.loads(x))
-    df_test["forme_marche_lots"] = df_test["forme_marche_lots"].apply(lambda x: json.loads(x))
-    df_test["duree_lots"] = df_test["duree_lots"].apply(lambda x: json.loads(x))
-    df_test["duree_marche"] = df_test["duree_marche"].apply(lambda x: json.loads(x))
-    df_test["montant_ht"] = df_test["montant_ht"].apply(lambda x: json.loads(x))
-    df_test["montant_ht_lots"] = df_test["montant_ht_lots"].apply(lambda x: json.loads(x))
+    for col in ("lots", "forme_marche", "duree_marche", "montant_ht", "pbm_ocr"):
+        df_test[col] = df_test[col].apply(lambda x: json.loads(x))
 
     # Lancement du test
-    return analyze_content_quality_test(df_test, "ccap", multi_line_coef=multi_line_coef)
+    return analyze_content_quality_test(df_test, "ccap", multi_line_coef=multi_line_coef, skip_clean=True)
 
 
 df_test, df_result, df_merged = create_batch_test()
@@ -333,7 +305,7 @@ EXCLUDED_COLUMNS = ["objet_marche", "formule_revision_prix", "condition_avance",
 
 comparison_functions = get_comparison_functions()
 
-check_quality_one_field(df_merged, "montant_ht_lots", comparison_functions["montant_ht_lots"])
+check_quality_one_field(df_merged, "lots.*.montant_ht", comparison_functions["lots.*.montant_ht"])
 
 check_quality_one_row(df_merged, 18, comparison_functions)
 
