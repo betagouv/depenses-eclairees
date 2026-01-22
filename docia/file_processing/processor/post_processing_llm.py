@@ -1,3 +1,4 @@
+import copy
 import logging
 import re
 
@@ -366,33 +367,140 @@ def post_processing_postal_address(postal_address: dict[str, str]) -> dict[str, 
     return normalized_address
 
 
+################################################################################
+## CCAP
+
+
+def create_lots(
+    titles: list[dict], contract_forms: list[dict], durations: list[dict], amounts: list[dict]
+) -> list[dict]:
+    """
+    Post-traitement des lots pour rassembler l'ensemble des informations sur les lots.
+    """
+    # Créer un dictionnaire temporaire indexé par numéro de lot pour fusionner les données
+    lots_by_number = {}
+
+    # Collecter tous les numéros de lots de toutes les sources
+    all_lot_numbers = set()
+
+    for items in (titles, contract_forms, durations, amounts):
+        for item in items:
+            lot_number = item.get("numero_lot")
+            if lot_number is not None:
+                all_lot_numbers.add(lot_number)
+
+    # Initialiser tous les lots avec des valeurs None
+    for lot_number in all_lot_numbers:
+        lots_by_number[lot_number] = {
+            "numero_lot": lot_number,
+            "titre": None,
+            "forme": {"structure": None, "tranches": None, "forme_prix": None},
+            "duree_lot": None,
+            "montant_ht": {"montant_ht_maximum": None, "type_montant": None},
+        }
+
+    # Traiter les titres des lots
+    for item in titles:
+        lot_number = item.get("numero_lot")
+        if lot_number is not None:
+            lots_by_number[lot_number]["titre"] = item.get("titre_lot")
+
+    # Traiter la forme des lots
+    for item in contract_forms:
+        lot_number = item.get("numero_lot")
+        if lot_number is not None:
+            lots_by_number[lot_number]["forme"] = {
+                "structure": item.get("structure"),
+                "tranches": item.get("tranches"),
+                "forme_prix": item.get("forme_prix"),
+            }
+
+    # Traiter la durée des lots
+    for item in durations:
+        lot_number = item.get("numero_lot")
+        if lot_number is not None:
+            duration = item.get("duree_lot")
+            # Si la durée est une chaîne "identique à celle du marché", on la garde telle quelle
+            if isinstance(duration, str):
+                lots_by_number[lot_number]["duree_lot"] = duration
+            # Sinon, c'est un dictionnaire avec les détails
+            elif isinstance(duration, dict):
+                lots_by_number[lot_number]["duree_lot"] = duration
+
+    # Traiter les montants des lots
+    for item in amounts:
+        lot_number = item.get("numero_lot")
+        if lot_number is not None:
+            lots_by_number[lot_number]["montant_ht"] = {
+                "montant_ht_maximum": item.get("montant_ht_maximum"),
+                "type_montant": item.get("type_montant"),
+            }
+
+    # Convertir le dictionnaire en liste triée par numéro de lot
+    lots_result = [lots_by_number[key] for key in sorted(lots_by_number.keys())]
+
+    return lots_result
+
+
+def post_processing_object_ccap(data: dict) -> dict:
+    """
+    Post-traitement de la structure des lots pour extraire les informations sur les lots.
+    """
+    if not data:
+        return data
+
+    titles = data.pop("lots", [])
+    contract_forms = data.pop("forme_marche_lots", [])
+    durations = data.pop("duree_lots", [])
+    amounts = data.pop("montant_ht_lots", [])
+
+    data["lots"] = create_lots(titles, contract_forms, durations, amounts)
+
+    return data
+
+
 CLEAN_FUNCTIONS = {
     # Acte d'engagement
     "acte_engagement": {
-        "rib_mandataire": post_processing_bank_account,
-        "montant_ttc": post_processing_amount,
-        "montant_ht": post_processing_amount,
-        "cotraitants": post_processing_co_contractors,
-        "sous_traitants": post_processing_subcontractors,
-        "siret_mandataire": post_processing_siret,
-        "duree": post_processing_duration,
-        "rib_autres": post_processing_other_bank_accounts,
+        "fields": {
+            "rib_mandataire": post_processing_bank_account,
+            "montant_ttc": post_processing_amount,
+            "montant_ht": post_processing_amount,
+            "cotraitants": post_processing_co_contractors,
+            "sous_traitants": post_processing_subcontractors,
+            "siret_mandataire": post_processing_siret,
+            "duree": post_processing_duration,
+            "rib_autres": post_processing_other_bank_accounts,
+        },
     },
     # RIB
     "rib": {
-        "iban": post_processing_iban,
-        "bic": post_processing_bic,
-        "adresse_postale_titulaire": post_processing_postal_address,
+        "fields": {
+            "iban": post_processing_iban,
+            "bic": post_processing_bic,
+            "adresse_postale_titulaire": post_processing_postal_address,
+        },
+    },
+    # CCAP
+    "ccap": {
+        "object": post_processing_object_ccap,
     },
 }
 
 
 def clean_llm_response(document_type: str, llm_response: dict) -> dict:
-    clean_functions = CLEAN_FUNCTIONS.get(document_type, None)
-    if clean_functions:
-        return apply_clean_functions(llm_response, clean_functions)
+    cleaned_data = copy.deepcopy(llm_response)
+    clean_config = CLEAN_FUNCTIONS.get(document_type, None)
+    if clean_config:
+        clean_fields_functions = clean_config.get("fields", {})
+        if clean_fields_functions:
+            cleaned_data = apply_clean_functions(cleaned_data, clean_fields_functions)
+        clean_object_function = clean_config.get("object", None)
+        if clean_object_function:
+            cleaned_data = clean_object_function(cleaned_data)
+        return cleaned_data
     else:
-        return llm_response
+        return cleaned_data
 
 
 def apply_clean_functions(data: dict, clean_functions: dict) -> dict:
