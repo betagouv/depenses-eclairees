@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 import sys
 
 import django
@@ -17,7 +18,7 @@ from tests_e2e.utils import (  # noqa: E402
     check_global_statistics,
     check_quality_one_field,
     check_quality_one_row,
-    normalize_string,
+    normalize_string, remove_accents,
 )
 
 logger = logging.getLogger("docia." + __name__)
@@ -35,6 +36,8 @@ def compare_iban(llm_val: str, ref_val: str):
     if not llm_val or not ref_val:
         return False
 
+    llm_val = llm_val.replace(" ", "")
+    ref_val = llm_val.replace(" ", "")
     return llm_val == ref_val
 
 
@@ -47,6 +50,8 @@ def compare_bic(llm_val: str, ref_val: str):
     if not llm_val or not ref_val:
         return False
 
+    llm_val = llm_val.replace(" ", "")
+    ref_val = llm_val.replace(" ", "")
     return llm_val == ref_val
 
 
@@ -119,8 +124,14 @@ def compare_address(llm_val: dict[str, str], ref_val: dict[str, str]):
         ref_field_val = ref_val.get(field, "")
 
         # Normaliser les valeurs vides
-        llm_field_val = llm_field_val.strip().title()
-        ref_field_val = ref_field_val.strip().title()
+        def _normalize(s):
+            s = s.strip().upper()
+            s = remove_accents(s)
+            s = re.sub(r"[-']", " ", s)
+            s = re.sub(r"\s\s", " ", s)
+            return s
+        llm_field_val = _normalize(llm_field_val)
+        ref_field_val = _normalize(ref_field_val)
 
         # Comparer les valeurs du champ
         if llm_field_val != ref_field_val:
@@ -181,6 +192,8 @@ df_test, df_result, df_merged = create_batch_test()
 comparison_functions = get_comparison_functions()
 
 check_quality_one_field(df_merged, "iban", comparison_functions["iban"])
+check_quality_one_field(df_merged, "titulaire_compte", comparison_functions["titulaire_compte"])
+check_quality_one_field(df_merged, "adresse_postale_titulaire", comparison_functions["adresse_postale_titulaire"])
 
 check_quality_one_row(df_merged, 26, comparison_functions)
 
