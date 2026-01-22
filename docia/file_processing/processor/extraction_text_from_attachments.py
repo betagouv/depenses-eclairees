@@ -130,18 +130,21 @@ def extract_text_from_pdf(file_content: bytes, word_threshold=50):
     """
     doc = pymupdf.Document(stream=file_content)
 
-    doc_with_drawings = add_drawings_to_pdf(doc)
-
     # Essayer d'extraire directement le texte dans l'ordre vertical
-    text = "\n".join([page.get_text(sort=True) for page in doc_with_drawings]).strip()
+    text = "\n".join([page.get_text(sort=True) for page in doc]).strip()
     is_ocr_used = False
 
     # Compter les mots dans le texte extrait
     word_count = count_words(text)
 
+    # Si suffisamment de mots, c'est un pdf natif
+    if word_count >= word_threshold:
+        doc_with_drawings = add_drawings_to_pdf(doc)
+        text = "\n".join([page.get_text(sort=True) for page in doc_with_drawings]).strip()
+
     # Si peu de mots sont extraits, c'est peut-être une image scannée
     # Utilisation de l'OCR
-    if word_count < word_threshold:
+    else:
         is_ocr_used = True
         text_ocr = ""
         # https://pymupdf.readthedocs.io/en/latest/recipes-ocr.html#how-to-ocr-a-document-page
