@@ -615,10 +615,30 @@ DIC_CLASS_FILE_BY_NAME = {
 =======
         "description": "Cahier des charges administratives spécifiant les exigences administratives du marché.",
     },
+    "ccap_annexe_beneficiaires": {
+        "nom_complet": "CCAP annexe bénéficiaires",
+        "description": "Annexe au CCAP contenant la liste des bénéficiaires potentiels du marché.",
+    },
+    "ccap_annexe": {
+        "nom_complet": "CCAP annexe autre",
+        "description": "Annexe au CCAP contenant des informations complémentaires non repertoriées dans les autres catégories.",
+    },
     "cctp": {
         "nom_complet": "CCTP (Cahier des Clauses Techniques Particulières)",
         "description": "Cahier des charges techniques spécifiant les exigences techniques du marché.",
 >>>>>>> 20aa36a (Simplification dictionnaire classification)
+    },
+    "ccp_simple": {
+        "nom_complet": "Cahier des clauses Particulières simple",
+        "description": "Cahier des charges particuliers valant à la fois cahier des charges administratives et techniques, mais ne valant pas acte d'engagement (un autre document d'engagement est nécessaire).",
+    },
+    "ccp_vae": {
+        "nom_complet": "CCP valant acte d'engagement",
+        "description": "Cahier des charges particuliers (administratives et techniques) valant acte d'engagement.",
+    },
+    "ca_chgt_rib": {
+        "nom_complet": "CA de changement de rib",
+        "description": "Document administratif émis par l'administration (ou l'acheteur) pour préciser des changements sur le rib d'un prestataire.",
     },
     "commentaire": {"nom_complet": "Commentaire", "description": "Document spécifique à Chorus coeur, format txt."},
     "conv_financement": {"nom_complet": "Convention de financement", "description": ""},

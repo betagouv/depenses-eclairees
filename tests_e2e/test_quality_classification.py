@@ -20,16 +20,6 @@ logger = logging.getLogger("docia." + __name__)
 PROJECT_PATH = settings.BASE_DIR
 CSV_DIR_PATH = (PROJECT_PATH / ".." / "data" / "test").resolve()
 
-# create_batch_test 
-# Trouve le csv (pareil que dans les autres tests)
-# Crée le dataframe
-# Récupère uniquement les lignes avec une certaine classification dans le GT
-# Passe les tests dans la classification et récupère un tableau des résultats
-# Renvoier les df : df_test, df_result, df_merged
-
-# Ajoute une focntion de comparaison pour la classification
-
-# Ajouter une fonction montrant les résultats pour globaux et lignes par ligne
 
 def create_batch_test(true_classification: list[str] = None, multi_line_coef=1):
     """Création du batch de test pour la classification."""
@@ -44,8 +34,10 @@ def create_batch_test(true_classification: list[str] = None, multi_line_coef=1):
         except:
             df_test.at[idx, "classification"] = None
     df_test.dropna(subset=["classification"], inplace=True)
-    if true_classification is not None:
-        df_test = df_test[df_test["classification"].apply(lambda x: true_classification == x)]
+
+    if true_classification:
+        df_test = df_test[df_test["classification"].apply(lambda x: x[0] in true_classification)]
+
     if multi_line_coef > 1:
         df_test = pd.concat([df_test for x in range(multi_line_coef)]).reset_index(drop=True)
 
@@ -58,14 +50,20 @@ def create_batch_test(true_classification: list[str] = None, multi_line_coef=1):
     # Analyse du contenu avec df_analyze_content
     df_result = classify_files(
         dfFiles=df_classified,
-        list_classification=DIC_CLASS_FILE_BY_NAME
+        list_classification=DIC_CLASS_FILE_BY_NAME,
+        max_workers=10
     )
 
-    return df_result
+    return df_test, df_classified, df_result
 
 
-def compare_classification(df_result: pd.DataFrame):
-    """Comparaison des classifications."""
+def compare_classification(df_result: pd.DataFrame, errors_only: bool = False):
+    """Comparaison des classifications avec affichage amélioré.
+    
+    Args:
+        df_result: DataFrame contenant les résultats de classification
+        errors_only: Si True, n'affiche que les erreurs. Si False, affiche toutes les lignes.
+    """
     def lists_equal_ignore_order(list1, list2):
         """Compare deux listes en ignorant l'ordre."""
         if not isinstance(list1, list) or not isinstance(list2, list):
@@ -77,8 +75,76 @@ def compare_classification(df_result: pd.DataFrame):
         lambda row: lists_equal_ignore_order(row["true_classification"], row["classification"]),
         axis=1
     )
-    print(df_result[["filename", "true_classification", "classification", "is_correct"]].rename(columns={"true_classification": "true", "classification": "predicted", "is_correct": "ok"}))
+    
+    # Préparer l'affichage avec symboles visuels
+    def format_status(is_correct):
+        """Retourne un symbole selon le statut."""
+        return "✅" if is_correct else "❌"
+    
+    def format_classification(classif):
+        """Formate une classification pour l'affichage."""
+        if isinstance(classif, list):
+            return ", ".join(str(c) for c in classif)
+        return str(classif) if classif is not None else "None"
+    
+    def format_filename(filename):
+        """Tronque le nom de fichier à 30 caractères max."""
+        if len(filename) > 30:
+            return filename[:40] + "..."
+        return filename
+    
+    # Créer un DataFrame pour l'affichage
+    df_display = pd.DataFrame()
+    df_display["Statut"] = df_result["is_correct"].apply(format_status)
+    df_display["Fichier"] = df_result["filename"].apply(format_filename)
+    
+    # Afficher les deux classifications seulement quand elles ne matchent pas
+    df_display["Attendu"] = df_result["true_classification"].apply(format_classification)
+    df_display["Prédit"] = df_result["classification"].apply(format_classification)
+    
+    # Masquer les colonnes "Attendu" et "Prédit" pour les lignes correctes
+    mask_correct = df_result["is_correct"]
+    df_display.loc[mask_correct, "Attendu"] = ""
+    df_display.loc[mask_correct, "Prédit"] = ""
+    
+    # Filtrer pour n'afficher que les erreurs si demandé
+    if errors_only:
+        df_display = df_display[~mask_correct]
+    
+    # Afficher avec un formatage adapté pour ~50 lignes
+    print("\n" + "=" * 100)
+    print("COMPARAISON DES CLASSIFICATIONS")
+    print("=" * 100)
+    
+    # Afficher les statistiques rapides
+    total = len(df_result)
+    correct = df_result["is_correct"].sum()
+    incorrect = total - correct
+    print(f"\nTotal: {total} | ✅ Corrects: {correct} | ❌ Incorrects: {incorrect}\n")
+    
+    # Afficher un message si on filtre les erreurs
+    if errors_only:
+        print(f"Affichage des erreurs uniquement ({len(df_display)} ligne(s))\n")
+    
+    # Configurer pandas pour un affichage optimal
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.width', None)
+    pd.set_option('display.max_colwidth', 50)
+    
+    # Afficher le tableau
+    print(df_display.to_string(index=False))
+    
+    # Réinitialiser les options pandas
+    pd.reset_option('display.max_rows')
+    pd.reset_option('display.max_columns')
+    pd.reset_option('display.width')
+    pd.reset_option('display.max_colwidth')
+    
+    print("\n" + "=" * 100 + "\n")
+    
     return df_result
+
 
 def display_results(df_result: pd.DataFrame):
     """Affiche les résultats de classification par classe (basé sur le premier élément)."""
@@ -171,10 +237,11 @@ def display_results(df_result: pd.DataFrame):
     for cls, count in classification_counts.items():
         print(f"  {cls}: {count}")
 
-df_result = create_batch_test(true_classification=["ccap"])
-# df_result = create_batch_test()
+
+df_test, df_classified, df_result = create_batch_test()
 
 
-df_comparison = compare_classification(df_result)
+df_comparison = compare_classification(df_result, errors_only=True)
+
 
 display_results(df_comparison)
