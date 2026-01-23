@@ -19,19 +19,54 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
         "search": "",
         "output_field": "objet_marche",
     },
-    "lot_concerne": {
-        "consigne": """LOT_CONCERNE
-   Définition : le lot du marché concerné par le contrat.
+    "forme_marche": {
+        "consigne": """FORME MARCHE
+   Définition : Informations sur la forme du marché concernant les lots, les marchés subséquents et les marchés parents.
    Indices :
-   - Chercher après les mentions "Objet" et "Lot", ou autre mention similaire, en particulier en début du document.
-   - Renvoyer le numéro du lot, ainsi que le titre du lot s'il est disponible : "Lot X : [titre du lot]"
-   - Ne rien renvoyer si aucun lot trouvé.
+   - Chercher après les mentions "Objet", "Lot", "marché subséquent", "marché parent", ou autres mentions similaires, en particulier en début du document.
+   - Pour le champ lot_concerne :
+     * Si le marché concerne un lot spécifique, identifier le numéro du lot et son titre (chercher "Lot X", "Lot n°X", etc.).
+     * Si le marché n'est pas un lot, renvoyer null pour numero_lot et titre_lot.
+   - Pour le champ marche_subsequent :
+     * Rechercher les mentions explicites de "marché subséquent", "marchés subséquents", ou formulations équivalentes.
+     * Si le document précise que ce marché est un marché subséquent ou fait partie d'un marché à marchés subséquents, renvoyer true.
+     * Sinon, renvoyer false.
+   - Pour le champ marche_parent :
+     * Rechercher l'identifiant du marché parent (souvent mentionné comme "accord-cadre", "contrat-cadre", "marché global", etc.).
+     * L'identifiant peut être un numéro de marché, un code, ou toute référence unique au marché parent.
+     * Si aucun marché parent n'est mentionné ou si son identifiant n'est pas disponible, renvoyer null.
    Format : 
-   - La chaîne de caractères"Lot X : [titre du lot]", où le titre du lot est écrit en minuscule correctement.
-   - Si aucun lot trouvé, renvoyer ''
+   - Un objet JSON avec les trois champs suivants au même niveau :
+     * "lot_concerne" : objet avec "numero_lot" (entier ou null) et "titre_lot" (chaîne ou null)
+     * "marche_subsequent" : booléen (true ou false)
+     * "marche_parent" : chaîne (identifiant du marché parent) ou null
 """,
         "search": "",
-        "output_field": "lot_concerne",
+        "output_field": "forme_marche",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "lot_concerne": {
+                    "type": ["object", "null"],
+                    "properties": {
+                        "numero_lot": {
+                            "type": ["integer", "null"]
+                        },
+                        "titre_lot": {
+                            "type": ["string", "null"]
+                        }
+                    },
+                    "required": ["numero_lot", "titre_lot"]
+                },
+                "marche_subsequent": {
+                    "type": "boolean"
+                },
+                "marche_parent": {
+                    "type": ["string", "null"]
+                }
+            },
+            "required": ["lot_concerne", "marche_subsequent", "marche_parent"]
+        },
     },
     "administration_beneficiaire": {
         "consigne": """ADMINISTRATION_BENEFICIAIRE 
