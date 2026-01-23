@@ -1,4 +1,3 @@
-import pytest
 import pymupdf
 
 from docia.file_processing.processor.pdf_drawings import (
@@ -9,6 +8,7 @@ from docia.file_processing.processor.pdf_drawings import (
     count_segments_in_drawing,
     count_total_segments_in_group,
     deduce_checkbox_caracters_from_groups,
+    find_nearby_drawings,
     get_all_drawing_centers,
     get_drawing_center,
     get_group_center,
@@ -16,16 +16,15 @@ from docia.file_processing.processor.pdf_drawings import (
     has_small_square_item,
     is_square,
     points_to_cm,
-    find_nearby_drawings,
-    add_drawings_to_pdf,
 )
+
 from .utils import ASSETS_DIR
 
 
 def test_get_drawing_center():
     """Test que get_drawing_center calcule correctement le centre d'un rectangle."""
     rect = pymupdf.Rect(10, 20, 30, 40)
-    drawing = {'rect': rect}
+    drawing = {"rect": rect}
     center = get_drawing_center(drawing)
     assert center == (20.0, 30.0)  # (x0+x1)/2, (y0+y1)/2
 
@@ -35,7 +34,7 @@ def test_get_drawing_center():
     assert center is None
 
     # Test avec rect None
-    drawing = {'rect': None}
+    drawing = {"rect": None}
     center = get_drawing_center(drawing)
     assert center is None
 
@@ -58,11 +57,11 @@ def test_calculate_distance():
     center1 = (10, 20)
     center2 = None
     distance = calculate_distance(center1, center2)
-    assert distance == float('inf')
+    assert distance == float("inf")
 
     # Les deux None
     distance = calculate_distance(None, None)
-    assert distance == float('inf')
+    assert distance == float("inf")
 
 
 def test_get_all_drawing_centers():
@@ -70,8 +69,8 @@ def test_get_all_drawing_centers():
     rect1 = pymupdf.Rect(0, 0, 10, 10)
     rect2 = pymupdf.Rect(20, 20, 30, 30)
     drawings = [
-        {'rect': rect1},
-        {'rect': rect2},
+        {"rect": rect1},
+        {"rect": rect2},
     ]
     centers = get_all_drawing_centers(drawings)
     assert centers == [(5.0, 5.0), (25.0, 25.0)]
@@ -79,7 +78,7 @@ def test_get_all_drawing_centers():
     # Test avec dessin sans rectangle
     rect1 = pymupdf.Rect(0, 0, 10, 10)
     drawings = [
-        {'rect': rect1},
+        {"rect": rect1},
         {},  # Pas de rectangle
     ]
     centers = get_all_drawing_centers(drawings)
@@ -122,7 +121,7 @@ def test_group_drawings_by_location():
 
     # Un seul dessin
     rect = pymupdf.Rect(10, 10, 20, 20)
-    drawings = [{'rect': rect}]
+    drawings = [{"rect": rect}]
     groups = group_drawings_by_location(drawings)
     assert len(groups) == 1
     assert groups[0] == [0]
@@ -132,9 +131,9 @@ def test_group_drawings_by_location():
     rect2 = pymupdf.Rect(12, 12, 22, 22)  # Proche de rect1
     rect3 = pymupdf.Rect(100, 100, 110, 110)  # Loin
     drawings = [
-        {'rect': rect1},
-        {'rect': rect2},
-        {'rect': rect3},
+        {"rect": rect1},
+        {"rect": rect2},
+        {"rect": rect3},
     ]
     groups = group_drawings_by_location(drawings, distance_threshold=5)
     # rect1 et rect2 devraient être dans le même groupe
@@ -189,59 +188,59 @@ def test_has_small_square_item():
     # Petit carré dans un rectangle
     size_pt = cm_to_points(0.3)
     rect = pymupdf.Rect(0, 0, size_pt, size_pt)
-    item = ('re', rect)
-    drawing = {'items': [item]}
+    item = ("re", rect)
+    drawing = {"items": [item]}
     assert has_small_square_item(drawing, max_size_cm=0.5, min_size_cm=0.25) is True
 
     # Carré trop grand
     size_pt = cm_to_points(1.0)  # 1 cm, trop grand
     rect = pymupdf.Rect(0, 0, size_pt, size_pt)
-    item = ('re', rect)
-    drawing = {'items': [item]}
+    item = ("re", rect)
+    drawing = {"items": [item]}
     assert has_small_square_item(drawing, max_size_cm=0.5, min_size_cm=0.25) is False
 
     # Carré trop petit
     size_pt = cm_to_points(0.1)  # 0.1 cm, trop petit
     rect = pymupdf.Rect(0, 0, size_pt, size_pt)
-    item = ('re', rect)
-    drawing = {'items': [item]}
+    item = ("re", rect)
+    drawing = {"items": [item]}
     assert has_small_square_item(drawing, max_size_cm=0.5, min_size_cm=0.25) is False
 
     # Pas d'items
-    drawing = {'items': []}
+    drawing = {"items": []}
     assert has_small_square_item(drawing) is False
 
     # Quadrilatère
     size_pt = cm_to_points(0.3)
     rect = pymupdf.Rect(0, 0, size_pt, size_pt)
-    item = ('qu', None)  # Le quad n'est pas utilisé, on utilise drawing.rect
-    drawing = {'items': [item], 'rect': rect}
+    item = ("qu", None)  # Le quad n'est pas utilisé, on utilise drawing.rect
+    drawing = {"items": [item], "rect": rect}
     assert has_small_square_item(drawing, max_size_cm=0.5, min_size_cm=0.25) is True
 
 
 def test_count_segments_in_drawing():
     """Test le comptage de segments dans un dessin."""
     # Dessin avec lignes
-    item1 = ('l', pymupdf.Point(0, 0), pymupdf.Point(10, 10))
-    item2 = ('re', pymupdf.Rect(0, 0, 10, 10))
-    item3 = ('l', pymupdf.Point(20, 20), pymupdf.Point(30, 30))
-    drawing = {'items': [item1, item2, item3]}
+    item1 = ("l", pymupdf.Point(0, 0), pymupdf.Point(10, 10))
+    item2 = ("re", pymupdf.Rect(0, 0, 10, 10))
+    item3 = ("l", pymupdf.Point(20, 20), pymupdf.Point(30, 30))
+    drawing = {"items": [item1, item2, item3]}
     count = count_segments_in_drawing(drawing)
     assert count == 2  # Deux lignes
 
     # Dessin sans lignes
-    item = ('re', pymupdf.Rect(0, 0, 10, 10))
-    drawing = {'items': [item]}
+    item = ("re", pymupdf.Rect(0, 0, 10, 10))
+    drawing = {"items": [item]}
     count = count_segments_in_drawing(drawing)
     assert count == 0
 
 
 def test_count_total_segments_in_group():
     """Test le comptage total de segments dans un groupe."""
-    item1 = ('l', pymupdf.Point(0, 0), pymupdf.Point(10, 10))
-    item2 = ('l', pymupdf.Point(20, 20), pymupdf.Point(30, 30))
-    drawing1 = {'items': [item1]}
-    drawing2 = {'items': [item2]}
+    item1 = ("l", pymupdf.Point(0, 0), pymupdf.Point(10, 10))
+    item2 = ("l", pymupdf.Point(20, 20), pymupdf.Point(30, 30))
+    drawing1 = {"items": [item1]}
+    drawing2 = {"items": [item2]}
     drawings = [drawing1, drawing2]
     group_indices = [0, 1]
     total = count_total_segments_in_group(drawings, group_indices)
@@ -253,8 +252,8 @@ def test_get_group_center():
     rect1 = pymupdf.Rect(0, 0, 10, 10)  # Centre: (5, 5)
     rect2 = pymupdf.Rect(20, 20, 30, 30)  # Centre: (25, 25)
     drawings = [
-        {'rect': rect1},
-        {'rect': rect2},
+        {"rect": rect1},
+        {"rect": rect2},
     ]
     group_indices = [0, 1]
     center = get_group_center(drawings, group_indices)
@@ -273,38 +272,38 @@ def test_deduce_checkbox_caracters_from_groups():
     # Checkbox cochée (>= 2 segments)
     size_pt = cm_to_points(0.3)
     rect = pymupdf.Rect(0, 0, size_pt, size_pt)
-    item_rect = ('re', rect)
-    item_line1 = ('l', pymupdf.Point(0, 0), pymupdf.Point(10, 10))
-    item_line2 = ('l', pymupdf.Point(10, 0), pymupdf.Point(0, 10))
+    item_rect = ("re", rect)
+    item_line1 = ("l", pymupdf.Point(0, 0), pymupdf.Point(10, 10))
+    item_line2 = ("l", pymupdf.Point(10, 0), pymupdf.Point(0, 10))
     drawing = {
-        'items': [item_rect, item_line1, item_line2],
-        'rect': rect,
+        "items": [item_rect, item_line1, item_line2],
+        "rect": rect,
     }
     drawings = [drawing]
     groups = [[0]]
     checkbox_caracters = deduce_checkbox_caracters_from_groups(drawings, groups)
     assert len(checkbox_caracters) == 1
     character, center = checkbox_caracters[0]
-    assert character == '[X]'  # Coché car >= 2 segments
+    assert character == "[X]"  # Coché car >= 2 segments
 
     # Checkbox non cochée (< 2 segments)
     size_pt = cm_to_points(0.3)
     rect = pymupdf.Rect(0, 0, size_pt, size_pt)
-    item_rect = ('re', rect)
+    item_rect = ("re", rect)
     drawing = {
-        'items': [item_rect],
-        'rect': rect,
+        "items": [item_rect],
+        "rect": rect,
     }
     drawings = [drawing]
     groups = [[0]]
     checkbox_caracters = deduce_checkbox_caracters_from_groups(drawings, groups)
     assert len(checkbox_caracters) == 1
     character, center = checkbox_caracters[0]
-    assert character == '[ ]'  # Non cochée car < 2 segments
+    assert character == "[ ]"  # Non cochée car < 2 segments
 
     # Pas de petit carré
     rect = pymupdf.Rect(0, 0, 100, 100)  # Trop grand
-    drawing = {'items': [('re', rect)], 'rect': rect}
+    drawing = {"items": [("re", rect)], "rect": rect}
     drawings = [drawing]
     groups = [[0]]
     checkbox_caracters = deduce_checkbox_caracters_from_groups(drawings, groups)
@@ -363,11 +362,11 @@ def test_add_checkbox_drawings_in_text_from_pdf():
     pdf_path = ASSETS_DIR / "checkbox.pdf"
     doc = pymupdf.Document(pdf_path)
     doc_with_drawings = add_drawings_to_pdf(doc)
-    
+
     new_text = doc_with_drawings[0].get_text(sort=True)
-    has_checkbox = '[X]     Le signataire' in new_text and '[ ]           m’engage sur' in new_text
+    has_checkbox = "[X]     Le signataire" in new_text and "[ ]           m’engage sur" in new_text
 
     assert has_checkbox
-    
+
     doc_with_drawings.close()
     doc.close()
