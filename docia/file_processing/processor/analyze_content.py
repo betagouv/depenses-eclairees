@@ -113,20 +113,20 @@ def df_analyze_content(df: pd.DataFrame,
             kwargs["llm_model"] = llm_model
         try:
             result = analyze_file_text(**kwargs)
-            result["json_error"] = None # Ajout du champ json_error pour la gestion sans stepRunner
+            result["error"] = None
         except Exception as e:
             result = {
                 'llm_response': None,
                 'structured_data': None,
-                'json_error': f"Erreur lors de l'analyse: {str(e)}"
+                'error': f"Erreur lors de l'analyse: {str(e)}"
             }
             logger.exception(f"Erreur lors de l'analyse du fichier {row['filename']}: {e}")
 
-        if not result["json_error"]:
+        if not result["error"]:
             for attr in df_attributes.attribut:
                 result.update({f'{attr}': result["llm_response"].get(attr, '')})
         else:
-            logger.error(f"Erreur lors de l'analyse du fichier {row["filename"]}: {result['json_error']}")
+            logger.error(f"Erreur lors de l'analyse du fichier {row["filename"]}: {result['error']}")
 
         return idx, result
 
