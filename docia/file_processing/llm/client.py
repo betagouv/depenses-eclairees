@@ -6,7 +6,7 @@ import time
 from django.conf import settings
 
 import httpx
-from openai import APIStatusError, OpenAI
+from openai import APIConnectionError, APIError, APIStatusError, OpenAI
 
 from docia.file_processing.llm.rategate.gate import RateGate
 
@@ -15,22 +15,39 @@ logger = logging.getLogger(__name__)
 
 class LLMApiError(Exception):
     message: str
-    status_code: int
-    body: any
+    code: str
+    details: any
 
-    def __init__(self, message: str, *, status_code: int, body: any):
+    def __init__(self, message: str, *, code: str, details: any):
         super().__init__(message)
         self.message = message
-        self.status_code = status_code
+        self.code = code
+        self.details = details
 
     @classmethod
-    def from_api_error(cls, e: APIStatusError):
-        status_code = e.status_code
-        body = e.body
+    def pretty_code_from_error(cls, e: APIError):
+        if isinstance(e, APIStatusError):
+            code = f"HTTP_{e.status_code}"
+        else:
+            code = f"ERROR_{e.__class__.__name__}"
+        return code
+
+    @classmethod
+    def details_from_error(cls, e: APIError):
+        if isinstance(e, APIStatusError):
+            details = e.body
+        else:
+            details = str(e)
+        return details
+
+    @classmethod
+    def from_api_error(cls, e: APIError):
+        code = cls.pretty_code_from_error(e)
+        details = cls.details_from_error(e)
         return cls(
-            f"Api Error: {status_code} - {e.body}",
-            status_code=e.status_code,
-            body=body,
+            f"Api Error: {code} - {details}",
+            code=code,
+            details=details,
         )
 
 
@@ -117,10 +134,21 @@ class LLMClient:
                 response = content  # Success
                 break
 
-            except APIStatusError as e:
-                if e.status_code == 429:
-                    effective_retry_delay = retry_delay
-                elif 500 <= e.status_code < 600:
+            # Retry mechanism for API errors:
+            # - 429 (rate limit): retry with longer delay (retry_delay)
+            # - 5XX (server errors): retry with shorter delay (retry_short_delay)
+            # - Connection errors: retry with shorter delay (retry_short_delay)
+            # - Other errors: raise immediately without retry
+            # Each retry multiplies the delay by (attempt + 1) with 10% randomization
+            except APIError as e:
+                if isinstance(e, APIStatusError):
+                    if e.status_code == 429:
+                        effective_retry_delay = retry_delay
+                    elif 500 <= e.status_code < 600:
+                        effective_retry_delay = retry_short_delay
+                    else:
+                        raise LLMApiError.from_api_status_error(e) from e
+                elif isinstance(e, APIConnectionError):
                     effective_retry_delay = retry_short_delay
                 else:
                     raise LLMApiError.from_api_error(e) from e
@@ -128,8 +156,9 @@ class LLMClient:
                 if effective_retry_delay and attempt < max_retries:
                     rnd = 1 + (0.1 * random.random())  # Ajout d'un peu de random (10%)
                     wait_time = effective_retry_delay * rnd * (attempt + 1)
+                    error_code = LLMApiError.pretty_code_from_error(e)
                     logger.warning(
-                        f"ApiError {e.status_code} ({str(e)}), wait {wait_time:.1f}s before retry ({attempt + 1}/{max_retries})"  # noqa: E501
+                        f"ApiError {error_code} ({str(e)}), wait {wait_time:.1f}s before retry ({attempt + 1}/{max_retries})"  # noqa: E501
                     )
                     time.sleep(wait_time)
                     continue  # Retry
