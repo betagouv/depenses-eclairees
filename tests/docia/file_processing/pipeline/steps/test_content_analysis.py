@@ -14,7 +14,6 @@ def patch_analyze_content():
         m.return_value = {
             "llm_response": {"nom": "Toto  ."},
             "structured_data": {"nom": "Toto"},
-            "json_error": None,
         }
         yield m
 
@@ -32,7 +31,6 @@ def test_task_analyze_content():
     assert step.error == ""
     assert step.job.document.llm_response == {"nom": "Toto  ."}
     assert step.job.document.structured_data == {"nom": "Toto"}
-    assert step.job.document.json_error is None
     assert step.job.document.updated_at > last_updated_at
 
 
@@ -51,7 +49,6 @@ def test_do_process_based_on_classification():
     assert step.error == ""
     assert step.job.document.llm_response == {"nom": "Toto  ."}
     assert step.job.document.structured_data == {"nom": "Toto"}
-    assert step.job.document.json_error is None
 
 
 @pytest.mark.django_db
@@ -69,4 +66,3 @@ def test_skip_based_on_classification():
     assert step.error == ""
     assert step.job.document.llm_response is None
     assert step.job.document.structured_data is None
-    assert step.job.document.json_error is None

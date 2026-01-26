@@ -96,7 +96,6 @@ def df_analyze_content(df: pd.DataFrame,
     dfResult = df.copy()
     dfResult['llm_response'] = None
     dfResult['structured_data'] = None
-    dfResult['json_error'] = None
 
     for attr in df_attributes.attribut:
         dfResult[attr] = None
@@ -114,6 +113,7 @@ def df_analyze_content(df: pd.DataFrame,
             kwargs["llm_model"] = llm_model
         try:
             result = analyze_file_text(**kwargs)
+            result["json_error"] = None # Ajout du champ json_error pour la gestion sans stepRunner
         except Exception as e:
             result = {
                 'llm_response': None,
