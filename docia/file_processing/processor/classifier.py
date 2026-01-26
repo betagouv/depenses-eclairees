@@ -68,7 +68,7 @@ def classify_file_with_name(filename:str, list_classification = {"devis":{"words
 
 
 def classify_file_with_llm(filename: str, text: str, list_classification: dict,
-                           llm_model: str = 'albert-large') -> str:
+                           llm_model: str = 'openweight-medium') -> str:
     """
     Classifie un fichier en fonction de son contenu en utilisant un LLM.
     
@@ -121,7 +121,7 @@ Répondez UNIQUEMENT par le nom de la catégorie, sans autre texte ni ponctuatio
 
 
 def classify_files(dfFiles: pd.DataFrame, list_classification: dict, classification_type: str = "name", 
-                  api_key: str = None, base_url: str = None, llm_model: str = 'albert-large',
+                  api_key: str = None, base_url: str = None, llm_model: str = 'openweight-medium',
                   max_workers: int = 4, save_path: str = None, save_grist: bool = False, directory_path: str = None) -> pd.DataFrame:
     """
     Classifie les fichiers d'un DataFrame entre les différentes pièces jointes possibles.
@@ -132,7 +132,7 @@ def classify_files(dfFiles: pd.DataFrame, list_classification: dict, classificat
         classification_type (str): Type de classification ("name" ou "llm")
         api_key (str): Clé API pour le LLM (requis si classification_type="llm")
         base_url (str): URL de base pour le LLM (requis si classification_type="llm")
-        llm_model (str): Modèle LLM à utiliser (par défaut: 'albert-large')
+        llm_model (str): Modèle LLM à utiliser (par défaut: 'openweight-medium')
         max_workers (int): Nombre maximum de threads pour l'exécution parallèle (par défaut: 4)
         save_path (str): Chemin pour sauvegarder les résultats
         save_grist (bool): Sauvegarder dans Grist

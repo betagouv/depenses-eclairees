@@ -141,7 +141,7 @@ def df_analyze_content(df: pd.DataFrame,
     return dfResult
 
 
-def analyze_file_text(text: str, document_type: str, llm_model: str = 'albert-large', temperature: float = 0.0):
+def analyze_file_text(text: str, document_type: str, llm_model: str = 'openweight-medium', temperature: float = 0.0):
     """
     Analyse le texte pour extraire des informations.
 
@@ -164,7 +164,7 @@ def analyze_file_text(text: str, document_type: str, llm_model: str = 'albert-la
     }
 
 
-def analyze_file_text_llm(text: str, document_type: str, llm_model: str = 'albert-large', temperature: float = 0.0):
+def analyze_file_text_llm(text: str, document_type: str, llm_model: str = 'openweight-medium', temperature: float = 0.0):
 
     llm_env = LLMClient(llm_model)
 
