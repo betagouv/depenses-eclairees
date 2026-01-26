@@ -14,7 +14,7 @@ from docia.file_processing.llm.client import LLMApiError, LLMClient
         (
             429,
             60,
-            {"detail": "100 requests for albert-large per minute exceeded (remaining: 0)."},
+            {"detail": "100 requests for openweight-medium per minute exceeded (remaining: 0)."},
         ),
         (503, 10, {"detail": "Model is too busy, please try again later."}),
         (504, 10, {"detail": "Model is too busy."}),
@@ -37,7 +37,7 @@ def test_ask_llm_api_error(status_code, retry_delay, error_message):
     httpx_client = SyncHttpxClientWrapper(transport=httpx.MockTransport(handler=mock_handler))
 
     # Créer le client
-    llm_env = LLMClient(llm_model="albert-large", http_client=httpx_client)
+    llm_env = LLMClient(llm_model="openweight-medium", http_client=httpx_client)
 
     # Mock
     with (
