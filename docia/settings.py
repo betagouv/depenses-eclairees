@@ -132,16 +132,6 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# Email
-DEFAULT_FROM_EMAIL = config.str("DEFAULT_FROM_EMAIL")
-EMAIL_BACKEND = config.str("EMAIL_BACKEND")
-EMAIL_HOST = config.str("SMTP_HOST", None)
-EMAIL_PORT = config.int("SMTP_PORT", None)
-EMAIL_HOST_USER = config.str("SMTP_USERNAME", None)
-EMAIL_HOST_PASSWORD = config.str("SMTP_PASSWORD", None)
-EMAIL_USE_TLS = True
-
-
 AUTH_USER_MODEL = "docia.User"
 AUTHENTICATION_BACKENDS = [
     "docia.auth.backends.CustomOIDCBackend",
