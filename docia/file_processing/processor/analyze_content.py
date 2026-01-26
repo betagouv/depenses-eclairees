@@ -160,7 +160,6 @@ def analyze_file_text(text: str, document_type: str, llm_model: str = 'openweigh
     return {
         "llm_response": response,
         "structured_data": data,
-        "json_error": None,
     }
 
 
