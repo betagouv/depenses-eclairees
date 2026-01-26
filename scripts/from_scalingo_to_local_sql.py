@@ -49,7 +49,6 @@ def load_local_sql_attachments(dfFiles, connexion):
         "relevant_content",
         "is_embedded",
         "llm_response",
-        "json_error",
         "classification",
         "classification_type",
     ]
@@ -137,7 +136,6 @@ dfFiles = select_attachments(
         "relevant_content",
         "is_embedded",
         "llm_response",
-        "json_error",
         "classification",
         "classification_type",
     ],

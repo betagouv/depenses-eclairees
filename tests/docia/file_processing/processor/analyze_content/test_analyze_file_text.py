@@ -16,5 +16,4 @@ def test_analyze_file_text():
         assert r == {
             "llm_response": data,
             "structured_data": data,
-            "json_error": None,
         }
