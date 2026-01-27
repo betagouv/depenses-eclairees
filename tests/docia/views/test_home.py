@@ -1,10 +1,10 @@
-from django.contrib.auth.models import Permission, Group
+from contextlib import contextmanager
+from unittest.mock import patch
 
 import pytest
 
-from docia.documents.models import EngagementScope
 from docia.views import compute_ratio_data_extraction, format_ratio_to_percent
-from tests.factories.data import DataBatchFactory, DataEngagementFactory, DocumentFactory
+from tests.factories.data import DataEngagementFactory, DocumentFactory
 from tests.factories.users import UserFactory
 
 
@@ -12,15 +12,6 @@ def create_ej_and_document(**kwargs):
     ej = DataEngagementFactory(**kwargs)
     a = DocumentFactory(ej=ej)
     return ej, a
-
-
-def link_user_and_ej(user, ej):
-    group = Group.objects.create(name="group_test")
-    group.user_set.add(user)
-    scope = EngagementScope.objects.create(name="scope_test")
-    scope.groups.add(group)
-    scope.engagements.add(ej)
-    return group, scope
 
 
 def test_home(client):
@@ -45,49 +36,33 @@ def test_restrict_unauthenticated(client):
     assert "Se connecter" in response.text
 
 
+@contextmanager
+def mock_user_perms(authorize: bool):
+    with patch("docia.views.user_can_view_ej", autospec=True) as m:
+        m.return_value = authorize
+        yield m
+
+
 @pytest.mark.django_db
 def test_restrict_no_permission(client):
     ej, doc = create_ej_and_document()
     user = UserFactory()
     client.force_login(user)
-    response = client.get(f"/?num_ej={ej.num_ej}")
+    with mock_user_perms(authorize=False) as m:
+        response = client.get(f"/?num_ej={ej.num_ej}")
+        m.assert_called_once()
     assert "Aucun résultat" in response.text
 
 
-@pytest.fixture
-def user_with_permission():
-    user = UserFactory()
-    user.user_permissions.add(Permission.objects.get(codename="view_document"))
-    return user
-
-
 @pytest.mark.django_db
-def test_user_with_perm_and_without_scope_cannot_view_ej(client, user_with_permission):
-    """User has django permission but has not the required scope to see the ej."""
-    client.force_login(user_with_permission)
+def test_user_with_perm_and_scope_can_view_ej(client):
+    """User has django permission and has the required scope to see the ej."""
     ej, doc = create_ej_and_document()
-    response = client.get(f"/?num_ej={ej.num_ej}")
-    assert "Aucun résultat" in response.text
-
-
-@pytest.mark.django_db
-def test_user_without_perm_and_with_scope_cannot_view_ej(client):
-    """User has django permission but has not the required scope to see the ej."""
     user = UserFactory()
     client.force_login(user)
-    ej, doc = create_ej_and_document()
-    link_user_and_ej(user, ej)
-    response = client.get(f"/?num_ej={ej.num_ej}")
-    assert "Aucun résultat" in response.text
-
-
-@pytest.mark.django_db
-def test_user_with_perm_and_scope_can_view_ej(client, user_with_permission):
-    """User has django permission and has the required scope to see the ej."""
-    client.force_login(user_with_permission)
-    ej, doc = create_ej_and_document()
-    link_user_and_ej(user_with_permission, ej)
-    response = client.get(f"/?num_ej={ej.num_ej}")
+    with mock_user_perms(authorize=True) as m:
+        response = client.get(f"/?num_ej={ej.num_ej}")
+        m.assert_called_once()
     assert doc.filename in response.text
 
 

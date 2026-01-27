@@ -2,9 +2,7 @@ from docia.models import DataEngagement
 
 
 def get_user_allowed_ej_qs(user):
-    return DataEngagement.objects.filter(
-        scopes__groups__user=user
-    )
+    return DataEngagement.objects.filter(scopes__groups__user=user).distinct()
 
 
 def user_can_view_ej(user, num_ej: str):

@@ -62,7 +62,13 @@ class Document(BaseModel):
 class EngagementScope(BaseModel):
     name = models.CharField(max_length=255)
     engagements = models.ManyToManyField(DataEngagement, related_name="scopes", related_query_name="scopes")
-    groups = models.ManyToManyField(Group, related_name="scopes", related_query_name="scopes", through="ScopeGroupPermission")
+    groups = models.ManyToManyField(
+        Group, related_name="scopes", related_query_name="scopes",
+        blank=True,
+    )
+
+    def __str__(self):
+        return self.name
 
 
 class DataBatch(BaseModel):
