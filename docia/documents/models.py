@@ -63,7 +63,9 @@ class EngagementScope(BaseModel):
     name = models.CharField(max_length=255)
     engagements = models.ManyToManyField(DataEngagement, related_name="scopes", related_query_name="scopes")
     groups = models.ManyToManyField(
-        Group, related_name="scopes", related_query_name="scopes",
+        Group,
+        related_name="scopes",
+        related_query_name="scopes",
         blank=True,
     )
 

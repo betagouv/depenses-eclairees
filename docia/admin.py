@@ -1,10 +1,10 @@
+from django import forms
 from django.contrib import admin
-from django.db.transaction import atomic
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.contrib.auth import admin as auth_admin
 from django.contrib.auth import forms as auth_forms
 from django.contrib.auth import models as auth_models
-from django import forms
+from django.db.transaction import atomic
 
 from . import models
 
@@ -173,15 +173,17 @@ class CustomGroupAdmin(auth_admin.GroupAdmin):
 class EngagementScopeAdmin(admin.ModelAdmin):
     """Admin class for EngagementScope model"""
 
-    list_display = ('name', 'engagement_count', 'group_count')
-    search_fields = ('name',)
-    filter_horizontal = ('groups',)
+    list_display = ("name", "engagement_count", "group_count")
+    search_fields = ("name",)
+    filter_horizontal = ("groups",)
     fields = ("name", "groups")
 
     def engagement_count(self, obj):
         return obj.engagements.count()
-    engagement_count.short_description = 'Engagements'
+
+    engagement_count.short_description = "Engagements"
 
     def group_count(self, obj):
         return obj.groups.count()
-    group_count.short_description = 'Groupes'
+
+    group_count.short_description = "Groupes"
