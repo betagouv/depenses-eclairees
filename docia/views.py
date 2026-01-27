@@ -4,7 +4,7 @@ from django.shortcuts import render
 
 from . import forms
 from .models import Document
-from .permissions import user_can_view_ej
+from .permissions.checks import user_can_view_ej
 from .ratelimit.services import check_rate_limit_for_user
 
 logger = logging.getLogger(__name__)
