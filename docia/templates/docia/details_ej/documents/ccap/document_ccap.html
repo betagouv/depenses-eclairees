@@ -15,25 +15,34 @@
     {% include "docia/details_ej/blocks/attribute.html" %}
   {% endwith %}
   <br/>
+  <b>Décomposition en lots : </b>
+  {% if doc.data.lots %}
+    ✅
+  {% else %}
+    ❌
+  {% endif %}
+  <!-- <br/>
   {% with title="Conditions d'avance" field_name="condition_avance_ccap" %}
     {% include "docia/details_ej/blocks/attribute.html" %}
-  {% endwith %}
-  <br/>
-
-  <b>Décomposition en lots</b>
-  {% if doc.data.lots %}
-    Oui
-  {% else %}
-    Non
-  {% endif %}
-
+  {% endwith %} -->
 </div>
+
+<div>
+  {% with data=data.duree_marche %}
+    {% include "docia/details_ej/blocks/duree.html" %}
+  {% endwith %}
+</div>
+  
+  
+
+
 
 
 <div>
   {% if data.lots %}
     {% for lot in data.lots %}
-      <h3>Lot {{ lot.numero_lot }}&nbsp;: {{ lot.titre }}</h3>
+      <h3>Lot {{ lot.numero_lot }}&nbsp;</h3>
+      <p><b>Titre :</b> {{ lot.titre }}</p>
       <div>
         {% with data=lot %}
           {% include "docia/details_ej/documents/ccap/ccap_lot.html" %}
