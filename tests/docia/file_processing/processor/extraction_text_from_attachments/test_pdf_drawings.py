@@ -364,7 +364,7 @@ def test_add_checkbox_drawings_in_text_from_pdf():
     doc_with_drawings = add_drawings_to_pdf(doc)
 
     new_text = doc_with_drawings[0].get_text(sort=True)
-    has_checkbox = "[X]     Le signataire" in new_text and "[ ]           m’engage sur" in new_text
+    has_checkbox = "[X]         Le signataire" in new_text and "[ ]         Le mandataire" in new_text
 
     assert has_checkbox
 
