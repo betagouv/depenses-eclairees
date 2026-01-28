@@ -15,11 +15,32 @@
     {% include "docia/details_ej/blocks/attribute.html" %}
   {% endwith %}
   <br/>
-  <b>Décomposition en lots : </b>
   {% if doc.data.lots %}
-    ✅
+    <b>Décomposition en lots : ✅</b><br/>
   {% else %}
-    ❌
+    <b>Décomposition en lots : ❌</b><br/>
+    <b>Décomposition en tranches : </b>
+    {% if data.forme_marche.tranches %}
+      {{ data.forme_marche.tranches }}
+    {% else %}
+      ❌
+    {% endif %}<br/>
+    <b>Forme des prix : </b>
+    {% if data.forme_marche.forme_prix %}
+      {{ data.forme_marche.forme_prix }}
+    {% else %}
+      ❌
+    {% endif %}
+    <br/>
+    <b>Montant HT : </b>
+    {% if data.montant_ttc.type_montant == "annuel" %}
+      {{ data.montant_ht.montant_ht_maximum }} € / an
+    {% elif data.montant_ht.type_montant == "total" %}
+      {{ data.montant_ht.montant_ht_maximum }} € total
+    {% else %}
+      Non renseigné
+    {% endif %}
+    <br/>
   {% endif %}
   <!-- <br/>
   {% with title="Conditions d'avance" field_name="condition_avance_ccap" %}
