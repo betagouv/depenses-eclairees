@@ -103,7 +103,7 @@ pandas = ["pandas", "numpy"]
 [tool.ruff.lint.per-file-ignores]
 # Ignore line too long in attributes definitions
 "docia/file_processing/processor/attributes/**.py" = ["E501"]
-"tests_e2e/**.py"= ["E402"]
+
 
 
 [tool.pytest.ini_options]
