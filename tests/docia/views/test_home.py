@@ -1,10 +1,10 @@
-from django.contrib.auth.models import Permission
+from contextlib import contextmanager
+from unittest.mock import patch
 
 import pytest
 
-from docia.permissions import ALLOWED_BATCHES, ALLOWED_EJ_NUMBERS
 from docia.views import compute_ratio_data_extraction, format_ratio_to_percent
-from tests.factories.data import DataBatchFactory, DataEngagementFactory, DocumentFactory
+from tests.factories.data import DataEngagementFactory, DocumentFactory
 from tests.factories.users import UserFactory
 
 
@@ -36,49 +36,33 @@ def test_restrict_unauthenticated(client):
     assert "Se connecter" in response.text
 
 
+@contextmanager
+def mock_user_perms(authorize: bool):
+    with patch("docia.views.user_can_view_ej", autospec=True) as m:
+        m.return_value = authorize
+        yield m
+
+
 @pytest.mark.django_db
 def test_restrict_no_permission(client):
     ej, doc = create_ej_and_document()
     user = UserFactory()
     client.force_login(user)
-    response = client.get(f"/?num_ej={ej.num_ej}")
+    with mock_user_perms(authorize=False) as m:
+        response = client.get(f"/?num_ej={ej.num_ej}")
+        m.assert_called_once()
     assert "Aucun résultat" in response.text
 
 
-@pytest.fixture
-def user_with_permission():
+@pytest.mark.django_db
+def test_user_with_perm_and_scope_can_view_ej(client):
+    """User has django permission and has the required scope to see the ej."""
+    ej, doc = create_ej_and_document()
     user = UserFactory()
-    user.user_permissions.add(Permission.objects.get(codename="view_document"))
-    return user
-
-
-@pytest.fixture
-def client_with_permission(client, user_with_permission):
-    client.force_login(user_with_permission)
-    return client
-
-
-@pytest.mark.django_db
-def test_restrict_ej(client_with_permission):
-    ej, doc = create_ej_and_document()
-    response = client_with_permission.get(f"/?num_ej={ej.num_ej}")
-    assert "Aucun résultat" in response.text
-
-
-@pytest.mark.django_db
-def test_can_access_ej_in_allowed_numbers(client_with_permission):
-    num_ej = ALLOWED_EJ_NUMBERS[0]
-    ej, doc = create_ej_and_document(num_ej=num_ej)
-    response = client_with_permission.get(f"/?num_ej={ej.num_ej}")
-    assert doc.filename in response.text
-
-
-@pytest.mark.django_db
-def test_can_access_ej_in_allowed_batches(client_with_permission):
-    ej, doc = create_ej_and_document()
-    batch_id = ALLOWED_BATCHES[0]
-    DataBatchFactory(batch=batch_id, ej=ej)
-    response = client_with_permission.get(f"/?num_ej={ej.num_ej}")
+    client.force_login(user)
+    with mock_user_perms(authorize=True) as m:
+        response = client.get(f"/?num_ej={ej.num_ej}")
+        m.assert_called_once()
     assert doc.filename in response.text
 
 
