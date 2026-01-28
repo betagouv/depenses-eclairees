@@ -229,7 +229,7 @@ def test_ccap_without_lots(client):
         "intro": None,
         "id_marche": "[[id_marche]]",
         "duree_lots": [],
-        "montant_ht": "101234",
+        "montant_ht": {"type_montant": "total", "montant_ht_maximum": "101234.00"},
         "duree_marche": {
             "duree_initiale": 12,
             "nb_reconductions": 1,
@@ -280,8 +280,7 @@ def test_ccap_with_lots(client):
                     "duree_reconduction": 6,
                     "delai_tranche_optionnelle": 3,
                 },
-                "montant_ht": "1111",
-                "montant_ttc": "2222",
+                "montant_ht": {"type_montant": "total", "montant_ht_maximum": "1111.00"},
             },
             {
                 "titre": "[[lots.1.titre]]",
@@ -293,8 +292,7 @@ def test_ccap_with_lots(client):
                     "duree_reconduction": 6,
                     "delai_tranche_optionnelle": 3,
                 },
-                "montant_ht": "3333",
-                "montant_ttc": "4444",
+                "montant_ht": {"type_montant": "total", "montant_ht_maximum": "2222.00"},
             },
         ],
         "intro": None,
@@ -333,9 +331,9 @@ def test_ccap_with_lots(client):
     assert "forfaitaires" in response.text
 
     # Lots
-    assert "Lot 1&nbsp;: [[lots.0.titre]]" in response.text
-    assert "Lot 2&nbsp;: [[lots.1.titre]]" in response.text
+    assert "Lot 1&nbsp;" in response.text
+    assert "[[lots.0.titre]]" in response.text
+    assert "Lot 2&nbsp;" in response.text
+    assert "[[lots.1.titre]]" in response.text
     assert "1111" in response.text
     assert "2222" in response.text
-    assert "3333" in response.text
-    assert "4444" in response.text

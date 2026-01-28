@@ -3,10 +3,10 @@ import logging
 from django.shortcuts import render
 
 from . import forms
+from .file_processing.processor.classifier import DIC_CLASS_FILE_BY_NAME
 from .models import Document
 from .permissions import user_can_view_ej
 from .ratelimit.services import check_rate_limit_for_user
-from .file_processing.processor.classifier import DIC_CLASS_FILE_BY_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,6 @@ def home(request):
                             "data_as_list": sorted([[key, value] for key, value in document_data.items()]),
                             "data": document_data,
                             "url": db_doc.file.url if db_doc.file else "",
-                            # "url": "https://depenses-eclairees.beta.gouv.fr",
                             "percent_data_extraction": format_ratio_to_percent(ratio_extracted),
                             "classification": db_doc.classification,
                         }
@@ -100,7 +99,7 @@ def compute_ratio_data_extraction(document_data: dict) -> float:
 
 def get_short_classification(classification: str) -> str:
     try:
-        return DIC_CLASS_FILE_BY_NAME[classification]['nom_court']
+        return DIC_CLASS_FILE_BY_NAME[classification]["nom_court"]
     except KeyError:
         return classification
 

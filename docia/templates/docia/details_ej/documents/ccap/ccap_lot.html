@@ -58,9 +58,9 @@
           <li>
             <b>Montant HT : </b>
             {% if data.montant_ttc.type_montant == "annuel" %}
-              {{ data.montant_ht.montant_ht_maximum }} € / an
+              {{ data.montant_ht.montant_ht_maximum }} € / An
             {% elif data.montant_ht.type_montant == "total" %}
-              {{ data.montant_ht.montant_ht_maximum }} € total
+              {{ data.montant_ht.montant_ht_maximum }} € Total
             {% else %}
               Non renseigné
             {% endif %}
