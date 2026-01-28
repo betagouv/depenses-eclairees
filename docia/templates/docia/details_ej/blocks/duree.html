@@ -16,15 +16,17 @@
         {% include "docia/details_ej/blocks/attribute.html" %}
       {% endwith %}
     </li>
-    <li>
-      {% with title="Délais des tranches" field_name="delai_tranche_optionnelle" %}
-        {% include "docia/details_ej/blocks/attribute.html" %}
-      {% endwith %}
-    </li>
-    <li>
+    {% if data.delai_tranche_optionnelle %}
+      <li>
+        {% with title="Délais des tranches" field_name="delai_tranche_optionnelle" %}
+          {% include "docia/details_ej/blocks/attribute.html" %}
+        {% endwith %}
+      </li>
+    {% endif %}
+    <!-- <li>
       {% with title="Date de fin de validité" field_name="todo" %}
         {% include "docia/details_ej/blocks/attribute.html" %}
       {% endwith %}
-    </li>
+    </li> -->
   </ul>
 </div>

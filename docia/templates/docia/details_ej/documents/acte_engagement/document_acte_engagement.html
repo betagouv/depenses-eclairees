@@ -31,6 +31,45 @@
 
     <div class="fr-col-md-4 fr-col-12">
       <div>
+        <h4>Mandataire</h4>
+        <ul>
+          <li>
+            {% with title="Raison sociale" field_name="societe_principale" %}
+              {% include "docia/details_ej/blocks/attribute.html" %}
+            {% endwith %}
+          </li>
+          <li>
+            {% with title="SIREN" field_name="siren_mandataire" %}
+              {% include "docia/details_ej/blocks/attribute.html" %}
+            {% endwith %}
+          </li>
+          <li>
+            {% with title="SIRET" field_name="siret_mandataire" %}
+              {% include "docia/details_ej/blocks/attribute.html" %}
+            {% endwith %}
+          </li>
+          <li>
+            {% with title="Banque" field_name="rib_mandataire.banque" %}
+              {% include "docia/details_ej/blocks/attribute.html" %}
+            {% endwith %}
+          </li>
+          <li>
+            {% with title="IBAN" field_name="rib_mandataire.iban" %}
+              {% include "docia/details_ej/blocks/attribute.html" %}
+            {% endwith %}
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="fr-col-md-4 fr-col-12">
+      {% with data=data.duree %}
+        {% include "docia/details_ej/blocks/duree.html" %}
+      {% endwith %}
+    </div>
+
+    <div class="fr-col-md-4 fr-col-12">
+      <div>
         <h4>Dates de signature</h4>
         <ul>
           <li>
@@ -52,44 +91,6 @@
       </div>
     </div>
 
-    <div class="fr-col-md-4 fr-col-12">
-      {% with data=data.duree %}
-        {% include "docia/details_ej/blocks/duree.html" %}
-      {% endwith %}
-    </div>
-
-    <div class="fr-col-md-4 fr-col-12">
-      <div>
-        <h4>Mandataire</h4>
-        <ul>
-          <li>
-            {% with title="Raison sociale" field_name="societe_principale" %}
-              {% include "docia/details_ej/blocks/attribute.html" %}
-            {% endwith %}
-          </li>
-          <li>
-            {% with title="Banque" field_name="rib_mandataire.banque" %}
-              {% include "docia/details_ej/blocks/attribute.html" %}
-            {% endwith %}
-          </li>
-          <li>
-            {% with title="IBAN" field_name="rib_mandataire.iban" %}
-              {% include "docia/details_ej/blocks/attribute.html" %}
-            {% endwith %}
-          </li>
-          <li>
-            {% with title="SIREN" field_name="siren_mandataire" %}
-              {% include "docia/details_ej/blocks/attribute.html" %}
-            {% endwith %}
-          </li>
-          <li>
-            {% with title="SIRET" field_name="siret_mandataire" %}
-              {% include "docia/details_ej/blocks/attribute.html" %}
-            {% endwith %}
-          </li>
-        </ul>
-      </div>
-    </div>
   </div>
 
 </div>

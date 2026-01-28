@@ -3,6 +3,7 @@ import logging
 from django.shortcuts import render
 
 from . import forms
+from .file_processing.processor.classifier import DIC_CLASS_FILE_BY_NAME
 from .models import Document
 from .permissions.checks import user_can_view_ej
 from .ratelimit.services import check_rate_limit_for_user
@@ -36,9 +37,10 @@ def home(request):
                     for db_doc in db_docs:
                         document_data = db_doc.structured_data or {}
                         ratio_extracted = compute_ratio_data_extraction(document_data)
+                        short_classification = get_short_classification(db_doc.classification)
                         doc = {
                             "id": db_doc.id,
-                            "title": f"[{db_doc.classification}] {db_doc.filename}",
+                            "title": f"[{short_classification}] {db_doc.filename[11::]}",
                             "data_as_list": sorted([[key, value] for key, value in document_data.items()]),
                             "data": document_data,
                             "url": db_doc.file.url if db_doc.file else "",
@@ -93,6 +95,13 @@ def compute_ratio_data_extraction(document_data: dict) -> float:
     if total_keys == 0:
         return 0
     return total_extracted / total_keys
+
+
+def get_short_classification(classification: str) -> str:
+    try:
+        return DIC_CLASS_FILE_BY_NAME[classification]["nom_court"]
+    except KeyError:
+        return classification
 
 
 def format_ratio_to_percent(value: float) -> str:
