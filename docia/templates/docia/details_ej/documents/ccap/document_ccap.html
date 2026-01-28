@@ -1,0 +1,77 @@
+{% load dsfr_tags static docia %}
+
+<h2 class="fr-mt-5v">Contrat</h2>
+
+<div class="fr-mb-10v">
+  {% with title="Objet" field_name="objet_marche" %}
+    {% include "docia/details_ej/blocks/attribute.html" %}
+  {% endwith %}
+  <br/>
+  {% with title="Identifiant" field_name="id_marche" %}
+    {% include "docia/details_ej/blocks/attribute.html" %}
+  {% endwith %}
+  <br/>
+  {% with title="CCAG" field_name="ccag" %}
+    {% include "docia/details_ej/blocks/attribute.html" %}
+  {% endwith %}
+  <br/>
+  {% if doc.data.lots %}
+    <b>Décomposition en lots : ✅</b><br/>
+  {% else %}
+    <b>Décomposition en lots : ❌</b><br/>
+    <b>Décomposition en tranches : </b>
+    {% if data.forme_marche.tranches %}
+      {{ data.forme_marche.tranches }}
+    {% else %}
+      ❌
+    {% endif %}<br/>
+    <b>Forme des prix : </b>
+    {% if data.forme_marche.forme_prix %}
+      {{ data.forme_marche.forme_prix }}
+    {% else %}
+      ❌
+    {% endif %}
+    <br/>
+    <b>Montant HT : </b>
+    {% if data.montant_ttc.type_montant == "annuel" %}
+      {{ data.montant_ht.montant_ht_maximum }} € / An
+    {% elif data.montant_ht.type_montant == "total" %}
+      {{ data.montant_ht.montant_ht_maximum }} € Total
+    {% else %}
+      Non renseigné
+    {% endif %}
+    <br/>
+  {% endif %}
+  <!-- <br/>
+  {% with title="Conditions d'avance" field_name="condition_avance_ccap" %}
+    {% include "docia/details_ej/blocks/attribute.html" %}
+  {% endwith %} -->
+</div>
+
+<div>
+  {% with data=data.duree_marche %}
+    {% include "docia/details_ej/blocks/duree.html" %}
+  {% endwith %}
+</div>
+  
+  
+
+
+
+
+<div>
+  {% if data.lots %}
+    {% for lot in data.lots %}
+      <h3>Lot {{ lot.numero_lot }}&nbsp;</h3>
+      <p><b>Titre :</b> {{ lot.titre }}</p>
+      <div>
+        {% with data=lot %}
+          {% include "docia/details_ej/documents/ccap/ccap_lot.html" %}
+        {% endwith %}
+      </div>
+    {% endfor %}
+  {% else %}
+    {% include "docia/details_ej/documents/ccap/ccap_lot.html" %}
+  {% endif %}
+</div>
+

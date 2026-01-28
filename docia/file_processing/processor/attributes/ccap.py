@@ -13,11 +13,8 @@ CCAP_ATTRIBUTES = {
 """,
         "search": "",
         "output_field": "intro",
-        "schema": {
-            "type": "null"
-        }
+        "schema": {"type": "null"},
     },
-    
     "objet_marche": {
         "consigne": """OBJET_MARCHE
     Définition : Formulation synthétique de l'objet du marché.
@@ -31,9 +28,8 @@ CCAP_ATTRIBUTES = {
  
 """,
         "search": "Section du document qui décrit l'objet du marché ou le contexte général de la consultation.",
-        "output_field": "objet_marche"
+        "output_field": "objet_marche",
     },
-
     "id_marche": {
         "consigne": """ID_MARCHE
     Définition : Identifiant unique du marché.
@@ -47,9 +43,8 @@ CCAP_ATTRIBUTES = {
  
 """,
         "search": "",
-        "output_field": "id_marche"
+        "output_field": "id_marche",
     },
-
     "lots": {
         "consigne": """LOTS
      Définition : Liste des lots du marché (si le marché est alloti)
@@ -65,20 +60,15 @@ CCAP_ATTRIBUTES = {
 """,
         "search": "",
         "output_field": "lots",
-        "schema":
-        {
+        "schema": {
             "type": ["array", "null"],
             "items": {
                 "type": "object",
-                "properties": {
-                    "numero_lot": {"type": "integer"},
-                    "titre_lot": {"type": "string"}
-                },
-                "required": ["numero_lot", "titre_lot"]
-            }
-        }
+                "properties": {"numero_lot": {"type": "integer"}, "titre_lot": {"type": "string"}},
+                "required": ["numero_lot", "titre_lot"],
+            },
+        },
     },
-
     "forme_marche": {
         "consigne": """FORME_MARCHE
         Définition : Identifier la forme de passation du marché.
@@ -104,35 +94,30 @@ CCAP_ATTRIBUTES = {
    """,
         "search": "",
         "output_field": "forme_marche",
-        "schema":
-        {
+        "schema": {
             "type": ["object", "null"],
             "oneOf": [
                 {
                     "type": "object",
                     "properties": {
-                        "structure": { "type": "string", "enum": ["allotie"] },
-                        "tranches": { "type": "null" },
-                        "forme_prix": { "type": "null" }
+                        "structure": {"type": "string", "enum": ["allotie"]},
+                        "tranches": {"type": "null"},
+                        "forme_prix": {"type": "null"},
                     },
-                    "required": ["structure", "tranches", "forme_prix"]
+                    "required": ["structure", "tranches", "forme_prix"],
                 },
                 {
                     "type": "object",
                     "properties": {
-                        "structure": { "type": "string", "enum": ["simple", "à marchés subséquents"] },
-                        "tranches": { "type": ["integer", "null"] },
-                        "forme_prix": {
-                            "type": "string",
-                            "enum": ["unitaires", "forfaitaires", "mixtes"]
-                        }
+                        "structure": {"type": "string", "enum": ["simple", "à marchés subséquents"]},
+                        "tranches": {"type": ["integer", "null"]},
+                        "forme_prix": {"type": "string", "enum": ["unitaires", "forfaitaires", "mixtes"]},
                     },
-                    "required": ["structure", "tranches", "forme_prix"]
-                }
-            ]
-        }
+                    "required": ["structure", "tranches", "forme_prix"],
+                },
+            ],
+        },
     },
-
     "forme_marche_lots": {
         "consigne": """FORME_MARCHE_LOTS
         Définition : Identifier la forme de passation des lots du marché (seulement si le marché est alloti).
@@ -159,23 +144,21 @@ CCAP_ATTRIBUTES = {
    """,
         "search": "",
         "output_field": "forme_marche_lots",
-        "schema":
-        {
+        "schema": {
             "type": ["array", "null"],
             "items": {
                 "type": "object",
                 "properties": {
-                    "numero_lot": { "type": "integer" },
-                    "structure": { "type": "string", "enum": ["simple", "à marchés subséquents"] },
-                    "tranches": { "type": ["integer", "null"] },
-                    "forme_prix": { "type": "string", "enum": ["mixtes", "unitaires", "forfaitaires"] }
+                    "numero_lot": {"type": "integer"},
+                    "structure": {"type": "string", "enum": ["simple", "à marchés subséquents"]},
+                    "tranches": {"type": ["integer", "null"]},
+                    "forme_prix": {"type": "string", "enum": ["mixtes", "unitaires", "forfaitaires"]},
                 },
-                "required": ["numero_lot", "structure", "tranches", "forme_prix"]
-            }
-        }
+                "required": ["numero_lot", "structure", "tranches", "forme_prix"],
+            },
+        },
     },
-
-# Ajouter si durée préciser dans l'acte d'engagement, renvoyer None à chaque valeur.
+    # Ajouter si durée préciser dans l'acte d'engagement, renvoyer None à chaque valeur.
     "duree_marche": {
         "consigne": """DUREE_MARCHE
         Définition : Durée du marché totale exprimée en mois et extension possible.
@@ -198,20 +181,17 @@ CCAP_ATTRIBUTES = {
     """,
         "search": "Section du document qui décrit la durée du marché ou le délai d'exécution des prestations.",
         "output_field": "duree_marche",
-        "schema":
-        {
+        "schema": {
             "type": ["object", "null"],
             "properties": {
                 "duree_initiale": {"type": "integer"},
                 "duree_reconduction": {"type": "integer"},
                 "nb_reconductions": {"type": "integer"},
-                "delai_tranche_optionnelle": {"type": "integer"}
+                "delai_tranche_optionnelle": {"type": "integer"},
             },
-            "required": ["duree_initiale", "duree_reconduction", "nb_reconductions", "delai_tranche_optionnelle"]
-        }
+            "required": ["duree_initiale", "duree_reconduction", "nb_reconductions", "delai_tranche_optionnelle"],
+        },
     },
-
-
     "duree_lots": {
         "consigne": """DUREE_LOTS
      Définition : Durée de chaque lot du marché exprimée en mois.
@@ -226,8 +206,7 @@ CCAP_ATTRIBUTES = {
 """,
         "search": "",
         "output_field": "duree_lots",
-        "schema":
-        {
+        "schema": {
             "type": ["array", "null"],
             "items": {
                 "type": "object",
@@ -242,19 +221,23 @@ CCAP_ATTRIBUTES = {
                                     "duree_initiale": {"type": "integer"},
                                     "duree_reconduction": {"type": "integer"},
                                     "nb_reconductions": {"type": "integer"},
-                                    "delai_tranche_optionnelle": {"type": "integer"}
+                                    "delai_tranche_optionnelle": {"type": "integer"},
                                 },
-                                "required": ["duree_initiale", "duree_reconduction", "nb_reconductions", "delai_tranche_optionnelle"]
-                            }
+                                "required": [
+                                    "duree_initiale",
+                                    "duree_reconduction",
+                                    "nb_reconductions",
+                                    "delai_tranche_optionnelle",
+                                ],
+                            },
                         ]
-                    }
+                    },
                 },
-                "required": ["numero_lot", "duree_lot"]
-            }
-        }
+                "required": ["numero_lot", "duree_lot"],
+            },
+        },
     },
-
-#Ajout si sans montant maximum explicite, renvoyer None
+    # Ajout si sans montant maximum explicite, renvoyer None
     "montant_ht": {
         "consigne": """MONTANT_HT
       Définition : Montant maximum hors taxes du marché pour un marché non alloti.
@@ -268,18 +251,15 @@ CCAP_ATTRIBUTES = {
 """,
         "search": "",
         "output_field": "montant_ht",
-        "schema":
-        {
+        "schema": {
             "type": ["object", "null"],
             "properties": {
                 "montant_ht_maximum": {"type": "string"},
-                "type_montant": {"type": "string", "enum": ["annuel", "total"]}
+                "type_montant": {"type": "string", "enum": ["annuel", "total"]},
             },
-            "required": ["montant_ht_maximum", "type_montant"]
-        }
+            "required": ["montant_ht_maximum", "type_montant"],
+        },
     },
-
-
     "montant_ht_lots": {
         "consigne": """MONTANT_HT_LOTS
      Définition : Montant hors taxes maximum de chaque lot du marché.
@@ -294,21 +274,19 @@ CCAP_ATTRIBUTES = {
 """,
         "search": "",
         "output_field": "montant_ht_lots",
-        "schema":
-        {
+        "schema": {
             "type": ["array", "null"],
             "items": {
                 "type": "object",
                 "properties": {
                     "numero_lot": {"type": "integer"},
                     "montant_ht_maximum": {"type": "string"},
-                    "type_montant": {"type": "string", "enum": ["annuel", "total"]}
+                    "type_montant": {"type": "string", "enum": ["annuel", "total"]},
                 },
-                "required": ["numero_lot", "montant_ht_maximum", "type_montant"]
-            }
-        }
+                "required": ["numero_lot", "montant_ht_maximum", "type_montant"],
+            },
+        },
     },
-
     "ccag": {
         "consigne": """CCAG
      Définition : Le CCAG en vigueur pour ce marché.
@@ -319,32 +297,29 @@ CCAP_ATTRIBUTES = {
      Format : un acronyme de quelques lettres. Exemple : pour "CCAG-XX" renvoyer "XX".
 """,
         "search": "",
-        "output_field": "ccag"
+        "output_field": "ccag",
     },
-
-#     "formule_revision_prix": {
-#         "consigne": """FORMULE_REVISION_PRIX
-#      Définition : Formule de révision des prix
-#      Indices : 
-#      - Dans la section spécifique de la formule de révision des prix.
-#      - La formule de révision est souvent de la forme "C = ..."
-#      Format : [la formule mathématiques de révision des prix, la définition des variables]
-# """,
-#         "search": "",
-#         "output_field": "formule_revision_prix"
-#     },
-
-#     "index_reference": {
-#         "consigne": """INDEX_REFERENCE_CCAP
-#      Définition : Index de référence
-#      Indices : 
-#      - Dans une section spécifique de l'index de référence.
-#      Format : le nom de l'index de référence.
-# """,
-#         "search": "",
-#         "output_field": "index_reference"
-#     },
-
+    #     "formule_revision_prix": {
+    #         "consigne": """FORMULE_REVISION_PRIX
+    #      Définition : Formule de révision des prix
+    #      Indices :
+    #      - Dans la section spécifique de la formule de révision des prix.
+    #      - La formule de révision est souvent de la forme "C = ..."
+    #      Format : [la formule mathématiques de révision des prix, la définition des variables]
+    # """,
+    #         "search": "",
+    #         "output_field": "formule_revision_prix"
+    #     },
+    #     "index_reference": {
+    #         "consigne": """INDEX_REFERENCE_CCAP
+    #      Définition : Index de référence
+    #      Indices :
+    #      - Dans une section spécifique de l'index de référence.
+    #      Format : le nom de l'index de référence.
+    # """,
+    #         "search": "",
+    #         "output_field": "index_reference"
+    #     },
     "condition_avance": {
         "consigne": """CONDITIONS_AVANCE
    Définition : Conditions de déclenchement et calcul du montant de l'avance à payer.
@@ -360,30 +335,23 @@ CCAP_ATTRIBUTES = {
 """,
         "search": "avance accordée titulaire montant initial durée exécution remboursement précompte",
         "output_field": "condition_avance_ccap",
-        "schema":
-        {
+        "schema": {
             "type": "object",
             "properties": {
                 "condition_declenchement": {"type": "string"},
                 "montant_avance": {"type": "string"},
                 "montant_reference": {"type": "string"},
-                "remboursement": {"type": "string"}
+                "remboursement": {"type": "string"},
             },
-            "required": [
-                "condition_declenchement",
-                "montant_avance",
-                "montant_reference",
-                "remboursement"
-            ]
-        }
-    }
-
+            "required": ["condition_declenchement", "montant_avance", "montant_reference", "remboursement"],
+        },
+    },
 }
 
 #     "revision_prix": {
 #         "consigne": """REVISION_PRIX
 #      Définition : Les prix sont révisables ou fermes.
-#      Indices : 
+#      Indices :
 #      - Dans la section spécifique de la formule de révision des prix.
 #      - Si les prix sont fermes, renvoyer "Prix fermes".
 #      - Sinon, renvoyer "Prix révisables".

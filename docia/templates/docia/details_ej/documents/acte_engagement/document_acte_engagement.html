@@ -1,0 +1,128 @@
+{% load dsfr_tags static docia %}
+
+
+<h2 class="fr-mt-5v">Contrat</h2>
+
+<div class="fr-mb-10v">
+  {% with title="Objet" field_name="objet_marche" %}
+    {% include "docia/details_ej/blocks/attribute.html" %}
+  {% endwith %}
+  <br/>
+  {% with title="Lot concerné" field_name="lot_concerne" %}
+    {% include "docia/details_ej/blocks/attribute.html" %}
+  {% endwith %}
+  <br/>
+  {% with title="Administration bénéficiaire" field_name="administration_beneficiaire" %}
+    {% include "docia/details_ej/blocks/attribute.html" %}
+  {% endwith %}
+  <br/>
+  {% with title="Montant HT" field_name="montant_ht" %}
+    {% include "docia/details_ej/blocks/attribute.html" %}
+  {% endwith %}
+  <br/>
+  {% with title="Montant TTC" field_name="montant_ttc" %}
+    {% include "docia/details_ej/blocks/attribute.html" %}
+  {% endwith %}
+</div>
+
+{# Columns #}
+<div class="fr-container">
+  <div class="fr-grid-row fr-grid-row--gutters">
+
+    <div class="fr-col-md-4 fr-col-12">
+      <div>
+        <h4>Mandataire</h4>
+        <ul>
+          <li>
+            {% with title="Raison sociale" field_name="societe_principale" %}
+              {% include "docia/details_ej/blocks/attribute.html" %}
+            {% endwith %}
+          </li>
+          <li>
+            {% with title="SIREN" field_name="siren_mandataire" %}
+              {% include "docia/details_ej/blocks/attribute.html" %}
+            {% endwith %}
+          </li>
+          <li>
+            {% with title="SIRET" field_name="siret_mandataire" %}
+              {% include "docia/details_ej/blocks/attribute.html" %}
+            {% endwith %}
+          </li>
+          <li>
+            {% with title="Banque" field_name="rib_mandataire.banque" %}
+              {% include "docia/details_ej/blocks/attribute.html" %}
+            {% endwith %}
+          </li>
+          <li>
+            {% with title="IBAN" field_name="rib_mandataire.iban" %}
+              {% include "docia/details_ej/blocks/attribute.html" %}
+            {% endwith %}
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="fr-col-md-4 fr-col-12">
+      {% with data=data.duree %}
+        {% include "docia/details_ej/blocks/duree.html" %}
+      {% endwith %}
+    </div>
+
+    <div class="fr-col-md-4 fr-col-12">
+      <div>
+        <h4>Dates de signature</h4>
+        <ul>
+          <li>
+            {% with title="Mandataire" field_name="date_signature_mandataire" %}
+              {% include "docia/details_ej/blocks/attribute.html" %}
+            {% endwith %}
+          </li>
+          <li>
+            {% with title="Administration" field_name="date_signature_administration" %}
+              {% include "docia/details_ej/blocks/attribute.html" %}
+            {% endwith %}
+          </li>
+          <li>
+            {% with title="Notification" field_name="date_notification" %}
+              {% include "docia/details_ej/blocks/attribute.html" %}
+            {% endwith %}
+          </li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{# End columns #}
+
+
+{# Cotraitants #}
+{% if data.cotraitants %}
+  <div>
+    <h2>Cotraitants</h2>
+    {% with table_data=data.cotraitants|list_of_dicts_as_table:formatting_data.cotraitants.table_columns %}
+      {% dsfr_table content=table_data.rows header=table_data.headers extra_classes='fr-table--bordered fr-table--no-scroll copyable copyable-all-cells' %}
+    {% endwith %}
+  </div>
+{% endif %}
+
+{# Sous-Traitants #}
+{% if data.sous_traitants %}
+  <div>
+    <h2>Sous-traitants</h2>
+    {% with table_data=data.sous_traitants|list_of_dicts_as_table:formatting_data.sous_traitants.table_columns %}
+      {% dsfr_table content=table_data.rows header=table_data.headers extra_classes='fr-table--bordered fr-table--no-scroll copyable copyable-all-cells' %}
+    {% endwith %}
+  </div>
+{% endif %}
+
+{# RIB #}
+{% if data.rib_autres %}
+  <div>
+    <h2>RIB</h2>
+    {% with table_data=data.rib_autres|list_of_dicts_as_table:formatting_data.rib_autres.table_columns %}
+      {% dsfr_table content=table_data.rows header=table_data.headers extra_classes='fr-table--bordered fr-table--no-scroll copyable copyable-all-cells' %}
+    {% endwith %}
+  </div>
+{% endif %}

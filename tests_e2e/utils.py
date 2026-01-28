@@ -1,10 +1,23 @@
+import json
+import os
 import re
+import unicodedata
 
 import pandas as pd
 
 from docia.file_processing.processor.analyze_content import df_analyze_content
 from docia.file_processing.processor.attributes_query import ATTRIBUTES
-from docia.file_processing.processor.post_processing_llm import clean_llm_response
+
+
+def remove_accents(text: str) -> str:
+    """Remove accents and diacritical marks from a string.
+
+    à -> a, é -> e, ...
+    """
+    # Normalize the text to decompose accented characters
+    normalized_text = unicodedata.normalize("NFD", text)
+    # Remove combining characters (diacritical marks)
+    return "".join(char for char in normalized_text if not unicodedata.combining(char))
 
 
 def normalize_string(s):
@@ -12,6 +25,8 @@ def normalize_string(s):
     if pd.isna(s) or s == "":
         return ""
     s = str(s).lower()
+    # Retirer les accents
+    s = remove_accents(s)
     # Supprime les caractères spéciaux (garde seulement les lettres, chiffres et espaces)
     s = re.sub(r"[^a-z0-9\s]", "", s)
     # Supprime les espaces multiples
@@ -19,14 +34,15 @@ def normalize_string(s):
     return s
 
 
-def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, multi_line_coef=1):
-    """Test de qualité des informations extraites par le LLM."""
+def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, multi_line_coef=1, use_cache=False):
+    """Test de qualité des informations extraites par le LLM.
 
-    # Nettoyage des colonnes du DataFrame de test (après lecture du CSV)
-    for idx, row in df_test.iterrows():
-        cleaned_data = clean_llm_response(document_type, row.to_dict())
-        for key, value in cleaned_data.items():
-            df_test.at[idx, key] = value
+    Args:
+        df_test: DataFrame contenant les données de test.
+        document_type: Type de document à analyser.
+        multi_line_coef: Coefficient de multiplication des lignes.
+        use_cache: Si True, utilise le cache pour éviter de relancer l'analyse.
+    """
 
     if multi_line_coef > 1:
         df_test = pd.concat([df_test for x in range(multi_line_coef)]).reset_index(drop=True)
@@ -37,13 +53,26 @@ def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, mult
     df_analyze["classification"] = document_type
     df_analyze["relevant_content"] = df_test["text"]
 
-    # Analyse du contenu avec df_analyze_content
-    df_result = df_analyze_content(
-        df=df_analyze,
-        df_attributes=ATTRIBUTES,
-        max_workers=10,
-        temperature=0.1,
-    )
+    # Vérification du cache
+    cache_file = f"/tmp/cache_results_{document_type}.json"
+    if use_cache and os.path.exists(cache_file):
+        with open(cache_file, "r") as f:
+            cached_data = json.load(f)
+        df_result = pd.DataFrame(cached_data)
+    else:
+        # Analyse du contenu avec df_analyze_content
+        df_result = df_analyze_content(
+            df=df_analyze,
+            df_attributes=ATTRIBUTES,
+            max_workers=10,
+            temperature=0.1,
+        )
+
+    # Sauvegarde des résultats dans le cache
+    if use_cache:
+        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+        with open(cache_file, "w") as f:
+            json.dump(df_result.to_dict(orient="records"), f)
 
     # Fusion des résultats avec les valeurs de référence
     # Pour éviter le produit cartésien lorsque filename est dupliqué, on utilise l'index
@@ -65,10 +94,47 @@ def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, mult
     return df_test, df_result, df_merged
 
 
-def check_quality_one_field(df_merged, col_to_test, comparison_func):
+def _get_value_by_dotted_key(data, key):
+    """Retrieve a value from a nested dictionary using a dotted key notation.
+
+    Args:
+        data: The dictionary to extract the value from.
+        key: The key to retrieve the value. Can be a simple key (e.g., 'title'),
+             a nested key (e.g., 'marche.struct'), or a wildcard key for lists
+             (e.g., 'lots.*.title').
+
+    Returns:
+        The value corresponding to the key in the nested dictionary.
+
+    Examples:
+        >>> data = {'title': 'Test', 'marche': {'struct': 'Value'}, 'lots': [{'title': 'Lot1'}, {'title': 'Lot2'}]}
+        >>> _get_value_by_dotted_key(data, 'title')
+        'Test'
+        >>> _get_value_by_dotted_key(data, 'marche.struct')
+        'Value'
+        >>> _get_value_by_dotted_key(data, 'lots.*.title')
+        ['Lot1', 'Lot2']
+    """
+    if data is None:
+        return None
+    if "." not in key:
+        return data.get(key)
+    else:
+        key, key_suffix = key.split(".", 1)
+        if key == "*":
+            if not isinstance(data, list):
+                return None
+            return [_get_value_by_dotted_key(item, key_suffix) for item in data]
+        else:
+            return _get_value_by_dotted_key(data.get(key), key_suffix)
+
+
+def check_quality_one_field(df_merged, col_to_test, comparison_functions):
     # ============================================================================
     # COMPARAISON POUR UNE COLONNE SPÉCIFIQUE
     # ============================================================================
+
+    comparison_func = comparison_functions[col_to_test]
 
     print(f"\n{'=' * 80}")
     print(f"Comparaison pour la colonne: {col_to_test}")
@@ -81,25 +147,24 @@ def check_quality_one_field(df_merged, col_to_test, comparison_func):
         llm_data = row.get("structured_data", None)
 
         # Extraire les valeurs
-        ref_val = row.get(col_to_test, None)
-        llm_val = llm_data.get(col_to_test, None) if llm_data else None
+        ref_val = _get_value_by_dotted_key(row, col_to_test)
+        llm_val = _get_value_by_dotted_key(llm_data, col_to_test)
 
         # Extraction des pbm OCR
-        list_pbm_ocr = eval(row["pbm_ocr"]) or []
-        pbm_ocr = col_to_test in list_pbm_ocr
+        pbm_ocr = col_to_test in row["pbm_ocr"]
 
         # Comparer les valeurs
         try:
             match_result = comparison_func(llm_val, ref_val)
             status = "✅ MATCH" if match_result else "❌ NO MATCH"
             print(f"{status} | {filename} | OCR {'❌' if pbm_ocr else '✅'}")
-            print(f"  LLM: {llm_val}")
-            print(f"  REF: {ref_val}")
+            print(f"  LLM: {llm_val!r}")
+            print(f"  REF: {ref_val!r}")
             print()
         except Exception as e:
             print(f"❌ ERREUR | {filename}: {str(e)} | OCR {'❌' if pbm_ocr else '✅'}")
-            print(f"  LLM: {llm_val}")
-            print(f"  REF: {ref_val}")
+            print(f"  LLM: {llm_val!r}")
+            print(f"  REF: {ref_val!r}")
             print()
 
 
@@ -109,7 +174,9 @@ def check_quality_one_row(df_merged, row_idx_to_test, comparison_functions, excl
     # ============================================================================
     excluded_columns = excluded_columns or []
 
-    if row_idx_to_test < len(df_merged):
+    if row_idx_to_test >= len(df_merged):
+        print(f"\n❌ Index {row_idx_to_test} invalide. Le DataFrame contient {len(df_merged)} lignes.\n")
+    else:
         row = df_merged.iloc[row_idx_to_test]
         filename = row.get("filename", "unknown")
 
@@ -120,21 +187,16 @@ def check_quality_one_row(df_merged, row_idx_to_test, comparison_functions, excl
         llm_data = row.get("structured_data", None)
 
         # Comparer toutes les colonnes (sauf exclues)
-        for col in comparison_functions.keys():
+        for col, comparison_func in comparison_functions.items():
             if col in excluded_columns:
                 continue
-            if col not in df_merged.columns:
-                continue
-
-            comparison_func = comparison_functions[col]
 
             # Extraire les valeurs
-            ref_val = row.get(col, None)
-            llm_val = llm_data.get(col, None)
+            ref_val = _get_value_by_dotted_key(row, col)
+            llm_val = _get_value_by_dotted_key(llm_data, col)
 
             # Extraction des pbm OCR
-            list_pbm_ocr = eval(row["pbm_ocr"]) or []
-            pbm_ocr = col in list_pbm_ocr
+            pbm_ocr = col in row["pbm_ocr"]
 
             # Comparer les valeurs
             try:
@@ -142,16 +204,14 @@ def check_quality_one_row(df_merged, row_idx_to_test, comparison_functions, excl
                 match_result = bool(match_result) if not isinstance(match_result, bool) else match_result
                 status = "✅ MATCH" if match_result else "❌ NO MATCH"
                 print(f"{status} | {col} | OCR {'❌' if pbm_ocr else '✅'}")
-                print(f"  LLM: {llm_val}")
-                print(f"  REF: {ref_val}")
+                print(f"  LLM: {llm_val!r}")
+                print(f"  REF: {ref_val!r}")
                 print()
             except Exception as e:
                 print(f"❌ ERREUR | {col}: {str(e)} | OCR {'❌' if pbm_ocr else '✅'}")
-                print(f"  LLM: {llm_val}")
-                print(f"  REF: {ref_val}")
+                print(f"  LLM: {llm_val!r}")
+                print(f"  REF: {ref_val!r}")
                 print()
-    else:
-        print(f"\n❌ Index {row_idx_to_test} invalide. Le DataFrame contient {len(df_merged)} lignes.\n")
 
 
 def check_global_statistics(df_merged, comparison_functions, excluded_columns=None):
@@ -167,16 +227,11 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
     results = {}
 
     # Comparaison pour chaque colonne (sauf exclues)
-    for col in comparison_functions.keys():
+    for col, comparison_func in comparison_functions.items():
         # Ignorer les colonnes exclues
         if col in excluded_columns:
             continue
 
-        # Vérifier si la colonne existe dans le CSV de référence
-        if col not in df_merged.columns:
-            continue
-
-        comparison_func = comparison_functions[col]
         matches = []
         errors = []
         ocr_errors_count = 0
@@ -188,8 +243,7 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
 
             # Vérifier les erreurs OCR pour cette colonne
             pbm_ocr = False
-            list_pbm_ocr = eval(row["pbm_ocr"]) or []
-            if col in list_pbm_ocr:
+            if col in row["pbm_ocr"]:
                 ocr_errors_count += 1
                 pbm_ocr = True
 
@@ -203,8 +257,8 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
                 continue
 
             # Extraire les valeurs
-            ref_val = row.get(col, None)
-            llm_val = structured_data.get(col, None)
+            ref_val = _get_value_by_dotted_key(row, col)
+            llm_val = _get_value_by_dotted_key(structured_data, col)
 
             # Comparer les valeurs
             try:

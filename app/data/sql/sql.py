@@ -137,7 +137,6 @@ def select_engagements_with_attachments(columns_ej=None, columns_attachments=Non
             "is_ocr",
             "nb_mot",
             "llm_response",
-            "json_error",
             "classification",
             "classification_type",
         ]

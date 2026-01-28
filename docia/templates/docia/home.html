@@ -36,13 +36,10 @@
         <section class="fr-accordion" data-fr-js-accordion="true">
           <h3 class="fr-accordion__title">
             <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}" data-fr-js-collapse-button="true">
-              {{ doc.title }} ({{ doc.percent_data_extraction }})
+              {{ doc.title }} - 🔍 {{ doc.percent_data_extraction }} infos trouvées
             </button>
           </h3>
-          <div class="fr-collapse" id="{{ doc.id }}" data-fr-js-collapse="true" style="--collapse: -48px;">
-            <a href="{{ doc.url }}" target="_blank">voir</a>
-            {% dsfr_table content=doc.content extra_classes='fr-table--bordered fr-table--no-scroll copyable' %}
-          </div>
+          {% include "docia/details_ej/documents/document.html" with doc=doc %}
         </section>
       {% endfor %}
       {% if unprocessed %}

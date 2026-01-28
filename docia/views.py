@@ -3,8 +3,9 @@ import logging
 from django.shortcuts import render
 
 from . import forms
+from .file_processing.processor.classifier import DIC_CLASS_FILE_BY_NAME
 from .models import Document
-from .permissions import user_can_view_ej
+from .permissions.checks import user_can_view_ej
 from .ratelimit.services import check_rate_limit_for_user
 
 logger = logging.getLogger(__name__)
@@ -34,16 +35,19 @@ def home(request):
                     db_docs = Document.objects.filter(ej_id=form.cleaned_data["num_ej"])
                     db_docs = db_docs.order_by("classification")
                     for db_doc in db_docs:
-                        llm_response = db_doc.llm_response or {}
-                        ratio_extracted = compute_ratio_data_extraction(llm_response)
+                        document_data = db_doc.structured_data or {}
+                        ratio_extracted = compute_ratio_data_extraction(document_data)
+                        short_classification = get_short_classification(db_doc.classification)
                         doc = {
                             "id": db_doc.id,
-                            "title": f"[{db_doc.classification}] {db_doc.filename}",
-                            "content": sorted([[key, value] for key, value in llm_response.items()]),
+                            "title": f"[{short_classification}] {db_doc.filename[11::]}",
+                            "data_as_list": sorted([[key, value] for key, value in document_data.items()]),
+                            "data": document_data,
                             "url": db_doc.file.url if db_doc.file else "",
                             "percent_data_extraction": format_ratio_to_percent(ratio_extracted),
+                            "classification": db_doc.classification,
                         }
-                        if db_doc.llm_response:
+                        if document_data:
                             documents.append(doc)
                         else:
                             unprocessed.append(doc)
@@ -60,16 +64,44 @@ def home(request):
             "documents": documents,
             "unprocessed": unprocessed,
             "is_ratelimited": is_ratelimited,
+            "formatting_data": {
+                "cotraitants": {
+                    "table_columns": (
+                        ("nom", "Nom"),
+                        ("siret", "SIRET"),
+                    ),
+                },
+                "sous_traitants": {
+                    "table_columns": (
+                        ("nom", "Nom"),
+                        ("siret", "SIRET"),
+                    ),
+                },
+                "rib_autres": {
+                    "table_columns": (
+                        ("societe", "Société"),
+                        ("rib.banque", "Banque"),
+                        ("rib.iban", "IBAN"),
+                    ),
+                },
+            },
         },
     )
 
 
-def compute_ratio_data_extraction(llm_response: dict) -> float:
-    total_keys = len(llm_response.keys())
-    total_extracted = len([x for x in llm_response.values() if x])
+def compute_ratio_data_extraction(document_data: dict) -> float:
+    total_keys = len(document_data.keys())
+    total_extracted = len([x for x in document_data.values() if x])
     if total_keys == 0:
         return 0
     return total_extracted / total_keys
+
+
+def get_short_classification(classification: str) -> str:
+    try:
+        return DIC_CLASS_FILE_BY_NAME[classification]["nom_court"]
+    except KeyError:
+        return classification
 
 
 def format_ratio_to_percent(value: float) -> str:

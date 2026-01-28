@@ -16,7 +16,7 @@ from app.utils import log_execution_time
 def get_useful_infos_from_docs(df_docs_EJ):
     """
     Génère un texte contenant les informations utiles à partir des documents analysés d'un EJ.
-    Un document pertinent a un champ 'text' non vide et 'json_error' vide.
+    Un document pertinent a un champ 'text' non vide.
 
     Args:
         df_docs (pd.DataFrame): DataFrame des documents liés à un num_EJ
@@ -26,8 +26,7 @@ def get_useful_infos_from_docs(df_docs_EJ):
     """
     # Filtrer les documents pertinents
     docs_pertinents = df_docs_EJ[
-        (df_docs_EJ["text"].astype(str).str.strip() != "") &
-        ((df_docs_EJ["json_error"].isnull()) | (df_docs_EJ["json_error"].astype(str).str.strip() == ""))
+        (df_docs_EJ["text"].astype(str).str.strip() != "")
     ]
 
     if docs_pertinents.empty:

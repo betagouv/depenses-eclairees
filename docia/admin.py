@@ -1,6 +1,10 @@
+from django import forms
 from django.contrib import admin
+from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.contrib.auth import admin as auth_admin
 from django.contrib.auth import forms as auth_forms
+from django.contrib.auth import models as auth_models
+from django.db.transaction import atomic
 
 from . import models
 
@@ -126,3 +130,60 @@ class DocumentAdmin(admin.ModelAdmin):
         "filename",
     )
     search_fields = ("id", "filename", "dossier", "ej__num_ej", "classification", "classification_type")
+
+
+# Déregistrer le GroupAdmin par défaut pour le personnaliser
+admin.site.unregister(auth_models.Group)
+
+
+class AdminGroupForm(forms.ModelForm):
+    scopes = forms.ModelMultipleChoiceField(
+        queryset=models.EngagementScope.objects.all(),
+        required=False,
+        widget=FilteredSelectMultiple("scopes", is_stacked=False),
+        label="",
+    )
+
+    class Meta:
+        model = auth_models.Group
+        fields = ("name", "permissions", "scopes")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.fields["scopes"].initial = self.instance.scopes.all()
+
+    def save(self, commit=True):
+        with atomic():
+            group = super().save(commit)
+            group.scopes.set(self.cleaned_data["scopes"])
+        return group
+
+
+@admin.register(auth_models.Group)
+class CustomGroupAdmin(auth_admin.GroupAdmin):
+    """Admin class for Group model extended with scopes"""
+
+    search_fields = ("name", "scopes__name")
+    fields = ("name", "permissions", "scopes")
+    form = AdminGroupForm
+
+
+@admin.register(models.EngagementScope)
+class EngagementScopeAdmin(admin.ModelAdmin):
+    """Admin class for EngagementScope model"""
+
+    list_display = ("name", "engagement_count", "group_count")
+    search_fields = ("name",)
+    filter_horizontal = ("groups",)
+    fields = ("name", "groups")
+
+    def engagement_count(self, obj):
+        return obj.engagements.count()
+
+    engagement_count.short_description = "Engagements"
+
+    def group_count(self, obj):
+        return obj.groups.count()
+
+    group_count.short_description = "Groupes"

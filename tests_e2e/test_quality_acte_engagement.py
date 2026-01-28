@@ -14,6 +14,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
 django.setup()
 
 from docia.file_processing.processor.analyze_content import LLMClient  # noqa: E402
+from tests_e2e.test_quality_rib import compare_iban  # noqa: E402
 from tests_e2e.utils import (  # noqa: E402
     analyze_content_quality_test,
     check_global_statistics,
@@ -206,8 +207,8 @@ def compare_siret(llm_value, ref_value):
     if not llm_value or not ref_value:
         return False
 
-    llm_str = str(llm_value) if not pd.isna(llm_value) else ""
-    ref_str = str(ref_value) if not pd.isna(ref_value) else ""
+    llm_str = llm_value.replace(" ", "")
+    ref_str = ref_value.replace(" ", "")
     return llm_str == ref_str
 
 
@@ -235,23 +236,9 @@ def compare_mandatee_bank_account(llm_val: dict[str, str], ref_val: dict[str, st
     if not llm_val or not ref_val:
         return False
 
-    # Si 'iban' est dans ref_dict et non vide, alors on compare les ibans (exact).
-    if ref_val.get("iban", "") != "":
-        if llm_val.get("iban", "") == ref_val.get("iban", ""):
-            return True
-        else:
-            return False
-    else:
-        # Si 'iban' absent ou vide dans ref_dict, alors on vérifie qu'il est aussi absent ou vide dans llm_dict,
-        # ET que les banques sont les mêmes (normalisées)
-        if llm_val.get("iban", "") != "":
-            return False
-        # S'il n'y a pas d'iban, on compare les banques (normalisées)
-        llm_banque = normalize_string(llm_val.get("banque", ""))
-        ref_banque = normalize_string(ref_val.get("banque", ""))
-        if llm_banque != ref_banque and (llm_banque not in ref_banque and llm_banque != ""):
-            return False
-        return True
+    llm_banque = normalize_string(llm_val.get("banque", ""))
+    ref_banque = normalize_string(ref_val.get("banque", ""))
+    return compare_iban(llm_val.get("iban"), ref_val.get("iban")) and llm_banque == ref_banque
 
 
 def compare_advance(llm_value, ref_value):
@@ -268,26 +255,40 @@ def compare_co_contractors(llm_val: list[dict[str, str]], ref_val: list[dict[str
     if not llm_val or not ref_val:
         return False
 
-    co_contractors_valid = True
-    # Pour chaque cotraitant généré par le LLM
-    for co_contractor_llm in llm_val:
-        this_co_contractor_valid = False
-        # On essaye de le retrouver dans la liste de référence
-        for co_contractor_ref in ref_val:
-            # On compare le nom (avec la fonction de normalisation) et le siret
-            if compare_main_company(co_contractor_llm["nom"], co_contractor_ref["nom"]) and compare_siret(
-                co_contractor_llm["siret"], co_contractor_ref["siret"]
+    if len(llm_val) != len(ref_val):
+        return False
+
+    def _item_is_in_list(item, search_list, excluded):
+        for i, search_item in enumerate(search_list):
+            if i in excluded:
+                continue
+            if compare_main_company(search_item["nom"], item["nom"]) and compare_siret(
+                search_item["siret"], item["siret"]
             ):
-                this_co_contractor_valid = True  # Un match est trouvé
-                print("Co-contractor found: ", co_contractor_ref)
-                break
-        if not this_co_contractor_valid:
-            # Si on ne trouve pas ce cotraitant dans les références, on considère la comparaison échouée
-            print("Co-contractor not found: ", co_contractor_llm)
-            co_contractors_valid = False
-            break
-    # La fonction ne vérifie pas s'il manque des cotraitants côté LLM
-    return co_contractors_valid
+                return i
+        return None
+
+    missing_co_contractors = []  # Le co traitants qui n'ont pas été trouvés par le llm
+    additional_co_contractors = []  # Les co traitants trouvés par le llm mais qui n'existent pas
+    found_ref = []
+    found_llm = []
+    for i, ref_item in enumerate(ref_val):
+        found_item = _item_is_in_list(ref_item, llm_val, excluded=found_llm)
+        if found_item is not None:
+            found_ref.append(i)
+            found_llm.append(found_item)
+        else:
+            missing_co_contractors.append(ref_item)
+    for i, llm_item in enumerate(llm_val):
+        if i not in found_llm:
+            additional_co_contractors.append(llm_item)
+
+    for x in missing_co_contractors:
+        print("Co-contractor not found:", x)
+    for x in additional_co_contractors:
+        print("Co-contractor allucination:", x)
+
+    return not missing_co_contractors and not additional_co_contractors
 
 
 def compare_subcontractors(llm_val: list[dict[str, str]], ref_val: list[dict[str, str]]):
@@ -334,24 +335,38 @@ def compare_other_bank_accounts(llm_val: list[dict[str, dict[str, str]]], ref_va
     if not llm_val or not ref_val:
         return False
 
-    bank_accounts_valid = True
-    # Pour chaque compte bancaire généré par le LLM
-    for bank_account_llm in llm_val:
-        this_bank_account_valid = False
-        # On essaye de le retrouver dans la liste de références
-        for bank_account_ref in ref_val:
-            # On compare le compte bancaire avec la fonction compare_mandatee_bank_account
-            if compare_mandatee_bank_account(bank_account_llm, bank_account_ref):
-                this_bank_account_valid = True  # Un match est trouvé
-                print("RIB trouvé : ", bank_account_ref)
-                break
-        if not this_bank_account_valid:
-            # Si on ne trouve pas ce compte bancaire dans les références, on considère la comparaison échouée
-            print("RIB non trouvé : ", bank_account_llm)
-            bank_accounts_valid = False
-            break
-    # La fonction ne vérifie pas s'il manque des comptes bancaires côté LLM
-    return bank_accounts_valid
+    if len(llm_val) != len(ref_val):
+        return False
+
+    def _item_is_in_list(item, search_list, excluded):
+        for i, search_item in enumerate(search_list):
+            if i in excluded:
+                continue
+            if compare_mandatee_bank_account(item, search_item):
+                return i
+        return None
+
+    missing_items = []  # Le items qui n'ont pas été trouvés par le llm
+    additional_items = []  # Les items trouvés par le llm mais qui n'existent pas
+    found_ref = []
+    found_llm = []
+    for i, ref_item in enumerate(ref_val):
+        found_item = _item_is_in_list(ref_item, llm_val, excluded=found_llm)
+        if found_item is not None:
+            found_ref.append(i)
+            found_llm.append(found_item)
+        else:
+            missing_items.append(ref_item)
+    for i, llm_item in enumerate(llm_val):
+        if i not in found_llm:
+            additional_items.append(llm_item)
+
+    for x in missing_items:
+        print("Bank account not found:", x)
+    for x in additional_items:
+        print("Bank account allucination:", x)
+
+    return not missing_items and not additional_items
 
 
 def compare_amount(llm_val, ref_val):
@@ -460,22 +475,23 @@ def create_batch_test(multi_line_coef=1):
     df_test["rib_autres"] = df_test["rib_autres"].apply(lambda x: json.loads(x))
     df_test["siret_mandataire"] = df_test["siret_mandataire"].astype(str).apply(lambda x: x.split(".")[0])
     df_test["siren_mandataire"] = df_test["siren_mandataire"].astype(str).apply(lambda x: x.split(".")[0])
+    df_test["montant_ht"] = df_test["montant_ht"].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "")
+    df_test["montant_ttc"] = df_test["montant_ttc"].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "")
 
     # Lancement du test
     return analyze_content_quality_test(df_test, "acte_engagement", multi_line_coef=multi_line_coef)
 
 
-df_test, df_result, df_merged = create_batch_test()
+if __name__ == "__main__":
+    df_test, df_result, df_merged = create_batch_test()
 
-EXCLUDED_COLUMNS = ["objet_marche", "administration_beneficiaire", "avance"]
+    EXCLUDED_COLUMNS = ["objet_marche", "administration_beneficiaire", "avance"]
 
+    comparison_functions = get_comparison_functions()
 
-comparison_functions = get_comparison_functions()
+    check_quality_one_field(df_merged, "rib_mandataire", comparison_functions)
+    check_quality_one_field(df_merged, "cotraitants", comparison_functions)
 
-check_quality_one_field(df_merged, "rib_mandataire", comparison_functions["rib_mandataire"])
+    check_quality_one_row(df_merged, 0, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
 
-check_quality_one_row(df_merged, 0, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
-
-check_quality_one_field(df_merged, "cotraitants", comparison_functions["cotraitants"])
-
-check_global_statistics(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
+    check_global_statistics(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)

@@ -38,9 +38,8 @@ class AnalyzeContentStepRunner(AbstractStepRunner):
             document.classification,
         )
         document.llm_response = result["llm_response"]
-        document.json_error = result["json_error"]
         document.structured_data = result["structured_data"]
-        document.save(update_fields=["llm_response", "structured_data", "json_error"])
+        document.save(update_fields=["llm_response", "structured_data"])
 
 
 @shared_task(name="docia.analyse_content")

@@ -1,0 +1,74 @@
+{% load dsfr_tags static docia %}
+
+
+<div class="fr-container">
+  <div class="fr-grid-row fr-grid-row--gutters">
+
+    <div class="fr-col-md-4 fr-col-12">
+      <div>
+        <h4>Forme</h4>
+        <ul>
+          <li>
+            <b>Marchés subséquents : </b>
+            {% if data.forme_marche.structure == "à marchés subséquents" %}
+              ✅
+            {% else %}
+              ❌
+            {% endif %}
+          </li>
+          <li>
+            <b>Décomposition en tranches : </b>
+            {% if data.forme_marche.tranches %}
+              {{ data.forme_marche.tranches }}
+            {% else %}
+              ❌
+            {% endif %}
+          </li>
+          <li>
+            {% with title="Forme des prix : " field_name="forme_marche.forme_prix" %}
+              {% include "docia/details_ej/blocks/attribute.html" %}
+            {% endwith %}
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="fr-col-md-4 fr-col-12">
+      {% if data.duree_lot == "identique à celle du marché" %}
+        <div>
+          <h4>Durée</h4>
+          <p>cf. durée du marché global</p>
+        </div>
+      {% elif data.duree_lot is None or data.duree_lot.duree_initiale is None %}
+        <div>
+          <h4>Durée</h4>
+          <p>Information non trouvée</p>
+        </div>
+      {% else %}
+        {% with data=data.duree_marche %}
+          {% include "docia/details_ej/blocks/duree.html" %}
+        {% endwith %}
+      {% endif %}
+    </div>
+
+    <div class="fr-col-md-4 fr-col-12">
+      <div>
+        <h4>Montants</h4>
+        <ul>
+          <li>
+            <b>Montant HT : </b>
+            {% if data.montant_ttc.type_montant == "annuel" %}
+              {{ data.montant_ht.montant_ht_maximum }} € / An
+            {% elif data.montant_ht.type_montant == "total" %}
+              {{ data.montant_ht.montant_ht_maximum }} € Total
+            {% else %}
+              Non renseigné
+            {% endif %}
+          </li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+

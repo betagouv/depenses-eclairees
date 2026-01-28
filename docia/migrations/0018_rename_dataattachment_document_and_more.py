@@ -15,7 +15,11 @@ def _migrate_permissions(old_model, new_model, apps, schema_editor):
     Permission = apps.get_model('auth', 'Permission')
     Group = apps.get_model('auth', 'Group')
 
-    ct = ContentType.objects.get(app_label='docia', model=new_model)
+    # When migrating from scratch, the ContentType table may not exist yet, so we exit early
+    ct = ContentType.objects.filter(app_label='docia', model=new_model).first()
+    if ct is None:
+        print(f"Type de contenu pour {new_model} introuvable, migration ignorée")
+        return
 
     for codename in Permission.objects.filter(content_type=ct, codename__endswith=f"_{old_model}").values_list('codename', flat=True):
         action = codename.split('_')[0]
