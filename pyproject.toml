@@ -69,8 +69,6 @@ exclude = [
     "app/grist/grist_api.py",
     "app/processor/select_relevant_content.py",
     "app/processor/synthesis.py",
-    "docia/file_processing/processor/classifier.py",
-    "docia/file_processing/processor/extraction_text_from_attachments.py",
     "scripts/maj_grist_from_scalingo.py",
 ]
 
