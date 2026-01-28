@@ -34,7 +34,7 @@ def normalize_string(s):
     return s
 
 
-def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, multi_line_coef=1, use_cache=True):
+def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, multi_line_coef=1, use_cache=False):
     """Test de qualité des informations extraites par le LLM.
 
     Args:
