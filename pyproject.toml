@@ -103,5 +103,6 @@ pandas = ["pandas", "numpy"]
 "docia/file_processing/processor/attributes/**.py" = ["E501"]
 
 
+
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "docia.settings"
