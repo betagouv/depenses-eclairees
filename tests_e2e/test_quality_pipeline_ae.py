@@ -120,7 +120,7 @@ EXCLUDED_COLUMNS = ["objet_marche", "administration_beneficiaire", "avance"]
 MIN_GLOBAL_ACCURACY = 0.88
 
 
-def test_ocr_quality_global_accuracy_exceeds_88_percent():
+def test_ocr_quality_global_accuracy():
     """L'accuracy globale du test OCR (acte_engagement) doit dépasser 88%."""
     df_test, df_result, df_merged = create_batch_test_ocr()
     comparison_functions = get_comparison_functions()
