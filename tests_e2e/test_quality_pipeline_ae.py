@@ -7,8 +7,9 @@ from concurrent.futures import ThreadPoolExecutor
 import django
 from django.conf import settings
 
-import pandas as pd
 from tqdm import tqdm
+
+import pandas as pd
 
 sys.path.append(".")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
@@ -19,8 +20,6 @@ from tests_e2e.test_quality_acte_engagement import get_comparison_functions  # n
 from tests_e2e.utils import (  # noqa: E402
     analyze_content_quality_test,
     check_global_statistics,
-    check_quality_one_field,
-    check_quality_one_row,
 )
 
 logger = logging.getLogger("docia." + __name__)
@@ -76,10 +75,7 @@ def create_batch_test_ocr(multi_line_coef=1):
     csv_path = CSV_DIR_PATH / "test_ocr.csv"
 
     if not csv_path.exists():
-        raise FileNotFoundError(
-            f"Fichier de test absent: {csv_path}. "
-            "Déposez test_ocr.csv dans le dossier data/test."
-        )
+        raise FileNotFoundError(f"Fichier de test absent: {csv_path}. Déposez test_ocr.csv dans le dossier data/test.")
 
     df_test = pd.read_csv(csv_path)
     df_test.fillna("", inplace=True)
@@ -94,7 +90,7 @@ def create_batch_test_ocr(multi_line_coef=1):
 
     # Étape d'extraction de texte via l'API OCR (absent dans test_quality_acte_engagement)
     logger.info("Extraction du texte via OCR pour %d document(s)...", len(df_test))
-    df_test["text"] = extract_texts_via_ocr(df_test, max_workers= 10)
+    df_test["text"] = extract_texts_via_ocr(df_test, max_workers=10)
 
     # Même prétraitement que test_quality_acte_engagement
     df_test["rib_mandataire"] = df_test["rib_mandataire"].apply(lambda x: json.loads(x))
@@ -104,16 +100,10 @@ def create_batch_test_ocr(multi_line_coef=1):
     df_test["rib_autres"] = df_test["rib_autres"].apply(lambda x: json.loads(x))
     df_test["siret_mandataire"] = df_test["siret_mandataire"].astype(str).apply(lambda x: x.split(".")[0])
     df_test["siren_mandataire"] = df_test["siren_mandataire"].astype(str).apply(lambda x: x.split(".")[0])
-    df_test["montant_ht"] = df_test["montant_ht"].apply(
-        lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else ""
-    )
-    df_test["montant_ttc"] = df_test["montant_ttc"].apply(
-        lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else ""
-    )
+    df_test["montant_ht"] = df_test["montant_ht"].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "")
+    df_test["montant_ttc"] = df_test["montant_ttc"].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "")
 
-    return analyze_content_quality_test(
-        df_test, "acte_engagement", multi_line_coef=multi_line_coef
-    )
+    return analyze_content_quality_test(df_test, "acte_engagement", multi_line_coef=multi_line_coef)
 
 
 EXCLUDED_COLUMNS = ["objet_marche", "administration_beneficiaire", "avance"]
@@ -124,9 +114,5 @@ def test_ocr_quality_global_accuracy():
     """L'accuracy globale du test OCR (acte_engagement) doit dépasser 88%."""
     df_test, df_result, df_merged = create_batch_test_ocr()
     comparison_functions = get_comparison_functions()
-    global_accuracy = check_global_statistics(
-        df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS
-    )
-    assert (
-        global_accuracy > MIN_GLOBAL_ACCURACY
-    ), f"Accuracy globale {global_accuracy:.2%} <= {MIN_GLOBAL_ACCURACY:.0%}"
+    global_accuracy = check_global_statistics(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
+    assert global_accuracy > MIN_GLOBAL_ACCURACY, f"Accuracy globale {global_accuracy:.2%} <= {MIN_GLOBAL_ACCURACY:.0%}"

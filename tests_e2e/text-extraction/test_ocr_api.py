@@ -43,9 +43,7 @@ def test_ocr_api_extracts_text_from_lettre_ocr():
 
     # Vérification des phrases clés de la lettre de mission
     for phrase in PHRASES_ATTENDUES:
-        assert phrase in text_norm, (
-            f"Phrase attendue non trouvée dans l'OCR : {phrase!r}"
-        )
+        assert phrase in text_norm, f"Phrase attendue non trouvée dans l'OCR : {phrase!r}"
 
     # Montant : 85 000 euros (OCR peut renvoyer "85 000" ou "85000")
     assert ("85 000" in text_norm or "85000" in text_norm) and "euros" in text_norm, (

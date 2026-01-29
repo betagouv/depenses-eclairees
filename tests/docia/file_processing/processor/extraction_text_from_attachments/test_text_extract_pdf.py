@@ -20,9 +20,7 @@ def test_extract_text_from_pdf_ocr():
     with open(ASSETS_DIR / "lettre.md", "r") as f:
         expected_text = f.read()
 
-    with patch(
-        "docia.file_processing.processor.extraction_text_from_attachments.LLMClient"
-    ) as mock_llm_class:
+    with patch("docia.file_processing.processor.extraction_text_from_attachments.LLMClient") as mock_llm_class:
         mock_llm_class.return_value.ocr_pdf.return_value = expected_text
         text, is_ocr = extract_text_from_pdf(file_content)
 
