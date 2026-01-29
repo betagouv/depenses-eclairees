@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # --- OCR (API Albert / OpenGateLLM, convention Mistral) ---
 # Modèle OCR (image-to-text). https://albert.status.staging.etalab.gouv.fr/status/api
 DEFAULT_OCR_MODEL = "mistral-ocr-2512"
-OCR_ENDPOINT = "/v1/ocr"
+OCR_ENDPOINT = "/ocr"
 
 
 def _build_pdf_document_payload(pdf_content: bytes) -> dict:
@@ -84,7 +84,7 @@ class LLMApiError(Exception):
 class LLMClient:
     def __init__(
         self,
-        llm_model: str,
+        llm_model: str | None = None,
         api_key: str | None = None,
         base_url: str | None = None,
         http_client: httpx.Client | None = None,
