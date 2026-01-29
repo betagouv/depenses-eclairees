@@ -1,3 +1,6 @@
+import random
+import string
+
 import hashlib
 
 import factory
@@ -37,3 +40,11 @@ class EngagementScopeFactory(factory.django.DjangoModelFactory):
         model = EngagementScope
 
     name = factory.Sequence(lambda n: f"scope_{n}")
+
+
+def random_num_ej():
+    return "".join(random.choices("0123456789", k=10))
+
+
+def random_external_id():
+    return "".join(random.choice(string.ascii_letters + string.digits) for _ in range(20)).upper()
