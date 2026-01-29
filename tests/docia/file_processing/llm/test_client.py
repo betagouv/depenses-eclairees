@@ -6,7 +6,7 @@ import pytest
 from httpx import TimeoutException
 from openai._base_client import SyncHttpxClientWrapper
 
-from docia.file_processing.llm.client import LLMApiError, LLMClient
+from docia.file_processing.llm.client import LLMApiError, LLMClient, OCRApiError
 
 
 def run_llm_error_test(mock_handler, retry_delay, expected_code, expected_message):
@@ -32,7 +32,7 @@ def run_llm_error_test(mock_handler, retry_delay, expected_code, expected_messag
     httpx_client = SyncHttpxClientWrapper(transport=httpx.MockTransport(handler=mock_handler))
 
     # Créer le client
-    llm_env = LLMClient(llm_model="albert-large", http_client=httpx_client)
+    llm_env = LLMClient(llm_model="openweight-medium", http_client=httpx_client)
 
     # Mock
     with (
@@ -71,7 +71,7 @@ def run_llm_error_test(mock_handler, retry_delay, expected_code, expected_messag
         (
             429,
             60,
-            {"detail": "100 requests for albert-large per minute exceeded (remaining: 0)."},
+            {"detail": "100 requests for openweight-medium per minute exceeded (remaining: 0)."},
         ),
         (503, 10, {"detail": "Model is too busy, please try again later."}),
         (504, 10, {"detail": "Model is too busy."}),
@@ -109,3 +109,129 @@ def test_ask_llm_timeout_error():
 
     # Exécuter le test
     run_llm_error_test(mock_handler, retry_delay, expected_code, expected_message)
+
+
+# --- ocr_pdf tests (mock httpx.post, no real API calls) ---
+
+PDF_CONTENT = b"%PDF-1.4 fake content"
+
+
+def run_ocr_error_test(
+    mock_post: Mock,
+    retry_delay: float,
+    expected_status_code: int | None,
+    expected_message_prefix: str,
+    max_retries: int = 3,
+):
+    """
+    Helper to assert ocr_pdf retry logic and final OCRApiError.
+
+    Args:
+        mock_post: Mock for httpx.post (in docia.file_processing.llm.client).
+        retry_delay: Base delay used for sleep (429 -> retry_delay, 5xx/network -> retry_short_delay).
+        expected_status_code: status_code on OCRApiError (None for network errors).
+        expected_message_prefix: str that the raised error message must start with.
+        max_retries: max_retries passed to ocr_pdf.
+    """
+    client = LLMClient(llm_model="openweight-medium", use_rate_limiter=False)
+    with (
+        patch("docia.file_processing.llm.client.httpx.post", mock_post),
+        patch("time.sleep", autospec=True) as m_sleep,
+        patch("random.random", autospec=True) as m_random,
+    ):
+        m_random.return_value = 0.5
+        with pytest.raises(OCRApiError) as exc_info:
+            client.ocr_pdf(PDF_CONTENT, max_retries=max_retries)
+
+        ex = exc_info.value
+        assert ex.status_code == expected_status_code
+        msg = str(ex)
+        assert msg.startswith(expected_message_prefix) or expected_message_prefix in msg
+        assert mock_post.call_count == max_retries + 1
+        # Sleeps: one per failed attempt (3 sleeps for max_retries=3)
+        assert len(m_sleep.mock_calls) == max_retries
+        return m_sleep
+
+
+@pytest.mark.parametrize(
+    "status_code,retry_delay",
+    [
+        (429, 60),
+        (503, 10),
+        (504, 10),
+        (500, 10),
+    ],
+)
+def test_ocr_pdf_retry_then_error(status_code, retry_delay):
+    """ocr_pdf retries on 429 (retry_delay) or 5xx (retry_short_delay), then raises OCRApiError."""
+    delay = 60 if status_code == 429 else 10
+    mock_post = Mock(return_value=httpx.Response(status_code=status_code, text="error"))
+    m_sleep = run_ocr_error_test(
+        mock_post,
+        retry_delay=delay,
+        expected_status_code=status_code,
+        expected_message_prefix="OCR API error",
+        max_retries=3,
+    )
+    expected_calls = [
+        mock.call(delay * 1.05),
+        mock.call(delay * 1.05 * 2),
+        mock.call(delay * 1.05 * 3),
+    ]
+    m_sleep.assert_has_calls(expected_calls)
+
+
+def test_ocr_pdf_4xx_no_retry():
+    """ocr_pdf does not retry on 4xx (e.g. 400), raises OCRApiError immediately."""
+    client = LLMClient(llm_model="openweight-medium", use_rate_limiter=False)
+    mock_post = Mock(return_value=httpx.Response(status_code=400, text="Bad request"))
+    with (
+        patch("docia.file_processing.llm.client.httpx.post", mock_post),
+        patch("time.sleep", autospec=True) as m_sleep,
+    ):
+        with pytest.raises(OCRApiError) as exc_info:
+            client.ocr_pdf(PDF_CONTENT, max_retries=3)
+        ex = exc_info.value
+        assert ex.status_code == 400
+        assert "400" in str(ex)
+        assert mock_post.call_count == 1
+        m_sleep.assert_not_called()
+
+
+def test_ocr_pdf_network_error_retry_then_raise():
+    """ocr_pdf retries on ConnectError then raises OCRApiError."""
+    mock_post = Mock(side_effect=httpx.ConnectError("Connection refused"))
+    run_ocr_error_test(
+        mock_post,
+        retry_delay=10,
+        expected_status_code=None,
+        expected_message_prefix="OCR API error",
+        max_retries=3,
+    )
+
+
+def test_ocr_pdf_timeout_retry_then_raise():
+    """ocr_pdf retries on TimeoutException then raises OCRApiError."""
+    mock_post = Mock(side_effect=TimeoutException("Request timeout"))
+    run_ocr_error_test(
+        mock_post,
+        retry_delay=10,
+        expected_status_code=None,
+        expected_message_prefix="OCR API error",
+        max_retries=3,
+    )
+
+
+def test_ocr_pdf_success():
+    """ocr_pdf returns extracted markdown when API returns 200 with pages."""
+    client = LLMClient(llm_model="openweight-medium", use_rate_limiter=False)
+    mock_post = Mock(
+        return_value=httpx.Response(
+            status_code=200,
+            json={"pages": [{"markdown": "Page one"}, {"markdown": "Page two"}]},
+        )
+    )
+    with patch("docia.file_processing.llm.client.httpx.post", mock_post):
+        result = client.ocr_pdf(PDF_CONTENT)
+    assert result == "Page one\n\nPage two"
+    assert mock_post.call_count == 1

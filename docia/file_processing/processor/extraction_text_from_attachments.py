@@ -21,6 +21,7 @@ import pandas as pd
 from app.data.sql.sql import bulk_update_attachments
 from app.grist import API_KEY_GRIST, URL_TABLE_ATTACHMENTS, update_records_in_grist
 from app.utils import clean_nul_bytes, count_words, getDate, log_execution_time
+from docia.file_processing.llm.client import LLMClient
 from docia.file_processing.processor.pdf_drawings import add_drawings_to_pdf
 
 logger = logging.getLogger("docia." + __name__)
@@ -140,20 +141,11 @@ def extract_text_from_pdf(file_content: bytes, word_threshold=50):
         text = "\n".join([page.get_text(sort=True) for page in doc_with_drawings]).strip()
 
     # Si peu de mots sont extraits, c'est peut-être une image scannée
-    # Utilisation de l'OCR
+    # Utilisation de l'API OCR (Albert / OpenGateLLM)
     else:
         is_ocr_used = True
-        text_ocr = ""
-        # https://pymupdf.readthedocs.io/en/latest/recipes-ocr.html#how-to-ocr-a-document-page
-        # https://pymupdf.readthedocs.io/en/latest/installation.html#installation-ocr
-        for page in doc:
-            pix = page.get_pixmap(dpi=200, colorspace=pymupdf.csRGB, alpha=0)
-            image = pix.pil_image()
-            text_ocr += tesserocr.image_to_text(image, lang="fra") or ""
-            # Alternatively, we could use this tesseract wrapper from pymupdf
-            # text_page = page.get_textpage_ocr(dpi=200, language='fra', full=True)
-            # text_ocr += text_page.extractText()
-        text = text_ocr.strip()
+        llm_client = LLMClient()
+        text = llm_client.ocr_pdf(file_content)
 
     return text, is_ocr_used
 

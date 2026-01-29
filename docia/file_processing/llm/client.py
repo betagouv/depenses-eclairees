@@ -1,7 +1,9 @@
+import base64
 import json
 import logging
 import random
 import time
+from urllib.parse import urljoin
 
 from django.conf import settings
 
@@ -11,6 +13,34 @@ from openai import APIConnectionError, APIError, APIStatusError, OpenAI
 from docia.file_processing.llm.rategate.gate import RateGate
 
 logger = logging.getLogger(__name__)
+
+# --- OCR (API Albert / OpenGateLLM, convention Mistral) ---
+# Modèle OCR (image-to-text). https://albert.status.staging.etalab.gouv.fr/status/api
+DEFAULT_OCR_MODEL = "mistral-ocr-2512"
+OCR_ENDPOINT = "/v1/ocr"
+
+
+def _build_pdf_document_payload(pdf_content: bytes) -> dict:
+    """Payload document pour l'API OCR : PDF en base64 (data URI)."""
+    b64 = base64.b64encode(pdf_content).decode("utf-8")
+    data_uri = f"data:application/pdf;base64,{b64}"
+    return {"type": "document_url", "document_url": data_uri}
+
+
+def _extract_markdown_from_ocr_response(response_data: dict) -> str:
+    """Extrait le texte markdown de la réponse OCR (toutes les pages)."""
+    pages = response_data.get("pages", [])
+    parts = [page.get("markdown") or "" for page in pages]
+    return "\n\n".join(parts).strip()
+
+
+class OCRApiError(Exception):
+    """Erreur renvoyée par l'API OCR."""
+
+    def __init__(self, message: str, *, status_code: int | None = None, details: str | None = None):
+        super().__init__(message)
+        self.status_code = status_code
+        self.details = details
 
 
 class LLMApiError(Exception):
@@ -168,3 +198,98 @@ class LLMClient:
             return json.loads(response)
         else:
             return response
+
+    def ocr_pdf(
+        self,
+        pdf_content: bytes,
+        model: str = DEFAULT_OCR_MODEL,
+        max_retries: int = 3,
+        retry_delay: float = 60,
+        retry_short_delay: float = 10,
+    ) -> str:
+        """
+        Envoie le contenu d'un PDF à l'API OCR et retourne le texte extrait (markdown).
+
+        Retry : 429 (retry_delay), 5XX et erreurs de connexion (retry_short_delay).
+        À utiliser dans extract_text_from_pdf (processor) quand le PDF est un scan / peu de texte.
+        """
+        if max_retries < 0:
+            max_retries = 0
+
+        payload = {
+            "model": model,
+            "document": _build_pdf_document_payload(pdf_content),
+            "include_image_base64": False,
+        }
+        url = urljoin(self.base_url.rstrip("/") + "/", OCR_ENDPOINT.lstrip("/"))
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
+        last_error = None
+        for attempt in range(max_retries + 1):
+            if self.limiter:
+                self.limiter.wait_turn()
+            # Unlike ask_llm (OpenAI client), httpx does not raise on 4xx/5xx: we get a Response.
+            # Only transport errors (connection, timeout) raise.
+            try:
+                response = httpx.post(
+                    url,
+                    headers=headers,
+                    json=payload,
+                    timeout=120.0,
+                )
+            except (httpx.ConnectError, httpx.TimeoutException) as e:
+                # Network/timeout error: no Response, handle retry here.
+                last_error = OCRApiError(
+                    f"OCR API error: {e!s}",
+                    details=str(e),
+                )
+                if attempt < max_retries:
+                    wait_time = retry_short_delay * (1 + 0.1 * random.random()) * (attempt + 1)
+                    logger.warning(
+                        "OCR %s, wait %.1fs before retry (%d/%d)",
+                        e,
+                        wait_time,
+                        attempt + 1,
+                        max_retries,
+                    )
+                    time.sleep(wait_time)
+                    continue
+                raise last_error from e
+
+            # HTTP response received: handle status (success, 429, 5xx, or other → raise).
+            if response.is_success:
+                return _extract_markdown_from_ocr_response(response.json())
+
+            if response.status_code == 429:
+                effective_retry_delay = retry_delay
+            elif 500 <= response.status_code < 600:
+                effective_retry_delay = retry_short_delay
+            else:
+                raise OCRApiError(
+                    f"OCR API error: {response.status_code}",
+                    status_code=response.status_code,
+                    details=response.text,
+                )
+
+            # 429 or 5xx: retry (same sleep/continue logic as above for network errors).
+            last_error = OCRApiError(
+                f"OCR API error: {response.status_code}",
+                status_code=response.status_code,
+                details=response.text,
+            )
+            if attempt < max_retries:
+                wait_time = effective_retry_delay * (1 + 0.1 * random.random()) * (attempt + 1)
+                logger.warning(
+                    "OCR HTTP %s, wait %.1fs before retry (%d/%d)",
+                    response.status_code,
+                    wait_time,
+                    attempt + 1,
+                    max_retries,
+                )
+                time.sleep(wait_time)
+                continue
+            raise last_error
+
