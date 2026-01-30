@@ -61,26 +61,32 @@
     padding: 2px 6px;
 }
 
-/* Acte d'engagement : sous-sections rapprochées */
-.acte-engagement-sections .fr-accordion,
-.acte-engagement-sections .acte-engagement-section--disabled {
+/* Document (acte d'engagement, CCAP, etc.) : conteneur des sections accordéon / grisées */
+.document-sections .fr-accordion,
+.document-sections .document-section--disabled {
     margin-bottom: 0;
 }
 
-.acte-engagement-sections .fr-accordion + .fr-accordion,
-.acte-engagement-sections .fr-accordion + .acte-engagement-section--disabled,
-.acte-engagement-sections .acte-engagement-section--disabled + .fr-accordion,
-.acte-engagement-sections .acte-engagement-section--disabled + .acte-engagement-section--disabled {
+.document-sections .fr-accordion + .fr-accordion,
+.document-sections .fr-accordion + .document-section--disabled,
+.document-sections .document-section--disabled + .fr-accordion,
+.document-sections .document-section--disabled + .document-section--disabled {
     margin-top: 0.25rem;
 }
 
-/* Sections non déroulables : style accordéon mais très discret */
-.acte-engagement-section--disabled {
+/* Contenu d’un lot CCAP : trait vertical pour mieux distinguer le bloc lot des sous-sections */
+.ccap-lot-content {
+    border-left: 2px solid var(--fr-border-default-grey, #e5e5e5);
+    padding-left: 1rem;
+}
+
+/* Section non déroulable (information non disponible, bientôt disponible) */
+.document-section--disabled {
     border: 1px solid var(--fr-border-default-grey, #e5e5e5);
     border-radius: 4px;
 }
 
-.acte-engagement-section--disabled__title {
+.document-section--disabled__title {
     display: block;
     width: 100%;
     padding: 0.75rem 1rem;

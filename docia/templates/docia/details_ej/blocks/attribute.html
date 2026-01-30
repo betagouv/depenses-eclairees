@@ -19,7 +19,7 @@
       {% with val=data|get_item:field_name %}
         {% if val %}
           {{ val }}{{ suffix }}
-          {% include "docia/blocks/button_copy.html" with id=field_name value=val %}
+          {% include "docia/blocks/button_copy.html" with id=id|default:field_name value=val %}
         {% else %}
           <span class="fr-attribute-row__value--empty">[Non trouvé]</span>
         {% endif %}

@@ -33,6 +33,19 @@ def iban_spaces(value):
 
 
 @register.filter
+def first_n_words(value, n=10):
+    """
+    Garde les n premiers mots (séparés par des espaces) et ajoute « ... » si le texte est tronqué.
+    """
+    if not value:
+        return ""
+    words = str(value).strip().split()
+    if len(words) <= n:
+        return " ".join(words)
+    return " ".join(words[:n]) + " ..."
+
+
+@register.filter
 def format_siren_siret(value):
     """Format SIREN / SIRET avec un espace tous les 3 caractères (chiffres uniquement)."""
     if not value:

@@ -26,7 +26,7 @@
 </div>
 
 {# Sous-sections déroulantes (rapprochées, sans saut de ligne) #}
-<div class="acte-engagement-sections fr-mt-2v">
+<div class="document-sections fr-mt-2v">
 {# Titulaire : titre "Titulaire - Nom du titulaire", contenu déroulant : raison sociale (copier) + SIREN, SIRET, En groupement #}
   <section class="fr-accordion" data-fr-js-accordion="true">
     <h3 class="fr-accordion__title">
@@ -79,8 +79,8 @@
       </div>
     </section>
   {% else %}
-    <div class="acte-engagement-section--disabled">
-      <span class="acte-engagement-section--disabled__title">Prix – Non disponibles dans le document.</span>
+    <div class="document-section--disabled">
+      <span class="document-section--disabled__title">Prix – Non disponibles dans le document.</span>
     </div>
   {% endif %}
 
@@ -117,8 +117,8 @@
         </div>
       </section>
     {% else %}
-      <div class="acte-engagement-section--disabled">
-        <span class="acte-engagement-section--disabled__title">Durée – Non disponible dans le document.</span>
+      <div class="document-section--disabled">
+        <span class="document-section--disabled__title">Durée – Non disponible dans le document.</span>
       </div>
     {% endif %}
   {% endwith %}
@@ -156,8 +156,8 @@
         </div>
       </section>
     {% else %}
-      <div class="acte-engagement-section--disabled">
-        <span class="acte-engagement-section--disabled__title">Informations bancaires – Non disponibles dans le document.</span>
+      <div class="document-section--disabled">
+        <span class="document-section--disabled__title">Informations bancaires – Non disponibles dans le document.</span>
       </div>
     {% endif %}
   {% endwith %}
@@ -185,8 +185,8 @@
       </div>
     </section>
   {% else %}
-    <div class="acte-engagement-section--disabled">
-      <span class="acte-engagement-section--disabled__title">Dates et signatures – Non trouvées dans le document.</span>
+    <div class="document-section--disabled">
+      <span class="document-section--disabled__title">Dates et signatures – Non trouvées dans le document.</span>
     </div>
   {% endif %}
 
@@ -221,7 +221,7 @@
   {% endif %}
 
   {# Avance et garantie : section grisée en bas du document (même espacement que les autres sections) #}
-  <div class="acte-engagement-section--disabled">
-    <span class="acte-engagement-section--disabled__title">Avance et garantie – Bientôt disponible sur Dépenses Eclairées</span>
+  <div class="document-section--disabled">
+    <span class="document-section--disabled__title">Avance et garantie – Bientôt disponible sur Dépenses Eclairées</span>
   </div>
 </div>
