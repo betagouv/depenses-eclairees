@@ -12,6 +12,8 @@ sys.path.append(".")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
 django.setup()
 
+from tests_e2e.utils import get_ground_truth_from_grist  # noqa: E402
+
 from docia.file_processing.processor.analyze_content import LLMClient  # noqa: E402
 from docia.file_processing.processor.classifier import classify_files, DIC_CLASS_FILE_BY_NAME  # noqa: E402
 from app.ai_models.config_albert import ALBERT_API_KEY, ALBERT_BASE_URL  # noqa: E402
@@ -24,10 +26,15 @@ CSV_DIR_PATH = (PROJECT_PATH / ".." / "data" / "test").resolve()
 def create_batch_test(true_classification: list[str] = None, multi_line_coef=1):
     """Création du batch de test pour la classification."""
     # Chemin vers le fichier CSV de test
-    csv_path = CSV_DIR_PATH / "test_classification.csv"
+    # csv_path = CSV_DIR_PATH / "test_classification.csv"
 
     # Lecture du fichier CSV et remplissage des valeurs manquantes
-    df_test = pd.read_csv(csv_path)
+    # df_test = pd.read_csv(csv_path)
+    columns_to_keep = ["filename", "num_ej","classification", "is_ocr", "commentaire", "traitement", "text"]
+    df_test = get_ground_truth_from_grist(table="Classif_gt", columns=columns_to_keep)
+
+    df_test = df_test.query("traitement != 'Alexandre'")
+    
     for idx, row in df_test.iterrows():
         try:
             df_test.at[idx, "classification"] = json.loads(row["classification"])
@@ -245,3 +252,4 @@ df_comparison = compare_classification(df_result, errors_only=True)
 
 
 display_results(df_comparison)
+df_comparison.query("is_correct == 0")[["filename","true_class_first","pred_class_first"]]

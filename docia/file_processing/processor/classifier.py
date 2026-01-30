@@ -252,7 +252,7 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "ccap_annexe": {
         "nom_complet": "CCAP annexe autre",
-        "description": "Annexe au CCAP contenant des informations complémentaires non repertoriées dans les autres catégories.",
+        "description": "Annexe au CCAP contenant des informations complémentaires (hors bénéficiaires) non repertoriées dans les autres catégories.",
     },
     "ccap_annexe_beneficiaires": {
         "nom_complet": "CCAP annexe bénéficiaires",
