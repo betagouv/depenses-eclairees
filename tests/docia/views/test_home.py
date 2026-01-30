@@ -223,7 +223,7 @@ def test_ccap_without_lots(client):
         "forme_marche": {"tranches": None, "structure": "simple", "forme_prix": "forfaitaires"},
         "objet_marche": "[[objet_marche]]",
         "montant_ht_lots": [],
-        "forme_marche_lots": []
+        "forme_marche_lots": [],
     }
     doc.save()
     user = UserFactory(is_superuser=True)
