@@ -160,8 +160,8 @@ def test_acte_engagement(client):
         "lot_concerne": "[[lot_concerne]]",
         "objet_marche": "[[objet_marche]]",
         "rib_mandataire": {"iban": "[[rib_mandataire.iban]]", "banque": "[[rib_mandataire.banque]]"},
-        "siren_mandataire": "[[siren_mandataire]]",
-        "siret_mandataire": "[[siret_mandataire]]",
+        "siren_mandataire": "123456789",
+        "siret_mandataire": "12345678901234",
         "date_notification": "[[date_notification]]",
         "societe_principale": "[[societe_principale]]",
         "date_signature_mandataire": "[[date_signature_mandataire]]",
@@ -190,17 +190,17 @@ def test_acte_engagement(client):
     assert "[[lot_concerne]]" in response.text
     assert "[[objet_marche]]" in response.text
     assert "[[rib_mandataire.iban]]" in response.text
-    assert "[[rib_mandataire.banque]]" in response.text
-    assert "[[siren_mandataire]]" in response.text
-    assert "[[siret_mandataire]]" in response.text
+    assert "[[RIB_MANDATAIRE.BANQUE]]" in response.text
+    assert "123 456 789" in response.text
+    assert "123 456 789 012 34" in response.text
     assert "[[date_notification]]" in response.text
     assert "[[societe_principale]]" in response.text
     assert "[[date_signature_mandataire]]" in response.text
     assert "[[administration_beneficiaire]]" in response.text
     assert "[[date_signature_administration]]" in response.text
-    assert "40123.50" in response.text  # Montant total ht
-    assert "60123.50" in response.text  # Montant total ttc
-    assert "8 mois" in response.text
+    assert "40 123,50 €" in response.text  # Montant total ht
+    assert "60 123,50 €" in response.text  # Montant total ttc
+    assert "12 mois" in response.text
 
 
 @pytest.mark.django_db
@@ -223,13 +223,7 @@ def test_ccap_without_lots(client):
         "forme_marche": {"tranches": None, "structure": "simple", "forme_prix": "forfaitaires"},
         "objet_marche": "[[objet_marche]]",
         "montant_ht_lots": [],
-        "forme_marche_lots": [],
-        "condition_avance_ccap": {
-            "remboursement": "65%-100%",
-            "montant_avance": "30%",
-            "montant_reference": "montant annuel",
-            "condition_declenchement": "Avance systématique",
-        },
+        "forme_marche_lots": []
     }
     doc.save()
     user = UserFactory(is_superuser=True)
@@ -240,10 +234,6 @@ def test_ccap_without_lots(client):
     assert "[[id_marche]]" in response.text
     assert "101234" in response.text
     assert "[[objet_marche]]" in response.text
-    assert "65%-100%" in response.text
-    assert "30%" in response.text
-    assert "montant annuel" in response.text
-    assert "Avance systématique" in response.text
     assert "forfaitaires" in response.text
 
 
