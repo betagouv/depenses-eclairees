@@ -30,8 +30,13 @@
         Limite de requêtes atteinte. Veuillez réessayer demain.
       {% endif %}
       {% if not documents and not unprocessed %}
-        Aucun résultat.
+        Aucun résultat trouvé, ou vous n'avez pas accès à ce dossier.<br><br>
+        Pour obtenir de l'aide, contactez-nous :<br>
+        <a target="_blank" href="{{ settings.TCHAP_SUPPORT_CANAL_URL }}">Support - Dépenses Éclairées</a>
+        ou par mail à <a href="mailto:contact@depenses-eclairees.beta.gouv.fr">contact@depenses-eclairees.beta.gouv.fr</a>
       {% endif %}
+
+      <!-- Document analysés -->
       {% for doc in documents %}
         <section class="fr-accordion" data-fr-js-accordion="true">
           <h3 class="fr-accordion__title">
@@ -42,6 +47,8 @@
           {% include "docia/details_ej/documents/document.html" with doc=doc %}
         </section>
       {% endfor %}
+
+      <!-- Document non analysés -->
       {% if unprocessed %}
         <section class="fr-accordion" data-fr-js-accordion="true">
           <h3 class="fr-accordion__title">

@@ -1,4 +1,128 @@
+/* Encadrement visuel du contenu d’un document (niveau 2) : séparation nette avec la liste des documents */
+.document-detail {
+    margin-top: 0.25rem;
+    padding: 1rem 1.5rem;
+    background-color: #f6f6f6;
+    border-left: 4px solid var(--fr-blue-france-500, #000091);
+}
+
+/* Liste d’attributs (label / valeur) : compacte et cohérente DSFR */
+.fr-attribute-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.fr-attribute-list .fr-attribute-row {
+    border-bottom: 1px solid var(--fr-border-default-grey, #e5e5e5);
+}
+
+.fr-attribute-list .fr-attribute-row:last-child {
+    border-bottom: none;
+}
+
+.fr-attribute-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem 1rem;
+    padding: 0.5rem 0;
+    font-size: 0.875rem;
+}
+
+.fr-attribute-row:first-child {
+    padding-top: 0;
+}
+
+.fr-attribute-row__label {
+    flex: 0 0 auto;
+    color: var(--fr-text-mention-grey, #6a6a6a);
+    font-weight: 500;
+    min-width: 8rem;
+}
+
+.fr-attribute-row__value {
+    flex: 1 1 auto;
+    color: var(--fr-text-default-grey, #161616);
+}
+
+.fr-attribute-row__value--empty {
+    color: var(--fr-text-mention-grey, #6a6a6a);
+    font-style: italic;
+}
+
+/* SIREN / SIRET : espace tous les 3 chiffres (affichage via filtre) + chiffres à chasse fixe */
+.siren-siret-format {
+    font-variant-numeric: tabular-nums;
+}
+
 .btn-copy {
     font-size: 12px;
     padding: 2px 6px;
+}
+
+/* Acte d'engagement : sous-sections rapprochées */
+.acte-engagement-sections .fr-accordion,
+.acte-engagement-sections .acte-engagement-section--disabled {
+    margin-bottom: 0;
+}
+
+.acte-engagement-sections .fr-accordion + .fr-accordion,
+.acte-engagement-sections .fr-accordion + .acte-engagement-section--disabled,
+.acte-engagement-sections .acte-engagement-section--disabled + .fr-accordion,
+.acte-engagement-sections .acte-engagement-section--disabled + .acte-engagement-section--disabled {
+    margin-top: 0.25rem;
+}
+
+/* Sections non déroulables : style accordéon mais très discret */
+.acte-engagement-section--disabled {
+    border: 1px solid var(--fr-border-default-grey, #e5e5e5);
+    border-radius: 4px;
+}
+
+.acte-engagement-section--disabled__title {
+    display: block;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    background: transparent;
+    color: var(--fr-text-mention-grey, #6a6a6a);
+    font-size: 1rem;
+    font-weight: 500;
+    border: none;
+    border-radius: 4px;
+    cursor: default;
+}
+
+/* Lot concerné : dépliant très discret (style lien, petite taille) */
+.lot-concerne-toggle {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 0.875rem;
+    color: #6a6a6a;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+.lot-concerne-toggle:hover {
+    color: #000091;
+}
+
+.lot-concerne-toggle[aria-expanded="true"]::after {
+    content: " \25B2";
+    font-size: 0.65rem;
+    vertical-align: 0.15em;
+}
+
+.lot-concerne-toggle[aria-expanded="false"]::after {
+    content: " \25BC";
+    font-size: 0.65rem;
+    vertical-align: 0.15em;
+}
+
+.lot-concerne-content {
+    padding-left: 0.5rem;
+    border-left: 1px solid #e5e5e5;
 }

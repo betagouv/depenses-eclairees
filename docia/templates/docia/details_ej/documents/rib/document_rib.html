@@ -1,0 +1,27 @@
+{% load dsfr_tags static docia %}
+
+<div class="fr-attribute-list">
+  {# Titulaire du compte #}
+  {% with value=data.titulaire_compte %}
+    {% include "docia/details_ej/blocks/attribute.html" with title="Titulaire du compte" id="titulaire_compte" %}
+  {% endwith %}
+
+  {# Adresse postale du titulaire (formatée) #}
+  {% with value=data.adresse_postale_titulaire|format_postal_address %}
+    {% include "docia/details_ej/blocks/attribute.html" with title="Adresse postale" id="adresse_postale_titulaire" %}
+  {% endwith %}
+
+  {# Informations bancaires : banque, domiciliation, BIC, IBAN #}
+  {% with value=data.banque %}
+    {% include "docia/details_ej/blocks/attribute.html" with title="Banque" id="banque" %}
+  {% endwith %}
+  {% with value=data.domiciliation %}
+    {% include "docia/details_ej/blocks/attribute.html" with title="Domiciliation" id="domiciliation" %}
+  {% endwith %}
+  {% with value=data.bic %}
+    {% include "docia/details_ej/blocks/attribute.html" with title="BIC" id="bic" %}
+  {% endwith %}
+  {% with value=data.iban|iban_spaces copy_value=data.iban %}
+    {% include "docia/details_ej/blocks/attribute.html" with title="IBAN" id="rib_iban" %}
+  {% endwith %}
+</div>

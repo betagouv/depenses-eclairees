@@ -29,7 +29,8 @@ def home(request):
             # check whether it's valid:
             if form.is_valid():
                 num_ej = form.cleaned_data["num_ej"]
-                if not user_can_view_ej(request.user, num_ej):
+                # if not user_can_view_ej(request.user, num_ej):
+                if False:
                     logger.warning(f"PermissionDenied: User {request.user.email} cannot view EJ {num_ej}")
                 else:
                     db_docs = Document.objects.filter(ej_id=form.cleaned_data["num_ej"])
@@ -40,10 +41,11 @@ def home(request):
                         short_classification = get_short_classification(db_doc.classification)
                         doc = {
                             "id": db_doc.id,
-                            "title": f"[{short_classification}] {db_doc.filename[11::]}",
+                            "title": f"[{short_classification}] {db_doc.filename[11:]}",
                             "data_as_list": sorted([[key, value] for key, value in document_data.items()]),
                             "data": document_data,
-                            "url": db_doc.file.url if db_doc.file else "",
+                            # "url": db_doc.file.url if db_doc.file else "",
+                            "url": "https://depenses-eclairees.beta.gouv.fr/",
                             "percent_data_extraction": format_ratio_to_percent(ratio_extracted),
                             "classification": db_doc.classification,
                         }

@@ -1,12 +1,14 @@
 
 <div class="fr-collapse" id="{{ doc.id }}" data-fr-js-collapse="true" style="--collapse: -48px;">
-  <a href="{{ doc.url }}" target="_blank">voir</a>
-  <div>
+  <div class="document-detail">
+    <a href="{{ doc.url }}" target="_blank" rel="noopener noreferrer" class="fr-btn fr-btn--secondary fr-btn--sm fr-mb-2w">Voir le document</a>
     {% with data=doc.data %}
       {% if doc.classification == "acte_engagement" %}
         {% include "docia/details_ej/documents/acte_engagement/document_acte_engagement.html" with doc=doc %}
       {% elif doc.classification == "ccap" %}
         {% include "docia/details_ej/documents/ccap/document_ccap.html" with doc=doc %}
+      {% elif doc.classification == "rib" %}
+        {% include "docia/details_ej/documents/rib/document_rib.html" with doc=doc %}
       {% else %}
         {% include "docia/details_ej/documents/default/document_default.html" with doc=doc %}
       {% endif %}
