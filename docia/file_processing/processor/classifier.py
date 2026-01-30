@@ -44,7 +44,6 @@ def is_expression_in_filename(expression: list[str], filename: str) -> bool:
         raise (e)
 
 
-<<<<<<< HEAD
 def classify_file_with_name(filename: str, list_classification={"devis": {"words": ["devis"]}}):
     # Test pour chaque type de document dans la liste de classification
     pClassification = pd.DataFrame(index=list_classification, columns=["score"])
@@ -74,8 +73,6 @@ def classify_file_with_name(filename: str, list_classification={"devis": {"words
     )
 
 
-=======
->>>>>>> 20aa36a (Simplification dictionnaire classification)
 def create_classification_prompt(filename: str, text: str, list_classification: dict) -> str:
     system_prompt = "Vous êtes un assistant qui aide à classer des fichiers en fonction de leur contenu."
     prompt = f"""
@@ -218,7 +215,6 @@ def save_classify_files_result(df: pd.DataFrame):
 
 # Catalogue des catégories de pièces jointes (utilisé par la classification LLM)
 DIC_CLASS_FILE_BY_NAME = {
-<<<<<<< HEAD
     "rib": {
         "words": [[" rib"], [" iban"], ["att", "bpi"]],
         "stopwords": [],
@@ -232,12 +228,10 @@ DIC_CLASS_FILE_BY_NAME = {
         "nom_complet": "Extrait Kbis",
         "nom_court": "Kbis",
         "description": "",
-=======
     "abondement": {"nom_complet": "Abondement", "description": "Document justifiant une demande d'abondement de crédit."},
     "acte_engagement": {
         "nom_complet": "Acte d'engagement",
         "description": "Un acte d’engagement est un document contractuel par lequel le titulaire d’un marché public ou d’un contrat administratif s’engage formellement à exécuter les prestations prévues, conformément aux conditions définies par l’acheteur, et qui scelle juridiquement l’accord des parties.",
->>>>>>> 20aa36a (Simplification dictionnaire classification)
     },
     "att_etrangers": {"nom_complet": "Attestation travailleurs étrangers", "description": ""},
     "att_fiscale": {"nom_complet": "Attestation fiscale", "description": ""},
@@ -246,7 +240,6 @@ DIC_CLASS_FILE_BY_NAME = {
     "att_resp_civile": {"nom_complet": "Attestation responsabilité civile professionnelle", "description": ""},
     "att_sirene": {
         "nom_complet": "Attestation Sirene/Siret",
-<<<<<<< HEAD
         "nom_court": "Att. Sirene/Siret",
         "description": "Situation au répertoire SIRENE fournie généralement par l'INSEE.",
     },
@@ -366,18 +359,15 @@ DIC_CLASS_FILE_BY_NAME = {
             "marché ou l'émission d'un bon de commande. Les demandes d'achat "
             "sont considérées comme des fiches d'achat."
         ),
-=======
         "description": "Situation au répertoire SIRENE fournie généralement par l'INSEE.",
     },
     "att_sociale": {"nom_complet": "Attestation sociale", "description": ""},
     "avenant": {
         "nom_complet": "Avenant",
         "description": "Avenant d'un 'Acte d'engagement' (autre document spécifique). L'avenant a souvent la même forme qu'un acte d'engagement et comprend 'avenant' dans son titre..",
->>>>>>> 20aa36a (Simplification dictionnaire classification)
     },
     "avis_boamp": {"nom_complet": "Avis BOAMP", "description": ""},
     "bon_de_commande": {
-<<<<<<< HEAD
         "words": [
             ["bon", "de", "commande"],
             [" bdc "],
@@ -497,14 +487,11 @@ DIC_CLASS_FILE_BY_NAME = {
             "Document présentant le détail quantitatif estimatif d'un marché public, "
             "donne une idée de la quantité de commande sur l'année."
         ),
-=======
         "nom_complet": "Bon de commande",
         "description": "Document administratif émis par l'administration (ou l'acheteur) qui confirme l'accord de l'achat, généralement sur la base d'un devis ou d'une proposition commerciale. Peut comprendre les annexes au bon de commande..",
->>>>>>> 20aa36a (Simplification dictionnaire classification)
     },
     "bordereau_prix": {
         "nom_complet": "Bordereau de prix unitaire",
-<<<<<<< HEAD
         "nom_court": "BPU",
         "description": (
             "Document récapitulatif des prix unitaires proposés dans le cadre du marché, "
@@ -596,13 +583,10 @@ DIC_CLASS_FILE_BY_NAME = {
         "nom_complet": "CCTP (Cahier des Clauses Techniques Particulières)",
         "nom_court": "CCTP",
         "description": "Cahier des charges techniques spécifiant les exigences techniques du marché.",
-=======
         "description": "Document récapitulatif des prix unitaires proposés dans le cadre du marché, aussi annexe financière du marché.",
->>>>>>> 20aa36a (Simplification dictionnaire classification)
     },
     "ccap": {
         "nom_complet": "CCAP (Cahier des Clauses Administratives Particulières)",
-<<<<<<< HEAD
         "nom_court": "CCAP",
         "description": "Cahier des charges administratives spécifiant les exigences administratives du marché.",
     },
@@ -612,7 +596,6 @@ DIC_CLASS_FILE_BY_NAME = {
         "nom_complet": "Commentaire",
         "nom_court": "Commentaire",
         "description": "Document spécifique à Chorus coeur, format txt.",
-=======
         "description": "Cahier des charges administratives spécifiant les exigences administratives du marché.",
     },
     "ccap_annexe_beneficiaires": {
@@ -626,7 +609,6 @@ DIC_CLASS_FILE_BY_NAME = {
     "cctp": {
         "nom_complet": "CCTP (Cahier des Clauses Techniques Particulières)",
         "description": "Cahier des charges techniques spécifiant les exigences techniques du marché.",
->>>>>>> 20aa36a (Simplification dictionnaire classification)
     },
     "ccp_simple": {
         "nom_complet": "Cahier des clauses Particulières simple",
@@ -661,7 +643,6 @@ DIC_CLASS_FILE_BY_NAME = {
     "ej_complexe": {"nom_complet": "EJ complexe", "description": "Formulaire de déclaration ou création d'un EJ complexe."},
     "facture": {
         "nom_complet": "Facture",
-<<<<<<< HEAD
         "nom_court": "Facture",
         "description": (
             "Document émis par un prestataire à l'administration (ou l'acheteur) "
@@ -687,7 +668,6 @@ DIC_CLASS_FILE_BY_NAME = {
             "comprend 'avenant' dans son titre."
         ),
     },
-=======
         "description": "Document émis par un prestataire à l'administration (ou l'acheteur) pour facturer un service rendu. Attention, une facture s'adresse à l'administration, elle ne vient pas de l'administration.",
     },
     "fiche_achat": {
@@ -753,7 +733,6 @@ DIC_CLASS_FILE_BY_NAME = {
         "nom_complet": "Sous-traitance",
         "description": "Formulaire de déclaration de sous-traitance d'un marché public. Souvent formulaire 'DC4'",
     },
->>>>>>> 20aa36a (Simplification dictionnaire classification)
 }
 
 
