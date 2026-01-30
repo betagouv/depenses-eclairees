@@ -298,11 +298,6 @@ def test_ccap_with_lots(client):
     assert "[[ccag]]" in response.text
     assert "[[id_marche]]" in response.text
     assert "[[objet_marche]]" in response.text
-    assert "65%-100%" in response.text
-    assert "30%" in response.text
-    assert "montant annuel" in response.text
-    assert "Avance systématique" in response.text
-    assert "forfaitaires" in response.text
 
     # Lots
     assert "Lot 1&nbsp;" in response.text

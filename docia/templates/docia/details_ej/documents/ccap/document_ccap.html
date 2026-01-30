@@ -167,7 +167,7 @@
     <section class="fr-accordion" data-fr-js-accordion="true">
       <h3 class="fr-accordion__title">
         <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_lot_{{ lot.numero_lot }}" data-fr-js-collapse-button="true">
-          Lot {{ lot.numero_lot }} : {{ lot.titre|first_n_words:10 }}
+          Lot {{ lot.numero_lot }}&nbsp;:&nbsp;{{ lot.titre|first_n_words:10 }}
         </button>
       </h3>
       <div class="fr-collapse" id="{{ doc.id }}_lot_{{ lot.numero_lot }}" data-fr-js-collapse="true" style="--collapse: -48px;">
