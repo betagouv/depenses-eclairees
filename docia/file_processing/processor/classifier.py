@@ -162,12 +162,12 @@ def save_classify_files_result(df: pd.DataFrame):
 DIC_CLASS_FILE_BY_NAME = {
     "abondement": {
         "nom_complet": "Abondement",
-        "nom_court": "Abondement",
+        "short_name": "Abondement",
         "description": "Document justifiant une demande d'abondement de crédit.",
     },
     "acte_engagement": {
         "nom_complet": "Acte d'engagement",
-        "nom_court": "Acte d'engagement",
+        "short_name": "Acte d'engagement",
         "description": (
             "Un acte d’engagement est un document contractuel par lequel le titulaire d’un marché "
             "public ou d’un contrat administratif s’engage formellement à exécuter les prestations "
@@ -177,42 +177,42 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "att_etrangers": {
         "nom_complet": "Attestation travailleurs étrangers",
-        "nom_court": "Att. travailleurs étrangers",
+        "short_name": "Att. travailleurs étrangers",
         "description": "",
     },
     "att_fiscale": {
         "nom_complet": "Attestation fiscale",
-        "nom_court": "Att. fiscale",
+        "short_name": "Att. fiscale",
         "description": "",
     },
     "att_handicap": {
         "nom_complet": "Attestation handicap (AGEFIPH)",
-        "nom_court": "Att. handicap",
+        "short_name": "Att. handicap",
         "description": "",
     },
     "att_honneur": {
         "nom_complet": "Attestation sur l'honneur",
-        "nom_court": "Att. sur l'honneur",
+        "short_name": "Att. sur l'honneur",
         "description": "",
     },
     "att_resp_civile": {
         "nom_complet": "Attestation responsabilité civile professionnelle",
-        "nom_court": "Att. RC pro",
+        "short_name": "Att. RC pro",
         "description": "",
     },
     "att_sirene": {
         "nom_complet": "Attestation Sirene/Siret",
-        "nom_court": "Att. Sirene/Siret",
+        "short_name": "Att. Sirene/Siret",
         "description": "Situation au répertoire SIRENE fournie généralement par l'INSEE.",
     },
     "att_sociale": {
         "nom_complet": "Attestation sociale",
-        "nom_court": "Att. sociale",
+        "short_name": "Att. sociale",
         "description": "",
     },
     "avenant": {
         "nom_complet": "Avenant",
-        "nom_court": "Avenant",
+        "short_name": "Avenant",
         "description": (
             "Avenant d'un 'Acte d'engagement' (autre document spécifique). "
             "L'avenant a souvent la même forme qu'un acte d'engagement et "
@@ -221,12 +221,12 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "avis_boamp": {
         "nom_complet": "Avis BOAMP",
-        "nom_court": "Avis BOAMP",
+        "short_name": "Avis BOAMP",
         "description": "",
     },
     "bon_de_commande": {
         "nom_complet": "Bon de commande",
-        "nom_court": "Bon de commande",
+        "short_name": "Bon de commande",
         "description": (
             "Document administratif émis par l'administration (ou l'acheteur) qui "
             "confirme l'accord de l'achat, généralement sur la base d'un devis ou "
@@ -235,7 +235,7 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "bordereau_prix": {
         "nom_complet": "Bordereau de prix unitaire",
-        "nom_court": "BPU",
+        "short_name": "BPU",
         "description": (
             "Document récapitulatif des prix unitaires proposés dans le cadre du marché, "
             "aussi annexe financière du marché."
@@ -247,7 +247,7 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "ccap": {
         "nom_complet": "CCAP (Cahier des Clauses Administratives Particulières)",
-        "nom_court": "CCAP",
+        "short_name": "CCAP",
         "description": "Cahier des charges administratives spécifiant les exigences administratives du marché.",
     },
     "ccap_annexe": {
@@ -268,22 +268,22 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "cctp": {
         "nom_complet": "CCTP (Cahier des Clauses Techniques Particulières)",
-        "nom_court": "CCTP",
+        "short_name": "CCTP",
         "description": "Cahier des charges techniques spécifiant les exigences techniques du marché.",
     },
     "commentaire": {
         "nom_complet": "Commentaire",
-        "nom_court": "Commentaire",
+        "short_name": "Commentaire",
         "description": "Document spécifique à Chorus coeur, format txt.",
     },
     "conv_financement": {
         "nom_complet": "Convention de financement",
-        "nom_court": "Conv. financement",
+        "short_name": "Conv. financement",
         "description": "",
     },
     "decomposition_prix": {
         "nom_complet": "Décomposition du prix",
-        "nom_court": "Décomposition prix",
+        "short_name": "Décomposition prix",
         "description": (
             "Document présentant la décomposition du prix d'un achat public. "
             "Souvent appelé Décomposition du prix global forfaitaire."
@@ -291,12 +291,12 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "delegation_pouvoir": {
         "nom_complet": "Délégation de pouvoir",
-        "nom_court": "Délégation pouvoir",
+        "short_name": "Délégation pouvoir",
         "description": "Document permettant de déléguer une signature ou un pouvoir à une autre personne.",
     },
     "detail_quantitatif_estimatif": {
         "nom_complet": "Detail quantitatif estimatif",
-        "nom_court": "DQE",
+        "short_name": "DQE",
         "description": (
             "Document présentant le détail quantitatif estimatif d'un marché public, "
             "donne une idée de la quantité de commande sur l'année."
@@ -304,7 +304,7 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "devis": {
         "nom_complet": "Devis",
-        "nom_court": "Devis",
+        "short_name": "Devis",
         "description": (
             "Devis en amont de la commande. Ressemble parfois à une facture, "
             "mais prévisionnelle ou à payer une fois le service réalisé. Les "
@@ -313,12 +313,12 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "ej_complexe": {
         "nom_complet": "EJ complexe",
-        "nom_court": "EJ complexe",
+        "short_name": "EJ complexe",
         "description": "Formulaire de déclaration ou création d'un EJ complexe.",
     },
     "facture": {
         "nom_complet": "Facture",
-        "nom_court": "Facture",
+        "short_name": "Facture",
         "description": (
             "Document émis par un prestataire à l'administration (ou l'acheteur) "
             "pour facturer un service rendu. Attention, une facture s'adresse à "
@@ -327,7 +327,7 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "fiche_achat": {
         "nom_complet": "Fiche d'achat ou de marché",
-        "nom_court": "Fiche d'achat",
+        "short_name": "Fiche d'achat",
         "description": (
             "Fiche d'achat ou de marché servant à préparer la rédaction d'un "
             "marché ou l'émission d'un bon de commande. Les demandes d'achat "
@@ -336,7 +336,7 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "fiche_communication": {
         "nom_complet": "Fiche de communication ou de transmission",
-        "nom_court": "Fiche communication",
+        "short_name": "Fiche communication",
         "description": (
             "Fiche de communication entre les logiciels PLACE et Chorus. Les fiches "
             "de communication ou fiches Chorussont également des fiches communication."
@@ -344,7 +344,7 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "fiche_engagement": {
         "nom_complet": "Fiche d'engagement",
-        "nom_court": "Fiche d'engagement",
+        "short_name": "Fiche d'engagement",
         "description": (
             "Fiche interne demandant l'engagement d'une commande auprès d'un "
             "service juridique, marché ou affaires financières."
@@ -352,7 +352,7 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "fiche_modificative": {
         "nom_complet": "Fiche modificative d'une fiche navette",
-        "nom_court": "Fiche modificative",
+        "short_name": "Fiche modificative",
         "description": (
             "Contient la mention explicite 'Fiche modificative' au début du document. "
             "Fiche de demande de modification, permettant de modifier les informations "
@@ -361,7 +361,7 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "fiche_navette": {
         "nom_complet": "Fiche navette",
-        "nom_court": "Fiche navette",
+        "short_name": "Fiche navette",
         "description": (
             "Fiche dite navette entre PLACE et Chorus permettant la transmission "
             "d'informations entre les logiciels. Contient la mention explicite de "
@@ -370,22 +370,22 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "kbis": {
         "nom_complet": "Extrait Kbis",
-        "nom_court": "Kbis",
+        "short_name": "Kbis",
         "description": "",
     },
     "lettre_candidature": {
         "nom_complet": "Lettre de candidature",
-        "nom_court": "Lettre candidature",
+        "short_name": "Lettre candidature",
         "description": "Spécifiquement le formulaire DC1",
     },
     "lettre_candidature_2": {
         "nom_complet": "Lettre de candidature DC2",
-        "nom_court": "Lettre candidature DC2",
+        "short_name": "Lettre candidature DC2",
         "description": "Spécifiquement le formulaire DC2",
     },
     "lettre_consultation": {
         "nom_complet": "Lettre de consultation",
-        "nom_court": "Lettre consultation",
+        "short_name": "Lettre consultation",
         "description": (
             "Document invitant des prestataires à candidater (soumissionner) "
             "à un marché public. Lorsque le document vaut pour engagement, "
@@ -394,12 +394,12 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "mail": {
         "nom_complet": "Courrier électronique divers",
-        "nom_court": "Courrier",
+        "short_name": "Courrier",
         "description": "",
     },
     "memoire_technique": {
         "nom_complet": "Mémoire technique",
-        "nom_court": "Mémoire technique",
+        "short_name": "Mémoire technique",
         "description": (
             "Proposition technique d'un candidat à un marché. De formes variées, "
             "comprenant le détail des prestations proposées, souvent des références, ..."
@@ -407,22 +407,22 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "mise_au_point": {
         "nom_complet": "Formulaire de mise au point",
-        "nom_court": "Mise au point",
+        "short_name": "Mise au point",
         "description": "",
     },
     "notification": {
         "nom_complet": "Notification",
-        "nom_court": "Notification",
+        "short_name": "Notification",
         "description": "Notification d'attribution ou de non-attribution d'un marché public.",
     },
     "ordre_service": {
         "nom_complet": "Ordre de service",
-        "nom_court": "Ordre de service",
+        "short_name": "Ordre de service",
         "description": "Formulaire EXE1 permettant le lancement d'une tranche optionnelle d'un marché.",
     },
     "pv_cao": {
         "nom_complet": "Procès-verbal de Commission d'appel d'offre",
-        "nom_court": "PV CAO",
+        "short_name": "PV CAO",
         "description": (
             "Document bilan d'une commission d'attribution d'un marché public, "
             "également les propositions d'attribution."
@@ -430,7 +430,7 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "question_reponse": {
         "nom_complet": "Questions/Réponses",
-        "nom_court": "Q/R",
+        "short_name": "Q/R",
         "description": (
             "Document complémentaire à la consultation des entreprises dans le cadre d'un marché "
             "public comprenant les questions et réponses échangées entre les candidats et le "
@@ -439,7 +439,7 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "rapport_analyse_offre": {
         "nom_complet": "Rapport d'analyse des offres ou de présentation des offres",
-        "nom_court": "Rapport analyse offres",
+        "short_name": "Rapport analyse offres",
         "description": (
             "Rapport d'analyse des candidatures de prestataires à un marché public "
             "suite à une consultation aux entreprises. Le document compare l'analyse "
@@ -449,22 +449,22 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "rapport_signature": {
         "nom_complet": "Rapport de signature",
-        "nom_court": "Rapport signature",
+        "short_name": "Rapport signature",
         "description": "Document portant uniquement sur le fait d'un autre document a été signé.",
     },
     "rib": {
         "nom_complet": "Relevé d'identité bancaire",
-        "nom_court": "RIB",
+        "short_name": "RIB",
         "description": "",
     },
     "service_fait": {
         "nom_complet": "Service fait",
-        "nom_court": "Service fait",
+        "short_name": "Service fait",
         "description": "Déclaration de service fait.",
     },
     "sous_traitance": {
         "nom_complet": "Sous-traitance",
-        "nom_court": "Sous-traitance",
+        "short_name": "Sous-traitance",
         "description": "Formulaire de déclaration de sous-traitance d'un marché public. Souvent formulaire 'DC4'",
     }
 }
