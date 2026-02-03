@@ -1,6 +1,6 @@
 {% load dsfr_tags static docia %}
 {# Contenu d'un lot : titre complet, sous-sections Montants et Durée (même design que acte d'engagement) #}
-{% with lot_prefix=doc.id|stringformat:"s"|add:"_lot_"|add:lot.numero_lot|add:"_" %}
+{% with lot_prefix=doc.filename|add:"_lot_"|add:lot.numero_lot|add:"_" %}
 
 {# Titre complet du lot (affiché dans le contenu du lot) #}
 {% if lot.titre %}
@@ -37,13 +37,13 @@
         </button>
       </h3>
       <div class="fr-collapse" id="{{ doc.id }}_lot_{{ lot.numero_lot }}_montants" data-fr-js-collapse="true" style="--collapse: -48px;">
-        <div class="fr-attribute-list">
+        <ul class="fr-list">
           {% if lot.forme.forme_prix %}
             {% with value=lot.forme.forme_prix %}
               {% include "docia/details_ej/blocks/attribute.html" with title="Forme des prix" id=lot_prefix|add:"forme_prix" %}
             {% endwith %}
           {% endif %}
-          {% with value=mht.montant_ht_maximum|format_montant copy_value=mht.montant_ht_maximum %}
+          {% with value=mht.montant_ht_maximum|floatformat:2 copy_value=mht.montant_ht_maximum %}
             {% if mht.type_montant == "annuel" %}
               {% include "docia/details_ej/blocks/attribute.html" with title="Montant HT Maximum" id=lot_prefix|add:"montant_ht" suffix=" / An" %}
             {% elif mht.type_montant == "total" %}
@@ -52,7 +52,7 @@
               {% include "docia/details_ej/blocks/attribute.html" with title="Montant HT Maximum" id=lot_prefix|add:"montant_ht" %}
             {% endif %}
           {% endwith %}
-        </div>
+        </ul>
       </div>
     </section>
   {% else %}
@@ -86,7 +86,7 @@
             {% endif %}
           </p>
           {% if duree_lot.nb_reconductions %}
-            <div class="fr-attribute-list">
+            <ul class="fr-list">
               {% with value=duree_lot.nb_reconductions %}
                 {% include "docia/details_ej/blocks/attribute.html" with title="Nombre de reconductions" %}
               {% endwith %}
@@ -95,7 +95,7 @@
                   {% include "docia/details_ej/blocks/attribute.html" with title="Durée d'une reconduction" %}
                 {% endwith %}
               {% endif %}
-            </div>
+            </ul>
           {% endif %}
         </div>
       </section>

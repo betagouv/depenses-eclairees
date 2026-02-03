@@ -10,6 +10,17 @@ from .ratelimit.services import check_rate_limit_for_user
 
 logger = logging.getLogger(__name__)
 
+# Classifications traitées mais non affichées dans la catégorie analysée (pas encore prêtes)
+CLASSIFICATIONS_NON_AFFICHEES = frozenset({
+    "avenant",
+    "fiche_navette",
+    "kbis",
+    "devis",
+    "att_sirene",
+    "sous_traitance",
+    "bon_de_commande",
+})
+
 
 def home(request):
     documents = []
@@ -30,7 +41,6 @@ def home(request):
             if form.is_valid():
                 num_ej = form.cleaned_data["num_ej"]
                 if not user_can_view_ej(request.user, num_ej):
-                    # if False: # DEBUG
                     logger.warning(f"PermissionDenied: User {request.user.email} cannot view EJ {num_ej}")
                 else:
                     db_docs = Document.objects.filter(ej_id=form.cleaned_data["num_ej"])
@@ -45,11 +55,10 @@ def home(request):
                             "data_as_list": sorted([[key, value] for key, value in document_data.items()]),
                             "data": document_data,
                             "url": db_doc.file.url if db_doc.file else "",
-                            # "url": "https://depenses-eclairees.beta.gouv.fr/", # DEBUG
                             "percent_data_extraction": format_ratio_to_percent(ratio_extracted),
                             "classification": db_doc.classification,
                         }
-                        if document_data:
+                        if document_data and db_doc.classification not in CLASSIFICATIONS_NON_AFFICHEES:
                             documents.append(doc)
                         else:
                             unprocessed.append(doc)

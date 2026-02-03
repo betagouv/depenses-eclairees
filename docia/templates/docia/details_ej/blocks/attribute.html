@@ -1,29 +1,12 @@
 {% load docia %}
-<div class="fr-attribute-row">
-  <span class="fr-attribute-row__label">{{ title }}&nbsp;</span>
-  <span class="fr-attribute-row__value{% if value_class %} {{ value_class }}{% endif %}">
-    {% if content %}
-      {{ content|safe }}
-    {% elif value is not None %}
-      {% if value %}
-        {{ value }}{{ suffix }}
-        {% if id %}
-          {% with copy_val=copy_value|default:value %}
-            {% include "docia/blocks/button_copy.html" with id=id value=copy_val %}
-          {% endwith %}
-        {% endif %}
-      {% else %}
-        <span class="fr-attribute-row__value--empty">[Non trouvé]</span>
-      {% endif %}
+<li class="fr-list__item">
+  <span class="fr-text--sm fr-text--mention">{{ title }}&nbsp;</span>
+  <span class="fr-text--sm{% if value_class %} {{ value_class }}{% endif %}">
+    {% if value %}
+      {{ value }}{{ suffix }}
+      {% include "docia/blocks/button_copy.html" with id=id value=copy_value|default:value %}
     {% else %}
-      {% with val=data|get_item:field_name %}
-        {% if val %}
-          {{ val }}{{ suffix }}
-          {% include "docia/blocks/button_copy.html" with id=id|default:field_name value=val %}
-        {% else %}
-          <span class="fr-attribute-row__value--empty">[Non trouvé]</span>
-        {% endif %}
-      {% endwith %}
+      <span class="fr-text--mention">[Non trouvé]</span>
     {% endif %}
   </span>
-</div>
+</li>

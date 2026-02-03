@@ -1,4 +1,5 @@
 {% load dsfr_tags static docia %}
+{% with id_prefix=doc.filename|add:"_" %}
 
 <div class="fr-mb-4w">
   {# Signataires : entre administration (signataire) et titulaire (societe_principale) #}
@@ -35,27 +36,27 @@
       </button>
     </h3>
     <div class="fr-collapse" id="{{ doc.id }}_titulaire_detail" data-fr-js-collapse="true" style="--collapse: -48px;">
-      <div class="fr-attribute-list">
+      <ul class="fr-list">
         {% with value=data.societe_principale|upper copy_value=data.societe_principale %}
-          {% include "docia/details_ej/blocks/attribute.html" with title="Raison sociale" id="societe_principale" %}
+          {% include "docia/details_ej/blocks/attribute.html" with title="Raison sociale" id=id_prefix|add:"societe_principale" %}
         {% endwith %}
         {% with value=data.siren_mandataire|format_siren_siret copy_value=data.siren_mandataire %}
-          {% include "docia/details_ej/blocks/attribute.html" with title="SIREN" id="siren_mandataire" value_class="siren-siret-format" %}
+          {% include "docia/details_ej/blocks/attribute.html" with title="SIREN" id=id_prefix|add:"siren_mandataire" value_class="siren-siret-format" %}
         {% endwith %}
         {% with value=data.siret_mandataire|format_siren_siret copy_value=data.siret_mandataire %}
-          {% include "docia/details_ej/blocks/attribute.html" with title="SIRET" id="siret_mandataire" value_class="siren-siret-format" %}
+          {% include "docia/details_ej/blocks/attribute.html" with title="SIRET" id=id_prefix|add:"siret_mandataire" value_class="siren-siret-format" %}
         {% endwith %}
-        <div class="fr-attribute-row">
-          <span class="fr-attribute-row__label">En groupement&nbsp;</span>
-          <span class="fr-attribute-row__value">
+        <li class="fr-list__item">
+          <span class="fr-text--sm fr-text--mention">En groupement&nbsp;</span>
+          <span class="fr-text--sm">
             {% if data.cotraitants %}
               <span class="fr-icon-check-line" aria-hidden="true"></span> Oui
             {% else %}
               <span class="fr-icon-close-line" aria-hidden="true"></span> Non
             {% endif %}
           </span>
-        </div>
-      </div>
+        </li>
+      </ul>
     </div>
   </section>
 
@@ -68,14 +69,14 @@
         </button>
       </h3>
       <div class="fr-collapse" id="{{ doc.id }}_prix" data-fr-js-collapse="true" style="--collapse: -48px;">
-        <div class="fr-attribute-list">
-          {% with value=data.montant_ht|format_montant copy_value=data.montant_ht %}
-            {% include "docia/details_ej/blocks/attribute.html" with title="Montant HT" id="montant_ht" %}
+        <ul class="fr-list">
+          {% with value=data.montant_ht|floatformat:2 copy_value=data.montant_ht %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Montant HT" id=id_prefix|add:"montant_ht" suffix=" €" %}
           {% endwith %}
-          {% with value=data.montant_ttc|format_montant copy_value=data.montant_ttc %}
-            {% include "docia/details_ej/blocks/attribute.html" with title="Montant TTC" id="montant_ttc" %}
+          {% with value=data.montant_ttc|floatformat:2 copy_value=data.montant_ttc %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Montant TTC" id=id_prefix|add:"montant_ttc" suffix=" €" %}
           {% endwith %}
-        </div>
+        </ul>
       </div>
     </section>
   {% else %}
@@ -103,7 +104,7 @@
             {% endif %}
           </p>
           {% if duree.nb_reconductions %}
-            <div class="fr-attribute-list">
+            <ul class="fr-list">
               {% with value=duree.nb_reconductions %}
                 {% include "docia/details_ej/blocks/attribute.html" with title="Nombre de reconductions" %}
               {% endwith %}
@@ -112,7 +113,7 @@
                   {% include "docia/details_ej/blocks/attribute.html" with title="Durée d'une reconduction" %}
                 {% endwith %}
               {% endif %}
-            </div>
+            </ul>
           {% endif %}
         </div>
       </section>
@@ -133,26 +134,14 @@
           </button>
         </h3>
         <div class="fr-collapse" id="{{ doc.id }}_rib" data-fr-js-collapse="true" style="--collapse: -48px;">
-          <div class="fr-attribute-list">
-            {% if banque %}
-              {% with value=banque|upper %}
-                {% include "docia/details_ej/blocks/attribute.html" with title="Banque" id="banque" %}
-              {% endwith %}
-            {% else %}
-              {% with value="Information non trouvée dans le document" %}
-                {% include "docia/details_ej/blocks/attribute.html" with title="Banque" %}
-              {% endwith %}
-            {% endif %}
-            {% if iban %}
-              {% with value=iban|iban_spaces copy_value=iban %}
-                {% include "docia/details_ej/blocks/attribute.html" with title="IBAN" id="rib_iban" %}
-              {% endwith %}
-            {% else %}
-              {% with value="Information non trouvée dans le document" %}
-                {% include "docia/details_ej/blocks/attribute.html" with title="IBAN" %}
-              {% endwith %}
-            {% endif %}
-          </div>
+          <ul class="fr-list">
+            {% with value=banque|upper %}
+              {% include "docia/details_ej/blocks/attribute.html" with title="Banque" id=id_prefix|add:"banque" %}
+            {% endwith %}
+            {% with value=iban|iban_spaces copy_value=iban %}
+              {% include "docia/details_ej/blocks/attribute.html" with title="IBAN" id=id_prefix|add:"rib_iban" %}
+            {% endwith %}
+          </ul>
         </div>
       </section>
     {% else %}
@@ -171,17 +160,17 @@
         </button>
       </h3>
       <div class="fr-collapse" id="{{ doc.id }}_dates" data-fr-js-collapse="true" style="--collapse: -48px;">
-        <div class="fr-attribute-list">
-          {% with value=data.date_signature_mandataire|default:"[Non trouvé]" %}
-            {% include "docia/details_ej/blocks/attribute.html" with title="Signature titulaire" %}
+        <ul class="fr-list">
+          {% with value=data.date_signature_mandataire %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Signature titulaire" id=id_prefix|add:"date_signature_titulaire" %}
           {% endwith %}
-          {% with value=data.date_signature_administration|default:"[Non trouvé]" %}
-            {% include "docia/details_ej/blocks/attribute.html" with title="Signature signataire" %}
+          {% with value=data.date_signature_administration %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Signature signataire" id=id_prefix|add:"date_signature_signataire" %}
           {% endwith %}
-          {% with value=data.date_notification|default:"[Non trouvé]" %}
-            {% include "docia/details_ej/blocks/attribute.html" with title="Date de notification" %}
+          {% with value=data.date_notification %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Date de notification" id=id_prefix|add:"date_notification" %}
           {% endwith %}
-        </div>
+        </ul>
       </div>
     </section>
   {% else %}
@@ -225,3 +214,4 @@
     <span class="document-section--disabled__title">Avance et garantie – Bientôt disponible sur Dépenses Eclairées</span>
   </div>
 </div>
+{% endwith %}

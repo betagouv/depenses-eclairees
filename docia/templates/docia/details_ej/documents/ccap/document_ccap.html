@@ -1,4 +1,5 @@
 {% load dsfr_tags static docia %}
+{% with id_prefix=doc.filename|add:"_" %}
 
 <div class="fr-mb-4w">
   {# Objet du contrat #}
@@ -32,20 +33,30 @@
 {# Sous-sections #}
 <div class="document-sections fr-mt-2v">
 
-{# Informations générales : CCAG et Identifiant (toujours affichés, [Non trouvé] si vide) #}
-  <section class="fr-accordion" data-fr-js-accordion="true">
-    <h3 class="fr-accordion__title">
-      <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_ccap_infos" data-fr-js-collapse-button="true">
-        Informations générales
-      </button>
-    </h3>
-    <div class="fr-collapse" id="{{ doc.id }}_ccap_infos" data-fr-js-collapse="true" style="--collapse: -48px;">
-      <div class="fr-attribute-list">
-        {% include "docia/details_ej/blocks/attribute.html" with title="Identifiant du marché" field_name="id_marche" id=doc.id|stringformat:"s"|add:"_id_marche" %}
-        {% include "docia/details_ej/blocks/attribute.html" with title="CCAG" field_name="ccag" id=doc.id|stringformat:"s"|add:"_ccag" %}
+{# Informations générales : CCAG et Identifiant ; section grisée si les deux sont vides #}
+  {% if data.id_marche or data.ccag %}
+    <section class="fr-accordion" data-fr-js-accordion="true">
+      <h3 class="fr-accordion__title">
+        <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_ccap_infos" data-fr-js-collapse-button="true">
+          Informations générales
+        </button>
+      </h3>
+      <div class="fr-collapse" id="{{ doc.id }}_ccap_infos" data-fr-js-collapse="true" style="--collapse: -48px;">
+        <ul class="fr-list">
+          {% with value=data.id_marche copy_value=data.id_marche %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Identifiant du marché" id=id_prefix|add:"id_marche" %}
+          {% endwith %}
+          {% with value=data.ccag copy_value=data.ccag %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="CCAG" id=id_prefix|add:"ccag" %}
+          {% endwith %}
+        </ul>
       </div>
+    </section>
+  {% else %}
+    <div class="document-section--disabled">
+      <span class="document-section--disabled__title">Informations générales – Non disponibles dans le document.</span>
     </div>
-  </section>
+  {% endif %}
 
 {% if not data.lots %}
   {# Marché non alloti : sections Montants et Durée au niveau marché #}
@@ -59,22 +70,22 @@
           </button>
         </h3>
         <div class="fr-collapse" id="{{ doc.id }}_ccap_montants" data-fr-js-collapse="true" style="--collapse: -48px;">
-          <div class="fr-attribute-list">
+          <ul class="fr-list">
             {% if data.forme_marche.forme_prix %}
               {% with value=data.forme_marche.forme_prix %}
-                {% include "docia/details_ej/blocks/attribute.html" with title="Forme des prix" id=doc.id|stringformat:"s"|add:"_ccap_forme_prix" %}
+                {% include "docia/details_ej/blocks/attribute.html" with title="Forme des prix" id=id_prefix|add:"ccap_forme_prix" %}
               {% endwith %}
             {% endif %}
-            {% with value=mht.montant_ht_maximum|format_montant copy_value=mht.montant_ht_maximum %}
+            {% with value=mht.montant_ht_maximum|floatformat:2 copy_value=mht.montant_ht_maximum %}
               {% if mht.type_montant == "annuel" %}
-                {% include "docia/details_ej/blocks/attribute.html" with title="Montant" id=doc.id|stringformat:"s"|add:"_ccap_montant_ht" suffix=" / An" %}
+                {% include "docia/details_ej/blocks/attribute.html" with title="Montant" id=id_prefix|add:"ccap_montant_ht" suffix=" / An" %}
               {% elif mht.type_montant == "total" %}
-                {% include "docia/details_ej/blocks/attribute.html" with title="Montant" id=doc.id|stringformat:"s"|add:"_ccap_montant_ht" suffix=" Total" %}
+                {% include "docia/details_ej/blocks/attribute.html" with title="Montant" id=id_prefix|add:"ccap_montant_ht" suffix=" Total" %}
               {% else %}
-                {% include "docia/details_ej/blocks/attribute.html" with title="Montant" id=doc.id|stringformat:"s"|add:"_ccap_montant_ht" %}
+                {% include "docia/details_ej/blocks/attribute.html" with title="Montant" id=id_prefix|add:"ccap_montant_ht" %}
               {% endif %}
             {% endwith %}
-          </div>
+          </ul>
         </div>
       </section>
     {% else %}
@@ -103,7 +114,7 @@
             {% endif %}
           </p>
           {% if duree.nb_reconductions %}
-            <div class="fr-attribute-list">
+            <ul class="fr-list">
               {% with value=duree.nb_reconductions %}
                 {% include "docia/details_ej/blocks/attribute.html" with title="Nombre de reconductions" %}
               {% endwith %}
@@ -112,7 +123,7 @@
                   {% include "docia/details_ej/blocks/attribute.html" with title="Durée d'une reconduction" %}
                 {% endwith %}
               {% endif %}
-            </div>
+            </ul>
           {% endif %}
         </div>
       </section>
@@ -143,7 +154,7 @@
             {% endif %}
           </p>
           {% if duree.nb_reconductions %}
-            <div class="fr-attribute-list">
+            <ul class="fr-list">
               {% with value=duree.nb_reconductions %}
                 {% include "docia/details_ej/blocks/attribute.html" with title="Nombre de reconductions" %}
               {% endwith %}
@@ -152,7 +163,7 @@
                   {% include "docia/details_ej/blocks/attribute.html" with title="Durée d'une reconduction" %}
                 {% endwith %}
               {% endif %}
-            </div>
+            </ul>
           {% endif %}
         </div>
       </section>
@@ -167,7 +178,7 @@
     <section class="fr-accordion" data-fr-js-accordion="true">
       <h3 class="fr-accordion__title">
         <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_lot_{{ lot.numero_lot }}" data-fr-js-collapse-button="true">
-          Lot {{ lot.numero_lot }}&nbsp;:&nbsp;{{ lot.titre|first_n_words:10 }}
+          Lot {{ lot.numero_lot }}&nbsp;:&nbsp;{{ lot.titre|truncatewords:10 }}
         </button>
       </h3>
       <div class="fr-collapse" id="{{ doc.id }}_lot_{{ lot.numero_lot }}" data-fr-js-collapse="true" style="--collapse: -48px;">
@@ -189,3 +200,4 @@
     <span class="document-section--disabled__title">Révision des prix – Bientôt disponible sur Dépenses Eclairées</span>
   </div>
 </div>
+{% endwith %}

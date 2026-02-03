@@ -198,8 +198,9 @@ def test_acte_engagement(client):
     assert "[[date_signature_mandataire]]" in response.text
     assert "[[administration_beneficiaire]]" in response.text
     assert "[[date_signature_administration]]" in response.text
-    assert "40 123,50 €" in response.text  # Montant total ht
-    assert "60 123,50 €" in response.text  # Montant total ttc
+    # Séparateur de milliers = espace insécable (U+00A0) avec Django + locale FR
+    assert "40\u00a0123,50 €" in response.text  # Montant total ht
+    assert "60\u00a0123,50 €" in response.text  # Montant total ttc
     assert "12 mois" in response.text
 
 
@@ -306,3 +307,48 @@ def test_ccap_with_lots(client):
     assert "[[lots.1.titre]]" in response.text
     assert "1111" in response.text
     assert "2222" in response.text
+
+
+@pytest.mark.django_db
+def test_rib(client):
+    """Vérifie l'affichage correct d'un document RIB (titulaire, adresse, banque, IBAN, etc.)."""
+    ej, doc = create_ej_and_document()
+    doc.classification = "rib"
+    doc.structured_data = {
+        "titulaire_compte": "[[titulaire_compte]]",
+        "adresse_postale_titulaire": {
+            "numero_voie": "10",
+            "nom_voie": "rue de la Banque",
+            "complement_adresse": "Bâtiment A",
+            "code_postal": "75001",
+            "ville": "Paris",
+            "pays": "France",
+        },
+        "banque": "[[banque]]",
+        "domiciliation": "[[domiciliation]]",
+        "bic": "BNPAFRPP",
+        "iban": "FR7612345678901234567890123",
+    }
+    doc.save()
+    user = UserFactory(is_superuser=True)
+    client.force_login(user)
+    response = client.get(f"/?num_ej={ej.num_ej}")
+    assert response.status_code == 200
+
+    # Champs affichés par document_rib.html
+    assert "Titulaire du compte" in response.text
+    assert "[[titulaire_compte]]" in response.text
+    assert "Adresse postale" in response.text
+    # format_postal_address : "10 rue de la Banque, Bâtiment A, 75001 Paris, France"
+    assert "10 rue de la Banque" in response.text
+    assert "75001 Paris" in response.text
+    assert "France" in response.text
+    assert "Banque" in response.text
+    assert "[[banque]]" in response.text
+    assert "Domiciliation" in response.text
+    assert "[[domiciliation]]" in response.text
+    assert "BIC" in response.text
+    assert "BNPAFRPP" in response.text
+    assert "IBAN" in response.text
+    # iban_spaces : espace tous les 4 caractères
+    assert "FR76 1234 5678 9012 3456 7890 123" in response.text

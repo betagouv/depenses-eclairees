@@ -6,49 +6,33 @@
     border-left: 4px solid var(--fr-blue-france-500, #000091);
 }
 
-/* Liste d’attributs (label / valeur) : compacte et cohérente DSFR */
-.fr-attribute-list {
+/* Liste DSFR (fr-list) : rendu liste d’attributs (bordures entre lignes, pas en haut/bas) */
+.fr-list {
     list-style: none;
     padding: 0;
     margin: 0;
 }
 
-.fr-attribute-list .fr-attribute-row {
-    border-bottom: 1px solid var(--fr-border-default-grey, #e5e5e5);
-}
-
-.fr-attribute-list .fr-attribute-row:last-child {
-    border-bottom: none;
-}
-
-.fr-attribute-row {
+.fr-list .fr-list__item {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     gap: 0.5rem 1rem;
-    padding: 0.5rem 0;
-    font-size: 0.875rem;
+    border-bottom: 1px solid var(--fr-border-default-grey, #e5e5e5);
 }
 
-.fr-attribute-row:first-child {
+.fr-list .fr-list__item:last-child {
+    border-bottom: none;
+}
+
+.fr-list .fr-list__item:first-child {
     padding-top: 0;
 }
 
-.fr-attribute-row__label {
+.fr-list .fr-list__item .fr-text--mention:first-child {
     flex: 0 0 auto;
-    color: var(--fr-text-mention-grey, #6a6a6a);
-    font-weight: 500;
     min-width: 8rem;
-}
-
-.fr-attribute-row__value {
-    flex: 1 1 auto;
-    color: var(--fr-text-default-grey, #161616);
-}
-
-.fr-attribute-row__value--empty {
-    color: var(--fr-text-mention-grey, #6a6a6a);
-    font-style: italic;
+    font-weight: 500;
 }
 
 /* SIREN / SIRET : espace tous les 3 chiffres (affichage via filtre) + chiffres à chasse fixe */
