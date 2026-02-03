@@ -92,7 +92,7 @@ def classify_file_with_llm(filename: str, text: str, list_classification: dict,
         if key_classif:
             result_classif_keys.append(key_classif)
 
-    return result_classif_keys
+    return result_classif_keys[0] if len(result_classif_keys) > 0 else 'Non classifié'
 
 
 def classify_files(dfFiles: pd.DataFrame, list_classification: dict,
@@ -175,30 +175,41 @@ DIC_CLASS_FILE_BY_NAME = {
             "l’accord des parties."
         ),
     },
+    "ae_annexe": {
+        "nom_complet": "Annexe à l'acte d'engagement",
+        "short_name": "Annexe à l'acte d'engagement",
+        "description": "Annexe à un acte d'engagement (autre document spécifique).",
+    },
+    "application_revision_prix": {
+        "nom_complet": "Application de révision du prix",
+        "short_name": "App. révision prix",
+        "description": ("Application de révision du prix prévue par le cahier des charges du marché "
+                        "souvent un document annexe au cahier des charges."),
+    },
     "att_etrangers": {
         "nom_complet": "Attestation travailleurs étrangers",
         "short_name": "Att. travailleurs étrangers",
-        "description": "",
+        "description": "Attestation certifiant la situation des travailleurs étrangers employés par le prestataire.",
     },
     "att_fiscale": {
         "nom_complet": "Attestation fiscale",
         "short_name": "Att. fiscale",
-        "description": "",
+        "description": "Attestation certifiant la situation fiscale du prestataire, généralement délivrée par l'administration fiscale.",
     },
     "att_handicap": {
         "nom_complet": "Attestation handicap (AGEFIPH)",
         "short_name": "Att. handicap",
-        "description": "",
+        "description": "Attestation délivrée par l'AGEFIPH certifiant l'emploi de travailleurs handicapés par le prestataire.",
     },
     "att_honneur": {
         "nom_complet": "Attestation sur l'honneur",
         "short_name": "Att. sur l'honneur",
-        "description": "",
+        "description": "Document par lequel le prestataire atteste sur l'honneur de certaines conditions ou situations.",
     },
     "att_resp_civile": {
         "nom_complet": "Attestation responsabilité civile professionnelle",
         "short_name": "Att. RC pro",
-        "description": "",
+        "description": "Attestation d'assurance responsabilité civile professionnelle du prestataire.",
     },
     "att_sirene": {
         "nom_complet": "Attestation Sirene/Siret",
@@ -208,7 +219,7 @@ DIC_CLASS_FILE_BY_NAME = {
     "att_sociale": {
         "nom_complet": "Attestation sociale",
         "short_name": "Att. sociale",
-        "description": "",
+        "description": "Attestation certifiant la situation sociale du prestataire, généralement délivrée par l'URSSAF ou un organisme similaire.",
     },
     "avenant": {
         "nom_complet": "Avenant",
@@ -222,7 +233,7 @@ DIC_CLASS_FILE_BY_NAME = {
     "avis_boamp": {
         "nom_complet": "Avis BOAMP",
         "short_name": "Avis BOAMP",
-        "description": "",
+        "description": "Avis de publicité publié au Bulletin Officiel des Annonces de Marchés Publics (BOAMP).",
     },
     "bon_de_commande": {
         "nom_complet": "Bon de commande",
@@ -230,7 +241,7 @@ DIC_CLASS_FILE_BY_NAME = {
         "description": (
             "Document administratif émis par l'administration (ou l'acheteur) qui "
             "confirme l'accord de l'achat, généralement sur la base d'un devis ou "
-            "d'une proposition commerciale. Peut comprendre les annexes au bon de commande.."
+            "d'une proposition commerciale. Peut comprendre les annexes au bon de commande."
         ),
     },
     "bordereau_prix": {
@@ -241,9 +252,38 @@ DIC_CLASS_FILE_BY_NAME = {
             "aussi annexe financière du marché."
         ),
     },
+    "ca_chgt_denomination": {
+        "nom_complet": "CA de changement de dénomination",
+        "short_name": "CA de changement de dénomination",
+        "description": "Document administratif émis par l'administration (ou l'acheteur) pour préciser des changements sur la dénomination d'un prestataire.",
+    },
+    "ca_chgt_ej": {
+        "nom_complet": "CA de changement d'EJ",
+        "short_name": "CA de changement d'EJ",
+        "description": ("Document administratif émis par l'administration (ou l'acheteur) pour préciser des changements sur l'engagement juridique. "
+                        "Souvent un changement d'imputation ou un changement dans un ligne de poste."),
+    },
+    "ca_chgt_siret": {
+        "nom_complet": "CA de changement de SIRET",
+        "short_name": "CA de changement de Siret",
+        "description": ("Document administratif émis par l'administration (ou l'acheteur) pour préciser des changements sur le siret d'un prestataire. "
+                        "Souvent un changement de siret et une nouvelle adresse postale."),
+    },
+    "ca_chgt_revision_prix": {
+        "nom_complet": "CA de changement de révision du prix",
+        "short_name": "CA de changement de révision du prix",
+        "description": ("Document administratif émis par l'administration (ou l'acheteur) pour préciser des changements sur la révision du prix. "
+                        "Souvent un changement sur la date d'application de la révision du prix."),
+    },
     "ca_chgt_rib": {
         "nom_complet": "CA de changement de rib",
+        "short_name": "CA de changement de rib",
         "description": "Document administratif émis par l'administration (ou l'acheteur) pour préciser des changements sur le rib d'un prestataire.",
+    },
+    "ccag": {
+        "nom_complet": "CCAG (Cahier des Clauses Administratives Générales)",
+        "short_name": "CCAG",
+        "description": "Cahier des charges administratives générales spécifiant les exigences administratives du marché.",
     },
     "ccap": {
         "nom_complet": "CCAP (Cahier des Clauses Administratives Particulières)",
@@ -252,24 +292,45 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "ccap_annexe": {
         "nom_complet": "CCAP annexe autre",
+        "short_name": "CCAP annexe autre",
         "description": "Annexe au CCAP contenant des informations complémentaires (hors bénéficiaires) non repertoriées dans les autres catégories.",
     },
     "ccap_annexe_beneficiaires": {
         "nom_complet": "CCAP annexe bénéficiaires",
+        "short_name": "CCAP annexe bénéficiaires",
         "description": "Annexe au CCAP contenant la liste des bénéficiaires potentiels du marché.",
+    },
+    "ccc": {
+        "nom_complet": "CCC (Cahier des Clauses Complementaires)",
+        "short_name": "CCC",
+        "description": ("Cahier des clauses complémentaires spécifiant les exigences complémentaires du marché. "
+                        "Souvent un document relatif à un marché subséquent d'un marché global. De la même forme que le cahier des charges."),
     },
     "ccp_simple": {
         "nom_complet": "Cahier des clauses Particulières simple",
+        "short_name": "CCP simple",
         "description": "Cahier des charges particuliers valant à la fois cahier des charges administratives et techniques, mais ne valant pas acte d'engagement (un autre document d'engagement est nécessaire).",
     },
     "ccp_vae": {
         "nom_complet": "CCP valant acte d'engagement",
-        "description": "Cahier des charges particuliers (administratives et techniques) valant acte d'engagement.",
+        "short_name": "CCP valant acte d'engagement",
+        "description": ("Cahier des charges particuliers (administratives et techniques) valant acte d'engagement. "
+                        "C'est à la fois un cahier des charges administratif, un cahier des charges techniques et un acte d'engagement."),
     },
     "cctp": {
         "nom_complet": "CCTP (Cahier des Clauses Techniques Particulières)",
         "short_name": "CCTP",
         "description": "Cahier des charges techniques spécifiant les exigences techniques du marché.",
+    },
+    "cctp_annexe": { 
+        "nom_complet": "CCTP annexe autre",
+        "short_name": "CCTP annexe autre",
+        "description": "Annexe au CCTP contenant des informations complémentaires non repertoriées dans les autres catégories.",
+    },
+    "cga":{
+        "nom_complet": "CGA (Conditions générales d'achats)",
+        "short_name": "CGA",
+        "description": "Conditions générales d'achats spécifiant les conditions générales d'achats du marché.",
     },
     "commentaire": {
         "nom_complet": "Commentaire",
@@ -279,7 +340,12 @@ DIC_CLASS_FILE_BY_NAME = {
     "conv_financement": {
         "nom_complet": "Convention de financement",
         "short_name": "Conv. financement",
-        "description": "",
+        "description": "Convention définissant les modalités de financement d'un marché ou d'un projet.",
+    },
+    "decision_reconduction": {
+        "nom_complet": "Décision de reconduction",
+        "short_name": "Décision de reconduction",
+        "description": "Décision de reconduction ou de non-reconduction d'un marché public.",
     },
     "decomposition_prix": {
         "nom_complet": "Décomposition du prix",
@@ -295,7 +361,7 @@ DIC_CLASS_FILE_BY_NAME = {
         "description": "Document permettant de déléguer une signature ou un pouvoir à une autre personne.",
     },
     "detail_quantitatif_estimatif": {
-        "nom_complet": "Detail quantitatif estimatif",
+        "nom_complet": "Détail quantitatif estimatif",
         "short_name": "DQE",
         "description": (
             "Document présentant le détail quantitatif estimatif d'un marché public, "
@@ -339,7 +405,7 @@ DIC_CLASS_FILE_BY_NAME = {
         "short_name": "Fiche communication",
         "description": (
             "Fiche de communication entre les logiciels PLACE et Chorus. Les fiches "
-            "de communication ou fiches Chorussont également des fiches communication."
+            "de communication ou fiches Chorus sont également des fiches communication."
         ),
     },
     "fiche_engagement": {
@@ -371,7 +437,7 @@ DIC_CLASS_FILE_BY_NAME = {
     "kbis": {
         "nom_complet": "Extrait Kbis",
         "short_name": "Kbis",
-        "description": "",
+        "description": "Extrait Kbis certifiant l'inscription au registre du commerce et des sociétés (RCS).",
     },
     "lettre_candidature": {
         "nom_complet": "Lettre de candidature",
@@ -395,7 +461,7 @@ DIC_CLASS_FILE_BY_NAME = {
     "mail": {
         "nom_complet": "Courrier électronique divers",
         "short_name": "Courrier",
-        "description": "",
+        "description": "Courrier électronique (email) de nature administrative ou commerciale non classé dans une autre catégorie spécifique.",
     },
     "memoire_technique": {
         "nom_complet": "Mémoire technique",
@@ -408,7 +474,7 @@ DIC_CLASS_FILE_BY_NAME = {
     "mise_au_point": {
         "nom_complet": "Formulaire de mise au point",
         "short_name": "Mise au point",
-        "description": "",
+        "description": "Formulaire permettant de mettre à jour ou de corriger des informations dans le système de gestion.",
     },
     "notification": {
         "nom_complet": "Notification",
@@ -437,6 +503,11 @@ DIC_CLASS_FILE_BY_NAME = {
             "commanditaire."
         ),
     },
+    "rapport_affermissement_tranche": {
+        "nom_complet": "Rapport d'affermissement de tranche",
+        "short_name": "Rapport affermissement tranche",
+        "description": "Rapport d'affermissement de tranche d'un marché public présentant la décision d'affermissement d'une tranche optionnelle.",
+    },
     "rapport_analyse_offre": {
         "nom_complet": "Rapport d'analyse des offres ou de présentation des offres",
         "short_name": "Rapport analyse offres",
@@ -450,12 +521,17 @@ DIC_CLASS_FILE_BY_NAME = {
     "rapport_signature": {
         "nom_complet": "Rapport de signature",
         "short_name": "Rapport signature",
-        "description": "Document portant uniquement sur le fait d'un autre document a été signé.",
+        "description": "Document portant uniquement sur le fait qu'un autre document a été signé.",
+    },
+    "reglement_consultation": {
+        "nom_complet": "Règlement de consultation",
+        "short_name": "Règlement consultation",
+        "description": "Règlement de consultation d'un marché public présentant les modalités de la consultation.",
     },
     "rib": {
         "nom_complet": "Relevé d'identité bancaire",
         "short_name": "RIB",
-        "description": "",
+        "description": "Relevé d'identité bancaire contenant les coordonnées bancaires du prestataire pour les paiements.",
     },
     "service_fait": {
         "nom_complet": "Service fait",

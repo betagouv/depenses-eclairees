@@ -73,10 +73,22 @@ def compare_classification(df_result: pd.DataFrame, errors_only: bool = False):
     """
     def lists_equal_ignore_order(list1, list2):
         """Compare deux listes en ignorant l'ordre."""
-        if not isinstance(list1, list) or not isinstance(list2, list):
+        # Si list2 est un string, on le compare avec le premier élément de list1
+        if isinstance(list2, str):
+            if isinstance(list1, list) and len(list1) > 0:
+                return list1[0] == list2
             return list1 == list2
-        # return sorted(list1) == sorted(list2)
-        return list1[0] == list2[0]
+        # Si list1 est un string, on le compare avec le premier élément de list2
+        if isinstance(list1, str):
+            if isinstance(list2, list) and len(list2) > 0:
+                return list1 == list2[0]
+            return list1 == list2
+        # Si les deux sont des listes
+        if isinstance(list1, list) and isinstance(list2, list):
+            # return sorted(list1) == sorted(list2)
+            return list1[0] == list2[0] if len(list1) > 0 and len(list2) > 0 else list1 == list2
+        # Sinon comparaison directe
+        return list1 == list2
     
     df_result["is_correct"] = df_result.apply(
         lambda row: lists_equal_ignore_order(row["true_classification"], row["classification"]),
@@ -155,8 +167,10 @@ def compare_classification(df_result: pd.DataFrame, errors_only: bool = False):
 
 def display_results(df_result: pd.DataFrame):
     """Affiche les résultats de classification par classe (basé sur le premier élément)."""
-    # Fonction helper pour extraire le premier élément d'une liste
+    # Fonction helper pour extraire le premier élément d'une liste ou retourner le string
     def get_first_element(x):
+        if isinstance(x, str):
+            return x
         if isinstance(x, list) and len(x) > 0:
             return x[0]
         return 'Non classifié'
