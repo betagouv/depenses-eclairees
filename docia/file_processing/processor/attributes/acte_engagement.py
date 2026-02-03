@@ -169,29 +169,6 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
             ],
         },
     },
-    #     "avance":{
-    #         "consigne": """AVANCE
-    #      Définition : Information sur la volonté du titulaire de recevoir ou non une avance.
-    #      Indices :
-    #      - Dans un paragraphe dédié au renoncement de l'avance, souvent sous la forme d'une case à cocher à gauche de la mention "Non" ou "Oui".
-    #      - Attention l'extraction du texte peut être ambiguë, notamment pour les cases à cocher :
-    #         * si une des cases est devenu 0 ou O, elle n'était probalement pas cochée : "Ef NON O oul", c'était probablement que "Non" était cochée.
-    #         * si une des cases est devenu x ou X, elle était probablement cochée.
-    #         * si la coche d'une case n'est pas clairement visible, renvoyer "Information insuffisante".
-    #      - Ne rien renvoyer sur l'avance si aucune information sur l'avance trouvée.
-    #      Format : "✓ Conserve le bénéfice de l'avance" ou "✗ Renonce au bénéfice de l'avance" ou "Information insuffisante
-    # """,
-    #         "search": "",
-    #         "output_field": "avance"
-    #     },
-    "citation_avance": {
-        "consigne": """CITATION_AVANCE
-     Définition : La question (souvent "Je renonce au bénéfice de l'avance :")et les réponses extraites du texte du document concernant l'avance.
-     Format : La citation du texte du document telle quelle, sans aucune modification.
-""",
-        "search": "",
-        "output_field": "citation_avance",
-    },
     "cotraitants": {
         "consigne": """COTRAITANTS
 Objectif : Extraire uniquement les entreprises réellement mentionnées comme cotraitantes (hors mandataire).
@@ -380,5 +357,36 @@ Règles d’extraction :
 """,
         "search": "",
         "output_field": "date_notification",
+    },
+    "avance": {
+        "consigne": """AVANCE
+        Définition : Information sur la volonté du titulaire de recevoir ou non une avance.
+        Indices :
+        - Dans un paragraphe dédié au renoncement de l'avance, souvent sous la forme d'une case à cocher à proximité de la mention "Oui" ou "Non".
+        - Attention l'extraction du texte peut être ambiguë, notamment pour les cases à cocher :
+        * si une des cases est devenu x ou X, elle était probablement cochée.
+        * la coche d'une case peut être signifiée par des caractères [X] (et [ ] pour non cochée).
+        * parfois les coches des cases seront un peu décalées par rapport à la mention "Oui" ou "Non", mais toujours dans le même ordre : en déduire la réponse.
+        - Ne rien renvoyer sur l'avance si aucune information sur l'avance trouvée.
+        Format : "✓ Conserve le bénéfice de l'avance" ou "✗ Renonce au bénéfice de l'avance" ou "Information insuffisante"
+""",
+        "search": "",
+        "output_field": "avance",
+        "schema": {
+            "type": "string",
+            "enum": [
+                "✓ Conserve le bénéfice de l'avance",
+                "✗ Renonce au bénéfice de l'avance",
+                "Information insuffisante",
+            ],
+        },
+    },
+    "citation_avance": {
+        "consigne": """CITATION_AVANCE
+     Définition : La question (souvent "Je renonce au bénéfice de l'avance :")et les réponses extraites du texte du document concernant l'avance.
+     Format : La citation du texte du document telle quelle, sans aucune modification.
+""",
+        "search": "",
+        "output_field": "citation_avance",
     },
 }
