@@ -1,0 +1,24 @@
+{% load dsfr_tags static docia %}
+{% with id_prefix=doc.filename|add:"_" %}
+
+<ul class="fr-list">
+  {% with value=data.titulaire_compte %}
+    {% include "docia/details_ej/blocks/attribute.html" with title="Titulaire du compte" id=id_prefix|add:"titulaire_compte" %}
+  {% endwith %}
+  {% with value=data.adresse_postale_titulaire|format_postal_address %}
+    {% include "docia/details_ej/blocks/attribute.html" with title="Adresse postale" id=id_prefix|add:"adresse_postale_titulaire" %}
+  {% endwith %}
+  {% with value=data.banque %}
+    {% include "docia/details_ej/blocks/attribute.html" with title="Banque" id=id_prefix|add:"banque" %}
+  {% endwith %}
+  {% with value=data.domiciliation %}
+    {% include "docia/details_ej/blocks/attribute.html" with title="Domiciliation" id=id_prefix|add:"domiciliation" %}
+  {% endwith %}
+  {% with value=data.bic %}
+    {% include "docia/details_ej/blocks/attribute.html" with title="BIC" id=id_prefix|add:"bic" %}
+  {% endwith %}
+  {% with value=data.iban|iban_spaces copy_value=data.iban %}
+    {% include "docia/details_ej/blocks/attribute.html" with title="IBAN" id=id_prefix|add:"rib_iban" %}
+  {% endwith %}
+</ul>
+{% endwith %}

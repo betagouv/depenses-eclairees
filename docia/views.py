@@ -10,6 +10,19 @@ from .ratelimit.services import check_rate_limit_for_user
 
 logger = logging.getLogger(__name__)
 
+# Classifications traitées mais non affichées dans la catégorie analysée (pas encore prêtes)
+CLASSIFICATIONS_NON_AFFICHEES = frozenset(
+    {
+        "avenant",
+        "fiche_navette",
+        "kbis",
+        "devis",
+        "att_sirene",
+        "sous_traitance",
+        "bon_de_commande",
+    }
+)
+
 
 def home(request):
     documents = []
@@ -40,14 +53,14 @@ def home(request):
                         short_classification = get_short_classification(db_doc.classification)
                         doc = {
                             "id": db_doc.id,
-                            "title": f"[{short_classification}] {db_doc.filename[11::]}",
+                            "title": f"[{short_classification}] {db_doc.filename[11:]}",
                             "data_as_list": sorted([[key, value] for key, value in document_data.items()]),
                             "data": document_data,
                             "url": db_doc.file.url if db_doc.file else "",
                             "percent_data_extraction": format_ratio_to_percent(ratio_extracted),
                             "classification": db_doc.classification,
                         }
-                        if document_data:
+                        if document_data and db_doc.classification not in CLASSIFICATIONS_NON_AFFICHEES:
                             documents.append(doc)
                         else:
                             unprocessed.append(doc)

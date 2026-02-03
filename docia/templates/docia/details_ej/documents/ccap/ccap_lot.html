@@ -1,74 +1,113 @@
 {% load dsfr_tags static docia %}
+{# Contenu d'un lot : titre complet, sous-sections Montants et Durée (même design que acte d'engagement) #}
+{% with lot_prefix=doc.filename|add:"_lot_"|add:lot.numero_lot|add:"_" %}
 
+{# Titre complet du lot (affiché dans le contenu du lot) #}
+{% if lot.titre %}
+  <p class="fr-text--md fr-mb-3v"><strong>{{ lot.titre }}</strong></p>
+{% endif %}
 
-<div class="fr-container">
-  <div class="fr-grid-row fr-grid-row--gutters">
-
-    <div class="fr-col-md-4 fr-col-12">
-      <div>
-        <h4>Forme</h4>
-        <ul>
-          <li>
-            <b>Marchés subséquents : </b>
-            {% if data.forme_marche.structure == "à marchés subséquents" %}
-              ✅
-            {% else %}
-              ❌
-            {% endif %}
-          </li>
-          <li>
-            <b>Décomposition en tranches : </b>
-            {% if data.forme_marche.tranches %}
-              {{ data.forme_marche.tranches }}
-            {% else %}
-              ❌
-            {% endif %}
-          </li>
-          <li>
-            {% with title="Forme des prix : " field_name="forme_marche.forme_prix" %}
-              {% include "docia/details_ej/blocks/attribute.html" %}
-            {% endwith %}
-          </li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="fr-col-md-4 fr-col-12">
-      {% if data.duree_lot == "identique à celle du marché" %}
-        <div>
-          <h4>Durée</h4>
-          <p>cf. durée du marché global</p>
-        </div>
-      {% elif data.duree_lot is None or data.duree_lot.duree_initiale is None %}
-        <div>
-          <h4>Durée</h4>
-          <p>Information non trouvée</p>
-        </div>
+{# Phrase sur la forme du lot (marché simple ou à marchés subséquents, tranches, forme des prix) #}
+{% with forme=lot.forme %}
+  {% if forme %}
+    <p class="fr-mb-2v">
+      Lot sous forme de marché
+      {% if forme.structure == "à marchés subséquents" %}
+        à <strong>marchés subséquents</strong>{% if forme.tranches and forme.tranches > 1 or forme.forme_prix %}, {% endif %}
       {% else %}
-        {% with data=data.duree_marche %}
-          {% include "docia/details_ej/blocks/duree.html" %}
-        {% endwith %}
+        <strong>simple</strong>{% if forme.tranches and forme.tranches > 1 or forme.forme_prix %}, {% endif %}
       {% endif %}
-    </div>
+      {% if forme.tranches and forme.tranches > 1 %}
+        décomposé en <strong>{{ forme.tranches }} tranches</strong>{% if forme.forme_prix %}, {% endif %}
+      {% endif %}
+      {% if forme.forme_prix %}
+        à <strong>prix {{ forme.forme_prix }}</strong>
+      {% endif %}
+    </p>
+  {% endif %}
+{% endwith %}
 
-    <div class="fr-col-md-4 fr-col-12">
-      <div>
-        <h4>Montants</h4>
-        <ul>
-          <li>
-            <b>Montant HT : </b>
-            {% if data.montant_ttc.type_montant == "annuel" %}
-              {{ data.montant_ht.montant_ht_maximum }} € / An
-            {% elif data.montant_ht.type_montant == "total" %}
-              {{ data.montant_ht.montant_ht_maximum }} € Total
+{# Montants du lot : sous-section accordéon quand rempli #}
+{% with mht=lot.montant_ht %}
+  {% if mht and mht.montant_ht_maximum %}
+    <section class="fr-accordion" data-fr-js-accordion="true">
+      <h3 class="fr-accordion__title">
+        <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_lot_{{ lot.numero_lot }}_montants" data-fr-js-collapse-button="true">
+          Montants
+        </button>
+      </h3>
+      <div class="fr-collapse" id="{{ doc.id }}_lot_{{ lot.numero_lot }}_montants" data-fr-js-collapse="true" style="--collapse: -48px;">
+        <ul class="fr-list">
+          {% if lot.forme.forme_prix %}
+            {% with value=lot.forme.forme_prix %}
+              {% include "docia/details_ej/blocks/attribute.html" with title="Forme des prix" id=lot_prefix|add:"forme_prix" %}
+            {% endwith %}
+          {% endif %}
+          {% with value=mht.montant_ht_maximum|floatformat:2 copy_value=mht.montant_ht_maximum %}
+            {% if mht.type_montant == "annuel" %}
+              {% include "docia/details_ej/blocks/attribute.html" with title="Montant HT Maximum" id=lot_prefix|add:"montant_ht" suffix=" / An" %}
+            {% elif mht.type_montant == "total" %}
+              {% include "docia/details_ej/blocks/attribute.html" with title="Montant HT Maximum" id=lot_prefix|add:"montant_ht" suffix=" Total" %}
             {% else %}
-              Non renseigné
+              {% include "docia/details_ej/blocks/attribute.html" with title="Montant HT Maximum" id=lot_prefix|add:"montant_ht" %}
             {% endif %}
-          </li>
+          {% endwith %}
         </ul>
       </div>
+    </section>
+  {% else %}
+    <div class="document-section--disabled">
+      <span class="document-section--disabled__title">Montants – Information non disponible dans le document.</span>
     </div>
+  {% endif %}
+{% endwith %}
 
-  </div>
-</div>
-
+{# Durée du lot : sous-section accordéon quand détaillée, sinon bloc grisé #}
+{% with duree_lot=lot.duree_lot %}
+  {% if duree_lot %}
+    {% if duree_lot == "identique à la durée du marché" %}
+      <div class="document-section--disabled">
+        <span class="document-section--disabled__title">Durée – Identique à la durée du marché</span>
+      </div>
+    {% elif duree_lot.duree_initiale %}
+      <section class="fr-accordion" data-fr-js-accordion="true">
+        <h3 class="fr-accordion__title">
+          <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_lot_{{ lot.numero_lot }}_duree" data-fr-js-collapse-button="true">
+            Durée du lot
+          </button>
+        </h3>
+        <div class="fr-collapse" id="{{ doc.id }}_lot_{{ lot.numero_lot }}_duree" data-fr-js-collapse="true" style="--collapse: -48px;">
+          <p class="fr-mb-2v">
+            Durée d'exécution du lot : <strong>{{ duree_lot.duree_initiale }} mois</strong>
+            {% if duree_lot.nb_reconductions %}
+              (reconductible)
+            {% else %}
+              (non reconductible)
+            {% endif %}
+          </p>
+          {% if duree_lot.nb_reconductions %}
+            <ul class="fr-list">
+              {% with value=duree_lot.nb_reconductions %}
+                {% include "docia/details_ej/blocks/attribute.html" with title="Nombre de reconductions" %}
+              {% endwith %}
+              {% if duree_lot.duree_reconduction %}
+                {% with value=duree_lot.duree_reconduction suffix=" mois" %}
+                  {% include "docia/details_ej/blocks/attribute.html" with title="Durée d'une reconduction" %}
+                {% endwith %}
+              {% endif %}
+            </ul>
+          {% endif %}
+        </div>
+      </section>
+    {% else %}
+      <div class="document-section--disabled">
+        <span class="document-section--disabled__title">Durée – Information non disponible dans le document.</span>
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="document-section--disabled">
+      <span class="document-section--disabled__title">Durée – Information non disponible dans le document.</span>
+    </div>
+  {% endif %}
+{% endwith %}
+{% endwith %}

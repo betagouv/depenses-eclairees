@@ -1,77 +1,203 @@
 {% load dsfr_tags static docia %}
+{% with id_prefix=doc.filename|add:"_" %}
 
-<h2 class="fr-mt-5v">Contrat</h2>
+<div class="fr-mb-4w">
+  {# Objet du contrat #}
+  <p class="fr-mb-2v">
+    <strong>Objet du contrat :</strong>
+    {{ data.objet_marche|default:"[Non trouvé]" }}
+  </p>
 
-<div class="fr-mb-10v">
-  {% with title="Objet" field_name="objet_marche" %}
-    {% include "docia/details_ej/blocks/attribute.html" %}
-  {% endwith %}
-  <br/>
-  {% with title="Identifiant" field_name="id_marche" %}
-    {% include "docia/details_ej/blocks/attribute.html" %}
-  {% endwith %}
-  <br/>
-  {% with title="CCAG" field_name="ccag" %}
-    {% include "docia/details_ej/blocks/attribute.html" %}
-  {% endwith %}
-  <br/>
-  {% if doc.data.lots %}
-    <b>Décomposition en lots : ✅</b><br/>
-  {% else %}
-    <b>Décomposition en lots : ❌</b><br/>
-    <b>Décomposition en tranches : </b>
-    {% if data.forme_marche.tranches %}
-      {{ data.forme_marche.tranches }}
-    {% else %}
-      ❌
-    {% endif %}<br/>
-    <b>Forme des prix : </b>
-    {% if data.forme_marche.forme_prix %}
-      {{ data.forme_marche.forme_prix }}
-    {% else %}
-      ❌
+  {# Phrase sur la forme du marché (affichée seulement si au moins un élément) #}
+  {% with forme=data.forme_marche %}
+    {% if data.lots or forme.structure == "à marchés subséquents" or forme.tranches and forme.tranches > 1 or forme.forme_prix %}
+      <p class="fr-mb-1v">
+        Marché
+        {% if data.lots %}
+          comportant <strong>plusieurs lots</strong>{% if forme.structure == "à marchés subséquents" or forme.tranches and forme.tranches > 1 or forme.forme_prix %}, {% endif %}
+        {% endif %}
+        {% if forme.structure == "à marchés subséquents" %}
+          à <strong>marchés subséquents</strong>{% if forme.tranches and forme.tranches > 1 or forme.forme_prix %}, {% endif %}
+        {% endif %}
+        {% if forme.tranches and forme.tranches > 1 %}
+          décomposé en <strong>{{ forme.tranches }} tranches</strong>{% if forme.forme_prix %}, {% endif %}
+        {% endif %}
+        {% if forme.forme_prix %}
+          à <strong>prix {{ forme.forme_prix }}</strong>
+        {% endif %}
+      </p>
     {% endif %}
-    <br/>
-    <b>Montant HT : </b>
-    {% if data.montant_ttc.type_montant == "annuel" %}
-      {{ data.montant_ht.montant_ht_maximum }} € / An
-    {% elif data.montant_ht.type_montant == "total" %}
-      {{ data.montant_ht.montant_ht_maximum }} € Total
-    {% else %}
-      Non renseigné
-    {% endif %}
-    <br/>
-  {% endif %}
-  <!-- <br/>
-  {% with title="Conditions d'avance" field_name="condition_avance_ccap" %}
-    {% include "docia/details_ej/blocks/attribute.html" %}
-  {% endwith %} -->
+  {% endwith %}
 </div>
 
-<div>
-  {% with data=data.duree_marche %}
-    {% include "docia/details_ej/blocks/duree.html" %}
-  {% endwith %}
-</div>
-  
-  
+{# Sous-sections #}
+<div class="document-sections fr-mt-2v">
 
-
-
-
-<div>
-  {% if data.lots %}
-    {% for lot in data.lots %}
-      <h3>Lot {{ lot.numero_lot }}&nbsp;</h3>
-      <p><b>Titre :</b> {{ lot.titre }}</p>
-      <div>
-        {% with data=lot %}
-          {% include "docia/details_ej/documents/ccap/ccap_lot.html" %}
-        {% endwith %}
+{# Informations générales : CCAG et Identifiant ; section grisée si les deux sont vides #}
+  {% if data.id_marche or data.ccag %}
+    <section class="fr-accordion" data-fr-js-accordion="true">
+      <h3 class="fr-accordion__title">
+        <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_ccap_infos" data-fr-js-collapse-button="true">
+          Informations générales
+        </button>
+      </h3>
+      <div class="fr-collapse" id="{{ doc.id }}_ccap_infos" data-fr-js-collapse="true" style="--collapse: -48px;">
+        <ul class="fr-list">
+          {% with value=data.id_marche copy_value=data.id_marche %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Identifiant du marché" id=id_prefix|add:"id_marche" %}
+          {% endwith %}
+          {% with value=data.ccag copy_value=data.ccag %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="CCAG" id=id_prefix|add:"ccag" %}
+          {% endwith %}
+        </ul>
       </div>
-    {% endfor %}
+    </section>
   {% else %}
-    {% include "docia/details_ej/documents/ccap/ccap_lot.html" %}
+    <div class="document-section--disabled">
+      <span class="document-section--disabled__title">Informations générales – Non disponibles dans le document.</span>
+    </div>
   {% endif %}
-</div>
 
+{% if not data.lots %}
+  {# Marché non alloti : sections Montants et Durée au niveau marché #}
+  {# Montants #}
+  {% with mht=data.montant_ht %}
+    {% if mht and mht.montant_ht_maximum %}
+      <section class="fr-accordion" data-fr-js-accordion="true">
+        <h3 class="fr-accordion__title">
+          <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_ccap_montants" data-fr-js-collapse-button="true">
+            Montants
+          </button>
+        </h3>
+        <div class="fr-collapse" id="{{ doc.id }}_ccap_montants" data-fr-js-collapse="true" style="--collapse: -48px;">
+          <ul class="fr-list">
+            {% if data.forme_marche.forme_prix %}
+              {% with value=data.forme_marche.forme_prix %}
+                {% include "docia/details_ej/blocks/attribute.html" with title="Forme des prix" id=id_prefix|add:"ccap_forme_prix" %}
+              {% endwith %}
+            {% endif %}
+            {% with value=mht.montant_ht_maximum|floatformat:2 copy_value=mht.montant_ht_maximum %}
+              {% if mht.type_montant == "annuel" %}
+                {% include "docia/details_ej/blocks/attribute.html" with title="Montant" id=id_prefix|add:"ccap_montant_ht" suffix=" / An" %}
+              {% elif mht.type_montant == "total" %}
+                {% include "docia/details_ej/blocks/attribute.html" with title="Montant" id=id_prefix|add:"ccap_montant_ht" suffix=" Total" %}
+              {% else %}
+                {% include "docia/details_ej/blocks/attribute.html" with title="Montant" id=id_prefix|add:"ccap_montant_ht" %}
+              {% endif %}
+            {% endwith %}
+          </ul>
+        </div>
+      </section>
+    {% else %}
+      <div class="document-section--disabled">
+        <span class="document-section--disabled__title">Montants – Information non disponible dans le document.</span>
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {# Durée du marché #}
+  {% with duree=data.duree_marche %}
+    {% if duree and duree.duree_initiale %}
+      <section class="fr-accordion" data-fr-js-accordion="true">
+        <h3 class="fr-accordion__title">
+          <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_ccap_duree" data-fr-js-collapse-button="true">
+            Durée
+          </button>
+        </h3>
+        <div class="fr-collapse" id="{{ doc.id }}_ccap_duree" data-fr-js-collapse="true" style="--collapse: -48px;">
+          <p class="fr-mb-2v">
+            Durée d'exécution du marché : <strong>{{ duree.duree_initiale }} mois</strong>
+            {% if duree.nb_reconductions %}
+              (reconductible)
+            {% else %}
+              (non reconductible)
+            {% endif %}
+          </p>
+          {% if duree.nb_reconductions %}
+            <ul class="fr-list">
+              {% with value=duree.nb_reconductions %}
+                {% include "docia/details_ej/blocks/attribute.html" with title="Nombre de reconductions" %}
+              {% endwith %}
+              {% if duree.duree_reconduction %}
+                {% with value=duree.duree_reconduction suffix=" mois" %}
+                  {% include "docia/details_ej/blocks/attribute.html" with title="Durée d'une reconduction" %}
+                {% endwith %}
+              {% endif %}
+            </ul>
+          {% endif %}
+        </div>
+      </section>
+    {% else %}
+      <div class="document-section--disabled">
+        <span class="document-section--disabled__title">Durée – Information non disponible dans le document.</span>
+      </div>
+    {% endif %}
+  {% endwith %}
+
+{% else %}
+  {# Marché alloti : section Durée du marché (pour les lots "identique à la durée du marché") puis accordéon par lot #}
+  {% with duree=data.duree_marche %}
+    {% if duree and duree.duree_initiale %}
+      <section class="fr-accordion" data-fr-js-accordion="true">
+        <h3 class="fr-accordion__title">
+          <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_ccap_duree_marche" data-fr-js-collapse-button="true">
+            Durée du marché
+          </button>
+        </h3>
+        <div class="fr-collapse" id="{{ doc.id }}_ccap_duree_marche" data-fr-js-collapse="true" style="--collapse: -48px;">
+          <p class="fr-mb-2v">
+            Durée d'exécution du marché : <strong>{{ duree.duree_initiale }} mois</strong>
+            {% if duree.nb_reconductions %}
+              (reconductible)
+            {% else %}
+              (non reconductible)
+            {% endif %}
+          </p>
+          {% if duree.nb_reconductions %}
+            <ul class="fr-list">
+              {% with value=duree.nb_reconductions %}
+                {% include "docia/details_ej/blocks/attribute.html" with title="Nombre de reconductions" %}
+              {% endwith %}
+              {% if duree.duree_reconduction %}
+                {% with value=duree.duree_reconduction suffix=" mois" %}
+                  {% include "docia/details_ej/blocks/attribute.html" with title="Durée d'une reconduction" %}
+                {% endwith %}
+              {% endif %}
+            </ul>
+          {% endif %}
+        </div>
+      </section>
+    {% else %}
+      <div class="document-section--disabled">
+        <span class="document-section--disabled__title">Durée du marché – Information non disponible dans le document.</span>
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% for lot in data.lots %}
+    <section class="fr-accordion" data-fr-js-accordion="true">
+      <h3 class="fr-accordion__title">
+        <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_lot_{{ lot.numero_lot }}" data-fr-js-collapse-button="true">
+          Lot {{ lot.numero_lot }}&nbsp;:&nbsp;{{ lot.titre|truncatewords:10 }}
+        </button>
+      </h3>
+      <div class="fr-collapse" id="{{ doc.id }}_lot_{{ lot.numero_lot }}" data-fr-js-collapse="true" style="--collapse: -48px;">
+        <div class="ccap-lot-content">
+          {% include "docia/details_ej/documents/ccap/ccap_lot.html" with lot=lot doc=doc %}
+        </div>
+      </div>
+    </section>
+  {% endfor %}
+{% endif %}
+
+  {# Avance : bientôt disponible #}
+  <div class="document-section--disabled">
+    <span class="document-section--disabled__title">Avance – Bientôt disponible sur Dépenses Eclairées</span>
+  </div>
+
+  {# Révision des prix : bientôt disponible #}
+  <div class="document-section--disabled">
+    <span class="document-section--disabled__title">Révision des prix – Bientôt disponible sur Dépenses Eclairées</span>
+  </div>
+</div>
+{% endwith %}

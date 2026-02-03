@@ -1,11 +1,12 @@
 {% load docia %}
-
-<b>{{ title }}&nbsp;:</b>
-{% with value=data|get_item:field_name %}
-  {% if value %}
-    {{ value }}{{ suffix }}
-    {% include "docia/blocks/button_copy.html" with id=field_name value=value %}
-  {% else %}
-    [Non trouvé]
-  {% endif %}
-{% endwith %}
+<li class="fr-list__item">
+  <span class="fr-text--sm fr-text--mention">{{ title }}&nbsp;</span>
+  <span class="fr-text--sm{% if value_class %} {{ value_class }}{% endif %}">
+    {% if value %}
+      {{ value }}{{ suffix }}
+      {% include "docia/blocks/button_copy.html" with id=id value=copy_value|default:value %}
+    {% else %}
+      <span class="fr-text--mention">[Non trouvé]</span>
+    {% endif %}
+  </span>
+</li>
