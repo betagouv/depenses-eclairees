@@ -35,7 +35,7 @@ def normalize_string(s):
 
 
 def get_ground_truth_from_grist(table:str = "Classif_gt", columns:list[str] = None):
-    """Récupère les vérités terrain depuis Grist."""
+    """Récupère les valeurs certifiées pour les tests depuis Grist."""
     from app.grist.config_grist import URL_TABLE_ATTACHMENTS, API_KEY_GRIST
     from app.grist.grist_api import get_data_from_grist
     table_url = URL_TABLE_ATTACHMENTS.replace("Attachments", table)

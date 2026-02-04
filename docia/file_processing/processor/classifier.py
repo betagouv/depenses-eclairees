@@ -177,8 +177,8 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "ae_annexe": {
         "nom_complet": "Annexe à l'acte d'engagement",
-        "short_name": "Annexe à l'acte d'engagement",
-        "description": "Annexe à un acte d'engagement (autre document spécifique).",
+        "short_name": "Annexe Act. Eng.",
+        "description": "Annexe à un acte d'engagement (autre que dgpf, bpu ou annexe financière).",
     },
     "application_revision_prix": {
         "nom_complet": "Application de révision du prix",
@@ -254,30 +254,30 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "ca_chgt_denomination": {
         "nom_complet": "CA de changement de dénomination",
-        "short_name": "CA de changement de dénomination",
+        "short_name": "CA chgt. Nom",
         "description": "Document administratif émis par l'administration (ou l'acheteur) pour préciser des changements sur la dénomination d'un prestataire.",
     },
     "ca_chgt_ej": {
         "nom_complet": "CA de changement d'EJ",
-        "short_name": "CA de changement d'EJ",
+        "short_name": "CA chgt. EJ",
         "description": ("Document administratif émis par l'administration (ou l'acheteur) pour préciser des changements sur l'engagement juridique. "
                         "Souvent un changement d'imputation ou un changement dans un ligne de poste."),
     },
     "ca_chgt_siret": {
         "nom_complet": "CA de changement de SIRET",
-        "short_name": "CA de changement de Siret",
+        "short_name": "CA chgt. SIREN / SIRET",
         "description": ("Document administratif émis par l'administration (ou l'acheteur) pour préciser des changements sur le siret d'un prestataire. "
                         "Souvent un changement de siret et une nouvelle adresse postale."),
     },
     "ca_chgt_revision_prix": {
         "nom_complet": "CA de changement de révision du prix",
-        "short_name": "CA de changement de révision du prix",
+        "short_name": "CA chgt. Rev. prix",
         "description": ("Document administratif émis par l'administration (ou l'acheteur) pour préciser des changements sur la révision du prix. "
                         "Souvent un changement sur la date d'application de la révision du prix."),
     },
     "ca_chgt_rib": {
         "nom_complet": "CA de changement de rib",
-        "short_name": "CA de changement de rib",
+        "short_name": "CA chgt. RIB",
         "description": "Document administratif émis par l'administration (ou l'acheteur) pour préciser des changements sur le rib d'un prestataire.",
     },
     "ccag": {
@@ -302,18 +302,18 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "ccc": {
         "nom_complet": "CCC (Cahier des Clauses Complementaires)",
-        "short_name": "CCC",
+        "short_name": "CC Complementaire",
         "description": ("Cahier des clauses complémentaires spécifiant les exigences complémentaires du marché. "
                         "Souvent un document relatif à un marché subséquent d'un marché global. De la même forme que le cahier des charges."),
     },
     "ccp_simple": {
         "nom_complet": "Cahier des clauses Particulières simple",
-        "short_name": "CCP simple",
+        "short_name": "CCP",
         "description": "Cahier des charges particuliers valant à la fois cahier des charges administratives et techniques, mais ne valant pas acte d'engagement (un autre document d'engagement est nécessaire).",
     },
     "ccp_vae": {
         "nom_complet": "CCP valant acte d'engagement",
-        "short_name": "CCP valant acte d'engagement",
+        "short_name": "CCP valant AE",
         "description": ("Cahier des charges particuliers (administratives et techniques) valant acte d'engagement. "
                         "C'est à la fois un cahier des charges administratif, un cahier des charges techniques et un acte d'engagement."),
     },
@@ -342,14 +342,14 @@ DIC_CLASS_FILE_BY_NAME = {
         "short_name": "Conv. financement",
         "description": "Convention définissant les modalités de financement d'un marché ou d'un projet.",
     },
-    "decision_reconduction": {
-        "nom_complet": "Décision de reconduction",
-        "short_name": "Décision de reconduction",
-        "description": "Décision de reconduction ou de non-reconduction d'un marché public.",
+    "reconduction": {
+        "nom_complet": "Reconduction",
+        "short_name": "Reconduction",
+        "description": "Reconduction ou de non-reconduction d'un marché public.",
     },
     "decomposition_prix": {
         "nom_complet": "Décomposition du prix",
-        "short_name": "Décomposition prix",
+        "short_name": "DGPF",
         "description": (
             "Document présentant la décomposition du prix d'un achat public. "
             "Souvent appelé Décomposition du prix global forfaitaire."
@@ -460,7 +460,7 @@ DIC_CLASS_FILE_BY_NAME = {
     },
     "mail": {
         "nom_complet": "Courrier électronique divers",
-        "short_name": "Courrier",
+        "short_name": "Mail",
         "description": "Courrier électronique (email) de nature administrative ou commerciale non classé dans une autre catégorie spécifique.",
     },
     "memoire_technique": {
