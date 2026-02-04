@@ -330,7 +330,7 @@ def remove_empty_files(directory_path: str) -> list:
     return deleted_files
 
 
-def get_file_hash(file_path: str) -> str:
+def get_file_hash(file_path: str, use_local_fs: bool = False) -> str:  
     """
     Calcule le hash SHA-256 d'un fichier.
     
@@ -341,22 +341,16 @@ def get_file_hash(file_path: str) -> str:
         str: Hash SHA-256 du fichier ou "ERROR" en cas d'erreur
     """
     try:
-        hash_sha256 = hashlib.sha256()
-        with default_storage.open(file_path, "rb") as f:
-            # Lire le fichier par chunks pour optimiser la mémoire
-            for chunk in iter(lambda: f.read(65536), b""):
-                hash_sha256.update(chunk)
-        return hash_sha256.hexdigest()
+        _open = open if use_local_fs else default_storage.open  
+        hash_sha256 = hashlib.sha256()  
+        with _open(file_path, "rb") as f:  
+            # Lire le fichier par chunks pour optimiser la mémoire  
+            for chunk in iter(lambda: f.read(65536), b""):  
+                hash_sha256.update(chunk)  
+        return hash_sha256.hexdigest()  
     except Exception as e:
-        try:
-            hash_sha256 = hashlib.sha256()
-            with open(file_path, "rb") as f:
-                for chunk in iter(lambda: f.read(65536), b""):
-                    hash_sha256.update(chunk)
-            return hash_sha256.hexdigest()
-        except Exception as e:
-            print(f"Erreur lors du calcul du hash pour {file_path}: {e}")
-            return "ERROR"
+        print(f"Erreur lors du calcul du hash pour {file_path}: {e}")
+        return "ERROR"
 
 
 
@@ -385,7 +379,7 @@ def remove_duplicate(directory_path: str) -> list:
         file_path = os.path.join(directory_path, filename)
         if not os.path.isfile(file_path):
             continue
-        file_hash = get_file_hash(file_path)
+        file_hash = get_file_hash(file_path, use_local_fs=True)  
         if file_hash == "ERROR":
             print(f"Impossible de calculer le hash pour {filename}, ignoré.")
             continue
