@@ -30,23 +30,30 @@
         Limite de requêtes atteinte. Veuillez réessayer demain.
       {% endif %}
       {% if not documents and not unprocessed %}
-        Aucun résultat.
+        Aucun résultat trouvé, ou vous n'avez pas accès à ce dossier.<br><br>
+        Pour obtenir de l'aide, contactez-nous :<br>
+        <a target="_blank" href="{{ settings.TCHAP_SUPPORT_CANAL_URL }}">Support - Dépenses Éclairées</a>
+        ou par mail à <a href="mailto:contact@depenses-eclairees.beta.gouv.fr">contact@depenses-eclairees.beta.gouv.fr</a>
       {% endif %}
+
+      {# Documents analysés #}
       {% for doc in documents %}
         <section class="fr-accordion" data-fr-js-accordion="true">
           <h3 class="fr-accordion__title">
             <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}" data-fr-js-collapse-button="true">
-              {{ doc.title }} - 🔍 {{ doc.percent_data_extraction }} infos trouvées
+              {{ doc.title }}&nbsp;-&nbsp;&nbsp;<span class="fr-icon-focus-3-line" aria-hidden="true"></span>&nbsp;{{ doc.percent_data_extraction }} infos trouvées
             </button>
           </h3>
           {% include "docia/details_ej/documents/document.html" with doc=doc %}
         </section>
       {% endfor %}
+
+      {# Documents non analysés #}
       {% if unprocessed %}
-        <section class="fr-accordion" data-fr-js-accordion="true">
+        <section class="fr-accordion fr-mt-4w" data-fr-js-accordion="true">
           <h3 class="fr-accordion__title">
             <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="unprocessed" data-fr-js-collapse-button="true">
-              Non traités
+              <span class="fr-icon-newspaper-line" aria-hidden="true"></span>&nbsp;Autres documents disponibles (informations non extraites)
             </button>
           </h3>
           <div class="fr-collapse" id="unprocessed" data-fr-js-collapse="true" style="--collapse: -48px;">

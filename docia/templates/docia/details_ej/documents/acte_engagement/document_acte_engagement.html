@@ -1,128 +1,217 @@
 {% load dsfr_tags static docia %}
+{% with id_prefix=doc.filename|add:"_" %}
 
+<div class="fr-mb-4w">
+  {# Signataires : entre administration (signataire) et titulaire (societe_principale) #}
+  <p class="fr-text--lg fr-mb-1v">
+    Acte signé entre <strong>{{ data.administration_beneficiaire|default:"[Non trouvé]" }}</strong> (signataire)
+    et <strong>{{ data.societe_principale|upper|default:"[Non trouvé]" }}</strong> (titulaire).
+  </p>
 
-<h2 class="fr-mt-5v">Contrat</h2>
-
-<div class="fr-mb-10v">
-  {% with title="Objet" field_name="objet_marche" %}
-    {% include "docia/details_ej/blocks/attribute.html" %}
-  {% endwith %}
-  <br/>
-  {% with title="Lot concerné" field_name="lot_concerne" %}
-    {% include "docia/details_ej/blocks/attribute.html" %}
-  {% endwith %}
-  <br/>
-  {% with title="Administration bénéficiaire" field_name="administration_beneficiaire" %}
-    {% include "docia/details_ej/blocks/attribute.html" %}
-  {% endwith %}
-  <br/>
-  {% with title="Montant HT" field_name="montant_ht" %}
-    {% include "docia/details_ej/blocks/attribute.html" %}
-  {% endwith %}
-  <br/>
-  {% with title="Montant TTC" field_name="montant_ttc" %}
-    {% include "docia/details_ej/blocks/attribute.html" %}
-  {% endwith %}
+  {# Objet : objet_marche visible, lot_concerne en déroulant discret si rempli #}
+  <p class="fr-mb-0">
+    <strong>Objet :</strong> {{ data.objet_marche|default:"[Non trouvé]" }}
+    {% if data.lot_concerne %}
+      <span class="fr-ml-1w">
+        <button type="button" class="lot-concerne-toggle" aria-expanded="false" aria-controls="{{ doc.id }}_lot" data-fr-js-collapse-button="true">
+          Lot concerné
+        </button>
+      </span>
+    {% endif %}
+  </p>
+  {% if data.lot_concerne %}
+    <div class="fr-collapse lot-concerne-content" id="{{ doc.id }}_lot" data-fr-js-collapse="true" style="--collapse: -48px;">
+      <p class="fr-mt-1v fr-mb-0 fr-text--sm" style="color: #6a6a6a;">{{ data.lot_concerne }}</p>
+    </div>
+  {% endif %}
 </div>
 
-{# Columns #}
-<div class="fr-container">
-  <div class="fr-grid-row fr-grid-row--gutters">
+{# Sous-sections déroulantes (rapprochées, sans saut de ligne) #}
+<div class="document-sections fr-mt-2v">
+{# Titulaire : titre "Titulaire - Nom du titulaire", contenu déroulant : raison sociale (copier) + SIREN, SIRET, En groupement #}
+  <section class="fr-accordion" data-fr-js-accordion="true">
+    <h3 class="fr-accordion__title">
+      <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_titulaire_detail" data-fr-js-collapse-button="true">
+        Titulaire – {{ data.societe_principale|upper|default:"[Non trouvé]" }}
+      </button>
+    </h3>
+    <div class="fr-collapse" id="{{ doc.id }}_titulaire_detail" data-fr-js-collapse="true" style="--collapse: -48px;">
+      <ul class="fr-list">
+        {% with value=data.societe_principale|upper copy_value=data.societe_principale %}
+          {% include "docia/details_ej/blocks/attribute.html" with title="Raison sociale" id=id_prefix|add:"societe_principale" %}
+        {% endwith %}
+        {% with value=data.siren_mandataire|format_siren_siret copy_value=data.siren_mandataire %}
+          {% include "docia/details_ej/blocks/attribute.html" with title="SIREN" id=id_prefix|add:"siren_mandataire" value_class="siren-siret-format" %}
+        {% endwith %}
+        {% with value=data.siret_mandataire|format_siren_siret copy_value=data.siret_mandataire %}
+          {% include "docia/details_ej/blocks/attribute.html" with title="SIRET" id=id_prefix|add:"siret_mandataire" value_class="siren-siret-format" %}
+        {% endwith %}
+        <li class="fr-list__item">
+          <span class="fr-text--sm fr-text--mention">En groupement&nbsp;</span>
+          <span class="fr-text--sm">
+            {% if data.cotraitants %}
+              <span class="fr-icon-check-line" aria-hidden="true"></span> Oui
+            {% else %}
+              <span class="fr-icon-close-line" aria-hidden="true"></span> Non
+            {% endif %}
+          </span>
+        </li>
+      </ul>
+    </div>
+  </section>
 
-    <div class="fr-col-md-4 fr-col-12">
-      <div>
-        <h4>Mandataire</h4>
-        <ul>
-          <li>
-            {% with title="Raison sociale" field_name="societe_principale" %}
-              {% include "docia/details_ej/blocks/attribute.html" %}
-            {% endwith %}
-          </li>
-          <li>
-            {% with title="SIREN" field_name="siren_mandataire" %}
-              {% include "docia/details_ej/blocks/attribute.html" %}
-            {% endwith %}
-          </li>
-          <li>
-            {% with title="SIRET" field_name="siret_mandataire" %}
-              {% include "docia/details_ej/blocks/attribute.html" %}
-            {% endwith %}
-          </li>
-          <li>
-            {% with title="Banque" field_name="rib_mandataire.banque" %}
-              {% include "docia/details_ej/blocks/attribute.html" %}
-            {% endwith %}
-          </li>
-          <li>
-            {% with title="IBAN" field_name="rib_mandataire.iban" %}
-              {% include "docia/details_ej/blocks/attribute.html" %}
-            {% endwith %}
-          </li>
+{# Prix : déroulant si montant_ht ou montant_ttc, sinon section grisée #}
+  {% if data.montant_ht or data.montant_ttc %}
+    <section class="fr-accordion" data-fr-js-accordion="true">
+      <h3 class="fr-accordion__title">
+        <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_prix" data-fr-js-collapse-button="true">
+          Prix
+        </button>
+      </h3>
+      <div class="fr-collapse" id="{{ doc.id }}_prix" data-fr-js-collapse="true" style="--collapse: -48px;">
+        <ul class="fr-list">
+          {% with value=data.montant_ht|floatformat:2 copy_value=data.montant_ht %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Montant HT" id=id_prefix|add:"montant_ht" suffix=" €" %}
+          {% endwith %}
+          {% with value=data.montant_ttc|floatformat:2 copy_value=data.montant_ttc %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Montant TTC" id=id_prefix|add:"montant_ttc" suffix=" €" %}
+          {% endwith %}
         </ul>
       </div>
+    </section>
+  {% else %}
+    <div class="document-section--disabled">
+      <span class="document-section--disabled__title">Prix – Non disponibles dans le document.</span>
     </div>
+  {% endif %}
 
-    <div class="fr-col-md-4 fr-col-12">
-      {% with data=data.duree %}
-        {% include "docia/details_ej/blocks/duree.html" %}
+{# Durée : déroulant si duree_initiale présente et non 0, sinon section grisée #}
+  {% with duree=data.duree %}
+    {% if duree and duree.duree_initiale %}
+      <section class="fr-accordion" data-fr-js-accordion="true">
+        <h3 class="fr-accordion__title">
+          <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_duree" data-fr-js-collapse-button="true">
+            Durée du marché
+          </button>
+        </h3>
+        <div class="fr-collapse" id="{{ doc.id }}_duree" data-fr-js-collapse="true" style="--collapse: -48px;">
+          <p class="fr-mb-2v">
+            Durée d'exécution du marché : <strong>{{ duree.duree_initiale }} mois</strong>
+            {% if duree.nb_reconductions %}
+              (reconductible)
+            {% else %}
+              (non reconductible)
+            {% endif %}
+          </p>
+          {% if duree.nb_reconductions %}
+            <ul class="fr-list">
+              {% with value=duree.nb_reconductions %}
+                {% include "docia/details_ej/blocks/attribute.html" with title="Nombre de reconductions" id=id_prefix|add:"nb_reconductions" %}
+              {% endwith %}
+              {% if duree.duree_reconduction %}
+                {% with value=duree.duree_reconduction suffix=" mois" %}
+                  {% include "docia/details_ej/blocks/attribute.html" with title="Durée d'une reconduction" id=id_prefix|add:"duree_reconduction" %}
+                {% endwith %}
+              {% endif %}
+            </ul>
+          {% endif %}
+        </div>
+      </section>
+    {% else %}
+      <div class="document-section--disabled">
+        <span class="document-section--disabled__title">Durée – Non disponible dans le document.</span>
+      </div>
+    {% endif %}
+  {% endwith %}
+
+{# Informations bancaires : déroulant si banque ou iban, sinon section grisée #}
+  {% with banque=data|get_item:"rib_mandataire.banque" iban=data|get_item:"rib_mandataire.iban" %}
+    {% if banque or iban %}
+      <section class="fr-accordion" data-fr-js-accordion="true">
+        <h3 class="fr-accordion__title">
+          <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_rib" data-fr-js-collapse-button="true">
+            Informations bancaires
+          </button>
+        </h3>
+        <div class="fr-collapse" id="{{ doc.id }}_rib" data-fr-js-collapse="true" style="--collapse: -48px;">
+          <ul class="fr-list">
+            {% with value=banque|upper %}
+              {% include "docia/details_ej/blocks/attribute.html" with title="Banque" id=id_prefix|add:"banque" %}
+            {% endwith %}
+            {% with value=iban|iban_spaces copy_value=iban %}
+              {% include "docia/details_ej/blocks/attribute.html" with title="IBAN" id=id_prefix|add:"rib_iban" %}
+            {% endwith %}
+          </ul>
+        </div>
+      </section>
+    {% else %}
+      <div class="document-section--disabled">
+        <span class="document-section--disabled__title">Informations bancaires – Non disponibles dans le document.</span>
+      </div>
+    {% endif %}
+  {% endwith %}
+
+{# Dates et signatures : déroulant si au moins une date, sinon section grisée #}
+  {% if data.date_signature_mandataire or data.date_signature_administration or data.date_notification %}
+    <section class="fr-accordion" data-fr-js-accordion="true">
+      <h3 class="fr-accordion__title">
+        <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_dates" data-fr-js-collapse-button="true">
+          Dates et signatures
+        </button>
+      </h3>
+      <div class="fr-collapse" id="{{ doc.id }}_dates" data-fr-js-collapse="true" style="--collapse: -48px;">
+        <ul class="fr-list">
+          {% with value=data.date_signature_mandataire %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Signature titulaire" id=id_prefix|add:"date_signature_titulaire" %}
+          {% endwith %}
+          {% with value=data.date_signature_administration %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Signature signataire" id=id_prefix|add:"date_signature_signataire" %}
+          {% endwith %}
+          {% with value=data.date_notification %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Date de notification" id=id_prefix|add:"date_notification" %}
+          {% endwith %}
+        </ul>
+      </div>
+    </section>
+  {% else %}
+    <div class="document-section--disabled">
+      <span class="document-section--disabled__title">Dates et signatures – Non trouvées dans le document.</span>
+    </div>
+  {% endif %}
+
+  {# Cotraitants #}
+  {% if data.cotraitants %}
+    <div class="fr-mt-6w">
+      <h2 class="fr-h3">Cotraitants</h2>
+      {% with table_data=data.cotraitants|list_of_dicts_as_table:formatting_data.cotraitants.table_columns %}
+        {% dsfr_table content=table_data.rows header=table_data.headers extra_classes='fr-table--bordered fr-table--no-scroll copyable copyable-all-cells' %}
       {% endwith %}
     </div>
+  {% endif %}
 
-    <div class="fr-col-md-4 fr-col-12">
-      <div>
-        <h4>Dates de signature</h4>
-        <ul>
-          <li>
-            {% with title="Mandataire" field_name="date_signature_mandataire" %}
-              {% include "docia/details_ej/blocks/attribute.html" %}
-            {% endwith %}
-          </li>
-          <li>
-            {% with title="Administration" field_name="date_signature_administration" %}
-              {% include "docia/details_ej/blocks/attribute.html" %}
-            {% endwith %}
-          </li>
-          <li>
-            {% with title="Notification" field_name="date_notification" %}
-              {% include "docia/details_ej/blocks/attribute.html" %}
-            {% endwith %}
-          </li>
-        </ul>
-      </div>
+  {# Sous-Traitants #}
+  {% if data.sous_traitants %}
+    <div class="fr-mt-6w">
+      <h2 class="fr-h3">Sous-traitants</h2>
+      {% with table_data=data.sous_traitants|list_of_dicts_as_table:formatting_data.sous_traitants.table_columns %}
+        {% dsfr_table content=table_data.rows header=table_data.headers extra_classes='fr-table--bordered fr-table--no-scroll copyable copyable-all-cells' %}
+      {% endwith %}
     </div>
+  {% endif %}
 
+  {# RIB autres #}
+  {% if data.rib_autres %}
+    <div class="fr-mt-6w">
+      <h2 class="fr-h3">RIB</h2>
+      {% with table_data=data.rib_autres|list_of_dicts_as_table:formatting_data.rib_autres.table_columns %}
+        {% dsfr_table content=table_data.rows header=table_data.headers extra_classes='fr-table--bordered fr-table--no-scroll copyable copyable-all-cells' %}
+      {% endwith %}
+    </div>
+  {% endif %}
+
+  {# Avance et garantie : section grisée en bas du document (même espacement que les autres sections) #}
+  <div class="document-section--disabled">
+    <span class="document-section--disabled__title">Avance et garantie – Bientôt disponible sur Dépenses Eclairées</span>
   </div>
-
 </div>
-{# End columns #}
-
-
-{# Cotraitants #}
-{% if data.cotraitants %}
-  <div>
-    <h2>Cotraitants</h2>
-    {% with table_data=data.cotraitants|list_of_dicts_as_table:formatting_data.cotraitants.table_columns %}
-      {% dsfr_table content=table_data.rows header=table_data.headers extra_classes='fr-table--bordered fr-table--no-scroll copyable copyable-all-cells' %}
-    {% endwith %}
-  </div>
-{% endif %}
-
-{# Sous-Traitants #}
-{% if data.sous_traitants %}
-  <div>
-    <h2>Sous-traitants</h2>
-    {% with table_data=data.sous_traitants|list_of_dicts_as_table:formatting_data.sous_traitants.table_columns %}
-      {% dsfr_table content=table_data.rows header=table_data.headers extra_classes='fr-table--bordered fr-table--no-scroll copyable copyable-all-cells' %}
-    {% endwith %}
-  </div>
-{% endif %}
-
-{# RIB #}
-{% if data.rib_autres %}
-  <div>
-    <h2>RIB</h2>
-    {% with table_data=data.rib_autres|list_of_dicts_as_table:formatting_data.rib_autres.table_columns %}
-      {% dsfr_table content=table_data.rows header=table_data.headers extra_classes='fr-table--bordered fr-table--no-scroll copyable copyable-all-cells' %}
-    {% endwith %}
-  </div>
-{% endif %}
+{% endwith %}

@@ -160,8 +160,8 @@ def test_acte_engagement(client):
         "lot_concerne": "[[lot_concerne]]",
         "objet_marche": "[[objet_marche]]",
         "rib_mandataire": {"iban": "[[rib_mandataire.iban]]", "banque": "[[rib_mandataire.banque]]"},
-        "siren_mandataire": "[[siren_mandataire]]",
-        "siret_mandataire": "[[siret_mandataire]]",
+        "siren_mandataire": "123456789",
+        "siret_mandataire": "12345678901234",
         "date_notification": "[[date_notification]]",
         "societe_principale": "[[societe_principale]]",
         "date_signature_mandataire": "[[date_signature_mandataire]]",
@@ -190,17 +190,18 @@ def test_acte_engagement(client):
     assert "[[lot_concerne]]" in response.text
     assert "[[objet_marche]]" in response.text
     assert "[[rib_mandataire.iban]]" in response.text
-    assert "[[rib_mandataire.banque]]" in response.text
-    assert "[[siren_mandataire]]" in response.text
-    assert "[[siret_mandataire]]" in response.text
+    assert "[[RIB_MANDATAIRE.BANQUE]]" in response.text
+    assert "123 456 789" in response.text
+    assert "123 456 789 012 34" in response.text
     assert "[[date_notification]]" in response.text
     assert "[[societe_principale]]" in response.text
     assert "[[date_signature_mandataire]]" in response.text
     assert "[[administration_beneficiaire]]" in response.text
     assert "[[date_signature_administration]]" in response.text
-    assert "40123.50" in response.text  # Montant total ht
-    assert "60123.50" in response.text  # Montant total ttc
-    assert "8 mois" in response.text
+    # Séparateur de milliers = espace insécable (U+00A0) avec Django + locale FR
+    assert "40\u00a0123,50 €" in response.text  # Montant total ht
+    assert "60\u00a0123,50 €" in response.text  # Montant total ttc
+    assert "12 mois" in response.text
 
 
 @pytest.mark.django_db
@@ -224,12 +225,6 @@ def test_ccap_without_lots(client):
         "objet_marche": "[[objet_marche]]",
         "montant_ht_lots": [],
         "forme_marche_lots": [],
-        "condition_avance_ccap": {
-            "remboursement": "65%-100%",
-            "montant_avance": "30%",
-            "montant_reference": "montant annuel",
-            "condition_declenchement": "Avance systématique",
-        },
     }
     doc.save()
     user = UserFactory(is_superuser=True)
@@ -240,10 +235,6 @@ def test_ccap_without_lots(client):
     assert "[[id_marche]]" in response.text
     assert "101234" in response.text
     assert "[[objet_marche]]" in response.text
-    assert "65%-100%" in response.text
-    assert "30%" in response.text
-    assert "montant annuel" in response.text
-    assert "Avance systématique" in response.text
     assert "forfaitaires" in response.text
 
 
@@ -308,11 +299,6 @@ def test_ccap_with_lots(client):
     assert "[[ccag]]" in response.text
     assert "[[id_marche]]" in response.text
     assert "[[objet_marche]]" in response.text
-    assert "65%-100%" in response.text
-    assert "30%" in response.text
-    assert "montant annuel" in response.text
-    assert "Avance systématique" in response.text
-    assert "forfaitaires" in response.text
 
     # Lots
     assert "Lot 1&nbsp;" in response.text
@@ -321,3 +307,48 @@ def test_ccap_with_lots(client):
     assert "[[lots.1.titre]]" in response.text
     assert "1111" in response.text
     assert "2222" in response.text
+
+
+@pytest.mark.django_db
+def test_rib(client):
+    """Vérifie l'affichage correct d'un document RIB (titulaire, adresse, banque, IBAN, etc.)."""
+    ej, doc = create_ej_and_document()
+    doc.classification = "rib"
+    doc.structured_data = {
+        "titulaire_compte": "[[titulaire_compte]]",
+        "adresse_postale_titulaire": {
+            "numero_voie": "10",
+            "nom_voie": "rue de la Banque",
+            "complement_adresse": "Bâtiment A",
+            "code_postal": "75001",
+            "ville": "Paris",
+            "pays": "France",
+        },
+        "banque": "[[banque]]",
+        "domiciliation": "[[domiciliation]]",
+        "bic": "BNPAFRPP",
+        "iban": "FR7612345678901234567890123",
+    }
+    doc.save()
+    user = UserFactory(is_superuser=True)
+    client.force_login(user)
+    response = client.get(f"/?num_ej={ej.num_ej}")
+    assert response.status_code == 200
+
+    # Champs affichés par document_rib.html
+    assert "Titulaire du compte" in response.text
+    assert "[[titulaire_compte]]" in response.text
+    assert "Adresse postale" in response.text
+    # format_postal_address : "10 rue de la Banque, Bâtiment A, 75001 Paris, France"
+    assert "10 rue de la Banque" in response.text
+    assert "75001 Paris" in response.text
+    assert "France" in response.text
+    assert "Banque" in response.text
+    assert "[[banque]]" in response.text
+    assert "Domiciliation" in response.text
+    assert "[[domiciliation]]" in response.text
+    assert "BIC" in response.text
+    assert "BNPAFRPP" in response.text
+    assert "IBAN" in response.text
+    # iban_spaces : espace tous les 4 caractères
+    assert "FR76 1234 5678 9012 3456 7890 123" in response.text

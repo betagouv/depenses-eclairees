@@ -172,6 +172,7 @@ LANGUAGE_CODE = "fr-fr"
 TIME_ZONE = "Europe/Paris"
 
 USE_I18N = True
+USE_THOUSAND_SEPARATOR = True
 
 USE_TZ = True
 
@@ -251,10 +252,12 @@ LOGGING = {
     },
     "formatters": {
         "simple": {
+            "()": "docia.logging.MultiLineFormatter",
             "format": "[%(asctime)s] %(levelname)s sid=%(session_id)s rid=%(request_id)s %(name)s %(message)s",
             "datefmt": "%Y-%m-%dT%H:%M:%S%z",
         },
         "short": {
+            "()": "docia.logging.MultiLineFormatter",
             "format": "[%(asctime)s] %(levelname)s %(module)s %(message)s",
             "datefmt": "%Y-%m-%dT%H:%M:%S%z",
         },
@@ -295,7 +298,10 @@ LOGGING = {
             "level": config.str("LOG_LEVEL_BOTO3", default="WARNING"),
         },
         "requests": {
-            "level": "DEBUG",
+            "level": config.str("LOG_LEVEL_REQUESTS", default="WARNING"),
+        },
+        "lasuite": {
+            "level": config.str("LOG_LEVEL_LASUITE", default="WARNING"),
         },
         "docia": {
             "level": config.str("LOG_LEVEL", default="INFO"),

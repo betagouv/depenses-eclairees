@@ -53,7 +53,8 @@ class BaseModel(models.Model):
         Returns:
             None
         """
-        if update_fields:
+        if update_fields is not None:
+            update_fields = list(update_fields) if update_fields else []
             # Remove '-updated_at' from update_fields if present to allow updating 'updated_at'
             if "-updated_at" in update_fields:
                 update_fields.remove("-updated_at")

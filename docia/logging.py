@@ -67,3 +67,31 @@ class CeleryTaskFilter(logging.Filter):
             record.task_name = ""
         record.worker_name = celeryworker.worker_nodename
         return True
+
+
+class MultiLineFormatter(logging.Formatter):
+    def format(self, record):
+        # First, format the record as usual (including traceback)
+        formatted_message = super().format(record)
+
+        # Split the formatted message into lines
+        lines = formatted_message.split("\n")
+
+        # Save original message for later restore
+        og_message = record.message
+
+        # Reformat each line (first line is already well formatted)
+        reformatted_lines = lines[:1]
+        for line in lines[1:]:
+            if line.strip():  # Skip empty lines
+                # Override the record.message
+                record.message = line
+                # Reformat the line
+                reformatted_line = self.formatMessage(record)
+                reformatted_lines.append(reformatted_line)
+
+        # Restore original message
+        record.message = og_message
+
+        # Join the reformatted lines
+        return "\n".join(reformatted_lines)
