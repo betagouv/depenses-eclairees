@@ -30,3 +30,15 @@ def test_model_save_update_fields_can_exclude_updated_at():
     u.refresh_from_db()
     assert u.email == "toto@test.local"
     assert u.updated_at == last_updated_at
+
+
+@pytest.mark.django_db
+def test_model_save_works_with_list_like():
+    """Test that passing updated_fields as something else than list is handled correctly."""
+    u = UserFactory()
+    # Pass a tuple
+    u.save(update_fields=("email",))
+    # Pass a set
+    u.save(update_fields={"email"})
+    # Pass a generator
+    u.save(update_fields=(x for x in ["email"]))
