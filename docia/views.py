@@ -20,6 +20,7 @@ CLASSIFICATIONS_NON_AFFICHEES = frozenset(
         "att_sirene",
         "sous_traitance",
         "bon_de_commande",
+        "notification"
     }
 )
 

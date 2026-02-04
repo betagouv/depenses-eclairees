@@ -106,11 +106,11 @@
           {% if duree.nb_reconductions %}
             <ul class="fr-list">
               {% with value=duree.nb_reconductions %}
-                {% include "docia/details_ej/blocks/attribute.html" with title="Nombre de reconductions" %}
+                {% include "docia/details_ej/blocks/attribute.html" with title="Nombre de reconductions" id=id_prefix|add:"nb_reconductions" %}
               {% endwith %}
               {% if duree.duree_reconduction %}
                 {% with value=duree.duree_reconduction suffix=" mois" %}
-                  {% include "docia/details_ej/blocks/attribute.html" with title="Durée d'une reconduction" %}
+                  {% include "docia/details_ej/blocks/attribute.html" with title="Durée d'une reconduction" id=id_prefix|add:"duree_reconduction" %}
                 {% endwith %}
               {% endif %}
             </ul>
