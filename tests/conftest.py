@@ -2,8 +2,9 @@
 Global fixtures for all tests
 """
 
-import pytest
 from django.test import Client
+
+import pytest
 
 from tests.factories.users import UserFactory
 

@@ -1,4 +1,3 @@
-
 from django.db.models import Manager
 from django.test import TestCase
 
