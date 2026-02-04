@@ -1,8 +1,15 @@
-"""Test utilities and helper functions."""
-
+from django.db.models import Manager
 from django.test import TestCase
 
 
-def assert_queryset_equal(*args, **kwargs):
+def assert_queryset_equal(qs, values, transform=None, ordered=False, msg=None):
     """Helper function to assert queryset equality using Django's TestCase method."""
-    return TestCase().assertQuerySetEqual(*args, **kwargs)
+    if isinstance(qs, Manager):
+        qs = qs.all()
+    return TestCase().assertQuerySetEqual(
+        qs=qs,
+        values=values,
+        transform=transform,
+        ordered=ordered,
+        msg=msg,
+    )

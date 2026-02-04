@@ -14,7 +14,7 @@ class TestGetUserAllowedEj:
         """Test that get_user_allowed_ej_qs returns empty queryset for user with no scopes."""
         user = UserFactory()
         result = get_user_allowed_ej_qs(user)
-        assert_queryset_equal(result, [], ordered=False)
+        assert_queryset_equal(result, [])
 
     @pytest.mark.django_db
     def test_with_scopes(self):
@@ -36,7 +36,7 @@ class TestGetUserAllowedEj:
 
         result = get_user_allowed_ej_qs(user)
         # Only ej 1 & 2 should be returned, 3 is not in the same scope, and 4 has no scope
-        assert_queryset_equal(result, [ej1, ej2], ordered=False)
+        assert_queryset_equal(result, [ej1, ej2])
 
     @pytest.mark.django_db
     def test_multiple_groups(self):
@@ -61,7 +61,7 @@ class TestGetUserAllowedEj:
         scope2.groups.add(group2)
 
         result = get_user_allowed_ej_qs(user)
-        assert_queryset_equal(result, [ej1, ej2, ej3], ordered=False)
+        assert_queryset_equal(result, [ej1, ej2, ej3])
 
     @pytest.mark.django_db
     def test_distinct_results(self):
@@ -84,7 +84,7 @@ class TestGetUserAllowedEj:
 
         result = get_user_allowed_ej_qs(user)
         # Should return 2 distinct EJs, not 3 (even though ej1 appears in 2 scopes)
-        assert_queryset_equal(result, [ej1, ej2], ordered=False)
+        assert_queryset_equal(result, [ej1, ej2])
 
 
 class TestUserCanViewEj:

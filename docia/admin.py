@@ -4,7 +4,6 @@ from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.contrib.auth import admin as auth_admin
 from django.contrib.auth import forms as auth_forms
 from django.contrib.auth import models as auth_models
-from django.db.transaction import atomic
 
 from . import models
 
@@ -153,11 +152,11 @@ class AdminGroupForm(forms.ModelForm):
         if self.instance.pk:
             self.fields["scopes"].initial = self.instance.scopes.all()
 
-    def save(self, commit=True):
-        with atomic():
-            group = super().save(commit)
-            group.scopes.set(self.cleaned_data["scopes"])
-        return group
+    def _save_m2m(self):
+        super()._save_m2m()
+        cleaned_data = self.cleaned_data
+        scopes = cleaned_data["scopes"]
+        self.instance.scopes.set(scopes)
 
 
 @admin.register(auth_models.Group)
