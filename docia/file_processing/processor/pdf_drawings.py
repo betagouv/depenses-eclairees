@@ -298,7 +298,7 @@ def add_checkbox_drawings_in_text(page):
     checkbox_caracters = deduce_checkbox_caracters_from_groups(drawings, groups)
 
     # Insertion des check boxes dans le texte
-    font_size_pt = cm_to_points(0.3)
+    font_size_pt = cm_to_points(0.1)
     for checkbox_caracter in checkbox_caracters:
         character, center = checkbox_caracter
 
