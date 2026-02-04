@@ -1020,22 +1020,22 @@ testing = ["coverage[toml] (>=5.0a4)", "pytest (>=4.6.11)", "setuptools (>=71.0.
 
 [[package]]
 name = "django-lasuite"
-version = "0.0.14"
+version = "0.0.23"
 description = "Django La Suite - A Django library"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "django_lasuite-0.0.14-py3-none-any.whl", hash = "sha256:935ef6723f0e25c1ab8b7ddba41d0d4bca0bb6c5399e8263ce708a17369d2ab5"},
-    {file = "django_lasuite-0.0.14.tar.gz", hash = "sha256:4e3aa09132051bd529357f9dfddadc06bad67b57e781bd0e3d7595df864281b6"},
+    {file = "django_lasuite-0.0.23-py3-none-any.whl", hash = "sha256:8726ca7d8ed6c12078e5168ead9dff51706bf9e73dc84921c8d211fef31961ff"},
+    {file = "django_lasuite-0.0.23.tar.gz", hash = "sha256:34bc2bf84feab8694846cbdb573762f02c79e355384d0dc5b395e0e416dfb12d"},
 ]
 
 [package.dependencies]
 django = ">=5.0"
 djangorestframework = ">=3.15.2"
-joserfc = ">=1.0.4"
+joserfc = ">=1.4.0"
 mozilla-django-oidc = ">=4.0.1"
-pyjwt = ">=2.10.1"
+pyjwt = ">=2.8.0"
 requests = ">=2.32.3"
 requests-toolbelt = ">=1.0.0"
 
@@ -1043,7 +1043,7 @@ requests-toolbelt = ">=1.0.0"
 all = ["celery (>=5.0)", "django-configurations (>=2.5.1)"]
 build = ["setuptools", "wheel"]
 configuration = ["django-configurations (>=2.5.1)"]
-dev = ["celery (>=5.0)", "django-configurations (>=2.5.1)", "factory-boy", "pytest", "pytest-django", "responses", "ruff"]
+dev = ["celery (>=5.0)", "django-configurations (>=2.5.1)", "factory-boy", "freezegun (>=1.5.5)", "pytest", "pytest-django", "responses", "ruff"]
 malware-detection = ["celery (>=5.0)"]
 
 [[package]]
@@ -4972,4 +4972,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "~=3.13"
-content-hash = "66a8ed2ba89b298d23d8c6307118c2f7cb6fb1baa5e649c6b1cbc5d624b70fa7"
+content-hash = "3da4e7b05389768a4f417dc666ae93045ced26b2da50d60f6fb2ec4748e098b7"

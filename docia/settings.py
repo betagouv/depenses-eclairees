@@ -296,7 +296,10 @@ LOGGING = {
             "level": config.str("LOG_LEVEL_BOTO3", default="WARNING"),
         },
         "requests": {
-            "level": "DEBUG",
+            "level": config.str("LOG_LEVEL_REQUESTS", default="WARNING"),
+        },
+        "lasuite": {
+            "level": config.str("LOG_LEVEL_LASUITE", default="WARNING"),
         },
         "docia": {
             "level": config.str("LOG_LEVEL", default="INFO"),

@@ -1,8 +1,12 @@
+import logging
+
 from django.conf import settings
 
 from lasuite.oidc_login.backends import (
     OIDCAuthenticationBackend as LaSuiteOIDCAuthenticationBackend,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class CustomOIDCBackend(LaSuiteOIDCAuthenticationBackend):
@@ -32,6 +36,16 @@ class CustomOIDCBackend(LaSuiteOIDCAuthenticationBackend):
             if claim_value and claim_value != getattr(user, key):
                 setattr(user, key, claim_value)
                 updated_claims[key] = claim_value
+
+                # Log if sub field is updated
+                if key == self.OIDC_USER_SUB_FIELD and getattr(user, key):
+                    logger.warning(
+                        "Update sub field '%s' for user %s: %s -> %s",
+                        key,
+                        user.id,
+                        getattr(user, key),
+                        claim_value,
+                    )
 
         if updated_claims:
             user.save(update_fields=tuple(updated_claims.keys()))
