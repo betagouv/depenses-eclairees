@@ -252,10 +252,12 @@ LOGGING = {
     },
     "formatters": {
         "simple": {
+            "()": "docia.logging.MultiLineFormatter",
             "format": "[%(asctime)s] %(levelname)s sid=%(session_id)s rid=%(request_id)s %(name)s %(message)s",
             "datefmt": "%Y-%m-%dT%H:%M:%S%z",
         },
         "short": {
+            "()": "docia.logging.MultiLineFormatter",
             "format": "[%(asctime)s] %(levelname)s %(module)s %(message)s",
             "datefmt": "%Y-%m-%dT%H:%M:%S%z",
         },
