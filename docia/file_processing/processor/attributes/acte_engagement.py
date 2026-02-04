@@ -358,28 +358,24 @@ Règles d’extraction :
         "search": "",
         "output_field": "date_notification",
     },
-    "avance": {
-        "consigne": """AVANCE
-        Définition : Information sur la volonté du titulaire de recevoir ou non une avance.
+    "conserve_avance": {
+        "consigne": """CONSERVE_AVANCE
+        Définition : Information sur la volonté du titulaire de conserver ou de renoncer au bénéfice de l'avance.
         Indices :
-        - Dans un paragraphe dédié au renoncement de l'avance, souvent sous la forme d'une case à cocher à proximité de la mention "Oui" ou "Non".
-        - Attention l'extraction du texte peut être ambiguë, notamment pour les cases à cocher :
-        * si une des cases est devenu x ou X, elle était probablement cochée.
-        * la coche d'une case peut être signifiée par des caractères [X] (et [ ] pour non cochée).
-        * parfois les coches des cases seront un peu décalées par rapport à la mention "Oui" ou "Non", mais toujours dans le même ordre : en déduire la réponse.
-        - Ne rien renvoyer sur l'avance si aucune information sur l'avance trouvée.
-        Format : "✓ Conserve le bénéfice de l'avance" ou "✗ Renonce au bénéfice de l'avance" ou "Information insuffisante"
+        Le texte présente souvent une phrase de type "Je renonce au bénéfice de l'avance" suivie de deux options : [ ] Non et [ ] Oui.
+        1. Identifie quelle case est cochée (représentée par [X], [x], X ou x) et quelle case ne l'est pas (représentée par [ ] ou un espace).
+        2. Analyse le sens : 
+        - Si "Renonce" est associé à "NON" (coché) -> L'utilisateur VEUT l'avance.
+        - Si "Renonce" est associé à "OUI" (coché) -> L'utilisateur REFUSE l'avance.
+        - Si la phrase est "Je souhaite bénéficier de l'avance" : Oui = Conserve, Non = Renonce.
+        Format (boolean, ou null si absent) :
+        - true : Si l'utilisateur exprime vouloir l'avance, ou refuse d'y renoncer.
+        - false : Si l'utilisateur exprime ne pas vouloir l'avance, ou accepte d'y renoncer.
+        - null : Uniquement si le paragraphe est totalement absent ou si aucune mention ([X], [x], X ou x n'est présente).
 """,
         "search": "",
-        "output_field": "avance",
-        "schema": {
-            "type": "string",
-            "enum": [
-                "✓ Conserve le bénéfice de l'avance",
-                "✗ Renonce au bénéfice de l'avance",
-                "Information insuffisante",
-            ],
-        },
+        "output_field": "conserve_avance",
+        "schema": {"type": ["boolean", "null"]},
     },
     "citation_avance": {
         "consigne": """CITATION_AVANCE
@@ -388,5 +384,42 @@ Règles d’extraction :
 """,
         "search": "",
         "output_field": "citation_avance",
+    },
+    "montants_en_annexe": {
+        "consigne": """MONTANTS_EN_ANNEXE  
+     Définition : Indique si les montants sont précisés dans le document, ou s'ils sont précisés dans un autre document en annexe
+     Indices : 
+     - Dans le paragraphe de l'engagement du titulaire, près de la mention des prix sur lesquels le titulaire s'engage.
+     - Souvent sous forme d'une case à cocher suivi de la mention "au prix indiqué dans les autres documents annexés ...".
+     - Une case cochée peut être représentée par [X], [x], X ou x.
+     - Une case non cochée peut être représentée par [ ] ou un espace.
+     - Si la mention est cochée (les montants sont précisés en annexe), renvoyer :
+        * "annexe_financière": true
+        * "classification": une liste des types de documents mentionnés parmi : "BPU", "DPGF", "Annexe financière".
+     - Si la mention n'est pas cochée (les montants sont précisés dans le document uniquement), renvoyer :
+        * "annexe_financière": false
+        * "classification": null
+""",
+        "search": "",
+        "output_field": "montants_en_annexe",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "annexe_financière": {"type": ["boolean", "null"]},
+                "classification": {
+                    "oneOf": [
+                        {"type": "null"},
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "enum": ["BPU", "DPGF", "Annexe financière"],
+                            },
+                        },
+                    ],
+                },
+            },
+            "required": ["annexe_financière", "classification"],
+        },
     },
 }
