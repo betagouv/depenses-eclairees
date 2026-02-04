@@ -12,15 +12,7 @@ logger = logging.getLogger(__name__)
 
 # Classifications traitées mais non affichées dans la catégorie analysée (pas encore prêtes)
 CLASSIFICATIONS_NON_AFFICHEES = frozenset(
-    {
-        "avenant",
-        "fiche_navette",
-        "kbis",
-        "devis",
-        "att_sirene",
-        "sous_traitance",
-        "bon_de_commande",
-    }
+    {"avenant", "fiche_navette", "kbis", "devis", "att_sirene", "sous_traitance", "bon_de_commande", "notification"}
 )
 
 

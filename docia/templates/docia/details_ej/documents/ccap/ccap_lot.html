@@ -45,9 +45,9 @@
           {% endif %}
           {% with value=mht.montant_ht_maximum|floatformat:2 copy_value=mht.montant_ht_maximum %}
             {% if mht.type_montant == "annuel" %}
-              {% include "docia/details_ej/blocks/attribute.html" with title="Montant HT Maximum" id=lot_prefix|add:"montant_ht" suffix=" / An" %}
+              {% include "docia/details_ej/blocks/attribute.html" with title="Montant HT Maximum" id=lot_prefix|add:"montant_ht" suffix=" € / An" %}
             {% elif mht.type_montant == "total" %}
-              {% include "docia/details_ej/blocks/attribute.html" with title="Montant HT Maximum" id=lot_prefix|add:"montant_ht" suffix=" Total" %}
+              {% include "docia/details_ej/blocks/attribute.html" with title="Montant HT Maximum" id=lot_prefix|add:"montant_ht" suffix=" € Total" %}
             {% else %}
               {% include "docia/details_ej/blocks/attribute.html" with title="Montant HT Maximum" id=lot_prefix|add:"montant_ht" %}
             {% endif %}
@@ -88,11 +88,11 @@
           {% if duree_lot.nb_reconductions %}
             <ul class="fr-list">
               {% with value=duree_lot.nb_reconductions %}
-                {% include "docia/details_ej/blocks/attribute.html" with title="Nombre de reconductions" %}
+                {% include "docia/details_ej/blocks/attribute.html" with title="Nombre de reconductions" id=lot_prefix|add:"nb_reconductions" %}
               {% endwith %}
               {% if duree_lot.duree_reconduction %}
                 {% with value=duree_lot.duree_reconduction suffix=" mois" %}
-                  {% include "docia/details_ej/blocks/attribute.html" with title="Durée d'une reconduction" %}
+                  {% include "docia/details_ej/blocks/attribute.html" with title="Durée d'une reconduction" id=lot_prefix|add:"duree_reconduction" %}
                 {% endwith %}
               {% endif %}
             </ul>
