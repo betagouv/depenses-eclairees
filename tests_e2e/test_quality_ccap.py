@@ -35,7 +35,7 @@ def compare_contract_object(llm_val, ref_val, llm_model="albert-small"):
         return False
 
     try:
-        llm_env = LLMClient(llm_model=llm_model)
+        llm_env = LLMClient()
         system_prompt = (
             "Vous êtes un expert en analyse sémantique de documents juridiques. "
             "Votre rôle est d'évaluer la proximité de sens entre deux descriptions d'objets."
@@ -54,7 +54,7 @@ def compare_contract_object(llm_val, ref_val, llm_model="albert-small"):
             }}
         """
         messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
-        result = llm_env.ask_llm(messages=messages, response_format={"type": "json_object"}, temperature=0)
+        result = llm_env.ask_llm(messages=messages, model=llm_model, response_format={"type": "json_object"}, temperature=0)
         return bool(result.get("sont_proches", False))
     except Exception as e:
         logger.error(f"Error calling LLM for compare_contract_object: {e}")

@@ -208,7 +208,7 @@ def get_prompt_for_final_infos(useful_infos, field):
     return get_prompt_for_final_infos_by_field(field) + useful_infos
 
 
-def final_infos_for_EJ(num_EJ, llm_env, dfDocs: pd.DataFrame = None):
+def final_infos_for_EJ(num_EJ, llm_env, dfDocs: pd.DataFrame = None, llm_model: str = "openweight-medium"):
     if(dfDocs is None):
         print('Extract from grist')
         dfDocs = grist.select_records_by_key([num_EJ],
@@ -229,7 +229,7 @@ def final_infos_for_EJ(num_EJ, llm_env, dfDocs: pd.DataFrame = None):
             {"role": "system", "content": "Tu es un analyste de marchés publics."},
             {"role": "user", "content": get_prompt_for_final_infos(useful_infos, field)}
         ]
-        response = llm_env.ask_llm(messages)
+        response = llm_env.ask_llm(messages, model=llm_model)
         try:
             infos, error = processor.parse_json_response(response)
             if infos is not None and field in infos:
@@ -296,7 +296,6 @@ def final_infos_all_EJ(dfEJPJ, api_url, api_key, llm_model='albert-large', max_w
     llm_env = processor.LLMClient(
         api_key=api_key,
         base_url=api_url,
-        llm_model=llm_model
     )
 
     dfResult = dfEJPJ[[col for col in dfEJPJ.columns if "engagements" in col]].copy(deep=False).drop_duplicates('engagements.num_EJ').reset_index(drop=True)
@@ -315,7 +314,7 @@ def final_infos_all_EJ(dfEJPJ, api_url, api_key, llm_model='albert-large', max_w
         dfDocsEJ = dfDocs[dfDocs['num_EJ'] == num_EJ]
 
         with log_execution_time(f"final_infos_for_EJ({num_EJ})"):
-            infos = final_infos_for_EJ(num_EJ, llm_env, dfDocsEJ)
+            infos = final_infos_for_EJ(num_EJ, llm_env, dfDocsEJ, llm_model=llm_model)
             # main_fields = extract_main_fields(infos)
 
         # Construire un dictionnaire avec les champs principaux et la synthèse complète

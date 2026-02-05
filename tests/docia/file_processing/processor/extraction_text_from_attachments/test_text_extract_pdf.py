@@ -15,7 +15,7 @@ def test_extract_text_from_pdf():
 
 
 def test_extract_text_from_pdf_ocr():
-    with open(ASSETS_DIR / "lettre-ocr.pdf", "rb") as f:
+    with open(ASSETS_DIR / "lettre_ocr.pdf", "rb") as f:
         file_content = f.read()
     with open(ASSETS_DIR / "lettre.md", "r") as f:
         expected_text = f.read()

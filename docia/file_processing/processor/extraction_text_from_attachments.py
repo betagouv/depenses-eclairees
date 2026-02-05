@@ -113,7 +113,7 @@ def display_pdf_stats(dfFiles, title="Statistiques globales"):
     print("=" * len(title))
 
 
-def extract_text_from_pdf(file_content: bytes, word_threshold=50):
+def extract_text_from_pdf(file_content: bytes, word_threshold=50, ocr_tool: str = "mistral-ocr"):
     """
     Extrait le texte d'un PDF. Si le PDF contient moins de mots que le seuil défini,
     utilise l'OCR pour extraire le texte.
@@ -121,7 +121,7 @@ def extract_text_from_pdf(file_content: bytes, word_threshold=50):
     Args:
         file_content (bytes): Contenu du fichier
         word_threshold (int): Nombre minimal de mots en dessous duquel l'OCR est utilisé
-        folder (str): Dossier contenant les fichiers PDF
+        ocr_tool (str): "mistral-ocr" (défaut) pour l'API Albert/OpenGateLLM, "tesseract" pour OCR local Tesseract
 
     Returns:
         tuple: (texte extrait, booléen indiquant si l'OCR a été utilisé)
@@ -140,12 +140,23 @@ def extract_text_from_pdf(file_content: bytes, word_threshold=50):
         doc_with_drawings = add_drawings_to_pdf(doc)
         text = "\n".join([page.get_text(sort=True) for page in doc_with_drawings]).strip()
 
-    # Si peu de mots sont extraits, c'est peut-être une image scannée
-    # Utilisation de l'API OCR (Albert / OpenGateLLM)
+    # Si peu de mots sont extraits, c'est peut-être une image scannée → OCR
     else:
         is_ocr_used = True
-        llm_client = LLMClient()
-        text = llm_client.ocr_pdf(file_content)
+        if ocr_tool == "tesseract":
+            # OCR local : PDF → pixmap (pymupdf) → image → tesserocr
+            # https://pymupdf.readthedocs.io/en/latest/pixmap.html
+            # https://tesseract-ocr.github.io/ / tesserocr (Python)
+            parts = []
+            for i in range(len(doc)):
+                pix = doc.load_page(i).get_pixmap(matrix=pymupdf.Matrix(2, 2))
+                img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                parts.append(tesserocr.image_to_text(img, lang="fra").strip())
+            text = "\n\n".join(parts).strip()
+        else:
+            # Défaut : API OCR Mistral (Albert / OpenGateLLM)
+            llm_client = LLMClient()
+            text = llm_client.ocr_pdf(file_content)
 
     return text, is_ocr_used
 
@@ -674,7 +685,13 @@ def extract_text_from_doc(file_content: bytes, file_path: str):
     return "", False
 
 
-def extract_text(file_content: bytes, file_path: str, file_type: str, word_threshold=50):
+def extract_text(
+    file_content: bytes,
+    file_path: str,
+    file_type: str,
+    word_threshold=50,
+    ocr_tool: str = "mistral-ocr",
+):
     """
     Extrait le texte d'un fichier selon son type.
 
@@ -683,6 +700,7 @@ def extract_text(file_content: bytes, file_path: str, file_type: str, word_thres
         file_path (str): Chemin du fichier
         file_type (str): Type du fichier (pdf, docx, doc, odt)
         word_threshold (int): Seuil de mots pour décider d'utiliser l'OCR (PDF uniquement)
+        ocr_tool (str): Pour les PDF en OCR, "mistral-ocr" (défaut) ou "tesseract"
 
     Returns:
         tuple: (texte extrait, booléen indiquant si l'OCR a été utilisé)
@@ -695,7 +713,7 @@ def extract_text(file_content: bytes, file_path: str, file_type: str, word_thres
         logger.warning(f"Unknown file type for {file_path} (type={file_type!r})")
         return "", False
     elif file_type == "pdf":
-        text, is_ocr = extract_text_from_pdf(file_content, word_threshold)
+        text, is_ocr = extract_text_from_pdf(file_content, word_threshold, ocr_tool=ocr_tool)
     elif file_type == "docx":
         text, is_ocr = extract_text_from_docx(file_content, file_path)
     elif file_type == "odt":
@@ -715,7 +733,13 @@ def extract_text(file_content: bytes, file_path: str, file_type: str, word_thres
 
 
 def df_extract_text(
-    dfFiles: pd.DataFrame, word_threshold=50, save_path=None, directory_path=None, save_grist=False, max_workers=4
+    dfFiles: pd.DataFrame,
+    word_threshold=50,
+    ocr_tool: str = "mistral-ocr",
+    save_path=None,
+    directory_path=None,
+    save_grist=False,
+    max_workers=4,
 ):
     """
     Traite le dataframe complet:
@@ -727,6 +751,7 @@ def df_extract_text(
     Args:
         df (DataFrame): DataFrame avec une colonne 'filename', 'path', 'extension'
         word_threshold (int): Seuil de mots pour décider d'utiliser l'OCR
+        ocr_tool (str): Pour les PDF en OCR, "mistral-ocr" (défaut) ou "tesseract"
 
     Returns:
         DataFrame: DataFrame traité avec les colonnes additionnelles
@@ -744,7 +769,8 @@ def df_extract_text(
     # Traitement parallèle
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         futures = [
-            executor.submit(process_df_row, row, word_threshold) for row in dfResult.reset_index().to_dict("records")
+            executor.submit(process_df_row, row, word_threshold, ocr_tool)
+            for row in dfResult.reset_index().to_dict("records")
         ]
 
         results = []
@@ -781,7 +807,7 @@ def df_extract_text(
     return dfResult
 
 
-def process_df_row(row, word_threshold):
+def process_df_row(row, word_threshold, ocr_tool: str = "mistral-ocr"):
     """
     Fonction pour traiter une ligne du DataFrame.
     Extrait le texte du PDF et met à jour les colonnes correspondantes.
@@ -794,7 +820,7 @@ def process_df_row(row, word_threshold):
     file_path = f"{folder}/{filename}"
 
     try:
-        text, is_ocr, nb_words = process_file(file_path, extension, word_threshold)
+        text, is_ocr, nb_words = process_file(file_path, extension, word_threshold, ocr_tool=ocr_tool)
     except FileNotFoundError:
         logger.error("Erreur: Le fichier %s n'existe pas", file_path)
         text, is_ocr = "", False
@@ -805,7 +831,12 @@ def process_df_row(row, word_threshold):
     return row["index"], {"text": text, "is_OCR": is_ocr, "nb_mot": nb_words}
 
 
-def process_file(file_path: str, extension: str, word_threshold: int = 50):
+def process_file(
+    file_path: str,
+    extension: str,
+    word_threshold: int = 50,
+    ocr_tool: str = "mistral-ocr",
+):
     """
     Process a single file to extract text content with OCR support if needed.
 
@@ -813,6 +844,7 @@ def process_file(file_path: str, extension: str, word_threshold: int = 50):
         file_path: Path to the file to process
         extension: File extension indicating type (pdf, docx, etc)
         word_threshold: Minimum word count threshold below which OCR is triggered for PDFs
+        ocr_tool: For PDF OCR, "mistral-ocr" (default) or "tesseract"
 
     Returns:
         tuple:
@@ -832,7 +864,7 @@ def process_file(file_path: str, extension: str, word_threshold: int = 50):
         file_content = f.read()
 
     with log_execution_time(f"extract_text({file_path})"):
-        text, is_ocr = extract_text(file_content, file_path, extension, word_threshold)
+        text, is_ocr = extract_text(file_content, file_path, extension, word_threshold, ocr_tool=ocr_tool)
 
     nb_words = count_words(text)
     return text, is_ocr, nb_words

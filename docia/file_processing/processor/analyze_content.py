@@ -162,7 +162,7 @@ def analyze_file_text(text: str, document_type: str, llm_model: str = "openweigh
 def analyze_file_text_llm(
     text: str, document_type: str, llm_model: str = "openweight-medium", temperature: float = 0.0
 ):
-    llm_env = LLMClient(llm_model)
+    llm_env = LLMClient()
 
     question = get_prompt_from_attributes(select_attr(ATTRIBUTES, document_type))
     response_format = create_response_format(ATTRIBUTES, document_type)
@@ -175,6 +175,6 @@ def analyze_file_text_llm(
 
     messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
 
-    response = llm_env.ask_llm(messages, response_format, temperature)
+    response = llm_env.ask_llm(messages, model=llm_model, response_format=response_format, temperature=temperature)
 
     return response
