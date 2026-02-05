@@ -14,11 +14,6 @@ from docia.file_processing.llm.rategate.gate import RateGate
 
 logger = logging.getLogger(__name__)
 
-# --- OCR (API Albert / OpenGateLLM, convention Mistral) ---
-# Modèle OCR (image-to-text). https://albert.status.staging.etalab.gouv.fr/status/api
-DEFAULT_OCR_MODEL = "mistral-ocr-2512"
-OCR_ENDPOINT = "/ocr"
-
 
 def _build_pdf_document_payload(pdf_content: bytes) -> dict:
     """Payload document pour l'API OCR : PDF en base64 (data URI)."""
@@ -30,7 +25,11 @@ def _build_pdf_document_payload(pdf_content: bytes) -> dict:
 def _extract_markdown_from_ocr_response(response_data: dict) -> str:
     """Extrait le texte markdown de la réponse OCR (toutes les pages)."""
     pages = response_data.get("pages", [])
-    parts = [page.get("markdown") or "" for page in pages]
+    total = len(pages)
+    parts = []
+    for i, page in enumerate(pages, start=1):
+        content = (page.get("markdown") or "").strip()
+        parts.append(f"[[PAGE {i} {total}]]\n{content}\n[[FIN PAGE {i} {total}]]")
     return "\n\n".join(parts).strip()
 
 
@@ -202,7 +201,7 @@ class LLMClient:
     def ocr_pdf(
         self,
         pdf_content: bytes,
-        model: str = DEFAULT_OCR_MODEL,
+        model: str = "mistral-ocr-2512",
         max_retries: int = 3,
         retry_delay: float = 60,
         retry_short_delay: float = 10,
@@ -213,6 +212,7 @@ class LLMClient:
         Retry : 429 (retry_delay), 5XX et erreurs de connexion (retry_short_delay).
         À utiliser dans extract_text_from_pdf (processor) quand le PDF est un scan / peu de texte.
         """
+        ocr_endpoint = "/ocr"
         if max_retries < 0:
             max_retries = 0
 
@@ -221,7 +221,7 @@ class LLMClient:
             "document": _build_pdf_document_payload(pdf_content),
             "include_image_base64": False,
         }
-        url = urljoin(self.base_url.rstrip("/") + "/", OCR_ENDPOINT.lstrip("/"))
+        url = urljoin(self.base_url.rstrip("/") + "/", ocr_endpoint.lstrip("/"))
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -238,7 +238,7 @@ class LLMClient:
                     url,
                     headers=headers,
                     json=payload,
-                    timeout=120.0,
+                    timeout=180.0,
                 )
             except (httpx.ConnectError, httpx.TimeoutException) as e:
                 # Network/timeout error: no Response, handle retry here.
