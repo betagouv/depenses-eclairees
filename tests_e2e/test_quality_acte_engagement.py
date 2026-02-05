@@ -428,6 +428,38 @@ def compare_duration(llm_val, ref_val):
         return False
 
 
+def compare_conserve_avance(llm_value, ref_value):
+    """Compare conserve_avance : boolean ou null, comparaison directe."""
+    if llm_value is None and ref_value is None:
+        return True
+
+    if llm_value is None or ref_value is None:
+        return False
+
+    return llm_value == ref_value
+
+
+def compare_montants_en_annexe(llm_val, ref_val):
+    """Compare montants_en_annexe : dict avec annexe_financière (bool|null) et classification (null | list[str])."""
+    if not llm_val and not ref_val:
+        return True
+
+    if not llm_val or not ref_val:
+        return False
+
+    if llm_val.get("annexe_financière") != ref_val.get("annexe_financière"):
+        return False
+
+    llm_cl, ref_cl = llm_val.get("classification"), ref_val.get("classification")
+    
+    if llm_cl is None and ref_cl is None:
+        return True
+    if llm_cl is None or ref_cl is None:
+        return False
+
+    return sorted(llm_cl) == sorted(ref_cl)
+
+
 def get_comparison_functions():
     """Mapping des colonnes vers leurs fonctions de comparaison
 
@@ -455,6 +487,8 @@ def get_comparison_functions():
         "date_signature_administration": compare_date,
         "date_notification": compare_date,
         "duree": compare_duration,
+        "conserve_avance": compare_conserve_avance,
+        "montants_en_annexe": compare_montants_en_annexe,
     }
 
 
@@ -472,7 +506,7 @@ def create_batch_test(multi_line_coef=1):
     df_test["siren_mandataire"] = df_test["siren_mandataire"].astype(str).apply(lambda x: x.split(".")[0])
     df_test["montant_ht"] = df_test["montant_ht"].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "")
     df_test["montant_ttc"] = df_test["montant_ttc"].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "")
-
+    df_test['conserve_avance']
     # Lancement du test
     return analyze_content_quality_test(df_test, "acte_engagement", multi_line_coef=multi_line_coef)
 
@@ -484,7 +518,7 @@ if __name__ == "__main__":
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "rib_mandataire", comparison_functions)
+    check_quality_one_field(df_merged.query("is_ocr == False"), "montants_en_annexe", comparison_functions)
     check_quality_one_field(df_merged, "cotraitants", comparison_functions)
 
     check_quality_one_row(df_merged, 0, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)

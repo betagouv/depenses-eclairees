@@ -365,17 +365,14 @@ Règles d’extraction :
         Le texte présente souvent une phrase de type "Je renonce au bénéfice de l'avance" suivie de deux options : [ ] Non et [ ] Oui.
         1. Identifie quelle case est cochée (représentée par [X], [x], X ou x) et quelle case ne l'est pas (représentée par [ ] ou un espace).
         2. Analyse le sens : 
-        - Si "Renonce" est associé à "NON" (coché) -> L'utilisateur VEUT l'avance.
-        - Si "Renonce" est associé à "OUI" (coché) -> L'utilisateur REFUSE l'avance.
-        - Si la phrase est "Je souhaite bénéficier de l'avance" : Oui = Conserve, Non = Renonce.
-        Format (boolean, ou null si absent) :
-        - true : Si l'utilisateur exprime vouloir l'avance, ou refuse d'y renoncer.
-        - false : Si l'utilisateur exprime ne pas vouloir l'avance, ou accepte d'y renoncer.
-        - null : Uniquement si le paragraphe est totalement absent ou si aucune mention ([X], [x], X ou x n'est présente).
+        - Si "Renonce" est associé à "NON" (coché) -> L'utilisateur VEUT l'avance -> Renvoyer "conserve"
+        - Si "Renonce" est associé à "OUI" (coché) -> L'utilisateur REFUSE l'avance -> Renvoyer "renonce"
+        - Si la phrase est "Je souhaite BENEFICIER de l'avance" : Oui = Conserve -> Renvoyer "conserve", Non = Renonce -> Renvoyer "renonce"
+        - Uniquement si le paragraphe est totalement absent ou si aucune mention ([X], [x], X ou x n'est présente) -> Renvoyer null
 """,
         "search": "",
         "output_field": "conserve_avance",
-        "schema": {"type": ["boolean", "null"]},
+        "schema": {"type": ["string", "null"]},
     },
     "citation_avance": {
         "consigne": """CITATION_AVANCE
