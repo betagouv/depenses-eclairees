@@ -1,3 +1,4 @@
+import base64
 from unittest import mock
 from unittest.mock import Mock, patch
 
@@ -6,15 +7,12 @@ import pytest
 from httpx import TimeoutException
 from openai._base_client import SyncHttpxClientWrapper
 
-import base64
-
 from docia.file_processing.llm.client import (
     LLMApiError,
     LLMClient,
     _build_pdf_document_payload,
     _extract_markdown_from_ocr_response,
 )
-
 
 # --- _build_pdf_document_payload / _extract_markdown_from_ocr_response ---
 
@@ -50,9 +48,11 @@ def test_extract_markdown_from_ocr_response_one_page():
 
 def test_extract_markdown_from_ocr_response_multiple_pages():
     """Plusieurs pages : marqueurs avec numéro de page et total."""
-    out = _extract_markdown_from_ocr_response({
-        "pages": [{"markdown": "A"}, {"markdown": "B"}, {"markdown": "C"}],
-    })
+    out = _extract_markdown_from_ocr_response(
+        {
+            "pages": [{"markdown": "A"}, {"markdown": "B"}, {"markdown": "C"}],
+        }
+    )
     assert "[[PAGE 1 3]]\nA\n[[FIN PAGE 1 3]]" in out
     assert "[[PAGE 2 3]]\nB\n[[FIN PAGE 2 3]]" in out
     assert "[[PAGE 3 3]]\nC\n[[FIN PAGE 3 3]]" in out
@@ -89,11 +89,13 @@ def test_api_call_429_retry_then_raise():
         assert exc_info.value.code == "HTTP_429"
         assert func_api.call_count == 4
         assert m_sleep.call_count == 3
-        m_sleep.assert_has_calls([
-            mock.call(60 * 1.05 * 1),
-            mock.call(60 * 1.05 * 2),
-            mock.call(60 * 1.05 * 3),
-        ])
+        m_sleep.assert_has_calls(
+            [
+                mock.call(60 * 1.05 * 1),
+                mock.call(60 * 1.05 * 2),
+                mock.call(60 * 1.05 * 3),
+            ]
+        )
 
 
 def test_api_call_4xx_no_retry():

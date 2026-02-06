@@ -7,15 +7,15 @@ from collections.abc import Callable
 from typing import TypeVar
 from urllib.parse import urljoin
 
-T = TypeVar("T")
-
 from django.conf import settings
+
 import httpx
-from openai import APIConnectionError, APIError, APIStatusError, OpenAI
+from openai import APIError, APIStatusError, OpenAI
 
 from docia.file_processing.llm.rategate.gate import RateGate
 
 logger = logging.getLogger(__name__)
+T = TypeVar("T")
 
 
 def _build_pdf_document_payload(pdf_content: bytes) -> dict:
@@ -111,9 +111,7 @@ class LLMClient:
         effective_rate = (
             rate_per_minute
             if rate_per_minute is not None
-            else settings.ALBERT_RATE_PER_MINUTE_BY_MODEL.get(
-                model, settings.ALBERT_RATE_PER_MINUTE_DEFAULT
-            )
+            else settings.ALBERT_RATE_PER_MINUTE_BY_MODEL.get(model, settings.ALBERT_RATE_PER_MINUTE_DEFAULT)
         )
         return RateGate(effective_rate, key=f"{model}_{effective_rate}")
 
@@ -230,7 +228,7 @@ class LLMClient:
         }
 
         def _do_call() -> str:
-            post = (self._ocr_http_client.post if self._ocr_http_client else httpx.post)
+            post = self._ocr_http_client.post if self._ocr_http_client else httpx.post
             try:
                 response = post(url, headers=headers, json=payload, timeout=180.0)
             except (httpx.ConnectError, httpx.TimeoutException) as e:
