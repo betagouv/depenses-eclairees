@@ -41,9 +41,9 @@ def test_extract_markdown_from_ocr_response_empty():
 
 
 def test_extract_markdown_from_ocr_response_one_page():
-    """Une page : marqueurs [[PAGE 1 1]] ... [[FIN PAGE 1 1]] et contenu."""
+    """Une page : marqueurs [[PAGE 1 / 1]] ... [[FIN PAGE 1 / 1]] et contenu."""
     out = _extract_markdown_from_ocr_response({"pages": [{"markdown": "Hello"}]})
-    assert out == "[[PAGE 1 1]]\nHello\n[[FIN PAGE 1 1]]"
+    assert out == "[[PAGE 1 / 1]]\nHello\n[[FIN PAGE 1 / 1]]"
 
 
 def test_extract_markdown_from_ocr_response_multiple_pages():
@@ -53,17 +53,17 @@ def test_extract_markdown_from_ocr_response_multiple_pages():
             "pages": [{"markdown": "A"}, {"markdown": "B"}, {"markdown": "C"}],
         }
     )
-    assert "[[PAGE 1 3]]\nA\n[[FIN PAGE 1 3]]" in out
-    assert "[[PAGE 2 3]]\nB\n[[FIN PAGE 2 3]]" in out
-    assert "[[PAGE 3 3]]\nC\n[[FIN PAGE 3 3]]" in out
+    assert "[[PAGE 1 / 3]]\nA\n[[FIN PAGE 1 / 3]]" in out
+    assert "[[PAGE 2 / 3]]\nB\n[[FIN PAGE 2 / 3]]" in out
+    assert "[[PAGE 3 / 3]]\nC\n[[FIN PAGE 3 / 3]]" in out
     assert out.count("\n\n") == 2
 
 
 def test_extract_markdown_from_ocr_response_missing_markdown():
     """Page sans clé markdown -> contenu vide pour cette page."""
     out = _extract_markdown_from_ocr_response({"pages": [{"markdown": "Ok"}, {}]})
-    assert "[[PAGE 1 2]]\nOk\n[[FIN PAGE 1 2]]" in out
-    assert "[[PAGE 2 2]]\n\n[[FIN PAGE 2 2]]" in out
+    assert "[[PAGE 1 / 2]]\nOk\n[[FIN PAGE 1 / 2]]" in out
+    assert "[[PAGE 2 / 2]]\n\n[[FIN PAGE 2 / 2]]" in out
 
 
 # --- _api_call (retry / erreurs) ---
@@ -361,6 +361,6 @@ def test_ocr_pdf_success():
     ocr_client = httpx.Client(transport=httpx.MockTransport(handler=mock_handler))
     client = LLMClient(use_rate_limiter=False, ocr_http_client=ocr_client)
     result = client.ocr_pdf(PDF_CONTENT)
-    expected = "[[PAGE 1 2]]\nPage one\n[[FIN PAGE 1 2]]\n\n[[PAGE 2 2]]\nPage two\n[[FIN PAGE 2 2]]"
+    expected = "[[PAGE 1 / 2]]\nPage one\n[[FIN PAGE 1 / 2]]\n\n[[PAGE 2 / 2]]\nPage two\n[[FIN PAGE 2 / 2]]"
     assert result == expected
     assert mock_handler.call_count == 1
