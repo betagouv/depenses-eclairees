@@ -1,6 +1,4 @@
 import logging
-import re
-import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 
 import tqdm

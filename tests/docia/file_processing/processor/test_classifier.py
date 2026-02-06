@@ -9,7 +9,6 @@ from docia.file_processing.processor.classifier import (
     create_classification_prompt,
 )
 
-
 # --- create_classification_prompt ---
 
 
@@ -84,7 +83,6 @@ def test_classify_file_with_llm_takes_first_matching_category():
         mock_cls.return_value.ask_llm.return_value = ["Facture", "Extrait Kbis"]
         r = classify_file_with_llm("f", "text", DIC_CLASS_FILE_BY_NAME)
     assert r == "facture"
-
 
 
 # --- classify_files ---
