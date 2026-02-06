@@ -51,7 +51,7 @@ def compare_object(llm_value, ref_value, llm_model="albert-small"):
 
     try:
         # Création d'une instance LLMEnvironment
-        llm_env = LLMClient(llm_model=llm_model)
+        llm_env = LLMClient()
 
         # Construction du prompt pour demander l'avis du LLM
         system_prompt = (
@@ -86,7 +86,7 @@ def compare_object(llm_value, ref_value, llm_model="albert-small"):
 
         # Appel au LLM avec format JSON forcé
         # Température 0.2 : permet de la nuance dans l'évaluation sémantique tout en gardant de la cohérence
-        result = llm_env.ask_llm(messages=messages, response_format=response_format, temperature=0)
+        result = llm_env.ask_llm(messages=messages, model=llm_model, response_format=response_format, temperature=0)
 
         # print("Réponse LLM : ", result.get("explication", ""))
 
@@ -118,7 +118,7 @@ def compare_beneficiary_administration(llm_value, ref_value, llm_model="albert-s
 
     try:
         # Création d'une instance LLMEnvironment
-        llm_env = LLMClient(llm_model=llm_model)
+        llm_env = LLMClient()
 
         # Construction du prompt pour demander l'avis du LLM
         system_prompt = (
@@ -166,7 +166,7 @@ def compare_beneficiary_administration(llm_value, ref_value, llm_model="albert-s
         response_format = {"type": "json_object"}
 
         # Appel au LLM avec format JSON forcé, température basse pour fiabilité
-        result = llm_env.ask_llm(messages=messages, response_format=response_format, temperature=0)
+        result = llm_env.ask_llm(messages=messages, model=llm_model, response_format=response_format, temperature=0)
 
         # print("LLM explanation for administration_beneficiaire: ", result.get("explication", ""))
 

@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from docia.file_processing.processor.extraction_text_from_attachments import extract_text_from_pdf
 
 from .utils import ASSETS_DIR, assert_similar_text
@@ -15,7 +17,12 @@ def test_extract_text_from_pdf():
 def test_extract_text_from_pdf_ocr():
     with open(ASSETS_DIR / "lettre-ocr.pdf", "rb") as f:
         file_content = f.read()
+    with open(ASSETS_DIR / "lettre.md", "r") as f:
+        expected_text = f.read()
 
-    text, is_ocr = extract_text_from_pdf(file_content)
+    with patch("docia.file_processing.processor.extraction_text_from_attachments.LLMClient") as mock_llm_class:
+        mock_llm_class.return_value.ocr_pdf.return_value = expected_text
+        text, is_ocr = extract_text_from_pdf(file_content)
+
     assert is_ocr
     assert_similar_text(text, 0.95)

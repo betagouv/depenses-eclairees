@@ -348,3 +348,5 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
     print(f"Accuracy globale: {global_accuracy * 100:.2f}%")
     print(f"Accuracy globale (sans OCR): {global_accuracy_no_ocr * 100:.2f}% ({total_matches_no_ocr}/{total_no_ocr})")
     print(f"{'=' * 120}\n")
+
+    return global_accuracy

@@ -88,7 +88,7 @@ def classify_file_with_llm(
     Returns:
         str: Classification du fichier
     """
-    llm_env = LLMClient(llm_model)
+    llm_env = LLMClient()
 
     system_prompt = "Vous êtes un assistant qui aide à classer des fichiers en fonction de leur contenu."
 
@@ -120,7 +120,7 @@ Répondez UNIQUEMENT par le nom de la catégorie, sans autre texte ni ponctuatio
 
     messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
 
-    response = llm_env.ask_llm(messages=messages)
+    response = llm_env.ask_llm(messages=messages, model=llm_model)
 
     # Convertir la réponse en clé de classification
     for key, value in list_classification.items():
