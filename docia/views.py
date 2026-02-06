@@ -104,7 +104,7 @@ def compute_ratio_data_extraction(document_data: dict) -> float:
 
 def get_short_classification(classification: str) -> str:
     try:
-        return DIC_CLASS_FILE_BY_NAME[classification]["nom_court"]
+        return DIC_CLASS_FILE_BY_NAME[classification]["short_name"]
     except KeyError:
         return classification
 

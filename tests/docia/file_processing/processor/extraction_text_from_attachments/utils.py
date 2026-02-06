@@ -5,15 +5,15 @@ from pathlib import Path
 ASSETS_DIR = Path(__file__).resolve().parent / "assets" / "documents"
 
 
-def normalize_text(text):
+def normalize_text_for_token(text):
     # Remove extra whitespace, lowercase, strip
     text = re.sub(r"\s+", " ", text.strip())
     return text.lower()
 
 
 def similarity_ratio(str1, str2):
-    tokens1 = normalize_text(str1).split()
-    tokens2 = normalize_text(str2).split()
+    tokens1 = normalize_text_for_token(str1).split()
+    tokens2 = normalize_text_for_token(str2).split()
 
     return SequenceMatcher(None, tokens1, tokens2).ratio()
 
