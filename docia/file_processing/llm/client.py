@@ -32,7 +32,7 @@ def _extract_markdown_from_ocr_response(response_data: dict) -> str:
     parts = []
     for i, page in enumerate(pages, start=1):
         content = (page.get("markdown") or "").strip()
-        parts.append(f"[[PAGE {i} {total}]]\n{content}\n[[FIN PAGE {i} {total}]]")
+        parts.append(f"[[PAGE {i} / {total}]]\n{content}\n[[FIN PAGE {i} / {total}]]")
     return "\n\n".join(parts).strip()
 
 
