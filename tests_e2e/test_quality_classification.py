@@ -36,7 +36,7 @@ def create_batch_test(true_classification: list[str] = None, multi_line_coef=1):
     for idx, row in df_test.iterrows():
         try:
             df_test.at[idx, "classification"] = json.loads(row["classification"])
-        except:
+        except Exception:
             df_test.at[idx, "classification"] = None
     df_test.dropna(subset=["classification"], inplace=True)
 

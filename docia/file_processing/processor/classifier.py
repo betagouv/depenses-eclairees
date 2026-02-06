@@ -192,12 +192,16 @@ DIC_CLASS_FILE_BY_NAME = {
     "att_handicap": {
         "nom_complet": "Attestation handicap (AGEFIPH)",
         "short_name": "Att. handicap",
-        "description": "Attestation délivrée par l'AGEFIPH certifiant l'emploi de travailleurs handicapés par le prestataire.",
+        "description": (
+            "Attestation délivrée par l'AGEFIPH certifiant l'emploi de travailleurs handicapés par le prestataire."
+        ),
     },
     "att_honneur": {
         "nom_complet": "Attestation sur l'honneur",
         "short_name": "Att. sur l'honneur",
-        "description": "Document par lequel le prestataire atteste sur l'honneur de certaines conditions ou situations.",
+        "description": (
+            "Document par lequel le prestataire atteste sur l'honneur de certaines conditions ou situations."
+        ),
     },
     "att_resp_civile": {
         "nom_complet": "Attestation responsabilité civile professionnelle",
@@ -260,7 +264,8 @@ DIC_CLASS_FILE_BY_NAME = {
         "nom_complet": "CA de changement d'EJ",
         "short_name": "CA chgt. EJ",
         "description": (
-            "Document administratif émis par l'administration (ou l'acheteur) pour préciser des changements sur l'engagement juridique. "
+            "Document administratif émis par l'administration (ou l'acheteur) pour "
+            "préciser des changements sur l'engagement juridique. "
             "Souvent un changement d'imputation ou un changement dans un ligne de poste."
         ),
     },
@@ -268,7 +273,8 @@ DIC_CLASS_FILE_BY_NAME = {
         "nom_complet": "CA de changement de SIRET",
         "short_name": "CA chgt. SIREN / SIRET",
         "description": (
-            "Document administratif émis par l'administration (ou l'acheteur) pour préciser des changements sur le siret d'un prestataire. "
+            "Document administratif émis par l'administration (ou l'acheteur) "
+            "pour préciser des changements sur le siret d'un prestataire. "
             "Souvent un changement de siret et une nouvelle adresse postale."
         ),
     },
@@ -276,7 +282,8 @@ DIC_CLASS_FILE_BY_NAME = {
         "nom_complet": "CA de changement de révision du prix",
         "short_name": "CA chgt. Rev. prix",
         "description": (
-            "Document administratif émis par l'administration (ou l'acheteur) pour préciser des changements sur la révision du prix. "
+            "Document administratif émis par l'administration (ou l'acheteur) "
+            "pour préciser des changements sur la révision du prix. "
             "Souvent un changement sur la date d'application de la révision du prix."
         ),
     },
@@ -291,7 +298,9 @@ DIC_CLASS_FILE_BY_NAME = {
     "ccag": {
         "nom_complet": "CCAG (Cahier des Clauses Administratives Générales)",
         "short_name": "CCAG",
-        "description": "Cahier des charges administratives générales spécifiant les exigences administratives du marché.",
+        "description": (
+            "Cahier des charges administratives générales spécifiant les exigences administratives du marché."
+        ),
     },
     "ccap": {
         "nom_complet": "CCAP (Cahier des Clauses Administratives Particulières)",
@@ -315,8 +324,9 @@ DIC_CLASS_FILE_BY_NAME = {
         "nom_complet": "CCC (Cahier des Clauses Complementaires)",
         "short_name": "CC Complementaire",
         "description": (
-            "Cahier des clauses complémentaires spécifiant les exigences complémentaires du marché. "
-            "Souvent un document relatif à un marché subséquent d'un marché global. De la même forme que le cahier des charges."
+            "Cahier des clauses complémentaires spécifiant les exigences complémentaires du marché."
+            "Souvent un document relatif à un marché subséquent d'un marché global. "
+            "De la même forme que le cahier des charges."
         ),
     },
     "ccp_simple": {
@@ -333,7 +343,8 @@ DIC_CLASS_FILE_BY_NAME = {
         "short_name": "CCP valant AE",
         "description": (
             "Cahier des charges particuliers (administratives et techniques) valant acte d'engagement. "
-            "C'est à la fois un cahier des charges administratif, un cahier des charges techniques et un acte d'engagement."
+            "C'est à la fois un cahier des charges administratif, un cahier des charges techniques et"
+            "un acte d'engagement."
         ),
     },
     "cctp": {
@@ -344,7 +355,9 @@ DIC_CLASS_FILE_BY_NAME = {
     "cctp_annexe": {
         "nom_complet": "CCTP annexe autre",
         "short_name": "CCTP annexe autre",
-        "description": "Annexe au CCTP contenant des informations complémentaires non repertoriées dans les autres catégories.",
+        "description": (
+            "Annexe au CCTP contenant des informations complémentaires non repertoriées dansles autres catégories."
+        ),
     },
     "cga": {
         "nom_complet": "CGA (Conditions générales d'achats)",
@@ -496,7 +509,9 @@ DIC_CLASS_FILE_BY_NAME = {
     "mise_au_point": {
         "nom_complet": "Formulaire de mise au point",
         "short_name": "Mise au point",
-        "description": "Formulaire permettant de mettre à jour ou de corriger des informations dans le système de gestion.",
+        "description": (
+            "Formulaire permettant de mettre à jour ou de corriger des informations dans le système de gestion."
+        ),
     },
     "notification": {
         "nom_complet": "Notification",
@@ -506,7 +521,7 @@ DIC_CLASS_FILE_BY_NAME = {
     "ordre_service": {
         "nom_complet": "Ordre de service",
         "short_name": "Ordre de service",
-        "description": "Formulaire EXE1 permettant le lancement d'une tranche optionnelle d'un marché.",
+        "description": ("Formulaire EXE1 permettant le lancement d'une tranche optionnelle  d'un marché."),
     },
     "pv_cao": {
         "nom_complet": "Procès-verbal de Commission d'appel d'offre",
@@ -556,7 +571,9 @@ DIC_CLASS_FILE_BY_NAME = {
     "rib": {
         "nom_complet": "Relevé d'identité bancaire",
         "short_name": "RIB",
-        "description": "Relevé d'identité bancaire contenant les coordonnées bancaires du prestataire pour les paiements.",
+        "description": (
+            "Relevé d'identité bancaire contenant les coordonnées bancaires du prestataire pour les paiements."
+        ),
     },
     "service_fait": {
         "nom_complet": "Service fait",
@@ -566,7 +583,7 @@ DIC_CLASS_FILE_BY_NAME = {
     "sous_traitance": {
         "nom_complet": "Sous-traitance",
         "short_name": "Sous-traitance",
-        "description": "Formulaire de déclaration de sous-traitance d'un marché public. Souvent formulaire 'DC4'",
+        "description": ("Formulaire de déclaration de sous-traitance d'un marché public. Souvent formulaire 'DC4'"),
     },
 }
 
