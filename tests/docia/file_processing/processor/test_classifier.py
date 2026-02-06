@@ -7,7 +7,6 @@ from docia.file_processing.processor.classifier import (
     classify_file_with_llm,
     classify_files,
     create_classification_prompt,
-    normalize_text,
 )
 
 
@@ -86,24 +85,6 @@ def test_classify_file_with_llm_takes_first_matching_category():
         r = classify_file_with_llm("f", "text", DIC_CLASS_FILE_BY_NAME)
     assert r == "facture"
 
-
-# --- normalize_text ---
-
-
-def test_normalize_text_lowercase_and_removes_accents():
-    """Passe en minuscules et supprime les accents."""
-    assert normalize_text("Éléphant") == "elephant"
-    assert normalize_text("CAFÉ") == "cafe"
-
-
-def test_normalize_text_replaces_underscore_and_dash_with_space():
-    """Remplace _ et - par un espace."""
-    assert normalize_text("a_b-c") == "a b c"
-
-
-def test_normalize_text_removes_punctuation_and_collapses_spaces():
-    """Supprime la ponctuation et normalise les espaces."""
-    assert normalize_text("  hello,  world!  ") == "hello world"
 
 
 # --- classify_files ---

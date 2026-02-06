@@ -21,7 +21,7 @@ def test_normalize_name_multiple_dashes():
 
 
 def test_normalize_name_with_spaces():
-    """Test avec espaces (normalisés par normalize_text)."""
+    """Test avec espaces."""
     assert normalize_name("  paris  ") == "Paris"
     assert normalize_name("saint  etienne") == "Saint Etienne"
 

@@ -586,12 +586,3 @@ DIC_CLASS_FILE_BY_NAME = {
         "description": ("Formulaire de déclaration de sous-traitance d'un marché public. Souvent formulaire 'DC4'"),
     },
 }
-
-
-def normalize_text(text):
-    text = unicodedata.normalize("NFD", text)
-    text = "".join(char for char in text if unicodedata.category(char) != "Mn")
-    text = text.lower()
-    text = re.sub(r"[_\-]+", " ", text)  # remplace _ et - par espace
-    text = re.sub(r"[^a-z0-9\s]", "", text)  # supprime la ponctuation
-    return re.sub(r"\s+", " ", text)  # espaces multiples
