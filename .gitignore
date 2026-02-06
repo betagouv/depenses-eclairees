@@ -15,4 +15,5 @@ last_extract
 /notebooks
 /.vscode
 /tmp/
-
+/htmlcov/
+/.coverage
