@@ -8,11 +8,7 @@ import tqdm
 import pandas as pd
 
 from app.data.sql.sql import bulk_update_attachments
-from app.grist import API_KEY_GRIST, URL_TABLE_ATTACHMENTS, update_records_in_grist
-from app.utils import getDate
 from docia.file_processing.llm.client import LLMClient
-from app.data.sql.sql import bulk_update_attachments
-
 
 logger = logging.getLogger("docia." + __name__)
 
@@ -24,7 +20,7 @@ def create_classification_prompt(filename: str, text: str, list_classification: 
     La réponse est une liste de catégories possibles, classée par ordre de correspondance avec le contenu du document.
     
     Voici la liste des catégories possibles :
-    {',\n'.join([f"'{v['nom_complet']}': {v['description']}" if v['description']!='' else f"'{v['nom_complet']}'" for v in list_classification.values()])}
+    {",\n".join([f"'{v['nom_complet']}': {v['description']}" if v["description"] != "" else f"'{v['nom_complet']}'" for v in list_classification.values()])}
     
     Le titre du document est un élément essentiel pour la classification.
     Si le type de document ne correspond à aucune des catégories, répondez "Non classifié".
@@ -42,8 +38,9 @@ def create_classification_prompt(filename: str, text: str, list_classification: 
     return prompt, system_prompt
 
 
-def classify_file_with_llm(filename: str, text: str, list_classification: dict,
-                           llm_model: str = 'openweight-medium') -> str:
+def classify_file_with_llm(
+    filename: str, text: str, list_classification: dict, llm_model: str = "openweight-medium"
+) -> str:
     """
     Classifie un fichier en fonction de son contenu en utilisant un LLM.
 
@@ -67,37 +64,31 @@ def classify_file_with_llm(filename: str, text: str, list_classification: dict,
         "json_schema": {
             "name": "ClassificationList",
             "strict": True,
-            "schema": {
-                "type": "array",
-                "items": {
-                    "type": "string"
-                }
-            }
-        }
+            "schema": {"type": "array", "items": {"type": "string"}},
+        },
     }
 
     messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
 
     response = llm_env.ask_llm(messages=messages, model=llm_model, response_format=response_format)
 
-    
     # Convertir la (nouvelle) réponse (list) en clé de classification (on prend la première catégorie trouvée)
     if not response or not isinstance(response, list):
-        return 'Non classifié'
+        return "Non classifié"
 
-    reversed_classification_ref = {value['nom_complet']: key for key, value in list_classification.items()}
+    reversed_classification_ref = {value["nom_complet"]: key for key, value in list_classification.items()}
     result_classif_keys = []
     for classif in response:
         key_classif = reversed_classification_ref.get(classif)
         if key_classif:
             result_classif_keys.append(key_classif)
 
-    return result_classif_keys[0] if len(result_classif_keys) > 0 else 'Non classifié'
+    return result_classif_keys[0] if len(result_classif_keys) > 0 else "Non classifié"
 
 
-def classify_files(dfFiles: pd.DataFrame, list_classification: dict,
-                  llm_model: str = 'openweight-medium',
-                  max_workers: int = 4) -> pd.DataFrame:
+def classify_files(
+    dfFiles: pd.DataFrame, list_classification: dict, llm_model: str = "openweight-medium", max_workers: int = 4
+) -> pd.DataFrame:
     """
     Classifie les fichiers d'un DataFrame entre les différentes pièces jointes possibles.
 
@@ -106,36 +97,31 @@ def classify_files(dfFiles: pd.DataFrame, list_classification: dict,
         list_classification (dict): Dictionnaire de classification
         llm_model (str): Modèle LLM à utiliser (par défaut: 'openweight-medium')
         max_workers (int): Nombre maximum de threads pour l'exécution parallèle (par défaut: 4)
-        
+
     Returns:
         pd.DataFrame: DataFrame contenant les informations sur les fichiers avec les colonnes:
             - classification: Type de document classifié (ex: 'devis', 'facture', 'Non classifié')
     """
     dfFilesClassified = dfFiles.copy(deep=False)
-    dfFilesClassified['classification'] = None
+    dfFilesClassified["classification"] = None
 
     # Fonction pour traiter une ligne
     def process_row(idx):
         row = dfFilesClassified.loc[idx]
-        filename = row['filename']
-        
-        result = {
-            'classification': None
-        }
-        
-        text = row['text']
+        filename = row["filename"]
+
+        result = {"classification": None}
+
+        text = row["text"]
         try:
             response_classif = classify_file_with_llm(
-                filename=filename,
-                text=text,
-                list_classification=list_classification,
-                llm_model=llm_model
+                filename=filename, text=text, list_classification=list_classification, llm_model=llm_model
             )
         except Exception as e:
             logger.exception("Erreur lors de la classification LLM de %r: %s", filename, e)
-            response_classif = ['Non classifié']
-        result['classification'] = response_classif
-    
+            response_classif = ["Non classifié"]
+        result["classification"] = response_classif
+
         return idx, result
 
     # Traitement parallèle avec ThreadPoolExecutor
@@ -183,8 +169,10 @@ DIC_CLASS_FILE_BY_NAME = {
     "application_revision_prix": {
         "nom_complet": "Application de révision du prix",
         "short_name": "App. révision prix",
-        "description": ("Application de révision du prix prévue par le cahier des charges du marché "
-                        "souvent un document annexe au cahier des charges."),
+        "description": (
+            "Application de révision du prix prévue par le cahier des charges du marché "
+            "souvent un document annexe au cahier des charges."
+        ),
     },
     "att_etrangers": {
         "nom_complet": "Attestation travailleurs étrangers",
@@ -260,20 +248,26 @@ DIC_CLASS_FILE_BY_NAME = {
     "ca_chgt_ej": {
         "nom_complet": "CA de changement d'EJ",
         "short_name": "CA chgt. EJ",
-        "description": ("Document administratif émis par l'administration (ou l'acheteur) pour préciser des changements sur l'engagement juridique. "
-                        "Souvent un changement d'imputation ou un changement dans un ligne de poste."),
+        "description": (
+            "Document administratif émis par l'administration (ou l'acheteur) pour préciser des changements sur l'engagement juridique. "
+            "Souvent un changement d'imputation ou un changement dans un ligne de poste."
+        ),
     },
     "ca_chgt_siret": {
         "nom_complet": "CA de changement de SIRET",
         "short_name": "CA chgt. SIREN / SIRET",
-        "description": ("Document administratif émis par l'administration (ou l'acheteur) pour préciser des changements sur le siret d'un prestataire. "
-                        "Souvent un changement de siret et une nouvelle adresse postale."),
+        "description": (
+            "Document administratif émis par l'administration (ou l'acheteur) pour préciser des changements sur le siret d'un prestataire. "
+            "Souvent un changement de siret et une nouvelle adresse postale."
+        ),
     },
     "ca_chgt_revision_prix": {
         "nom_complet": "CA de changement de révision du prix",
         "short_name": "CA chgt. Rev. prix",
-        "description": ("Document administratif émis par l'administration (ou l'acheteur) pour préciser des changements sur la révision du prix. "
-                        "Souvent un changement sur la date d'application de la révision du prix."),
+        "description": (
+            "Document administratif émis par l'administration (ou l'acheteur) pour préciser des changements sur la révision du prix. "
+            "Souvent un changement sur la date d'application de la révision du prix."
+        ),
     },
     "ca_chgt_rib": {
         "nom_complet": "CA de changement de rib",
@@ -303,8 +297,10 @@ DIC_CLASS_FILE_BY_NAME = {
     "ccc": {
         "nom_complet": "CCC (Cahier des Clauses Complementaires)",
         "short_name": "CC Complementaire",
-        "description": ("Cahier des clauses complémentaires spécifiant les exigences complémentaires du marché. "
-                        "Souvent un document relatif à un marché subséquent d'un marché global. De la même forme que le cahier des charges."),
+        "description": (
+            "Cahier des clauses complémentaires spécifiant les exigences complémentaires du marché. "
+            "Souvent un document relatif à un marché subséquent d'un marché global. De la même forme que le cahier des charges."
+        ),
     },
     "ccp_simple": {
         "nom_complet": "Cahier des clauses Particulières simple",
@@ -314,20 +310,22 @@ DIC_CLASS_FILE_BY_NAME = {
     "ccp_vae": {
         "nom_complet": "CCP valant acte d'engagement",
         "short_name": "CCP valant AE",
-        "description": ("Cahier des charges particuliers (administratives et techniques) valant acte d'engagement. "
-                        "C'est à la fois un cahier des charges administratif, un cahier des charges techniques et un acte d'engagement."),
+        "description": (
+            "Cahier des charges particuliers (administratives et techniques) valant acte d'engagement. "
+            "C'est à la fois un cahier des charges administratif, un cahier des charges techniques et un acte d'engagement."
+        ),
     },
     "cctp": {
         "nom_complet": "CCTP (Cahier des Clauses Techniques Particulières)",
         "short_name": "CCTP",
         "description": "Cahier des charges techniques spécifiant les exigences techniques du marché.",
     },
-    "cctp_annexe": { 
+    "cctp_annexe": {
         "nom_complet": "CCTP annexe autre",
         "short_name": "CCTP annexe autre",
         "description": "Annexe au CCTP contenant des informations complémentaires non repertoriées dans les autres catégories.",
     },
-    "cga":{
+    "cga": {
         "nom_complet": "CGA (Conditions générales d'achats)",
         "short_name": "CGA",
         "description": "Conditions générales d'achats spécifiant les conditions générales d'achats du marché.",
@@ -542,7 +540,7 @@ DIC_CLASS_FILE_BY_NAME = {
         "nom_complet": "Sous-traitance",
         "short_name": "Sous-traitance",
         "description": "Formulaire de déclaration de sous-traitance d'un marché public. Souvent formulaire 'DC4'",
-    }
+    },
 }
 
 
