@@ -15,12 +15,17 @@ logger = logging.getLogger("docia." + __name__)
 
 def create_classification_prompt(filename: str, text: str, list_classification: dict) -> str:
     system_prompt = "Vous êtes un assistant qui aide à classer des fichiers en fonction de leur contenu."
+    categories_str = ",\n".join(
+        f"'{v['nom_complet']}': {v['description']}" if v["description"] else f"'{v['nom_complet']}'"
+        for v in list_classification.values()
+    )
     prompt = f"""
-    A partir du contenu du fichier, vous devez déterminer à quelles catégories le document appartient parmi les catégories suivantes. 
-    La réponse est une liste de catégories possibles, classée par ordre de correspondance avec le contenu du document.
+    A partir du contenu du fichier, vous devez déterminer à quelles catégories le document appartient 
+    parmi les catégories suivantes. La réponse est une liste de catégories possibles, classée par ordre 
+    de correspondance avec le contenu du document.
     
     Voici la liste des catégories possibles :
-    {",\n".join([f"'{v['nom_complet']}': {v['description']}" if v["description"] != "" else f"'{v['nom_complet']}'" for v in list_classification.values()])}
+    {categories_str}
     
     Le titre du document est un élément essentiel pour la classification.
     Si le type de document ne correspond à aucune des catégories, répondez "Non classifié".
@@ -177,12 +182,12 @@ DIC_CLASS_FILE_BY_NAME = {
     "att_etrangers": {
         "nom_complet": "Attestation travailleurs étrangers",
         "short_name": "Att. travailleurs étrangers",
-        "description": "Attestation certifiant la situation des travailleurs étrangers employés par le prestataire.",
+        "description": ("Attestation certifiant la situation des travailleurs étrangers employés par le prestataire."),
     },
     "att_fiscale": {
         "nom_complet": "Attestation fiscale",
         "short_name": "Att. fiscale",
-        "description": "Attestation certifiant la situation fiscale du prestataire, généralement délivrée par l'administration fiscale.",
+        "description": ("Attestation sur la situation fiscale du prestataire, délivrée par l'administration fiscale."),
     },
     "att_handicap": {
         "nom_complet": "Attestation handicap (AGEFIPH)",
@@ -207,7 +212,10 @@ DIC_CLASS_FILE_BY_NAME = {
     "att_sociale": {
         "nom_complet": "Attestation sociale",
         "short_name": "Att. sociale",
-        "description": "Attestation certifiant la situation sociale du prestataire, généralement délivrée par l'URSSAF ou un organisme similaire.",
+        "description": (
+            "Attestation certifiant la situation sociale du prestataire, "
+            "généralement délivrée par l'URSSAF ou un organisme similaire."
+        ),
     },
     "avenant": {
         "nom_complet": "Avenant",
@@ -243,7 +251,10 @@ DIC_CLASS_FILE_BY_NAME = {
     "ca_chgt_denomination": {
         "nom_complet": "CA de changement de dénomination",
         "short_name": "CA chgt. Nom",
-        "description": "Document administratif émis par l'administration (ou l'acheteur) pour préciser des changements sur la dénomination d'un prestataire.",
+        "description": (
+            "Document administratif émis par l'administration (ou l'acheteur) "
+            "pour préciser des changements sur la dénomination d'un prestataire."
+        ),
     },
     "ca_chgt_ej": {
         "nom_complet": "CA de changement d'EJ",
@@ -272,7 +283,10 @@ DIC_CLASS_FILE_BY_NAME = {
     "ca_chgt_rib": {
         "nom_complet": "CA de changement de rib",
         "short_name": "CA chgt. RIB",
-        "description": "Document administratif émis par l'administration (ou l'acheteur) pour préciser des changements sur le rib d'un prestataire.",
+        "description": (
+            "Document administratif émis par l'administration (ou l'acheteur) "
+            "pour préciser des changements sur le rib d'un prestataire."
+        ),
     },
     "ccag": {
         "nom_complet": "CCAG (Cahier des Clauses Administratives Générales)",
@@ -287,7 +301,10 @@ DIC_CLASS_FILE_BY_NAME = {
     "ccap_annexe": {
         "nom_complet": "CCAP annexe autre",
         "short_name": "CCAP annexe autre",
-        "description": "Annexe au CCAP contenant des informations complémentaires (hors bénéficiaires) non repertoriées dans les autres catégories.",
+        "description": (
+            "Annexe au CCAP contenant des informations complémentaires "
+            "(hors bénéficiaires) non repertoriées dans les autres catégories."
+        ),
     },
     "ccap_annexe_beneficiaires": {
         "nom_complet": "CCAP annexe bénéficiaires",
@@ -305,7 +322,11 @@ DIC_CLASS_FILE_BY_NAME = {
     "ccp_simple": {
         "nom_complet": "Cahier des clauses Particulières simple",
         "short_name": "CCP",
-        "description": "Cahier des charges particuliers valant à la fois cahier des charges administratives et techniques, mais ne valant pas acte d'engagement (un autre document d'engagement est nécessaire).",
+        "description": (
+            "Cahier des charges particuliers valant à la fois cahier des charges "
+            "administratives et techniques, mais ne valant pas acte d'engagement "
+            "(un autre document d'engagement est nécessaire)."
+        ),
     },
     "ccp_vae": {
         "nom_complet": "CCP valant acte d'engagement",
@@ -459,7 +480,10 @@ DIC_CLASS_FILE_BY_NAME = {
     "mail": {
         "nom_complet": "Courrier électronique divers",
         "short_name": "Mail",
-        "description": "Courrier électronique (email) de nature administrative ou commerciale non classé dans une autre catégorie spécifique.",
+        "description": (
+            "Courrier électronique (email) de nature administrative ou commerciale "
+            "non classé dans une autre catégorie spécifique."
+        ),
     },
     "memoire_technique": {
         "nom_complet": "Mémoire technique",
@@ -504,7 +528,10 @@ DIC_CLASS_FILE_BY_NAME = {
     "rapport_affermissement_tranche": {
         "nom_complet": "Rapport d'affermissement de tranche",
         "short_name": "Rapport affermissement tranche",
-        "description": "Rapport d'affermissement de tranche d'un marché public présentant la décision d'affermissement d'une tranche optionnelle.",
+        "description": (
+            "Rapport d'affermissement de tranche d'un marché public présentant "
+            "la décision d'affermissement d'une tranche optionnelle."
+        ),
     },
     "rapport_analyse_offre": {
         "nom_complet": "Rapport d'analyse des offres ou de présentation des offres",
