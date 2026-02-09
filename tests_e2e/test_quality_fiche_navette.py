@@ -1,26 +1,19 @@
-import json
 import logging
 import os
 import sys
-from datetime import datetime
 
 import django
 from django.conf import settings
-
-import pandas as pd
 
 sys.path.append(".")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
 django.setup()
 
 from docia.file_processing.processor.analyze_content import LLMClient  # noqa: E402
-from tests_e2e.test_quality_rib import compare_iban  # noqa: E402
 from tests_e2e.utils import (  # noqa: E402
-    _get_value_by_dotted_key,
     analyze_content_quality_test,
     check_global_statistics,
     check_quality_one_field,
-    check_quality_one_row,
     get_ground_truth_from_grist,
     normalize_string,
 )
@@ -178,15 +171,6 @@ def compare_beneficiary_administration(llm_value, ref_value, llm_model="albert-s
         logger.error(f"Error calling LLM for compare_beneficiary_administration: {e}")
         return False
 
-def compare_acheteur(llm_value, ref_value):
-    """Compare acheteur : comparaison de chaînes normalisées."""
-    if not llm_value and not ref_value:
-        return True
-
-    if not llm_value or not ref_value:
-        return False
-
-    return llm_value == ref_value
 
 def compare_main_company(llm_value, ref_value):
     """Compare societe_principale : comparaison de chaînes normalisées."""
@@ -207,8 +191,9 @@ def compare_main_company(llm_value, ref_value):
         ref_norm_no_space = ref_norm.replace(" ", "")
         return llm_norm_no_space == ref_norm_no_space
 
-def compare_accord_cadre(llm_value, ref_value):
-    """Compare accord_cadre : comparaison de chaînes normalisées."""
+
+def compare_simple_label(llm_value, ref_value):
+    """Compare simple_label : comparaison de chaînes normalisées."""
     if not llm_value and not ref_value:
         return True
 
@@ -217,106 +202,6 @@ def compare_accord_cadre(llm_value, ref_value):
 
     return llm_value == ref_value
 
-def compare_id_accord_cadre(llm_value, ref_value):
-    """Compare id_accord_cadre : comparaison de chaînes normalisées."""
-    if not llm_value and not ref_value:
-        return True
-
-    if not llm_value or not ref_value:
-        return False
-
-    return llm_value == ref_value
-
-def compare_amount(llm_val, ref_val):
-    """Compare montant : comparaison des valeurs."""
-    # Gestion des valeurs vides ou None
-    if not llm_val and not ref_val:
-        return True
-
-    if not llm_val or not ref_val:
-        return False
-
-    return llm_val == ref_val or float(llm_val.replace("€",""))== float(ref_val.replace("€",""))
-
-def compare_reconduction(llm_value, ref_value):
-    """Compare reconduction : comparaison de chaînes normalisées."""
-    if not llm_value and not ref_value:
-        return True
-
-    if not llm_value or not ref_value:
-        return False
-
-    return llm_value == ref_value
-
-def compare_tva(llm_value, ref_value):
-    """Compare tva : comparaison de chaînes normalisées."""
-    if not llm_value and not ref_value:
-        return True
-
-    if not llm_value or not ref_value:
-        return False
-
-    return llm_value == ref_value or float(llm_value.replace("%","")) == float(ref_value.replace("%",""))
-
-def compare_centre_cout(llm_value, ref_value):
-    """Compare centre_cout : comparaison de chaînes normalisées."""
-    if not llm_value and not ref_value:
-        return True
-
-    if not llm_value or not ref_value:
-        return False
-
-    return llm_value == ref_value
-
-def compare_centre_financier(llm_value, ref_value):
-    """Compare centre_financier : comparaison de chaînes normalisées."""
-    if not llm_value and not ref_value:
-        return True
-
-    if not llm_value or not ref_value:
-        return False
-
-    return llm_value == ref_value
-
-def compare_activite(llm_value, ref_value):
-    """Compare activite : comparaison de chaînes normalisées."""
-    if not llm_value and not ref_value:
-        return True
-
-    if not llm_value or not ref_value:
-        return False    
-
-    return llm_value == ref_value
-
-def compare_domaine_fonctionnel(llm_value, ref_value):
-    """Compare domaine_fonctionnel : comparaison de chaînes normalisées."""
-    if not llm_value and not ref_value:
-        return True
-
-    if not llm_value or not ref_value:
-        return False
-
-    return llm_value == ref_value
-
-def compare_localisation_interministerielle(llm_value, ref_value):
-    """Compare localisation_interministerielle : comparaison de chaînes normalisées."""
-    if not llm_value and not ref_value:
-        return True
-
-    if not llm_value or not ref_value:
-        return False
-
-    return llm_value == ref_value
-
-def compare_groupe_marchandise(llm_value, ref_value):
-    """Compare groupe_marchandise : comparaison de chaînes normalisées."""
-    if not llm_value and not ref_value:
-        return True
-
-    if not llm_value or not ref_value:
-        return False
-
-    return llm_value == ref_value
 
 def get_comparison_functions():
     """Mapping des colonnes vers leurs fonctions de comparaison
@@ -329,20 +214,20 @@ def get_comparison_functions():
         dict: Dictionnaire associant les noms de colonnes à leurs fonctions de comparaison
     """
     return {
-        # "objet": compare_object,
+        "objet": compare_object,
         "administration_beneficiaire": compare_beneficiary_administration,
         "societe_principale": compare_main_company,
-        "accord_cadre": compare_accord_cadre,
-        "id_accord_cadre": compare_id_accord_cadre,
-        "montant_ht": compare_amount,
-        "reconduction": compare_reconduction,
-        "taux_tva": compare_tva,
-        "centre_cout": compare_centre_cout,
-        "centre_financier": compare_centre_financier,
-        "activite": compare_activite,
-        "domaine_fonctionnel": compare_domaine_fonctionnel,
-        "localisation_interministerielle": compare_localisation_interministerielle,
-        "groupe_marchandise": compare_groupe_marchandise,
+        "accord_cadre": compare_simple_label,
+        "id_accord_cadre": compare_simple_label,
+        "montant_ht": compare_simple_label,
+        "reconduction": compare_simple_label,
+        "taux_tva": compare_simple_label,
+        "centre_cout": compare_simple_label,
+        "centre_financier": compare_simple_label,
+        "activite": compare_simple_label,
+        "domaine_fonctionnel": compare_simple_label,
+        "localisation_interministerielle": compare_simple_label,
+        "groupe_marchandise": compare_simple_label,
     }
 
 
@@ -362,27 +247,12 @@ def create_batch_test(multi_line_coef=1):
 if __name__ == "__main__":
     df_test, df_result, df_merged = create_batch_test()
 
-    EXCLUDED_COLUMNS = ["objet"]
+    EXCLUDED_COLUMNS = ["objet", "administration_beneficiaire"]
 
     comparison_functions = get_comparison_functions()
 
-    # Exemple : Extraire une valeur de structured_data pour toute la série
-    # Méthode 1 : Utiliser _get_value_by_dotted_key (recommandé)
-    df_merged["administration_beneficiaire_llm"] = df_merged["structured_data"].apply(
-        lambda x: _get_value_by_dotted_key(x, "administration_beneficiaire")
-    )
-
-    # Méthode 2 : Utiliser apply avec gestion des types (dict ou string JSON)
-    # df_merged["administration_beneficiaire_llm"] = df_merged["structured_data"].apply(
-    #     lambda x: (
-    #         x.get("administration_beneficiaire") if isinstance(x, dict)
-    #         else json.loads(x).get("administration_beneficiaire") if isinstance(x, str) and x
-    #         else None
-    #     )
-    # )
-
     # check_quality_one_field(df_merged, "administration_beneficiaire", comparison_functions)
-    # check_quality_one_field(df_merged, "montant_ht", comparison_functions)
+    check_quality_one_field(df_merged, "taux_tva", comparison_functions)
 
     # check_quality_one_row(df_merged, 0, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
 

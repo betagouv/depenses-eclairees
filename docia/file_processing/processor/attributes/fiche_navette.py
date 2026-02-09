@@ -46,7 +46,8 @@ FICHE_NAVETTE_ATTRIBUTES = {
     "accord_cadre": {
         "consigne": """accord_cadre  
      Définition : Libellé de l'accord-cadre
-     Indices : Repérer les expressions comme "Libellé accord-cadre". Ne pas renvoyer l'information du type d'accord-cadre (ex : "accord-cadre mono-attributaire à bons de commande").
+     Indices : Repérer les expressions comme "Libellé accord-cadre".
+     Ne rien renvoyer si aucune information trouvée ou si tu trouves l'information du type d'accord-cadre (ex : "accord-cadre mono-attributaire à bons de commande").
 """,
         "search": "",
         "output_field": "accord_cadre",
@@ -85,7 +86,7 @@ FICHE_NAVETTE_ATTRIBUTES = {
         "consigne": """TAUX_TVA  
      Définition : Taux de la TVA appliquée au marché.
      Indices : Repérer les expressions comme "Taux de la TVA" ou "TVA" ou "TAXE SUR LA VALEUR AJOUTÉE".
-     Format : "20%" ou "5.5%"
+     Format : "0.20" ou "0.055" et non "20%" ou "5.5%"
      Ne rien renvoyer si aucune information trouvée ou si tu trouves "Non renseigné".
      """,
         "search": "",
