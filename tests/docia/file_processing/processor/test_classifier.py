@@ -47,40 +47,40 @@ def test_create_classification_prompt_category_without_description():
 
 def test_classify_file_with_llm_returns_key_for_known_nom_complet():
     """Quand le LLM retourne un nom_complet connu, on retourne la clé."""
-    with patch("docia.file_processing.processor.classifier.LLMClient") as mock_cls:
-        mock_cls.return_value.ask_llm.return_value = ["Extrait Kbis"]
+    with patch("docia.file_processing.processor.classifier.LLMClient.ask_llm", autospec=True) as mock_ask_llm:
+        mock_ask_llm.return_value = ["Extrait Kbis"]
         r = classify_file_with_llm("doc.pdf", "Hello World", DIC_CLASS_FILE_BY_NAME)
     assert r == "kbis"
 
 
 def test_classify_file_with_llm_empty_list_returns_non_clasifie():
     """Réponse vide -> 'Non classifié'."""
-    with patch("docia.file_processing.processor.classifier.LLMClient") as mock_cls:
-        mock_cls.return_value.ask_llm.return_value = []
+    with patch("docia.file_processing.processor.classifier.LLMClient.ask_llm", autospec=True) as mock_ask_llm:
+        mock_ask_llm.return_value = []
         r = classify_file_with_llm("f", "text", DIC_CLASS_FILE_BY_NAME)
     assert r == "Non classifié"
 
 
 def test_classify_file_with_llm_none_response_returns_non_clasifie():
     """Réponse None -> 'Non classifié'."""
-    with patch("docia.file_processing.processor.classifier.LLMClient") as mock_cls:
-        mock_cls.return_value.ask_llm.return_value = None
+    with patch("docia.file_processing.processor.classifier.LLMClient.ask_llm", autospec=True) as mock_ask_llm:
+        mock_ask_llm.return_value = None
         r = classify_file_with_llm("f", "text", DIC_CLASS_FILE_BY_NAME)
     assert r == "Non classifié"
 
 
 def test_classify_file_with_llm_unknown_nom_complet_returns_non_clasifie():
     """Réponse avec des libellés inconnus uniquement -> 'Non classifié'."""
-    with patch("docia.file_processing.processor.classifier.LLMClient") as mock_cls:
-        mock_cls.return_value.ask_llm.return_value = ["Inconnu", "Autre inconnu"]
+    with patch("docia.file_processing.processor.classifier.LLMClient.ask_llm", autospec=True) as mock_ask_llm:
+        mock_ask_llm.return_value = ["Inconnu", "Autre inconnu"]
         r = classify_file_with_llm("f", "text", DIC_CLASS_FILE_BY_NAME)
     assert r == "Non classifié"
 
 
 def test_classify_file_with_llm_takes_first_matching_category():
     """La première catégorie reconnue dans la liste est retournée."""
-    with patch("docia.file_processing.processor.classifier.LLMClient") as mock_cls:
-        mock_cls.return_value.ask_llm.return_value = ["Facture", "Extrait Kbis"]
+    with patch("docia.file_processing.processor.classifier.LLMClient.ask_llm", autospec=True) as mock_ask_llm:
+        mock_ask_llm.return_value = ["Facture", "Extrait Kbis"]
         r = classify_file_with_llm("f", "text", DIC_CLASS_FILE_BY_NAME)
     assert r == "facture"
 
@@ -99,8 +99,8 @@ def test_classify_files_empty_dataframe():
 def test_classify_files_fills_classification_from_llm():
     """Un fichier est classifié via le LLM ; la colonne est remplie."""
     df = pd.DataFrame([{"filename": "d.pdf", "text": "contenu"}])
-    with patch("docia.file_processing.processor.classifier.LLMClient") as mock_cls:
-        mock_cls.return_value.ask_llm.return_value = ["Devis"]
+    with patch("docia.file_processing.processor.classifier.LLMClient.ask_llm", autospec=True) as mock_ask_llm:
+        mock_ask_llm.return_value = ["Devis"]
         out = classify_files(df, DIC_CLASS_FILE_BY_NAME, max_workers=1)
     assert out["classification"].iloc[0] == "devis"
 

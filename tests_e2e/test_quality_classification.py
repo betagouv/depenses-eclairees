@@ -5,43 +5,31 @@ import sys
 
 import django
 from django.conf import settings
-
 import pandas as pd
 
 sys.path.append(".")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
 django.setup()
 
+from docia.settings import API_KEY_GRIST
 from docia.file_processing.processor.classifier import DIC_CLASS_FILE_BY_NAME, classify_files  # noqa: E402
-from tests_e2e.utils import get_ground_truth_from_grist  # noqa: E402
+from app.grist.grist_api import get_data_from_grist  # noqa: E402
 
 logger = logging.getLogger("docia." + __name__)
 
-PROJECT_PATH = settings.BASE_DIR
-CSV_DIR_PATH = (PROJECT_PATH / ".." / "data" / "test").resolve()
-
-
 def create_batch_test(true_classification: list[str] = None, multi_line_coef=1):
     """Création du batch de test pour la classification."""
-    # Chemin vers le fichier CSV de test
-    # csv_path = CSV_DIR_PATH / "test_classification.csv"
-
-    # Lecture du fichier CSV et remplissage des valeurs manquantes
-    # df_test = pd.read_csv(csv_path)
     columns_to_keep = ["filename", "num_ej", "classification", "is_ocr", "commentaire", "traitement", "text"]
-    df_test = get_ground_truth_from_grist(table="Classif_gt", columns=columns_to_keep)
+    df_test = get_data_from_grist(table="Classif_gt", api_key=API_KEY_GRIST)[columns_to_keep]
 
     df_test = df_test.query("traitement != 'Alexandre'")
 
     for idx, row in df_test.iterrows():
-        try:
-            df_test.at[idx, "classification"] = json.loads(row["classification"])
-        except Exception:
-            df_test.at[idx, "classification"] = None
+        df_test.at[idx, "classification"] = json.loads(row["classification"])
     df_test.dropna(subset=["classification"], inplace=True)
 
     if true_classification:
-        df_test = df_test[df_test["classification"].apply(lambda x: x[0] in true_classification)]
+        df_test = df_test[df_test["classification"].str[0].isin(true_classification)]
 
     if multi_line_coef > 1:
         df_test = pd.concat([df_test for x in range(multi_line_coef)]).reset_index(drop=True)
@@ -66,28 +54,10 @@ def compare_classification(df_result: pd.DataFrame, errors_only: bool = False):
         errors_only: Si True, n'affiche que les erreurs. Si False, affiche toutes les lignes.
     """
 
-    def lists_equal_ignore_order(list1, list2):
-        """Compare deux listes en ignorant l'ordre."""
-        # Si list2 est un string, on le compare avec le premier élément de list1
-        if isinstance(list2, str):
-            if isinstance(list1, list) and len(list1) > 0:
-                return list1[0] == list2
-            return list1 == list2
-        # Si list1 est un string, on le compare avec le premier élément de list2
-        if isinstance(list1, str):
-            if isinstance(list2, list) and len(list2) > 0:
-                return list1 == list2[0]
-            return list1 == list2
-        # Si les deux sont des listes
-        if isinstance(list1, list) and isinstance(list2, list):
-            # return sorted(list1) == sorted(list2)
-            return list1[0] == list2[0] if len(list1) > 0 and len(list2) > 0 else list1 == list2
-        # Sinon comparaison directe
-        return list1 == list2
-
-    df_result["is_correct"] = df_result.apply(
-        lambda row: lists_equal_ignore_order(row["true_classification"], row["classification"]), axis=1
-    )
+    df_result["is_correct"] = df_result["true_classification"].str[0] == df_result["classification"]
+    # df_result.apply(
+    #     lambda row: lists_equal_ignore_order(row["true_classification"], row["classification"]), axis=1
+    # )
 
     # Préparer l'affichage avec symboles visuels
     def format_status(is_correct):
@@ -162,17 +132,9 @@ def compare_classification(df_result: pd.DataFrame, errors_only: bool = False):
 def display_results(df_result: pd.DataFrame):
     """Affiche les résultats de classification par classe (basé sur le premier élément)."""
 
-    # Fonction helper pour extraire le premier élément d'une liste ou retourner le string
-    def get_first_element(x):
-        if isinstance(x, str):
-            return x
-        if isinstance(x, list) and len(x) > 0:
-            return x[0]
-        return "Non classifié"
-
     # Créer des colonnes avec le premier élément
-    df_result["true_class_first"] = df_result["true_classification"].apply(get_first_element)
-    df_result["pred_class_first"] = df_result["classification"].apply(get_first_element)
+    df_result["true_class_first"] = df_result["true_classification"].str[0]
+    df_result["pred_class_first"] = df_result["classification"]
 
     # Statistiques globales
     total_files = len(df_result)

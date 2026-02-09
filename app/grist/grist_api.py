@@ -5,7 +5,7 @@ from tqdm import tqdm
 from urllib.parse import quote
 
 from app.utils import json_print
-from .config_grist import URL_DOCS_GRIST, URL_TABLE_ATTACHMENTS, URL_TABLE_ENGAGEMENTS, API_KEY_GRIST
+from docia.settings import URL_DOCS_GRIST, API_KEY_GRIST
 
 
 def check_connexion():
@@ -18,17 +18,17 @@ def get_tables():
     r = requests.get(URL_DOCS_GRIST + "/tables", headers={"Authorization": API_KEY_GRIST})
     json_print(r.text)
 
-def get_data_from_grist(table_url, api_key):
+def get_data_from_grist(table: str, api_key: str) -> pd.DataFrame:
     """
-    Récupère les données de la table Attachments depuis l'API Grist.
+    Récupère les données d'une table depuis l'API Grist.
     Récupère toutes les données de la table (toutes les colonnes).
     Args:
-        table_url (str): URL de la table (ex: .../tables/Attachments)
+        table (str): Nom de la table (ex: Attachments)
         api_key (str): Clé API Grist
     Returns:
-        pd.DataFrame: DataFrame contenant les données de la table Attachments
+        pd.DataFrame: DataFrame contenant les données de la table
     """
-    records_url = table_url+"/records"
+    records_url = URL_DOCS_GRIST + f"/tables/{table}/records"
     headers = {"Authorization": api_key}
     r = requests.get(records_url, headers=headers)
     r.raise_for_status()

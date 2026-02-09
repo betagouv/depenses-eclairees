@@ -469,14 +469,14 @@ DIC_CLASS_FILE_BY_NAME = {
         "short_name": "Kbis",
         "description": "Extrait Kbis certifiant l'inscription au registre du commerce et des sociétés (RCS).",
     },
-    "lettre_candidature": {
-        "nom_complet": "Lettre de candidature",
-        "short_name": "Lettre candidature",
+    "lettre_candidature_dc1": {
+        "nom_complet": "Lettre de candidature DC1",
+        "short_name": "Candidature DC1",
         "description": "Spécifiquement le formulaire DC1",
     },
-    "lettre_candidature_2": {
+    "lettre_candidature_dc2": {
         "nom_complet": "Lettre de candidature DC2",
-        "short_name": "Lettre candidature DC2",
+        "short_name": "Candidature DC2",
         "description": "Spécifiquement le formulaire DC2",
     },
     "lettre_consultation": {
