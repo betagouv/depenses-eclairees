@@ -1,0 +1,389 @@
+import json
+import logging
+import os
+import sys
+from datetime import datetime
+
+import django
+from django.conf import settings
+
+import pandas as pd
+
+sys.path.append(".")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
+django.setup()
+
+from docia.file_processing.processor.analyze_content import LLMClient  # noqa: E402
+from tests_e2e.test_quality_rib import compare_iban  # noqa: E402
+from tests_e2e.utils import (  # noqa: E402
+    _get_value_by_dotted_key,
+    analyze_content_quality_test,
+    check_global_statistics,
+    check_quality_one_field,
+    check_quality_one_row,
+    get_ground_truth_from_grist,
+    normalize_string,
+)
+
+logger = logging.getLogger("docia." + __name__)
+
+PROJECT_PATH = settings.BASE_DIR
+CSV_DIR_PATH = (PROJECT_PATH / ".." / "data" / "test").resolve()
+
+
+def compare_object(llm_value, ref_value, llm_model="openweight-medium"):
+    """
+    Compare deux objets en utilisant un LLM comme juge pour évaluer la proximité de sens.
+
+    Args:
+        llm_value: Valeur extraite par le LLM
+        ref_value: Valeur de référence
+        temperature: Température pour la génération (0.0 = déterministe, 0.2-0.3 = nuance avec cohérence)
+                    Par défaut 0.2 pour permettre de la nuance tout en gardant de la reproductibilité.
+
+    Returns:
+        bool: True si les objets sont sémantiquement proches, False sinon
+    """
+    # Gestion des valeurs vides ou None
+    if not llm_value and not ref_value:
+        return True
+
+    if not llm_value or not ref_value:
+        return False
+
+    try:
+        # Création d'une instance LLMEnvironment
+        llm_env = LLMClient()
+
+        # Construction du prompt pour demander l'avis du LLM
+        system_prompt = (
+            "Vous êtes un expert en analyse sémantique de documents juridiques. "
+            "Votre rôle est d'évaluer la proximité de sens entre deux descriptions d'objets."
+        )
+
+        user_prompt = f"""
+            Compare les deux descriptions d'objet suivantes et détermine si elles décrivent 
+            la même chose ou des choses sémantiquement proches.
+
+            Valeur extraite par le LLM: {llm_value}
+
+            Valeur de référence: {ref_value}
+
+            Analyse si ces deux descriptions ont le même sens ou un sens proche. Prends en compte :
+            - Les synonymes et formulations équivalentes
+            - Les variations de style ou de formulation
+            - L'essence et le contenu principal, pas seulement la forme exacte
+
+            Tu dois IMPÉRATIVEMENT répondre UNIQUEMENT avec un JSON valide, sans aucun autre texte, avec 
+            cette structure exacte:
+            {{
+                "sont_proches": true ou false,
+                "explication": "brève explication de votre analyse"
+            }}
+        """
+        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
+
+        # Format de réponse JSON forcé
+        response_format = {"type": "json_object"}
+
+        # Appel au LLM avec format JSON forcé
+        # Température 0.2 : permet de la nuance dans l'évaluation sémantique tout en gardant de la cohérence
+        result = llm_env.ask_llm(messages=messages, model=llm_model, response_format=response_format, temperature=0)
+
+        # print("Réponse LLM : ", result.get("explication", ""))
+
+        return bool(result.get("sont_proches", False))
+
+    except Exception as e:
+        logger.error(f"Error calling LLM for compare_object: {e}")
+        return False
+
+
+def compare_beneficiary_administration(llm_value, ref_value, llm_model="albert-small"):
+    """
+    Compare deux administrations bénéficiaires en utilisant un LLM comme juge pour évaluer s'il s'agit du même
+    organisme ou d'une entité publique équivalente.
+
+    Args:
+        llm_value: Valeur extraite par le LLM pour l'administration bénéficiaire
+        ref_value: Valeur de référence pour l'administration bénéficiaire
+
+    Returns:
+        bool: True si les administrations bénéficiaires sont identiques ou équivalentes, False sinon
+    """
+    # Gestion des valeurs vides ou None
+    if not llm_value and not ref_value:
+        return True
+
+    if not llm_value or not ref_value:
+        return False
+
+    try:
+        # Création d'une instance LLMEnvironment
+        llm_env = LLMClient()
+
+        # Construction du prompt pour demander l'avis du LLM
+        system_prompt = (
+            "Vous êtes un expert en analyse de documents administratifs publics. "
+            "Votre rôle est d'évaluer si deux chaînes désignent la même administration bénéficiaire (structure "
+            "administrative ou publique bénéficiaire d'une commande) "
+            "ou deux entités publiques équivalentes."
+        )
+
+        user_prompt = f"""
+            Compare les deux mentions suivantes concernant l'administration bénéficiaire d'un 
+            contrat ou acte administratif, et détermine si elles désignent la même structure, 
+            entité ou administration bénéficiaire, ou des administrations équivalentes (avec 
+            ou sans variation d'intitulé ou de formulation). Par exemple, si la valeur extraite 
+            par le LLM est plus précise que la valeur de référence, alors on considère que les 
+            deux administrations sont équivalentes.
+
+            Valeur extraite par le LLM :
+            {llm_value}
+
+            Valeur de référence :
+            {ref_value}
+
+            Analyse si ces deux valeurs réfèrent à la même administration ou à une entité équivalente. 
+            Prends en compte :
+            - Les synonymes, reformulations, différences d'intitulé ou d'abréviation (par exemple, 
+              'Préfecture de la région Île-de-France' vs 'Préfecture régionale Île-de-France')
+            - Le contexte administratif ou territorial, les rôles correspondant aux structures (par exemple, 
+              un intitulé de direction qui désigne l'administration bénéficiaire)
+            - Le fait que certaines valeurs peuvent préciser un service ou une direction interne d'une administration 
+              (cela compte pour la même administration si l'essentiel concorde)
+            - Le format doit être le nom complet, sans acronymes sauf s'ils sont officiels et connus
+            
+            Tu dois IMPÉRATIVEMENT répondre UNIQUEMENT avec un JSON valide, sans aucun autre texte, avec cette 
+            structure exacte :
+            {{
+                "sont_equivalentes": true ou false,
+                "explication": "brève explication de votre analyse"
+            }}
+        """
+
+        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
+
+        # Format de réponse JSON forcé
+        response_format = {"type": "json_object"}
+
+        # Appel au LLM avec format JSON forcé, température basse pour fiabilité
+        result = llm_env.ask_llm(messages=messages, model=llm_model, response_format=response_format, temperature=0)
+
+        # print("LLM explanation for administration_beneficiaire: ", result.get("explication", ""))
+
+        return bool(result.get("sont_equivalentes", False))
+
+    except Exception as e:
+        logger.error(f"Error calling LLM for compare_beneficiary_administration: {e}")
+        return False
+
+def compare_acheteur(llm_value, ref_value):
+    """Compare acheteur : comparaison de chaînes normalisées."""
+    if not llm_value and not ref_value:
+        return True
+
+    if not llm_value or not ref_value:
+        return False
+
+    return llm_value == ref_value
+
+def compare_main_company(llm_value, ref_value):
+    """Compare societe_principale : comparaison de chaînes normalisées."""
+
+    if not llm_value and not ref_value:
+        return True
+
+    if not llm_value or not ref_value:
+        return False
+
+    llm_norm = normalize_string(llm_value)
+    ref_norm = normalize_string(ref_value)
+
+    if llm_norm == ref_norm:
+        return True
+    else:
+        llm_norm_no_space = llm_norm.replace(" ", "")
+        ref_norm_no_space = ref_norm.replace(" ", "")
+        return llm_norm_no_space == ref_norm_no_space
+
+def compare_accord_cadre(llm_value, ref_value):
+    """Compare accord_cadre : comparaison de chaînes normalisées."""
+    if not llm_value and not ref_value:
+        return True
+
+    if not llm_value or not ref_value:
+        return False
+
+    return llm_value == ref_value
+
+def compare_id_accord_cadre(llm_value, ref_value):
+    """Compare id_accord_cadre : comparaison de chaînes normalisées."""
+    if not llm_value and not ref_value:
+        return True
+
+    if not llm_value or not ref_value:
+        return False
+
+    return llm_value == ref_value
+
+def compare_amount(llm_val, ref_val):
+    """Compare montant : comparaison des valeurs."""
+    # Gestion des valeurs vides ou None
+    if not llm_val and not ref_val:
+        return True
+
+    if not llm_val or not ref_val:
+        return False
+
+    return llm_val == ref_val or float(llm_val.replace("€",""))== float(ref_val.replace("€",""))
+
+def compare_reconduction(llm_value, ref_value):
+    """Compare reconduction : comparaison de chaînes normalisées."""
+    if not llm_value and not ref_value:
+        return True
+
+    if not llm_value or not ref_value:
+        return False
+
+    return llm_value == ref_value
+
+def compare_tva(llm_value, ref_value):
+    """Compare tva : comparaison de chaînes normalisées."""
+    if not llm_value and not ref_value:
+        return True
+
+    if not llm_value or not ref_value:
+        return False
+
+    return llm_value == ref_value or float(llm_value.replace("%","")) == float(ref_value.replace("%",""))
+
+def compare_centre_cout(llm_value, ref_value):
+    """Compare centre_cout : comparaison de chaînes normalisées."""
+    if not llm_value and not ref_value:
+        return True
+
+    if not llm_value or not ref_value:
+        return False
+
+    return llm_value == ref_value
+
+def compare_centre_financier(llm_value, ref_value):
+    """Compare centre_financier : comparaison de chaînes normalisées."""
+    if not llm_value and not ref_value:
+        return True
+
+    if not llm_value or not ref_value:
+        return False
+
+    return llm_value == ref_value
+
+def compare_activite(llm_value, ref_value):
+    """Compare activite : comparaison de chaînes normalisées."""
+    if not llm_value and not ref_value:
+        return True
+
+    if not llm_value or not ref_value:
+        return False    
+
+    return llm_value == ref_value
+
+def compare_domaine_fonctionnel(llm_value, ref_value):
+    """Compare domaine_fonctionnel : comparaison de chaînes normalisées."""
+    if not llm_value and not ref_value:
+        return True
+
+    if not llm_value or not ref_value:
+        return False
+
+    return llm_value == ref_value
+
+def compare_localisation_interministerielle(llm_value, ref_value):
+    """Compare localisation_interministerielle : comparaison de chaînes normalisées."""
+    if not llm_value and not ref_value:
+        return True
+
+    if not llm_value or not ref_value:
+        return False
+
+    return llm_value == ref_value
+
+def compare_groupe_marchandise(llm_value, ref_value):
+    """Compare groupe_marchandise : comparaison de chaînes normalisées."""
+    if not llm_value and not ref_value:
+        return True
+
+    if not llm_value or not ref_value:
+        return False
+
+    return llm_value == ref_value
+
+def get_comparison_functions():
+    """Mapping des colonnes vers leurs fonctions de comparaison
+
+    Retourne le dictionnaire des fonctions de comparaison.
+    Cette fonction garantit que les références pointent toujours vers les dernières versions des fonctions,
+    même après un rechargement de module.
+
+    Returns:
+        dict: Dictionnaire associant les noms de colonnes à leurs fonctions de comparaison
+    """
+    return {
+        # "objet": compare_object,
+        "administration_beneficiaire": compare_beneficiary_administration,
+        "societe_principale": compare_main_company,
+        "accord_cadre": compare_accord_cadre,
+        "id_accord_cadre": compare_id_accord_cadre,
+        "montant_ht": compare_amount,
+        "reconduction": compare_reconduction,
+        "taux_tva": compare_tva,
+        "centre_cout": compare_centre_cout,
+        "centre_financier": compare_centre_financier,
+        "activite": compare_activite,
+        "domaine_fonctionnel": compare_domaine_fonctionnel,
+        "localisation_interministerielle": compare_localisation_interministerielle,
+        "groupe_marchandise": compare_groupe_marchandise,
+    }
+
+
+def create_batch_test(multi_line_coef=1):
+    """Test de qualité des informations extraites par le LLM."""
+
+    # Lecture du fichier CSV et remplissage des valeurs manquantes
+    # df_test = pd.read_csv(csv_path)
+    df_test = get_ground_truth_from_grist(table="Fiche_navette_gt").query("commentaire == 'traité'")
+
+    df_test.fillna("", inplace=True)
+
+    # Lancement du test
+    return analyze_content_quality_test(df_test, "fiche_navette", multi_line_coef=multi_line_coef)
+
+
+if __name__ == "__main__":
+    df_test, df_result, df_merged = create_batch_test()
+
+    EXCLUDED_COLUMNS = ["objet"]
+
+    comparison_functions = get_comparison_functions()
+
+    # Exemple : Extraire une valeur de structured_data pour toute la série
+    # Méthode 1 : Utiliser _get_value_by_dotted_key (recommandé)
+    df_merged["administration_beneficiaire_llm"] = df_merged["structured_data"].apply(
+        lambda x: _get_value_by_dotted_key(x, "administration_beneficiaire")
+    )
+
+    # Méthode 2 : Utiliser apply avec gestion des types (dict ou string JSON)
+    # df_merged["administration_beneficiaire_llm"] = df_merged["structured_data"].apply(
+    #     lambda x: (
+    #         x.get("administration_beneficiaire") if isinstance(x, dict)
+    #         else json.loads(x).get("administration_beneficiaire") if isinstance(x, str) and x
+    #         else None
+    #     )
+    # )
+
+    # check_quality_one_field(df_merged, "administration_beneficiaire", comparison_functions)
+    # check_quality_one_field(df_merged, "montant_ht", comparison_functions)
+
+    # check_quality_one_row(df_merged, 0, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
+
+    check_global_statistics(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
