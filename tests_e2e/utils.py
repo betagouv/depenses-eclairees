@@ -239,6 +239,47 @@ def check_quality_one_row(df_merged, row_idx_to_test, comparison_functions, excl
                 print()
 
 
+def get_fields_with_comparison_errors(df_merged, comparison_functions, excluded_columns=None):
+    """
+    Pour chaque fichier (ligne) de df_merged, retourne la liste des champs pour lesquels
+    la comparaison entre la valeur LLM et la valeur par défaut (référence) échoue.
+
+    Args:
+        df_merged: DataFrame fusionné (résultats LLM + valeurs de référence).
+        comparison_functions: Dictionnaire colonne -> fonction de comparaison.
+        excluded_columns: Liste de colonnes à exclure de la vérification.
+
+    Returns:
+        dict: {filename: [champ1, champ2, ...]} pour chaque fichier. Les clés sont les
+        noms de fichiers, les valeurs sont les listes de champs en erreur de comparaison.
+    """
+    excluded_columns = excluded_columns or []
+
+    result = {}
+    for idx, row in df_merged.iterrows():
+        filename = row.get("filename", "unknown")
+        llm_data = row.get("structured_data", None)
+        errors = []
+
+        for col, comparison_func in comparison_functions.items():
+            if col in excluded_columns:
+                continue
+
+            ref_val = _get_value_by_dotted_key(row, col)
+            llm_val = _get_value_by_dotted_key(llm_data, col) if llm_data is not None else None
+
+            try:
+                match_result = comparison_func(llm_val, ref_val)
+                if not (bool(match_result) if not isinstance(match_result, bool) else match_result):
+                    errors.append(col)
+            except Exception:
+                errors.append(col)
+
+        result[filename] = errors
+
+    return result
+
+
 def check_global_statistics(df_merged, comparison_functions, excluded_columns=None):
     # ============================================================================
     # STATISTIQUES GLOBALES DE COMPARAISON

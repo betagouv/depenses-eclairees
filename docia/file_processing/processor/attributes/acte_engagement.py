@@ -363,7 +363,7 @@ Règles d’extraction :
         Définition : Information sur la volonté du titulaire de conserver ou de renoncer au bénéfice de l'avance.
         Indices :
         Le texte présente souvent une phrase de type "Je renonce au bénéfice de l'avance" suivie de deux options : [ ] Non et [ ] Oui.
-        1. Identifie quelle case est cochée (représentée par [X], [x], X ou x) et quelle case ne l'est pas (représentée par [ ] ou un espace).
+        1. Identifie quelle case est cochée (représentée par [X], [x], X, x, ☒ ou autre équivalent) et quelle case ne l'est pas (représentée par [ ], un espace ou autre équivalent).
         2. Analyse le sens : 
         - Si "Renonce" est associé à "NON" (coché) -> L'utilisateur VEUT l'avance -> Renvoyer "conserve"
         - Si "Renonce" est associé à "OUI" (coché) -> L'utilisateur REFUSE l'avance -> Renvoyer "renonce"
@@ -388,11 +388,11 @@ Règles d’extraction :
      Indices : 
      - Dans le paragraphe de l'engagement du titulaire, près de la mention des prix sur lesquels le titulaire s'engage.
      - Souvent sous forme d'une case à cocher suivi de la mention "au prix indiqué dans les autres documents annexés ...".
-     - Une case cochée peut être représentée par [X], [x], X ou x.
-     - Une case non cochée peut être représentée par [ ] ou un espace.
+     - Une case cochée peut être représentée par [X], [x], X, x, ☒ ou autre équivalent.
+     - Une case non cochée peut être représentée par [ ], un espace ou autre équivalent.
      - Si la mention est cochée (les montants sont précisés en annexe), renvoyer :
         * "annexe_financière": true
-        * "classification": une liste des types de documents mentionnés parmi : "BPU", "DPGF", "Annexe financière".
+        * "classification": une liste des types de documents mentionnés parmi : "BPU" (correspond aussi à bordereau de prix unitaires), "DPGF", "Annexe financière".
      - Si la mention n'est pas cochée (les montants sont précisés dans le document uniquement), renvoyer :
         * "annexe_financière": false
         * "classification": null

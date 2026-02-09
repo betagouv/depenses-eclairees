@@ -20,6 +20,7 @@ from tests_e2e.utils import (  # noqa: E402
     check_global_statistics,
     check_quality_one_field,
     check_quality_one_row,
+    get_fields_with_comparison_errors,
     normalize_string,
 )
 
@@ -507,11 +508,12 @@ def create_batch_test(multi_line_coef=1):
     df_test["sous_traitants"] = df_test["sous_traitants"].apply(lambda x: json.loads(x))
     df_test["duree"] = df_test["duree"].apply(lambda x: json.loads(x))
     df_test["rib_autres"] = df_test["rib_autres"].apply(lambda x: json.loads(x))
+    df_test["montants_en_annexe"] = df_test["montants_en_annexe"].apply(lambda x: json.loads(x))
     df_test["siret_mandataire"] = df_test["siret_mandataire"].astype(str).apply(lambda x: x.split(".")[0])
     df_test["siren_mandataire"] = df_test["siren_mandataire"].astype(str).apply(lambda x: x.split(".")[0])
     df_test["montant_ht"] = df_test["montant_ht"].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "")
     df_test["montant_ttc"] = df_test["montant_ttc"].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "")
-    df_test['conserve_avance']
+
     # Lancement du test
     return analyze_content_quality_test(df_test, "acte_engagement", multi_line_coef=multi_line_coef)
 
@@ -519,13 +521,16 @@ def create_batch_test(multi_line_coef=1):
 if __name__ == "__main__":
     df_test, df_result, df_merged = create_batch_test()
 
-    EXCLUDED_COLUMNS = ["objet_marche", "administration_beneficiaire", "avance"]
+    EXCLUDED_COLUMNS = ["objet_marche", "administration_beneficiaire"]
 
     comparison_functions = get_comparison_functions()
 
     check_quality_one_field(df_merged.query("is_ocr == False"), "montants_en_annexe", comparison_functions)
+
     check_quality_one_field(df_merged, "cotraitants", comparison_functions)
 
     check_quality_one_row(df_merged, 0, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
 
     check_global_statistics(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
+
+    fields_with_errors = get_fields_with_comparison_errors(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
