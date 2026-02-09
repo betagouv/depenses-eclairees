@@ -384,16 +384,16 @@ Règles d’extraction :
     },
     "montants_en_annexe": {
         "consigne": """MONTANTS_EN_ANNEXE  
-     Définition : Indique si les montants sont précisés dans le document, ou s'ils sont précisés dans un autre document en annexe
+     Définition : Indique si les montants sont précisés dans un autre document en annexe (uniquement ou en complément).
      Indices : 
      - Dans le paragraphe de l'engagement du titulaire, près de la mention des prix sur lesquels le titulaire s'engage.
      - Souvent sous forme d'une case à cocher suivi de la mention "au prix indiqué dans les autres documents annexés ...".
-     - Une case cochée peut être représentée par [X], [x], X, x, ☒ ou autre équivalent.
-     - Une case non cochée peut être représentée par [ ], un espace ou autre équivalent.
-     - Si la mention est cochée (les montants sont précisés en annexe), renvoyer :
+        * Une case cochée peut être représentée par [X], [x], X, x, ☒ ou autre équivalent.
+        * Une case non cochée peut être représentée par [ ], un espace ou autre équivalent.
+     - Si la mention est cochée ou qu'il est affirmé que les montants sont précisés en annexe, renvoyer :
         * "annexe_financière": true
         * "classification": une liste des types de documents mentionnés parmi : "BPU" (correspond aussi à bordereau de prix unitaires), "DPGF", "Annexe financière".
-     - Si la mention n'est pas cochée (les montants sont précisés dans le document uniquement), renvoyer :
+     - Si la mention n'est pas cochée ou qu'il est affirmé que les montants sont précisés dans le document uniquement, renvoyer :
         * "annexe_financière": false
         * "classification": null
 """,
@@ -418,5 +418,100 @@ Règles d’extraction :
             },
             "required": ["annexe_financière", "classification"],
         },
+    },
+    "code_cpv": {
+        "consigne": """CODE_CPV
+        Définition : Code CPV (Common Procurement Vocabulary) correspondant à la catégorie de dépense du marché, composé d’un code numérique suivi d’un intitulé.
+        Indices :
+        - Rechercher les mentions explicites "CPV", "Code CPV", "Vocabulaire commun des marchés publics".
+        - Le code CPV est généralement composé de 8 chiffres suivis d’un tiret et d’un chiffre de contrôle (ex : 72611000-6).
+        - Il peut être suivi immédiatement ou non de l’intitulé de la catégorie (ex : "Services d'assistance technique informatique").
+        - Si plusieurs codes CPV sont mentionnés :
+            * Prendre en priorité le CPV principal.
+            * À défaut d’indication explicite, prendre le premier code CPV mentionné.
+        - Ne rien renvoyer si aucun code CPV identifiable n’est trouvé.
+        Format :
+        - Chaîne de caractères sous la forme : "XXXXXXXX-X Intitulé"
+        - Exemple : "72611000-6 Services d'assistance technique informatique"
+    """,
+        "search": "",
+        "output_field": "code_cpv",
+    },
+    "montant_tva": {
+        "consigne": """MONTANT_TVA
+        Définition : Taux de TVA applicable au marché, exprimé sous forme d’un nombre décimal compris entre 0 et 1.
+        Indices :
+        - Rechercher les mentions "TVA", "taux de TVA", "TVA à X %", "TVA : X %".
+        - Le taux est généralement exprimé en pourcentage (ex : 20 %, 10 %, 5,5 %, 0 %).
+        - Convertir le pourcentage en valeur décimale :
+            * 20 % -> 0.20
+            * 10 % -> 0.10
+            * 5,5 % -> 0.055
+            * 0 % -> 0
+        - Si plusieurs taux de TVA sont mentionnés :
+            * Prendre le taux principal appliqué au montant du marché.
+            * Ignorer les taux spécifiques à des pénalités ou mentions non contractuelles.
+        - Ne rien renvoyer si aucun taux de TVA explicite n’est trouvé.
+        Format :
+        - Nombre décimal compris entre 0 et 1 (sans symbole %)
+    """,
+        "search": "",
+        "output_field": "montant_tva",
+    },
+    "mode_consultation": {
+        "consigne": """MODE_CONSULTATION
+        Définition : Mode de passation / de consultation du marché (ex : procédure adaptée, appel d'offres, etc.).
+        Indices :
+        - Rechercher les mentions liées à la procédure de passation :
+            * "procédure adaptée"
+            * "marché passé selon une procédure adaptée"
+            * "appel d'offres ouvert / restreint"
+            * "procédure négociée"
+            * "MAPA"
+            * ou toute formulation équivalente.
+        - Le mode de consultation est souvent mentionné dans l’introduction, le préambule ou les visas du document.
+        - Pour cette version, ne pas interpréter ni normaliser la procédure.
+        - Extraire uniquement la citation exacte du document décrivant le mode de passation du marché.
+        - Ne rien renvoyer si aucune mention explicite du mode de consultation n’est trouvée.
+        Format :
+        - Citation textuelle exacte du document, sans reformulation ni correction.
+    """,
+        "search": "",
+        "output_field": "mode_consultation",
+    },
+    "mode_reconduction": {
+        "consigne": """MODE_RECONDUCTION
+        Définition : Indique si la reconduction du marché est expresse ou tacite.
+        Indices :
+        - Rechercher les mentions relatives à la reconduction du marché :
+            * "reconduction expresse"
+            * "reconduction tacite"
+            * "reconduit tacitement"
+            * "reconduction par décision expresse"
+        - Si le document précise explicitement le caractère de la reconduction :
+            * Renvoyer "expresse" ou "tacite" selon le cas.
+        - Si des reconductions sont mentionnées sans précision explicite sur leur nature, renvoyer null.
+        - Si aucune reconduction n’est prévue ou mentionnée, renvoyer null.
+        Format :
+        - Chaîne de caractères parmi : "expresse", "tacite", ou null
+    """,
+        "search": "",
+        "output_field": "mode_reconduction",
+        "schema": {"type": ["string", "null"]},
+    },
+    "ligne_imputation_budgetaire": {
+        "consigne": """LIGNE_IMPUTATION_BUDGETAIRE
+        Définition : Ligne budgétaire sur laquelle la dépense du marché est imputée.
+        Indices :
+        - Rechercher les mentions "imputation budgétaire", "ligne budgétaire", "imputation", "chapitre", "article".
+        - La ligne est généralement une combinaison de chiffres, lettres et tirets (ex : "0723-CDIE").
+        - Elle peut apparaître dans une section financière, comptable ou administrative du document.
+        - Ne pas confondre avec des références de marché ou des numéros d'engagement juridique.
+        - Ne rien renvoyer si aucune ligne d’imputation budgétaire identifiable n’est trouvée.
+        Format :
+        - Chaîne de caractères telle qu’indiquée dans le document (ex : "0723-CDIE")
+    """,
+        "search": "",
+        "output_field": "ligne_imputation_budgetaire",
     },
 }

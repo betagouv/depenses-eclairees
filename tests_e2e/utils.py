@@ -9,6 +9,17 @@ from docia.file_processing.processor.analyze_content import df_analyze_content
 from docia.file_processing.processor.attributes_query import ATTRIBUTES
 
 
+def compare_exact_string(llm_value, ref_value):
+    # Gestion des valeurs vides ou None
+    if not llm_value and not ref_value:
+        return True
+
+    if not llm_value or not ref_value:
+        return False
+
+    return llm_value == ref_value
+
+
 def remove_accents(text: str) -> str:
     """Remove accents and diacritical marks from a string.
 
