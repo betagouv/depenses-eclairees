@@ -10,8 +10,9 @@ from tests.factories.users import UserFactory
 
 def create_ej_and_document(**kwargs):
     ej = DataEngagementFactory(**kwargs)
-    a = DocumentFactory(ej=ej)
-    return ej, a
+    doc = DocumentFactory()
+    doc.engagements.add(ej)
+    return ej, doc
 
 
 def test_home(client):

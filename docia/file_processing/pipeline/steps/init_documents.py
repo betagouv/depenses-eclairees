@@ -73,7 +73,6 @@ def bulk_create_attachments(files_info: list[FileInfo]):
             filename=row.filename,
             extension=row.extension,
             dossier=row.folder,
-            ej_id=row.num_ej,
             taille=row.size,
             hash=row.hash,
             file=row.file,
@@ -81,6 +80,31 @@ def bulk_create_attachments(files_info: list[FileInfo]):
         for row in files_info
     ]
     Document.objects.bulk_create(attachments, batch_size=200, ignore_conflicts=True)
+
+
+def bulk_create_links_document_engagement(files_info: list[FileInfo]):
+    """Create Links between documents and engagements"""
+
+    # Use through model for efficient bulk creation of M2M relationships
+    DocumentEngagement = Document.engagements.through
+    # Get doc id by filename
+    files = [fi.file.name for fi in files_info]
+    doc_id_by_file = dict(Document.objects.filter(file__in=files).values_list("file", "id"))
+    # Get engagements by num_ej
+    num_ejs = set(file_info.num_ej for file_info in files_info)
+    engagements_by_num_ej = dict(DataEngagement.objects.filter(num_ej__in=num_ejs).values_list("num_ej", "id"))
+
+    # Build the links
+    links_doc_engagement = [
+        DocumentEngagement(
+            document_id=doc_id_by_file[fi.file.name],
+            dataengagement_id=engagements_by_num_ej[fi.num_ej],
+        )
+        for fi in files_info
+    ]
+
+    # Insert in database
+    DocumentEngagement.objects.bulk_create(links_doc_engagement, batch_size=200, ignore_conflicts=True)
 
 
 def bulk_create_batches(num_ejs, batch):
@@ -124,3 +148,4 @@ def task_chunk_init_documents(batch: str, folder: str, *, chunk_number: int = 0,
         bulk_create_engagements(num_ejs)
         bulk_create_batches(num_ejs, batch)
         bulk_create_attachments(files_info)
+        bulk_create_links_document_engagement(files_info)
