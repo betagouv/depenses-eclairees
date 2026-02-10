@@ -115,7 +115,6 @@ class DocumentAdmin(admin.ModelAdmin):
         "id",
         "filename",
         "dossier",
-        "ej",
         "is_ocr",
         "nb_mot",
         "taille",
@@ -128,7 +127,7 @@ class DocumentAdmin(admin.ModelAdmin):
         "dossier",
         "filename",
     )
-    search_fields = ("id", "filename", "dossier", "ej__num_ej", "classification", "classification_type")
+    search_fields = ("id", "filename", "dossier", "engagements__num_ej", "classification", "classification_type")
 
 
 # Déregistrer le GroupAdmin par défaut pour le personnaliser
