@@ -4,16 +4,15 @@ import os
 import sys
 
 import django
-from django.conf import settings
 import pandas as pd
 
 sys.path.append(".")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
 django.setup()
 
-from docia.settings import API_KEY_GRIST
-from docia.file_processing.processor.classifier import DIC_CLASS_FILE_BY_NAME, classify_files  # noqa: E402
 from app.grist.grist_api import get_data_from_grist  # noqa: E402
+from docia.file_processing.processor.classifier import DIC_CLASS_FILE_BY_NAME, classify_files  # noqa: E402
+from docia.settings import API_KEY_GRIST  # noqa: E402
 
 logger = logging.getLogger("docia." + __name__)
 
