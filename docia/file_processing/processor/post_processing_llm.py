@@ -123,10 +123,7 @@ def post_processing_amount(amount: str) -> str:
         num = match.group(1)
         # Remplacer la virgule (cas français) par un point pour le float Python
         num = num.replace(",", ".")
-        try:
-            return f"{round(float(num), 2):.2f}"
-        except ValueError:
-            return None
+        return f"{float(num):.2f}"
     return None
 
 
@@ -148,10 +145,7 @@ def post_processing_percentage(percentage: str) -> str:
         num = match.group(1)
         # Remplacer la virgule (cas français) par un point pour le float Python
         num = num.replace(",", ".")
-        try:
-            return f"{round(float(num), 2):.2f}"
-        except ValueError:
-            return None
+        return f"{float(num):.2f}"
     return None
 
 

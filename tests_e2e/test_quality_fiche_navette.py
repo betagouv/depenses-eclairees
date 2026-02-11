@@ -3,7 +3,6 @@ import os
 import sys
 
 import django
-from django.conf import settings
 
 sys.path.append(".")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
@@ -14,14 +13,12 @@ from tests_e2e.utils import (  # noqa: E402
     analyze_content_quality_test,
     check_global_statistics,
     check_quality_one_field,
+    check_quality_one_row,
+    compare_normalized_string,
     get_ground_truth_from_grist,
-    normalize_string,
 )
 
 logger = logging.getLogger("docia." + __name__)
-
-PROJECT_PATH = settings.BASE_DIR
-CSV_DIR_PATH = (PROJECT_PATH / ".." / "data" / "test").resolve()
 
 
 def compare_object(llm_value, ref_value, llm_model="openweight-medium"):
@@ -45,7 +42,7 @@ def compare_object(llm_value, ref_value, llm_model="openweight-medium"):
         return False
 
     try:
-        # Création d'une instance LLMEnvironment
+        # Création d'une instance LLMClient
         llm_env = LLMClient()
 
         # Construction du prompt pour demander l'avis du LLM
@@ -92,7 +89,7 @@ def compare_object(llm_value, ref_value, llm_model="openweight-medium"):
         return False
 
 
-def compare_beneficiary_administration(llm_value, ref_value, llm_model="albert-small"):
+def compare_beneficiary_administration(llm_value, ref_value, llm_model="openweight-medium"):
     """
     Compare deux administrations bénéficiaires en utilisant un LLM comme juge pour évaluer s'il s'agit du même
     organisme ou d'une entité publique équivalente.
@@ -112,7 +109,7 @@ def compare_beneficiary_administration(llm_value, ref_value, llm_model="albert-s
         return False
 
     try:
-        # Création d'une instance LLMEnvironment
+        # Création d'une instance LLMClient
         llm_env = LLMClient()
 
         # Construction du prompt pour demander l'avis du LLM
@@ -172,37 +169,6 @@ def compare_beneficiary_administration(llm_value, ref_value, llm_model="albert-s
         return False
 
 
-def compare_main_company(llm_value, ref_value):
-    """Compare societe_principale : comparaison de chaînes normalisées."""
-
-    if not llm_value and not ref_value:
-        return True
-
-    if not llm_value or not ref_value:
-        return False
-
-    llm_norm = normalize_string(llm_value)
-    ref_norm = normalize_string(ref_value)
-
-    if llm_norm == ref_norm:
-        return True
-    else:
-        llm_norm_no_space = llm_norm.replace(" ", "")
-        ref_norm_no_space = ref_norm.replace(" ", "")
-        return llm_norm_no_space == ref_norm_no_space
-
-
-def compare_simple_label(llm_value, ref_value):
-    """Compare simple_label : comparaison de chaînes normalisées."""
-    if not llm_value and not ref_value:
-        return True
-
-    if not llm_value or not ref_value:
-        return False
-
-    return llm_value == ref_value
-
-
 def get_comparison_functions():
     """Mapping des colonnes vers leurs fonctions de comparaison
 
@@ -216,18 +182,18 @@ def get_comparison_functions():
     return {
         "objet": compare_object,
         "administration_beneficiaire": compare_beneficiary_administration,
-        "societe_principale": compare_main_company,
-        "accord_cadre": compare_simple_label,
-        "id_accord_cadre": compare_simple_label,
-        "montant_ht": compare_simple_label,
-        "reconduction": compare_simple_label,
-        "taux_tva": compare_simple_label,
-        "centre_cout": compare_simple_label,
-        "centre_financier": compare_simple_label,
-        "activite": compare_simple_label,
-        "domaine_fonctionnel": compare_simple_label,
-        "localisation_interministerielle": compare_simple_label,
-        "groupe_marchandise": compare_simple_label,
+        "societe_principale": compare_normalized_string,
+        "accord_cadre": compare_normalized_string,
+        "id_accord_cadre": compare_normalized_string,
+        "montant_ht": compare_normalized_string,
+        "reconduction": compare_normalized_string,
+        "taux_tva": compare_normalized_string,
+        "centre_cout": compare_normalized_string,
+        "centre_financier": compare_normalized_string,
+        "activite": compare_normalized_string,
+        "domaine_fonctionnel": compare_normalized_string,
+        "localisation_interministerielle": compare_normalized_string,
+        "groupe_marchandise": compare_normalized_string,
     }
 
 
@@ -251,9 +217,8 @@ if __name__ == "__main__":
 
     comparison_functions = get_comparison_functions()
 
-    # check_quality_one_field(df_merged, "administration_beneficiaire", comparison_functions)
     check_quality_one_field(df_merged, "taux_tva", comparison_functions)
 
-    # check_quality_one_row(df_merged, 0, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
+    check_quality_one_row(df_merged, 0, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
 
     check_global_statistics(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
