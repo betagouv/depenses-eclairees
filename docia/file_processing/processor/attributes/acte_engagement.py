@@ -366,8 +366,7 @@ Règles d’extraction :
         Indices :
         Le texte présente souvent une phrase de type "Je renonce au bénéfice de l'avance" suivie de deux options : [ ] Non et [ ] Oui.
         1. Identifie quelle case est cochée (représentée par [X], [x], X, x, ☒ ou autre équivalent) et quelle case ne l'est pas (représentée par [ ], un espace ou autre équivalent).
-        - La coche appartient à l’option (NON ou OUI) la plus proche spatialement.
-        - Si la coche est située entre "NON" et "OUI", elle est associée à l’option située immédiatement à droite.
+        - Généralement les cases sont présentes avant la mention (à gauche de la mention).
         2. Analyse le sens : 
         - Si "Renonce" est associé à "NON" (coché) -> L'utilisateur VEUT l'avance -> Renvoyer "conserve"
         - Si "Renonce" est associé à "OUI" (coché) -> L'utilisateur REFUSE l'avance -> Renvoyer "renonce"
