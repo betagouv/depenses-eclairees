@@ -1,3 +1,4 @@
+import ast
 import json
 import os
 import re
@@ -57,7 +58,7 @@ def compare_normalized_string(actual, expected):
     return normalize_string(actual.replace(" ", "")) == normalize_string(expected.replace(" ", ""))
 
 
-def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, multi_line_coef=1, use_cache=False):
+def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, multi_line_coef=1, use_cache=False, max_workers=10, llm_model="openweight-medium"):
     """Test de qualité des informations extraites par le LLM.
 
     Args:
@@ -87,8 +88,9 @@ def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, mult
         df_result = df_analyze_content(
             df=df_analyze,
             df_attributes=ATTRIBUTES,
-            max_workers=10,
+            max_workers=max_workers,
             temperature=0.1,
+            llm_model=llm_model,
         )
 
     # Sauvegarde des résultats dans le cache
@@ -278,11 +280,35 @@ def get_fields_with_comparison_errors(df_merged, comparison_functions, excluded_
     return result
 
 
+def _parse_best_test_errors(row):
+    """Retourne la liste des champs en erreur du meilleur test pour cette ligne (colonne optionnelle)."""
+    val = row.get("best_test_comparison_errors")
+    if val is None or (isinstance(val, float) and pd.isna(val)):
+        return []
+    if isinstance(val, list):
+        return val
+    if isinstance(val, str):
+        val = val.strip()
+        if not val or val in ("[]", "nan"):
+            return []
+        try:
+            return json.loads(val)
+        except (json.JSONDecodeError, TypeError):
+            pass
+        try:
+            parsed = ast.literal_eval(val)
+            return list(parsed) if isinstance(parsed, (list, tuple)) else []
+        except (ValueError, SyntaxError, TypeError):
+            return []
+    return []
+
+
 def check_global_statistics(df_merged, comparison_functions, excluded_columns=None):
     # ============================================================================
     # STATISTIQUES GLOBALES DE COMPARAISON
     # ============================================================================
     excluded_columns = excluded_columns or []
+    use_best_ref = "best_test_comparison_errors" in df_merged.columns
 
     print(f"\n{'=' * 80}")
     print("STATISTIQUES GLOBALES DE COMPARAISON")
@@ -300,6 +326,8 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
         errors = []
         ocr_errors_count = 0
         matches_no_ocr = []
+        regressions_vs_best = 0
+        improvements_vs_best = 0
 
         # Comparer toutes les lignes pour cette colonne
         for idx, row in df_merged.iterrows():
@@ -307,7 +335,7 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
 
             # Vérifier les erreurs OCR pour cette colonne
             pbm_ocr = False
-            if col in row["pbm_ocr"]:
+            if col in row.get("pbm_ocr", []):
                 ocr_errors_count += 1
                 pbm_ocr = True
 
@@ -329,15 +357,30 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
                 match_result = comparison_func(llm_val, ref_val)
                 match_result = bool(match_result) if not isinstance(match_result, bool) else match_result
                 matches.append(match_result)
-                # Si pas de problème OCR, on ajoute aussi à matches_no_ocr
+                # Si pas de problème OCR, on compte aussi dans matches_no_ocr
                 if not pbm_ocr:
                     matches_no_ocr.append(match_result)
+
+                # Écart au meilleur test (si colonne optionnelle présente)
+                if use_best_ref:
+                    best_errors = _parse_best_test_errors(row)
+                    best_had_error = col in best_errors
+                    current_has_error = not match_result
+                    if not best_had_error and current_has_error:
+                        regressions_vs_best += 1
+                    elif best_had_error and not current_has_error:
+                        improvements_vs_best += 1
             except Exception as e:
                 errors.append(f"{filename}: Error in comparison_func: {str(e)}")
                 matches.append(False)
                 # Si pas de problème OCR, on ajoute aussi à matches_no_ocr
                 if not pbm_ocr:
                     matches_no_ocr.append(False)
+                if use_best_ref:
+                    best_errors = _parse_best_test_errors(row)
+                    best_had_error = col in best_errors
+                    if not best_had_error:
+                        regressions_vs_best += 1
 
         # Calculer les statistiques pour cette colonne
         total = len(matches)
@@ -360,37 +403,43 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
             "total_no_ocr": total_no_ocr,
             "matches_no_ocr": matches_no_ocr_count,
         }
+        if use_best_ref:
+            results[col]["delta_vs_best"] = regressions_vs_best - improvements_vs_best
+            results[col]["regressions_vs_best"] = regressions_vs_best
+            results[col]["improvements_vs_best"] = improvements_vs_best
 
     # Affichage des statistiques
-    print(
-        " | ".join(
-            [
-                f"{'Colonne':<35}",
-                f"{'Total':<6}",
-                f"{'Matches':<8}",
-                f"{'Erreurs':<8}",
-                f"{'OCR Errors':<10}",
-                f"{'Accuracy':<10}",
-                f"{'Accuracy (no OCR)':<18}",
-            ]
-        )
-    )
-    print("-" * 120)
+    header_parts = [
+        f"{'Colonne':<35}",
+        f"{'Total':<6}",
+        f"{'Matches':<8}",
+        f"{'Erreurs':<8}",
+        f"{'OCR Errors':<10}",
+        f"{'Accuracy':<10}",
+        f"{'Accuracy (no OCR)':<18}",
+    ]
+    if use_best_ref:
+        header_parts.append(f"{'(+)':<14}")
+        header_parts.append(f"{'(-)':<14}")
+    print(" | ".join(header_parts))
+    print("-" * (160 if use_best_ref else 120))
 
     for col, result in results.items():
-        print(
-            " | ".join(
-                [
-                    f"{col:<35}",
-                    f"{result['total']:<6}",
-                    f"{result['matches']:<8}",
-                    f"{result['errors']:<8}",
-                    f"{result['ocr_errors']:<10}",
-                    f"{result['accuracy'] * 100:>6.2f}%",
-                    f"{result['accuracy_no_ocr'] * 100:>14.2f}%",
-                ]
-            )
-        )
+        row_parts = [
+            f"{col:<35}",
+            f"{result['total']:<6}",
+            f"{result['matches']:<8}",
+            f"{result['errors']:<8}",
+            f"{result['ocr_errors']:<10}",
+            f"{result['accuracy'] * 100:>6.2f}%",
+            f"{result['accuracy_no_ocr'] * 100:>14.2f}%",
+        ]
+        if use_best_ref:
+            imp = result.get("improvements_vs_best", 0)
+            reg = result.get("regressions_vs_best", 0)
+            row_parts.append(f"{'+' + str(imp) if imp else '0':<14}")
+            row_parts.append(f"{'-' + str(reg) if reg else '0':<14}")
+        print(" | ".join(row_parts))
 
     print(f"\n{'=' * 120}")
     print("Résumé global:")
@@ -411,6 +460,10 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
     print(f"Total d'erreurs OCR: {total_ocr_errors}")
     print(f"Accuracy globale: {global_accuracy * 100:.2f}%")
     print(f"Accuracy globale (sans OCR): {global_accuracy_no_ocr * 100:.2f}% ({total_matches_no_ocr}/{total_no_ocr})")
-    print(f"{'=' * 120}\n")
+    if use_best_ref:
+        total_imp = sum(r.get("improvements_vs_best", 0) for r in results.values())
+        total_reg = sum(r.get("regressions_vs_best", 0) for r in results.values())
+        print(f"Écart au meilleur test: Améliorations +{total_imp}, Régressions -{total_reg}")
+    print(f"{'=' * (160 if use_best_ref else 120)}\n")
 
     return global_accuracy

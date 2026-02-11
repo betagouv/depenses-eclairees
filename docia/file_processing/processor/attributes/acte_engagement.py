@@ -103,8 +103,11 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
    Définition : Numéro SIRET de la société principale, composé de 14 chiffres.  
    Indices :
    - Peut être mentionné comme "SIRET", ou "numéro d'immatriculation".
-   - Si plusieurs SIRET sont disponibles pour une même entreprise, avec différentes terminaisons (5 derniers chiffres), prendre le numéro le plus élevé.
-        * Exemple : 123 456 789 00001 et 123 456 789 00020, renvoyer 12345678900020 (car 00020 > 00001).
+   - Favoriser les numéros de SIRET indiqués dans l'identification du titulaire, plutôt qu'en signature du document.
+   - Si plusieurs SIRET sont disponibles pour une même entreprise, avec différentes terminaisons (5 derniers chiffres) :
+        * Prendre le numéro de l'établissement concerné (pas le siège social) pour renvoyer le SIRET.
+        * S'il n'y a pas de précisions sur l'établissement concerné, renvoyer le SIRET le plus élevé.
+            -> Exemple : 123 456 789 00001 et 123 456 789 00020, renvoyer 12345678900020 (car 00020 > 00001).
    - Si le numéro de SIRET ne contient pas suffisamment de caractères, ne pas compléter : renvoyer tel quel.
    Format : un numéro composé de 14 chiffres, sans espaces.  
 """,
@@ -364,6 +367,7 @@ Règles d’extraction :
         Indices :
         Le texte présente souvent une phrase de type "Je renonce au bénéfice de l'avance" suivie de deux options : [ ] Non et [ ] Oui.
         1. Identifie quelle case est cochée (représentée par [X], [x], X, x, ☒ ou autre équivalent) et quelle case ne l'est pas (représentée par [ ], un espace ou autre équivalent).
+        - Généralement les cases sont présentes avant la mention (à gauche de la mention).
         2. Analyse le sens : 
         - Si "Renonce" est associé à "NON" (coché) -> L'utilisateur VEUT l'avance -> Renvoyer "conserve"
         - Si "Renonce" est associé à "OUI" (coché) -> L'utilisateur REFUSE l'avance -> Renvoyer "renonce"
@@ -420,97 +424,35 @@ Règles d’extraction :
         },
     },
     "code_cpv": {
-        "consigne": """CODE_CPV
-        Définition : Code CPV (Common Procurement Vocabulary) correspondant à la catégorie de dépense du marché, composé d’un code numérique suivi d’un intitulé.
-        Indices :
-        - Rechercher les mentions explicites "CPV", "Code CPV", "Vocabulaire commun des marchés publics".
-        - Le code CPV est généralement composé de 8 chiffres suivis d’un tiret et d’un chiffre de contrôle (ex : 72611000-6).
-        - Il peut être suivi immédiatement ou non de l’intitulé de la catégorie (ex : "Services d'assistance technique informatique").
-        - Si plusieurs codes CPV sont mentionnés :
-            * Prendre en priorité le CPV principal.
-            * À défaut d’indication explicite, prendre le premier code CPV mentionné.
-        - Ne rien renvoyer si aucun code CPV identifiable n’est trouvé.
-        Format :
-        - Chaîne de caractères sous la forme : "XXXXXXXX-X Intitulé"
-        - Exemple : "72611000-6 Services d'assistance technique informatique"
-    """,
+        "consigne": """CODE_CPV — Code CPV (catégorie de dépense du marché).
+        Chercher "CPV", "Code CPV" ; format type 8 chiffres + tiret + chiffre (ex. 72611000-6), éventuellement suivi de l'intitulé.
+        Si plusieurs : priorité au CPV principal, sinon le premier. Format : "XXXXXXXX-X Intitulé". Sinon null.""",
         "search": "",
         "output_field": "code_cpv",
     },
     "montant_tva": {
-        "consigne": """MONTANT_TVA
-        Définition : Taux de TVA applicable au marché, exprimé sous forme d’un nombre décimal compris entre 0 et 1.
-        Indices :
-        - Rechercher les mentions "TVA", "taux de TVA", "TVA à X %", "TVA : X %".
-        - Le taux est généralement exprimé en pourcentage (ex : 20 %, 10 %, 5,5 %, 0 %).
-        - Convertir le pourcentage en valeur décimale :
-            * 20 % -> 0.20
-            * 10 % -> 0.10
-            * 5,5 % -> 0.055
-            * 0 % -> 0
-        - Si plusieurs taux de TVA sont mentionnés :
-            * Prendre le taux principal appliqué au montant du marché.
-            * Ignorer les taux spécifiques à des pénalités ou mentions non contractuelles.
-        - Ne rien renvoyer si aucun taux de TVA explicite n’est trouvé.
-        Format :
-        - Nombre décimal compris entre 0 et 1 (sans symbole %)
-    """,
+        "consigne": """MONTANT_TVA — Taux de TVA du marché en décimal entre 0 et 1.
+        Chercher "TVA", "taux de TVA", "TVA à X %". Convertir le % en décimal (20 % -> 0.20, 10 % -> 0.10, 5,5 % -> 0.055).
+        Si plusieurs taux : prendre celui du montant du marché. Sinon null.""",
         "search": "",
         "output_field": "montant_tva",
     },
     "mode_consultation": {
-        "consigne": """MODE_CONSULTATION
-        Définition : Mode de passation / de consultation du marché (ex : procédure adaptée, appel d'offres, etc.).
-        Indices :
-        - Rechercher les mentions liées à la procédure de passation :
-            * "procédure adaptée"
-            * "marché passé selon une procédure adaptée"
-            * "appel d'offres ouvert / restreint"
-            * "procédure négociée"
-            * "MAPA"
-            * ou toute formulation équivalente.
-        - Le mode de consultation est souvent mentionné dans l’introduction, le préambule ou les visas du document.
-        - Pour cette version, ne pas interpréter ni normaliser la procédure.
-        - Extraire uniquement la citation exacte du document décrivant le mode de passation du marché.
-        - Ne rien renvoyer si aucune mention explicite du mode de consultation n’est trouvée.
-        Format :
-        - Citation textuelle exacte du document, sans reformulation ni correction.
-    """,
+        "consigne": """MODE_CONSULTATION — Mode de passation du marché (procédure adaptée, appel d'offres, MAPA, etc.).
+        Chercher dans intro, préambule ou visas. Extraire la citation exacte du document, sans reformuler. Sinon null.""",
         "search": "",
         "output_field": "mode_consultation",
     },
     "mode_reconduction": {
-        "consigne": """MODE_RECONDUCTION
-        Définition : Indique si la reconduction du marché est expresse ou tacite.
-        Indices :
-        - Rechercher les mentions relatives à la reconduction du marché :
-            * "reconduction expresse"
-            * "reconduction tacite"
-            * "reconduit tacitement"
-            * "reconduction par décision expresse"
-        - Si le document précise explicitement le caractère de la reconduction :
-            * Renvoyer "expresse" ou "tacite" selon le cas.
-        - Si des reconductions sont mentionnées sans précision explicite sur leur nature, renvoyer null.
-        - Si aucune reconduction n’est prévue ou mentionnée, renvoyer null.
-        Format :
-        - Chaîne de caractères parmi : "expresse", "tacite", ou null
-    """,
+        "consigne": """MODE_RECONDUCTION — Reconduction du marché : expresse ou tacite.
+        Chercher "reconduction expresse", "reconduction tacite", "reconduit tacitement". Renvoyer "expresse" ou "tacite" si explicite, sinon null.""",
         "search": "",
         "output_field": "mode_reconduction",
-        "schema": {"type": ["string", "null"]},
     },
     "ligne_imputation_budgetaire": {
-        "consigne": """LIGNE_IMPUTATION_BUDGETAIRE
-        Définition : Ligne budgétaire sur laquelle la dépense du marché est imputée.
-        Indices :
-        - Rechercher les mentions "imputation budgétaire", "ligne budgétaire", "imputation", "chapitre", "article".
-        - La ligne est généralement une combinaison de chiffres, lettres et tirets (ex : "0723-CDIE").
-        - Elle peut apparaître dans une section financière, comptable ou administrative du document.
-        - Ne pas confondre avec des références de marché ou des numéros d'engagement juridique.
-        - Ne rien renvoyer si aucune ligne d’imputation budgétaire identifiable n’est trouvée.
-        Format :
-        - Chaîne de caractères telle qu’indiquée dans le document (ex : "0723-CDIE")
-    """,
+        "consigne": """LIGNE_IMPUTATION_BUDGETAIRE — Ligne budgétaire d’imputation de la dépense.
+        Chercher "imputation budgétaire", "ligne budgétaire", "chapitre", "article". Format type : chiffres/lettres/tirets (ex. 0723-CDIE).
+        Ne pas confondre avec référence de marché. Sinon null.""",
         "search": "",
         "output_field": "ligne_imputation_budgetaire",
     },

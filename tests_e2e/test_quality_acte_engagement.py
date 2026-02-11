@@ -198,7 +198,12 @@ def compare_main_company(llm_value, ref_value):
 
 
 def compare_mandatee_bank_account(llm_val: dict[str, str], ref_val: dict[str, str]):
-    """Compare rib_mandataire : format JSON, comparaison des 5 champs."""
+    """Compare rib_mandataire : format JSON, comparaison des champs IBAN et banque.
+
+    - Si les deux IBANs sont non vides/non None, on valide si compare_iban renvoie True (les banques ne comptent pas alors).
+    - Si les deux IBANs sont vides ou None, on valide si les banques sont équivalentes.
+    - Si un seul IBAN est non vide, alors False.
+    """
 
     # Gestion des valeurs vides ou None
     if not llm_val and not ref_val:
@@ -207,9 +212,22 @@ def compare_mandatee_bank_account(llm_val: dict[str, str], ref_val: dict[str, st
     if not llm_val or not ref_val:
         return False
 
+    llm_iban = llm_val.get("iban")
+    ref_iban = ref_val.get("iban")
+
     llm_banque = normalize_string(llm_val.get("banque", ""))
     ref_banque = normalize_string(ref_val.get("banque", ""))
-    return compare_iban(llm_val.get("iban"), ref_val.get("iban")) and llm_banque == ref_banque
+
+    # Si les IBAN sont présents dans les deux, compare uniquement les IBAN
+    if llm_iban and ref_iban:
+        return compare_iban(llm_iban, ref_iban)
+
+    # Si les IBAN sont tous les deux vides, compare la banque
+    elif not llm_iban and not ref_iban:
+        return llm_banque == ref_banque
+
+    # Si un seul IBAN est vide, on considère que c'est différent
+    return False
 
 
 def compare_co_contractors(llm_val: list[dict[str, str]], ref_val: list[dict[str, str]]):
@@ -458,8 +476,10 @@ def get_comparison_functions():
     }
 
 
-def create_batch_test(multi_line_coef=1):
+def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-medium"):
     """Test de qualité des informations extraites par le LLM."""
+    # Chemin vers le fichier CSV de test
+    csv_path = CSV_DIR_PATH / "test_acte_engagement_v2.csv"
 
     df_test = get_data_from_grist(table="Acte_engagement_gt")
     df_test.fillna("", inplace=True)
@@ -476,20 +496,26 @@ def create_batch_test(multi_line_coef=1):
     df_test["montant_ttc"] = df_test["montant_ttc"].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "")
     
     # Lancement du test
-    return analyze_content_quality_test(df_test, "acte_engagement", multi_line_coef=multi_line_coef)
-
+    return analyze_content_quality_test(df_test, "acte_engagement", multi_line_coef=multi_line_coef, max_workers=max_workers, llm_model=llm_model)
 
 if __name__ == "__main__":
-    df_test, df_result, df_merged = create_batch_test()
+    df_test, df_result, df_merged = create_batch_test(llm_model="openweight-large")
 
     EXCLUDED_COLUMNS = ["objet_marche", "administration_beneficiaire"]
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, 'forme_marche', comparison_functions)
+    check_quality_one_field(df_merged, 'siret_mandataire', comparison_functions)
 
     check_quality_one_row(df_merged, 0, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
 
     check_global_statistics(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
 
     fields_with_errors = get_fields_with_comparison_errors(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
+    
+    for v in fields_with_errors.values():
+        print(json.dumps(v))
+
+
+
+    
