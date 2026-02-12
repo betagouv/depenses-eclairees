@@ -476,7 +476,7 @@ def get_comparison_functions():
         "montant_tva": compare_exact_string,
         "mode_consultation": compare_exact_string,
         "mode_reconduction": compare_exact_string,
-        "ligne_imputation_budgetaire": compare_exact_string,
+        "ligne_imputation_budgétaire": compare_exact_string,
     }
 
 

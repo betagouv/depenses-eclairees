@@ -144,13 +144,13 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
         "schema": {
             "type": "object",
             "properties": {
-                "banque": {"type": ["string", "null"]},
-                "iban": {"type": ["string", "null"]},
-                "code_banque": {"type": ["string", "null"]},
-                "code_guichet": {"type": ["string", "null"]},
-                "numero_compte": {"type": ["string", "null"]},
-                "cle_rib": {"type": ["string", "null"]},
-            },
+                "banque": {"type": ["string","null"]},
+                "iban": {"type": ["string","null"]},
+                "code_banque": {"type": ["string","null"]},
+                "code_guichet": {"type": ["string","null"]},
+                "numero_compte": {"type": ["string","null"]},
+                "cle_rib": {"type": ["string","null"]}
+            }
         },
     },
     "cotraitants": {
@@ -161,7 +161,7 @@ Règles d’extraction :
 - Ignorer totalement les entreprises mentionnées comme sous-traitantes.
 - Ignorer toute mention générique contenant le mot “cotraitant” (ex. “Cotraitant”, “cotraitant1”, “cotraitant2”) : ce ne sont pas des entreprises.
 - Une entreprise n’est retenue que si au moins l’un des éléments suivants apparaît dans le texte : un nom réel d’entreprise, un numéro SIRET (14 chiffres) ou SIREN (9 chiffres) valide.
-- Pour le nom (champ "nom") : en cas de choix, préférer la raison sociale plutôt que le nom commercial.
+- Pour le nom (champ "nom") : en cas de choix, préférer la dénomination sociale plutôt que le nom commercial.
 - Pour le SIRET (champ "siret") : si plusieurs SIRET sont disponibles pour une même entreprise :
     * Prendre le numéro de l’établissement concerné (pas le siège social) pour renvoyer le SIRET.
     * S'il n’y a pas de précisions sur l’établissement concerné, renvoyer le SIRET le plus élevé.
@@ -207,7 +207,7 @@ Règles d’extraction :
      Indices : 
      - Rechercher dans le paragraphe des comptes à créditer, s'il y a plusieurs RIB indiqués pour plusieurs entreprises différentes.
      - Pour chaque entreprise (autre que le mandataire), renvoyer 'societe' (nom cohérent avec le champ cotraitants si possible) et 'rib' :
-     - 1er cas (prioritaire) : l'IBAN est fourni (27 caractères commençant par "FR76" pour un RIB français). Renvoyer dans 'rib' :
+     - 1er cas (prioritaire) : l'IBAN est fourni (27 caractères commençant par "FR76"). Renvoyer dans 'rib' :
         * 'banque' : Nom de la banque (sans la mention "Banque")
         * 'iban' : IBAN du compte à créditer (souvent 6 groupes de 4 caractères, puis 3 caractères)
      - 2ème cas (uniquement s'il n'y a pas d'IBAN) : l'IBAN n'est pas fourni, mais les autres informations bancaires sont fournies. Renvoyer dans 'rib' :
@@ -366,7 +366,8 @@ Règles d’extraction :
         Indices :
         Le texte présente souvent une phrase de type "Je renonce au bénéfice de l'avance" suivie de deux options : [ ] Non et [ ] Oui.
         1. Identifie quelle case est cochée (représentée par [X], [x], X, x, ☒ ou autre équivalent) et quelle case ne l'est pas (représentée par [ ], un espace ou autre équivalent).
-        - Généralement les cases sont présentes avant la mention (à gauche de la mention).
+        - La coche appartient à l’option (NON ou OUI) la plus proche spatialement.
+        - Si la coche est située entre "NON" et "OUI", elle est associée à l’option située immédiatement à droite.
         2. Analyse le sens : 
         - Si "Renonce" est associé à "NON" (coché) -> L'utilisateur VEUT l'avance -> Renvoyer "conserve"
         - Si "Renonce" est associé à "OUI" (coché) -> L'utilisateur REFUSE l'avance -> Renvoyer "renonce"

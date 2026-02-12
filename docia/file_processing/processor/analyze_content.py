@@ -4,6 +4,9 @@ Contexte = parfois tout le texte extrait, parfois seulement une liste de chunks 
 """
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
+
+from tqdm import tqdm
 
 import pandas as pd
 
