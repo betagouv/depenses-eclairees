@@ -82,6 +82,7 @@ class LLMClient:
         http_client: httpx.Client | None = None,
         ocr_http_client: httpx.Client | None = None,
         use_rate_limiter: bool | None = None,
+        timeout: float = 180.0,
     ):
         if use_rate_limiter is None:
             use_rate_limiter = settings.ALBERT_USE_RATE_LIMITER
@@ -90,12 +91,14 @@ class LLMClient:
         self.base_url = base_url or settings.ALBERT_BASE_URL
         self._use_rate_limiter = use_rate_limiter
         self._ocr_http_client = ocr_http_client
+        self.timeout = timeout
 
         # Initialisation du client OpenAI
         self.client = OpenAI(
             api_key=self.api_key,
             base_url=self.base_url,
             http_client=http_client,
+            timeout=timeout,
             # Disable openai client retry feature, handle retry ourselves
             max_retries=0,
         )

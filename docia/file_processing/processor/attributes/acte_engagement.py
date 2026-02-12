@@ -151,25 +151,14 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
         "output_field": "rib_mandataire",
         "schema": {
             "type": "object",
-            "oneOf": [
-                {
-                    "type": "object",
-                    "properties": {"banque": {"type": "string"}, "iban": {"type": "string"}},
-                    "required": ["banque", "iban"],
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "banque": {"type": "string"},
-                        "code_banque": {"type": "string"},
-                        "code_guichet": {"type": "string"},
-                        "numero_compte": {"type": "string"},
-                        "cle_rib": {"type": "string"},
-                    },
-                    "required": ["banque", "code_banque", "code_guichet", "numero_compte", "cle_rib"],
-                },
-                {},
-            ],
+            "properties": {
+                "banque": {"type": ["string","null"]},
+                "iban": {"type": ["string","null"]},
+                "code_banque": {"type": ["string","null"]},
+                "code_guichet": {"type": ["string","null"]},
+                "numero_compte": {"type": ["string","null"]},
+                "cle_rib": {"type": ["string","null"]}
+            }
         },
     },
     "cotraitants": {
@@ -180,6 +169,10 @@ Règles d’extraction :
 - Ignorer totalement les entreprises mentionnées comme sous-traitantes.
 - Ignorer toute mention générique contenant le mot “cotraitant” (ex. “Cotraitant”, “cotraitant1”, “cotraitant2”) : ce ne sont pas des entreprises.
 - Une entreprise n’est retenue que si au moins l’un des éléments suivants apparaît dans le texte : un nom réel d’entreprise, un numéro SIRET (14 chiffres) ou SIREN (9 chiffres) valide.
+- Pour le nom (champ "nom") : en cas de choix, préférer la dénomination sociale plutôt que le nom commercial.
+- Pour le SIRET (champ "siret") : si plusieurs SIRET sont disponibles pour une même entreprise :
+    * Prendre le numéro de l’établissement concerné (pas le siège social) pour renvoyer le SIRET.
+    * S'il n’y a pas de précisions sur l’établissement concerné, renvoyer le SIRET le plus élevé.
 - Si aucun cotraitant réel n’est identifié dans le texte, renvoyer []
 - Format attendu : 
     * une liste JSON : [{"nom": "...", "siret": "..."}]
@@ -218,16 +211,24 @@ Règles d’extraction :
     },
     "rib_autres": {
         "consigne": """RIB_AUTRES
-     Définition : RIB des autres entreprises du groupement, s'il y en a.
+     Définition : RIB des autres entreprises du groupement (cotraitants, etc.), s'il y en a. Informations bancaires (IBAN en priorité) du compte à créditer pour chaque entreprise.
      Indices : 
      - Rechercher dans le paragraphe des comptes à créditer, s'il y a plusieurs RIB indiqués pour plusieurs entreprises différentes.
-        * 'societe' : nom de la société du groupement (si possible cohérent avec le champ cotraitants ci-dessus)
-        * 'rib' : informations bancaires du compte à créditer (banque, IBAN, etc.)
-            * 'banque' : Nom de la banque (sans la mention "Banque"). Ne rien renvoyer si aucune banque trouvée.
-            * 'iban' : IBAN du compte à créditer avec espaces tous les 4 caractères. Ne rien renvoyer si aucun IBAN trouvé.
+     - Pour chaque entreprise (autre que le mandataire), renvoyer 'societe' (nom cohérent avec le champ cotraitants si possible) et 'rib' :
+     - 1er cas (prioritaire) : l'IBAN est fourni (27 caractères commençant par "FR76"). Renvoyer dans 'rib' :
+        * 'banque' : Nom de la banque (sans la mention "Banque")
+        * 'iban' : IBAN du compte à créditer (souvent 6 groupes de 4 caractères, puis 3 caractères)
+     - 2ème cas (uniquement s'il n'y a pas d'IBAN) : l'IBAN n'est pas fourni, mais les autres informations bancaires sont fournies. Renvoyer dans 'rib' :
+        * 'banque' : Nom de la banque (sans la mention "Banque")
+        * 'code_banque' : code de la banque à 5 chiffres (espaces non compris)
+        * 'code_guichet' : code du guichet à 5 chiffres (espaces non compris)
+        * 'numero_compte' : numéro de compte français à 11 chiffres (espaces non compris)
+        * 'cle_rib' : clé du RIB à 2 chiffres (espaces non compris)
      - S'il n'y a que le RIB du mandataire, renvoyer [].
-     - S'il n'y a pas d'informations sur le compte bancaire d'une entreprise, ne rien renvoyer pour cette entreprise.
-     Format : une liste de dictionnaires json sous format [{"societe": "nom de la société du groupement", "rib": {"banque": "nom de la banque", "iban": "IBAN avec espaces tous les 4 caractères"}}]
+     - S'il n'y a pas d'informations sur le compte bancaire pour une entreprise (ni IBAN, ni informations RIB), ne pas inclure cette entreprise dans la liste.
+     Format : 
+     - 1er cas (prioritaire) : [{"societe": "nom de la société", "rib": {"banque": "nom de la banque", "iban": "IBAN avec espaces tous les 4 caractères"}}]
+     - 2ème cas (secondaire - uniquement s'il n'y a pas d'IBAN) : [{"societe": "nom de la société", "rib": {"banque": "nom de la banque", "code_banque": "...", "code_guichet": "...", "numero_compte": "...", "cle_rib": "..."}}]
 """,
         "search": "Section du document qui décrit le groupement et les entreprises qui le composent.",
         "output_field": "rib_autres",
@@ -239,8 +240,14 @@ Règles d’extraction :
                     "societe": {"type": "string"},
                     "rib": {
                         "type": "object",
-                        "properties": {"banque": {"type": "string"}, "iban": {"type": "string"}},
-                        "required": ["banque", "iban"],
+                        "properties": {
+                            "banque": {"type": ["string", "null"]},
+                            "iban": {"type": ["string", "null"]},
+                            "code_banque": {"type": ["string", "null"]},
+                            "code_guichet": {"type": ["string", "null"]},
+                            "numero_compte": {"type": ["string", "null"]},
+                            "cle_rib": {"type": ["string", "null"]},
+                        },
                     },
                 },
                 "required": ["societe", "rib"],
@@ -311,12 +318,6 @@ Règles d’extraction :
             "required": ["duree_initiale", "duree_reconduction", "nb_reconductions", "delai_tranche_optionnelle"],
         },
     },
-    "duree_explication": {
-        "consigne": """DUREE_EXPLICATION
-        Définition : Explique comment tu as calculé la durée ci-dessus""",
-        "search": "Section du document qui décrit la durée du marché ou le délai d'exécution des prestations.",
-        "output_field": "duree_explication",
-    },
     "date_signature_mandataire": {
         "consigne": """DATE_SIGNATURE_MANDATAIRE
       Définition : Date de signature du document par le mandataire (entreprise prestataire principale). 
@@ -367,7 +368,8 @@ Règles d’extraction :
         Indices :
         Le texte présente souvent une phrase de type "Je renonce au bénéfice de l'avance" suivie de deux options : [ ] Non et [ ] Oui.
         1. Identifie quelle case est cochée (représentée par [X], [x], X, x, ☒ ou autre équivalent) et quelle case ne l'est pas (représentée par [ ], un espace ou autre équivalent).
-        - Généralement les cases sont présentes avant la mention (à gauche de la mention).
+        - La coche appartient à l’option (NON ou OUI) la plus proche spatialement.
+        - Si la coche est située entre "NON" et "OUI", elle est associée à l’option située immédiatement à droite.
         2. Analyse le sens : 
         - Si "Renonce" est associé à "NON" (coché) -> L'utilisateur VEUT l'avance -> Renvoyer "conserve"
         - Si "Renonce" est associé à "OUI" (coché) -> L'utilisateur REFUSE l'avance -> Renvoyer "renonce"
@@ -376,15 +378,6 @@ Règles d’extraction :
 """,
         "search": "",
         "output_field": "conserve_avance",
-        "schema": {"type": ["string", "null"]},
-    },
-    "citation_avance": {
-        "consigne": """CITATION_AVANCE
-     Définition : La question (souvent "Je renonce au bénéfice de l'avance :")et les réponses extraites du texte du document concernant l'avance.
-     Format : La citation du texte du document telle quelle, sans aucune modification.
-""",
-        "search": "",
-        "output_field": "citation_avance",
     },
     "montants_en_annexe": {
         "consigne": """MONTANTS_EN_ANNEXE  
@@ -408,16 +401,11 @@ Règles d’extraction :
             "properties": {
                 "annexe_financière": {"type": ["boolean", "null"]},
                 "classification": {
-                    "oneOf": [
-                        {"type": "null"},
-                        {
-                            "type": "array",
-                            "items": {
-                                "type": "string",
-                                "enum": ["BPU", "DPGF", "Annexe financière"],
-                            },
-                        },
-                    ],
+                    "type": ["array", "null"],
+                    "items": {
+                        "type": "string",
+                        "enum": ["BPU", "DPGF", "Annexe financière"],
+                    },
                 },
             },
             "required": ["annexe_financière", "classification"],
@@ -431,9 +419,14 @@ Règles d’extraction :
         "output_field": "code_cpv",
     },
     "montant_tva": {
-        "consigne": """MONTANT_TVA — Taux de TVA du marché en décimal entre 0 et 1.
-        Chercher "TVA", "taux de TVA", "TVA à X %". Convertir le % en décimal (20 % -> 0.20, 10 % -> 0.10, 5,5 % -> 0.055).
-        Si plusieurs taux : prendre celui du montant du marché. Sinon null.""",
+        "consigne": """MONTANT_TVA
+        Définition : Montant de la TVA.
+        Indices :
+        - Rechercher la mention de TVA ou de "taux de TVA". Le montant est souvent sous la forme d'un pourcentage.
+        - Convertir le pourcentage en chiffre décimal entre 0 et 1.
+        - Ne rien renvoyer si aucun montant de TVA trouvé.
+        Format : en "0.XX" avec deux décimales (ex. 0.20 pour 20%).
+        """,
         "search": "",
         "output_field": "montant_tva",
     },
