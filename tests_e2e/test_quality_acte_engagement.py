@@ -248,7 +248,7 @@ def compare_co_contractors(llm_val: list[dict[str, str]], ref_val: list[dict[str
         for i, search_item in enumerate(search_list):
             if i in excluded:
                 continue
-            if compare_main_company(search_item["nom"], item["nom"]) and compare_siret(
+            if compare_main_company(search_item["nom"], item["nom"]) and compare_exact_string(
                 search_item["siret"], item["siret"]
             ):
                 return i
@@ -475,10 +475,15 @@ def get_comparison_functions():
         "conserve_avance": compare_exact_string,
         "montants_en_annexe": compare_montants_en_annexe,
         "forme_marche": compare_contract_form,
+        "code_cpv": compare_exact_string,
+        "montant_tva": compare_exact_string,
+        "mode_consultation": compare_exact_string,
+        "mode_reconduction": compare_exact_string,
+        "ligne_imputation_budgétaire": compare_exact_string,
     }
 
 
-def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-medium"):
+def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-medium", debug_mode=False):
     """Test de qualité des informations extraites par le LLM."""
     # Chemin vers le fichier CSV de test
     csv_path = CSV_DIR_PATH / "test_acte_engagement_v2.csv"
@@ -499,16 +504,16 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-m
     df_test["montant_ttc"] = df_test["montant_ttc"].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "")
     
     # Lancement du test
-    return analyze_content_quality_test(df_test, "acte_engagement", multi_line_coef=multi_line_coef, max_workers=max_workers, llm_model=llm_model)
+    return analyze_content_quality_test(df_test, "acte_engagement", multi_line_coef=multi_line_coef, max_workers=max_workers, llm_model=llm_model, debug_mode=debug_mode)
 
 if __name__ == "__main__":
-    df_test, df_result, df_merged = create_batch_test(llm_model="openweight-large")
+    df_test, df_result, df_merged = create_batch_test(llm_model="openweight-medium", debug_mode=True, max_workers=10)
 
     EXCLUDED_COLUMNS = ["objet_marche", "administration_beneficiaire"]
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, 'siret_mandataire', comparison_functions)
+    check_quality_one_field(df_merged, 'code_cpv', comparison_functions, only_errors=False)
 
     check_quality_one_row(df_merged, 0, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
 

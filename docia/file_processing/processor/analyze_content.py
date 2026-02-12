@@ -4,10 +4,6 @@ Contexte = parfois tout le texte extrait, parfois seulement une liste de chunks 
 """
 
 import logging
-from concurrent.futures import ThreadPoolExecutor
-
-from tqdm import tqdm
-
 import pandas as pd
 
 from ..llm.client import LLMClient
@@ -47,7 +43,7 @@ def create_response_format(df_attributes, classification):
     df_filtered = select_attr(df_attributes, classification)
 
     # Schéma par défaut : type string
-    default_schema = {"type": "string"}
+    default_schema = {"type": ["string", "null"]}
 
     # Construire le dictionnaire des propriétés avec les schémas appropriés
     properties = {}
@@ -75,66 +71,10 @@ def create_response_format(df_attributes, classification):
         "type": "json_schema",
         "json_schema": {
             "name": f"{classification}",
-            "strict": True,
             "schema": {"type": "object", "properties": properties, "required": l_output_field},
         },
     }
     return response_format
-
-
-def df_analyze_content(
-    df: pd.DataFrame,
-    df_attributes: pd.DataFrame,
-    llm_model: str | None = None,
-    temperature: float = 0.0,
-    max_workers: int = 4,
-) -> pd.DataFrame:
-    """
-    Analyse le contenu d'un DataFrame en parallèle en utilisant l'API LLM.
-
-    Returns:
-        DataFrame avec les réponses du LLM ajoutées
-    """
-    dfResult = df.copy()
-    dfResult["llm_response"] = None
-    dfResult["structured_data"] = None
-
-    for attr in df_attributes.attribut:
-        dfResult[attr] = None
-
-    # Fonction pour traiter une ligne
-    def process_row(idx):
-        row = df.loc[idx]
-        classification = row["classification"]
-        kwargs = dict(
-            text=row["relevant_content"] or row["text"], document_type=classification, temperature=temperature
-        )
-        if llm_model:
-            kwargs["llm_model"] = llm_model
-        try:
-            result = analyze_file_text(**kwargs)
-            result["error"] = None
-        except Exception as e:
-            result = {"llm_response": None, "structured_data": None, "error": f"Erreur lors de l'analyse: {str(e)}"}
-            logger.exception(f"Erreur lors de l'analyse du fichier {row['filename']}: {e}")
-
-        if not result["error"]:
-            for attr in df_attributes.attribut:
-                result.update({f"{attr}": result["llm_response"].get(attr, "")})
-        else:
-            logger.error(f"Erreur lors de l'analyse du fichier {row['filename']}: {result['error']}")
-
-        return idx, result
-
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = [executor.submit(process_row, i) for i in df.index]
-
-        for future in tqdm(futures, total=len(futures), desc="Traitement des PJ"):
-            idx, result = future.result()
-            for key, value in result.items():
-                dfResult.at[idx, key] = value
-
-    return dfResult
 
 
 def analyze_file_text(text: str, document_type: str, llm_model: str = "openweight-medium", temperature: float = 0.0):
@@ -143,13 +83,13 @@ def analyze_file_text(text: str, document_type: str, llm_model: str = "openweigh
 
     Args:
         text: Texte à analyser
-        df_attributes: Question à poser au LLM
         response_format: Format de réponse à utiliser
         temperature: Température pour la génération (0.0 = déterministe)
 
     Returns:
         Réponse du LLM à la question posée
     """
+
     response = analyze_file_text_llm(text, document_type, llm_model, temperature)
     data = clean_llm_response(document_type, response)
 

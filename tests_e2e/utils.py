@@ -1,13 +1,19 @@
 import ast
 import json
+import logging
 import os
 import re
+import time
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
+from tqdm import tqdm
 
-from docia.file_processing.processor.analyze_content import df_analyze_content
+from docia.file_processing.processor.analyze_content import analyze_file_text
 from docia.file_processing.processor.attributes_query import ATTRIBUTES
+
+logger = logging.getLogger(__name__)
 
 
 def compare_exact_string(llm_value, ref_value):
@@ -71,7 +77,69 @@ def get_ground_truth_from_grist(table: str = "Classif_gt", columns: list[str] = 
         return df
 
 
-def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, multi_line_coef=1, use_cache=False, max_workers=10, llm_model="openweight-medium"):
+
+def df_analyze_content(
+    df: pd.DataFrame,
+    df_attributes: pd.DataFrame,
+    llm_model: str | None = None,
+    temperature: float = 0.0,
+    max_workers: int = 4,
+    debug_mode: bool = False,
+) -> pd.DataFrame:
+    """
+    Analyse le contenu d'un DataFrame en parallèle en utilisant l'API LLM.
+
+    Args:
+        debug_mode: Si True, log le nom du fichier avec l'heure de début et le temps
+            de réponse LLM pour chaque ligne.
+
+    Returns:
+        DataFrame avec les réponses du LLM ajoutées
+    """
+    dfResult = df.copy()
+    dfResult["llm_response"] = None
+    dfResult["structured_data"] = None
+    dfResult["error"] = None
+
+    def process_row(idx):
+        row = df.loc[idx]
+        filename = row["filename"]
+        t0 = time.perf_counter() if debug_mode else None
+        if debug_mode:
+            logger.warning(f"{filename} - début à {time.strftime('%H:%M:%S', time.localtime())}")
+
+        kwargs = {
+            "text": row["text"],
+            "document_type": row["classification"],
+            "temperature": temperature,
+        }
+        if llm_model:
+            kwargs["llm_model"] = llm_model
+
+        try:
+            out = analyze_file_text(**kwargs)
+            result = {"llm_response": out["llm_response"], "structured_data": out["structured_data"], "error": None}
+        except Exception as e:
+            logger.exception(f"Erreur lors de l'analyse du fichier {filename}: {e}")
+            result = {"llm_response": None, "structured_data": None, "error": f"Erreur lors de l'analyse: {str(e)}"}
+
+        if debug_mode:
+            logger.warning(f"{filename} - réponse LLM reçue en {time.perf_counter() - t0:.2f}s")
+        return idx, result
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(process_row, i) for i in df.index]
+
+        for future in tqdm(as_completed(futures), total=len(futures), desc="Traitement des PJ"):
+            idx, result = future.result()
+            for key, value in result.items():
+                dfResult.at[idx, key] = value
+
+    return dfResult
+
+
+
+def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, multi_line_coef=1, use_cache=False, max_workers=10, llm_model="openweight-medium", debug_mode=False):
     """Test de qualité des informations extraites par le LLM.
 
     Args:
@@ -79,6 +147,7 @@ def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, mult
         document_type: Type de document à analyser.
         multi_line_coef: Coefficient de multiplication des lignes.
         use_cache: Si True, utilise le cache pour éviter de relancer l'analyse.
+        debug_mode: Si True, log le nom du fichier et les temps (début / durée LLM) pour chaque ligne.
     """
 
     if multi_line_coef > 1:
@@ -88,7 +157,7 @@ def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, mult
     df_analyze = pd.DataFrame()
     df_analyze["filename"] = df_test["filename"]
     df_analyze["classification"] = document_type
-    df_analyze["relevant_content"] = df_test["text"]
+    df_analyze["text"] = df_test["text"]
 
     # Vérification du cache
     cache_file = f"/tmp/cache_results_{document_type}.json"
@@ -104,6 +173,7 @@ def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, mult
             max_workers=max_workers,
             temperature=0.1,
             llm_model=llm_model,
+            debug_mode=debug_mode,
         )
 
     # Sauvegarde des résultats dans le cache
@@ -167,7 +237,7 @@ def _get_value_by_dotted_key(data, key):
             return _get_value_by_dotted_key(data.get(key), key_suffix)
 
 
-def check_quality_one_field(df_merged, col_to_test, comparison_functions):
+def check_quality_one_field(df_merged, col_to_test, comparison_functions, only_errors=False):
     # ============================================================================
     # COMPARAISON POUR UNE COLONNE SPÉCIFIQUE
     # ============================================================================
@@ -194,6 +264,8 @@ def check_quality_one_field(df_merged, col_to_test, comparison_functions):
         # Comparer les valeurs
         try:
             match_result = comparison_func(llm_val, ref_val)
+            if only_errors and match_result:
+                continue
             status = "✅ MATCH" if match_result else "❌ NO MATCH"
             print(f"{status} | {filename} | OCR {'❌' if pbm_ocr else '✅'}")
             print(f"  LLM: {llm_val!r}")
@@ -206,7 +278,7 @@ def check_quality_one_field(df_merged, col_to_test, comparison_functions):
             print()
 
 
-def check_quality_one_row(df_merged, row_idx_to_test, comparison_functions, excluded_columns=None):
+def check_quality_one_row(df_merged, row_idx_to_test, comparison_functions, excluded_columns=None, only_errors=False):
     # ============================================================================
     # COMPARAISON POUR UNE LIGNE SPÉCIFIQUE
     # ============================================================================
@@ -240,6 +312,8 @@ def check_quality_one_row(df_merged, row_idx_to_test, comparison_functions, excl
             try:
                 match_result = comparison_func(llm_val, ref_val)
                 match_result = bool(match_result) if not isinstance(match_result, bool) else match_result
+                if only_errors and match_result:
+                    continue
                 status = "✅ MATCH" if match_result else "❌ NO MATCH"
                 print(f"{status} | {col} | OCR {'❌' if pbm_ocr else '✅'}")
                 print(f"  LLM: {llm_val!r}")
