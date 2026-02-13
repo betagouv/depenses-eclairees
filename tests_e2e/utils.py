@@ -34,6 +34,18 @@ def normalize_string(s):
     return s
 
 
+def compare_normalized_string(actual, expected):
+    """Compare deux chaînes normalisées."""
+
+    if not actual and not expected:
+        return True
+
+    if not actual or not expected:
+        return False
+
+    return normalize_string(actual.replace(" ", "")) == normalize_string(expected.replace(" ", ""))
+
+
 def get_ground_truth_from_grist(table: str = "Classif_gt", columns: list[str] = None):
     """Récupère les valeurs certifiées pour les tests depuis Grist."""
     from app.grist.config_grist import API_KEY_GRIST, URL_TABLE_ATTACHMENTS
