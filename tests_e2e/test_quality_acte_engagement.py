@@ -479,7 +479,7 @@ def get_comparison_functions():
         "montant_tva": compare_exact_string,
         "mode_consultation": compare_exact_string,
         "mode_reconduction": compare_exact_string,
-        "ligne_imputation_budgétaire": compare_exact_string,
+        "ligne_imputation_budgetaire": compare_exact_string,
     }
 
 
@@ -490,7 +490,14 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-m
 
     # Lecture du fichier CSV
     df_test = pd.read_csv(csv_path)
+    df_test["siret_mandataire"] = df_test["siret_mandataire"].apply(lambda x: f"{x:.0f}" if isinstance(x, (int, float)) else "")
+    df_test["siren_mandataire"] = df_test["siren_mandataire"].apply(lambda x: f"{x:.0f}" if isinstance(x, (int, float)) else "")
+    df_test["montant_ht"] = df_test["montant_ht"].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "")
+    df_test["montant_ttc"] = df_test["montant_ttc"].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "")
+    df_test["montant_tva"] = df_test["montant_tva"].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "")
+    df_test = df_test.astype(str)
     df_test.fillna("", inplace=True)
+    df_test = df_test.replace("nan", "", inplace=True)
     df_test["rib_mandataire"] = df_test["rib_mandataire"].apply(lambda x: json.loads(x))
     df_test["cotraitants"] = df_test["cotraitants"].apply(lambda x: json.loads(x))
     df_test["sous_traitants"] = df_test["sous_traitants"].apply(lambda x: json.loads(x))
@@ -498,10 +505,6 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-m
     df_test["rib_autres"] = df_test["rib_autres"].apply(lambda x: json.loads(x))
     df_test["montants_en_annexe"] = df_test["montants_en_annexe"].apply(lambda x: json.loads(x))
     df_test["forme_marche"] = df_test["forme_marche"].apply(lambda x: json.loads(x))
-    df_test["siret_mandataire"] = df_test["siret_mandataire"].astype(str).apply(lambda x: x.split(".")[0])
-    df_test["siren_mandataire"] = df_test["siren_mandataire"].astype(str).apply(lambda x: x.split(".")[0])
-    df_test["montant_ht"] = df_test["montant_ht"].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "")
-    df_test["montant_ttc"] = df_test["montant_ttc"].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "")
     
     # Lancement du test
     return analyze_content_quality_test(df_test, "acte_engagement", multi_line_coef=multi_line_coef, max_workers=max_workers, llm_model=llm_model, debug_mode=debug_mode)
@@ -513,7 +516,7 @@ if __name__ == "__main__":
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, 'code_cpv', comparison_functions, only_errors=False)
+    check_quality_one_field(df_merged, 'ligne_imputation_budgetaire', comparison_functions, only_errors=True)
 
     check_quality_one_row(df_merged, 0, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
 
