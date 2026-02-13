@@ -24,7 +24,7 @@ def test_post_processing_iban_lowercase():
 
 def test_post_processing_iban_invalid():
     """Test avec un IBAN invalide."""
-    invalid_iban = "FR1420041010050500013M02607"  # Checksum incorrect
+    invalid_iban = "FR1420041010050500013M02617"  # Checksum incorrect
     assert post_processing_iban(invalid_iban) is None
 
 
