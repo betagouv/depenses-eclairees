@@ -25,7 +25,7 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
    Indices :
    - Chercher après les mentions "Objet", "Lot", "marché subséquent", "marché parent", ou autres mentions similaires, en particulier en début du document.
    - Pour le champ lot_concerne :
-     * Si le marché concerne un lot spécifique, identifier le numéro du lot et son titre (chercher "Lot X", "Lot n°X", etc.).
+     * Si le marché concerne un lot spécifique, identifier le numéro du lot (chercher "Lot X", "Lot n°X", etc.) et son titre. Si pas de titre explicite trouvée, renvoyer null pour titre_lot.
      * Si le marché n'est pas un lot, renvoyer null pour numero_lot et titre_lot.
    - Pour le champ marche_subsequent :
      * Rechercher les mentions explicites de "marché subséquent", "marchés subséquents", ou formulations équivalentes.
@@ -33,7 +33,7 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
      * Sinon, renvoyer false.
    - Pour le champ marche_parent :
      * Rechercher l'identifiant du marché parent (souvent mentionné comme "accord-cadre", "contrat-cadre", "marché global", etc.).
-     * L'identifiant peut être un numéro de marché, un code, ou toute référence unique au marché parent.
+     * L'identifiant peut être un numéro de marché, un code, un numéro de consultation ou toute référence unique au marché parent.
      * Si aucun marché parent n'est mentionné ou si son identifiant n'est pas disponible, renvoyer null.
    Format : 
    - Un objet JSON avec les trois champs suivants au même niveau :
@@ -169,7 +169,7 @@ Règles d’extraction :
 - Ignorer totalement les entreprises mentionnées comme sous-traitantes.
 - Ignorer toute mention générique contenant le mot “cotraitant” (ex. “Cotraitant”, “cotraitant1”, “cotraitant2”) : ce ne sont pas des entreprises.
 - Une entreprise n’est retenue que si au moins l’un des éléments suivants apparaît dans le texte : un nom réel d’entreprise, un numéro SIRET (14 chiffres) ou SIREN (9 chiffres) valide.
-- Pour le nom (champ "nom") : en cas de choix, préférer la dénomination sociale plutôt que le nom commercial.
+- Pour le nom (champ "nom") : en cas de choix, préférer la raison sociale plutôt que le nom commercial.
 - Pour le SIRET (champ "siret") : si plusieurs SIRET sont disponibles pour une même entreprise :
     * Prendre le numéro de l’établissement concerné (pas le siège social) pour renvoyer le SIRET.
     * S'il n’y a pas de précisions sur l’établissement concerné, renvoyer le SIRET le plus élevé.
@@ -325,6 +325,8 @@ Règles d’extraction :
       - Uniquement la date de signature de l'entreprise mandataire, pas celle de l'administration bénéficiaire.
       - Souvent la première date de signature en cas de plusieurs dates de signature.
       - Repérer les expressions comme "Signé le", "Fait à ...", ou des dates en bas du document associées à une signature.
+        * Si une date est indiquée après "date de signature" ou "Signé le", on considère le document comme signé,
+         même si la signature n'apparaît pas dans le texte extrait.
       - Si le document termine par une date seule, c'est probablement la date de signature de l'administration.
       - Ignorer les dates d'émission ou de création du document, en général en haut du document
       - Ne rien renvoyer si aucune date de signature trouvée pour le mandataire.
@@ -339,8 +341,11 @@ Règles d’extraction :
       Indices : 
       - Uniquement la date de signature de l'acheteur, du pouvoir adjudicateur, ou de l'administration bénéficiaire.
       - Souvent la dernière signature en cas de plusieurs dates de signatures.
-      - Repérer les expressions comme "Signé le", "Fait à ...", ou des dates en bas du document associées à une signature.
+      - Repérer les expressions comme "Signé le", "Fait à ...", "signature électronique", ou des dates en bas du document associées à une signature.
+        * Si une date est indiquée après "date de signature" ou "Signé le", on considère le document comme signé,
+         même si la signature n'apparaît pas dans le texte extrait.
       - Si le document termine par une date seule, c'est surement la date designature de l'administration.
+      - Parfois la signature est électronique : seuls le nom du signataire et la date apparaissent dans le texte. 
       - Ignorer les dates d'émission ou de création du document, en général en haut du document
       - Ne rien renvoyer si aucune date de signature trouvée
      Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
@@ -355,6 +360,7 @@ Règles d’extraction :
       - Parfois en début du document, ou en toute fin de document.
       - Après la mention "Date de notification" ou "Date de début du marché".
       - S'il y a un doute sur la lecture de la date, prendre la date la plus proche postérieure à la signature par l'administration si disponible.
+      - Peut aussi être la date d'un courrier de notification ou d'un mail en annexe du document.
       - S'il n'y a pas de date de notification explicite, ne rien renvoyer.
       - Attention à ne pas confondre la date de notification avec la date de signature.
      Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
@@ -413,8 +419,10 @@ Règles d’extraction :
     },
     "code_cpv": {
         "consigne": """CODE_CPV — Code CPV (catégorie de dépense du marché).
-        Chercher "CPV", "Code CPV" ; format type 8 chiffres + tiret + chiffre (ex. 72611000-6), éventuellement suivi de l'intitulé.
-        Si plusieurs : priorité au CPV principal, sinon le premier. Format : "XXXXXXXX-X Intitulé". Sinon null.""",
+        - Chercher "CPV", "Code CPV" ; format type 8 chiffres (optionnel + tiret + chiffre), éventuellement suivi de l'intitulé du code.
+        - Ex. 72611000-6 - Fournitures
+        Si plusieurs : priorité au CPV principal, sinon tous séparés par des ";" 
+        Format : "XXXXXXXX-X Intitulé" ou "XXXXXXXX Intitulé". Sinon null.""",
         "search": "",
         "output_field": "code_cpv",
     },
@@ -437,10 +445,16 @@ Règles d’extraction :
         "output_field": "mode_consultation",
     },
     "mode_reconduction": {
-        "consigne": """MODE_RECONDUCTION — Reconduction du marché : expresse ou tacite.
-        Chercher "reconduction expresse", "reconduction tacite", "reconduit tacitement". Renvoyer "expresse" ou "tacite" si explicite, sinon null.""",
+        "consigne": """MODE_RECONDUCTION — Reconduction du marché : expresse ou tacite ou null.
+        - Sous la forme d'une case cochée ou explicitement mentionné dans le document.
+        - Chercher "reconduction expresse", "reconduction tacite", "reconduit tacitement". Renvoyer "expresse" ou "tacite" si explicite.
+        - Si aucune case cochée, et aucune mention renvoyer null.""",
         "search": "",
         "output_field": "mode_reconduction",
+        "schema": {
+            "type": "string",
+            "enum": ["expresse", "tacite", "null"],
+        },
     },
     "ligne_imputation_budgetaire": {
         "consigne": """LIGNE_IMPUTATION_BUDGETAIRE — Ligne budgétaire d’imputation de la dépense.
@@ -449,4 +463,13 @@ Règles d’extraction :
         "search": "",
         "output_field": "ligne_imputation_budgetaire",
     },
+    "remise_catalogue":{
+        "consigne": """REMISE_CATALOGUE — Remise dans le catalogue.
+        - Remise sur le catalogue proposée par le fournisseur titulaire.
+        - Sous la d'un pourcentage (à exprimer entre 0 et 1).
+        - Si aucune case cochée, et aucune mention renvoyer null.
+        Format : renvoyer le pourcentage entre 0 et 1.""",
+        "search": "",
+        "output_field": "remise_catalogue",    
+    }
 }
