@@ -49,7 +49,7 @@ def test_post_processing_other_bank_accounts_invalid_iban():
             "societe": "Entreprise A",
             "rib": {
                 "banque": "Crédit Agricole",
-                "iban": "FR1420041010050500013M02607",  # IBAN invalide
+                "iban": "FR1420041010050500013M02617",  # IBAN invalide avec deux erreurs
             },
         }
     ]

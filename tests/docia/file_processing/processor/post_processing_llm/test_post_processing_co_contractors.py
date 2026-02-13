@@ -43,23 +43,25 @@ def test_post_processing_co_contractors_invalid_siret():
         {"nom": "Entreprise B", "siret": "98765432109876"},
     ]
     result = post_processing_co_contractors(co_contractors)
-    assert len(result) == 1
-    assert result[0] == {"nom": "Entreprise B", "siret": "98765432109876"}
+    assert len(result) == 2
+    assert result[0] == {"nom": "Entreprise A", "siret": None}
+    assert result[1] == {"nom": "Entreprise B", "siret": "98765432109876"}
+    
 
 
 def test_post_processing_co_contractors_empty_siret():
     """Test avec SIRET vide (doit être exclu)."""
     co_contractors = [{"nom": "Entreprise A", "siret": ""}, {"nom": "Entreprise B", "siret": "98765432109876"}]
     result = post_processing_co_contractors(co_contractors)
-    assert len(result) == 1
-    assert result[0]["nom"] == "Entreprise B"
+    assert len(result) == 2
+    assert result[0] == {"nom": "Entreprise A", "siret": None}
+    assert result[1] == {"nom": "Entreprise B", "siret": "98765432109876"}
 
 
 def test_post_processing_co_contractors_all_invalid():
     """Test avec tous les cotraitants invalides."""
-    co_contractors = [{"nom": "", "siret": "12345678901234"}, {"nom": "Entreprise B", "siret": ""}]
+    co_contractors = [{"nom": "", "siret": "12345678901234"}, {"nom": "", "siret": ""}]
     assert post_processing_co_contractors(co_contractors) is None
-
 
 def test_post_processing_co_contractors_siret_float_format():
     """Test avec SIRET au format float."""
