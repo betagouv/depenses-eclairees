@@ -14,7 +14,7 @@ django.setup()
 
 from app.grist.grist_api import get_data_from_grist  # noqa: E402
 from docia.file_processing.processor.analyze_content import LLMClient  # noqa: E402
-from docia.settings import API_KEY_GRIST  # noqa: E402
+from docia.settings import GRIST_API_KEY  # noqa: E402
 from tests_e2e.test_quality_rib import compare_iban  # noqa: E402
 from tests_e2e.utils import (  # noqa: E402
     analyze_content_quality_test,
@@ -27,7 +27,7 @@ from tests_e2e.utils import (  # noqa: E402
 logger = logging.getLogger("docia." + __name__)
 
 
-def compare_object(llm_value, ref_value, llm_model="albert-small"):
+def compare_object(llm_value, ref_value, llm_model="openweight-medium"):
     """
     Compare deux objets en utilisant un LLM comme juge pour évaluer la proximité de sens.
 
@@ -460,11 +460,8 @@ def get_comparison_functions():
 
 def create_batch_test(multi_line_coef=1):
     """Test de qualité des informations extraites par le LLM."""
-    # Chemin vers le fichier CSV de test
-    # csv_path = CSV_DIR_PATH / "test_acte_engagement.csv"
 
-    # Lecture du fichier CSV
-    df_test = get_data_from_grist(table="Acte_engagement_gt", api_key=API_KEY_GRIST)
+    df_test = get_data_from_grist(table="Acte_engagement_gt", api_key=GRIST_API_KEY)
     df_test.fillna("", inplace=True)
     df_test["rib_mandataire"] = df_test["rib_mandataire"].apply(lambda x: json.loads(x))
     df_test["cotraitants"] = df_test["cotraitants"].apply(lambda x: json.loads(x))

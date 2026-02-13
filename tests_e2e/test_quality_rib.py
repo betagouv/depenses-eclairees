@@ -11,7 +11,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
 django.setup()
 
 from app.grist.grist_api import get_data_from_grist  # noqa: E402
-from docia.settings import API_KEY_GRIST  # noqa: E402
+from docia.settings import GRIST_API_KEY  # noqa: E402
 from tests_e2e.utils import (  # noqa: E402
     analyze_content_quality_test,
     check_global_statistics,
@@ -173,7 +173,7 @@ def get_comparison_functions():
 def create_batch_test(multi_line_coef=1):
     """Test de qualité des informations extraites par le LLM."""
 
-    df_test = get_data_from_grist(table="Rib_gt", api_key=API_KEY_GRIST)
+    df_test = get_data_from_grist(table="Rib_gt", api_key=GRIST_API_KEY)
     df_test.fillna("", inplace=True)
     df_test["adresse_postale_titulaire"] = df_test["adresse_postale_titulaire"].apply(lambda x: json.loads(x))
 

@@ -5,17 +5,17 @@ from tqdm import tqdm
 from urllib.parse import quote
 
 from app.utils import json_print
-from docia.settings import URL_DOCS_GRIST, API_KEY_GRIST
+from docia.settings import GRIST_DOCS_URL, GRIST_API_KEY
 
 
 def check_connexion():
     # Vérifie la connexion à l'API Grist en effectuant une requête GET sur l'URL du document
-    r = requests.get(URL_DOCS_GRIST, headers={"Authorization": API_KEY_GRIST})
+    r = requests.get(GRIST_DOCS_URL, headers={"Authorization": GRIST_API_KEY})
     json_print(r.text)
 
 def get_tables():
     # Vérifie la connexion à l'API Grist en effectuant une requête GET sur l'URL du document
-    r = requests.get(URL_DOCS_GRIST + "/tables", headers={"Authorization": API_KEY_GRIST})
+    r = requests.get(GRIST_DOCS_URL + "/tables", headers={"Authorization": GRIST_API_KEY})
     json_print(r.text)
 
 def get_data_from_grist(table: str, api_key: str) -> pd.DataFrame:
@@ -28,7 +28,7 @@ def get_data_from_grist(table: str, api_key: str) -> pd.DataFrame:
     Returns:
         pd.DataFrame: DataFrame contenant les données de la table
     """
-    records_url = URL_DOCS_GRIST + f"/tables/{table}/records"
+    records_url = GRIST_DOCS_URL + f"/tables/{table}/records"
     headers = {"Authorization": api_key}
     r = requests.get(records_url, headers=headers)
     r.raise_for_status()

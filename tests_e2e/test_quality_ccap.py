@@ -11,7 +11,7 @@ django.setup()
 
 from app.grist.grist_api import get_data_from_grist  # noqa: E402
 from docia.file_processing.processor.analyze_content import LLMClient  # noqa: E402
-from docia.settings import API_KEY_GRIST  # noqa: E402
+from docia.settings import GRIST_API_KEY  # noqa: E402
 from tests_e2e.utils import (  # noqa: E402
     analyze_content_quality_test,
     check_global_statistics,
@@ -23,7 +23,7 @@ from tests_e2e.utils import (  # noqa: E402
 logger = logging.getLogger("docia." + __name__)
 
 
-def compare_contract_object(llm_val, ref_val, llm_model="albert-small"):
+def compare_contract_object(llm_val, ref_val, llm_model="openweight-medium"):
     """Compare l'objet du marché CCAP."""
     if not llm_val and not ref_val:
         return True
@@ -284,7 +284,7 @@ def get_comparison_functions():
 def create_batch_test(multi_line_coef=1):
     """Test de qualité des informations extraites par le LLM."""
 
-    df_test = get_data_from_grist(table="Ccap_v2_gt", api_key=API_KEY_GRIST)
+    df_test = get_data_from_grist(table="Ccap_v2_gt", api_key=GRIST_API_KEY)
     df_test.fillna("", inplace=True)
     for col in ("lots", "forme_marche", "duree_marche", "montant_ht", "pbm_ocr"):
         df_test[col] = df_test[col].apply(lambda x: json.loads(x))
