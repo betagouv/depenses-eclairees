@@ -38,8 +38,10 @@ class Document(BaseModel):
     file = models.FileField(null=True, blank=True, max_length=1000, unique=True)
     extension = models.CharField(null=True, blank=True)  # noqa: DJ001
     dossier = models.CharField(null=True, blank=True)  # noqa: DJ001
-    ej = models.ForeignKey(
-        DataEngagement, on_delete=models.PROTECT, db_column="num_ej", to_field="num_ej", null=True, blank=True
+    engagements = models.ManyToManyField(
+        DataEngagement,
+        related_name="documents",
+        related_query_name="documents",
     )
     text = models.TextField(null=True, blank=True)  # noqa: DJ001
     is_ocr = models.BooleanField(null=True, blank=True)

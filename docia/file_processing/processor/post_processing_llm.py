@@ -123,10 +123,29 @@ def post_processing_amount(amount: str) -> str:
         num = match.group(1)
         # Remplacer la virgule (cas français) par un point pour le float Python
         num = num.replace(",", ".")
-        try:
-            return f"{round(float(num), 2):.2f}"
-        except ValueError:
-            return None
+        return f"{float(num):.2f}"
+    return None
+
+
+def post_processing_percentage(percentage: str) -> str:
+    """
+    Extrait le pourcentage d'une expression chaîne de caractères.
+    Exemples d'entrées possibles :
+      - "20%"
+      - "5.5%"
+    Retourne un float à deux chiffres après la virgule, ou None si rien n'est trouvé.
+    """
+    if not isinstance(percentage, str):
+        percentage = str(percentage)
+    # Retirer espaces insécables et normaux
+    percentage = percentage.replace(" ", "")
+    # Chercher un nombre avec ou sans partie décimale, séparateur . ou ,
+    match = re.search(r"(\d+(?:[.,]\d+)?)", percentage)
+    if match:
+        num = match.group(1)
+        # Remplacer la virgule (cas français) par un point pour le float Python
+        num = num.replace(",", ".")
+        return f"{float(num):.2f}"
     return None
 
 
@@ -484,6 +503,12 @@ CLEAN_FUNCTIONS = {
     # CCAP
     "ccap": {
         "object": post_processing_object_ccap,
+    },
+    "fiche_navette": {
+        "fields": {
+            "montant_ht": post_processing_amount,
+            "taux_tva": post_processing_percentage,
+        },
     },
 }
 

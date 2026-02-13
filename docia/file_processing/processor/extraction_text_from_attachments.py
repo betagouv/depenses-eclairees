@@ -30,7 +30,8 @@ class UnsupportedFileType(Exception):
 
 
 SUPPORTED_FILES_TYPE = [
-    "docdocx",
+    "doc",
+    "docx",
     "odt",
     "pdf",
     "txt",

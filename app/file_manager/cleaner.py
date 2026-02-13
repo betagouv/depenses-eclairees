@@ -15,8 +15,6 @@ from django.core.files.storage import default_storage
 
 from docia.file_processing.sync.files_utils import get_corrected_extension
 from app.utils import getDate
-from app.data.db import bulk_create_batches, bulk_create_engagements, bulk_create_attachments
-
 
 logger = logging.getLogger("docia." + __name__)
 
@@ -770,18 +768,6 @@ def get_files_initial_infos(directory_path: str, save_path=None) -> pd.DataFrame
         print(f"Liste des fichiers sauvegardées dans {save_path}/dfFichiers_{directory_path.split("/")[-1]}_{getDate()}.xlsx")
 
     return dfFiles.sort_values(by=["filename", "extension", "hash"])
-
-
-def save_files_initial_infos_result(df: pd.DataFrame, batch: str):
-    if not batch:
-        raise ValueError(f"Batch cannot be empty (got: {batch!r})")
-
-    bulk_create_engagements(df)
-    bulk_create_attachments(df)
-
-    dfBatch = df[["num_EJ"]].drop_duplicates("num_EJ")
-    dfBatch["Batch"] = batch
-    bulk_create_batches(df=dfBatch)
 
 
 def get_files_chorus_infos(dfFiles: pd.DataFrame, df_ground_truth: pd.DataFrame, directory_path: str, save_path = None) -> pd.DataFrame:

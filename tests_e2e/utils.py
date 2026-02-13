@@ -33,6 +33,35 @@ def normalize_string(s):
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
+<<<<<<< HEAD
+=======
+
+def compare_normalized_string(actual, expected):
+    """Compare deux chaînes normalisées."""
+
+    if not actual and not expected:
+        return True
+
+    if not actual or not expected:
+        return False
+
+    return normalize_string(actual.replace(" ", "")) == normalize_string(expected.replace(" ", ""))
+
+
+def get_ground_truth_from_grist(table: str = "Classif_gt", columns: list[str] = None):
+    """Récupère les valeurs certifiées pour les tests depuis Grist."""
+    from app.grist.config_grist import API_KEY_GRIST, URL_TABLE_ATTACHMENTS
+    from app.grist.grist_api import get_data_from_grist
+
+    table_url = URL_TABLE_ATTACHMENTS.replace("Attachments", table)
+    df = get_data_from_grist(table_url=table_url, api_key=API_KEY_GRIST)
+    if columns:
+        return df[columns]
+    else:
+        return df
+
+
+>>>>>>> main
 def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, multi_line_coef=1, use_cache=False):
     """Test de qualité des informations extraites par le LLM.
 
