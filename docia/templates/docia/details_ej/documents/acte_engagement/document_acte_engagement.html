@@ -181,32 +181,50 @@
 
   {# Cotraitants #}
   {% if data.cotraitants %}
-    <div class="fr-mt-6w">
-      <h2 class="fr-h3">Cotraitants</h2>
+  <section class="fr-accordion" data-fr-js-accordion="true">
+    <h3 class="fr-accordion__title">
+      <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_cotraitants" data-fr-js-collapse-button="true">
+        Cotraitants
+      </button>
+    </h3>
+    <div class="fr-collapse" id="{{ doc.id }}_cotraitants" data-fr-js-collapse="true" style="--collapse: -48px;">
       {% with table_data=data.cotraitants|list_of_dicts_as_table:formatting_data.cotraitants.table_columns %}
-        {% dsfr_table content=table_data.rows header=table_data.headers extra_classes='fr-table--bordered fr-table--no-scroll copyable copyable-all-cells' %}
+        {% dsfr_table content=table_data.rows header=table_data.headers extra_classes='fr-table--no-scroll copyable copyable-all-cells document-table' %}
       {% endwith %}
     </div>
+  </section>
   {% endif %}
 
   {# Sous-Traitants #}
   {% if data.sous_traitants %}
-    <div class="fr-mt-6w">
-      <h2 class="fr-h3">Sous-traitants</h2>
+  <section class="fr-accordion" data-fr-js-accordion="true">
+    <h3 class="fr-accordion__title">
+      <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_sous_traitants" data-fr-js-collapse-button="true">
+        Sous-traitants
+      </button>
+    </h3>
+    <div class="fr-collapse" id="{{ doc.id }}_sous_traitants" data-fr-js-collapse="true" style="--collapse: -48px;">
       {% with table_data=data.sous_traitants|list_of_dicts_as_table:formatting_data.sous_traitants.table_columns %}
-        {% dsfr_table content=table_data.rows header=table_data.headers extra_classes='fr-table--bordered fr-table--no-scroll copyable copyable-all-cells' %}
+        {% dsfr_table content=table_data.rows header=table_data.headers extra_classes='fr-table--no-scroll copyable copyable-all-cells document-table' %}
       {% endwith %}
     </div>
+  </section>
   {% endif %}
 
-  {# RIB autres #}
+  {# RIBs (sous-traitants / co-traitants) #}
   {% if data.rib_autres %}
-    <div class="fr-mt-6w">
-      <h2 class="fr-h3">RIB</h2>
+  <section class="fr-accordion" data-fr-js-accordion="true">
+    <h3 class="fr-accordion__title">
+      <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_rib_autres" data-fr-js-collapse-button="true">
+        RIBs (sous-traitants / co-traitants)
+      </button>
+    </h3>
+    <div class="fr-collapse" id="{{ doc.id }}_rib_autres" data-fr-js-collapse="true" style="--collapse: -48px;">
       {% with table_data=data.rib_autres|list_of_dicts_as_table:formatting_data.rib_autres.table_columns %}
-        {% dsfr_table content=table_data.rows header=table_data.headers extra_classes='fr-table--bordered fr-table--no-scroll copyable copyable-all-cells' %}
+        {% dsfr_table content=table_data.rows header=table_data.headers extra_classes='fr-table--no-scroll copyable copyable-all-cells document-table' %}
       {% endwith %}
     </div>
+  </section>
   {% endif %}
 
   {# Avance et garantie : section grisée en bas du document (même espacement que les autres sections) #}

@@ -1,4 +1,10 @@
 /* Encadrement visuel du contenu d’un document (niveau 2) : séparation nette avec la liste des documents */
+/* Badge info en gris (même forme que fr-badge--info, couleur secondaire) */
+.fr-badge.badge--info-gris {
+    background-color: var(--fr-background-alt-grey, #eee);
+    color: var(--fr-text-mention-grey, #6a6a6a);
+}
+
 .document-detail {
     margin-top: 0.25rem;
     padding: 1rem 1.5rem;
@@ -33,6 +39,12 @@
     flex: 0 0 auto;
     min-width: 8rem;
     font-weight: 500;
+}
+
+/* Réduction des espacements dans les blocs attributs : le DSFR applique un margin-bottom (24px / 1.5rem) sur fr-text--sm */
+.fr-list .fr-list__item .fr-text--sm {
+    margin-top: 0.3rem;
+    margin-bottom: 0.3rem;
 }
 
 /* SIREN / SIRET : espace tous les 3 chiffres (affichage via filtre) + chiffres à chasse fixe */

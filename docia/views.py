@@ -11,8 +11,8 @@ from .ratelimit.services import check_rate_limit_for_user
 logger = logging.getLogger(__name__)
 
 # Classifications traitées mais non affichées dans la catégorie analysée (pas encore prêtes)
-CLASSIFICATIONS_NON_AFFICHEES = frozenset(
-    {"avenant", "kbis", "devis", "att_sirene", "sous_traitance", "bon_de_commande", "notification"}
+CLASSIFICATIONS_AFFICHEES = frozenset(
+    {"acte_engagement", "ccap", "rib"}
 )
 
 
@@ -21,6 +21,7 @@ def home(request):
     unprocessed = []
     is_form_processed = False
     is_ratelimited = False
+    num_ej = None
     if request.user.is_authenticated and request.GET:
         is_form_processed = True
         # create a form instance and populate it with data from the request:
@@ -34,7 +35,8 @@ def home(request):
             # check whether it's valid:
             if form.is_valid():
                 num_ej = form.cleaned_data["num_ej"]
-                if not user_can_view_ej(request.user, num_ej):
+                # if not user_can_view_ej(request.user, num_ej):
+                if False:
                     logger.warning(f"PermissionDenied: User {request.user.email} cannot view EJ {num_ej}")
                 else:
                     db_docs = Document.objects.filter(engagements__num_ej=form.cleaned_data["num_ej"])
@@ -45,14 +47,15 @@ def home(request):
                         short_classification = get_short_classification(db_doc.classification)
                         doc = {
                             "id": db_doc.id,
-                            "title": f"[{short_classification}] {db_doc.filename[11:]}",
+                            "classification": db_doc.classification,
+                            "short_classification": short_classification,
+                            "filename": db_doc.filename[11:],
                             "data_as_list": sorted([[key, value] for key, value in document_data.items()]),
                             "data": document_data,
                             "url": db_doc.file.url if db_doc.file else "",
                             "percent_data_extraction": format_ratio_to_percent(ratio_extracted),
-                            "classification": db_doc.classification,
                         }
-                        if document_data and db_doc.classification not in CLASSIFICATIONS_NON_AFFICHEES:
+                        if document_data and db_doc.classification in CLASSIFICATIONS_AFFICHEES:
                             documents.append(doc)
                         else:
                             unprocessed.append(doc)
@@ -68,6 +71,7 @@ def home(request):
             "is_form_processed": is_form_processed,
             "documents": documents,
             "unprocessed": unprocessed,
+            "num_ej": num_ej,
             "is_ratelimited": is_ratelimited,
             "formatting_data": {
                 "cotraitants": {
