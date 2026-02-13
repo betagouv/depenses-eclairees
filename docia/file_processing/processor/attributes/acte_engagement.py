@@ -161,7 +161,7 @@ Règles d’extraction :
 - Ignorer totalement les entreprises mentionnées comme sous-traitantes.
 - Ignorer toute mention générique contenant le mot “cotraitant” (ex. “Cotraitant”, “cotraitant1”, “cotraitant2”) : ce ne sont pas des entreprises.
 - Une entreprise n’est retenue que si au moins l’un des éléments suivants apparaît dans le texte : un nom réel d’entreprise, un numéro SIRET (14 chiffres) ou SIREN (9 chiffres) valide.
-- Pour le nom (champ "nom") : en cas de choix, préférer la dénomination sociale plutôt que le nom commercial.
+- Pour le nom (champ "nom") : en cas de choix, préférer la raison sociale plutôt que le nom commercial.
 - Pour le SIRET (champ "siret") : si plusieurs SIRET sont disponibles pour une même entreprise :
     * Prendre le numéro de l’établissement concerné (pas le siège social) pour renvoyer le SIRET.
     * S'il n’y a pas de précisions sur l’établissement concerné, renvoyer le SIRET le plus élevé.
