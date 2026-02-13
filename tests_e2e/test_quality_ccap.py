@@ -4,15 +4,14 @@ import os
 import sys
 
 import django
-from django.conf import settings
-
-import pandas as pd
 
 sys.path.append(".")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
 django.setup()
 
+from app.grist.grist_api import get_data_from_grist  # noqa: E402
 from docia.file_processing.processor.analyze_content import LLMClient  # noqa: E402
+from docia.settings import API_KEY_GRIST  # noqa: E402
 from tests_e2e.utils import (  # noqa: E402
     analyze_content_quality_test,
     check_global_statistics,
@@ -22,9 +21,6 @@ from tests_e2e.utils import (  # noqa: E402
 )
 
 logger = logging.getLogger("docia." + __name__)
-
-PROJECT_PATH = settings.BASE_DIR
-CSV_DIR_PATH = (PROJECT_PATH / ".." / "data" / "test").resolve()
 
 
 def compare_contract_object(llm_val, ref_val, llm_model="albert-small"):
@@ -287,17 +283,14 @@ def get_comparison_functions():
 
 def create_batch_test(multi_line_coef=1):
     """Test de qualité des informations extraites par le LLM."""
-    # Chemin vers le fichier CSV de test
-    csv_path = CSV_DIR_PATH / "test_ccap.csv"
 
-    # Lecture du fichier CSV
-    df_test = pd.read_csv(csv_path)
+    df_test = get_data_from_grist(table="Ccap_v2_gt", api_key=API_KEY_GRIST)
     df_test.fillna("", inplace=True)
     for col in ("lots", "forme_marche", "duree_marche", "montant_ht", "pbm_ocr"):
         df_test[col] = df_test[col].apply(lambda x: json.loads(x))
 
     # Lancement du test
-    return analyze_content_quality_test(df_test, "ccap", multi_line_coef=multi_line_coef)
+    return analyze_content_quality_test(df_test.iloc[0:5], "ccap", multi_line_coef=multi_line_coef)
 
 
 if __name__ == "__main__":

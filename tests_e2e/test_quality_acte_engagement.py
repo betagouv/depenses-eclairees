@@ -5,7 +5,6 @@ import sys
 from datetime import datetime
 
 import django
-from django.conf import settings
 
 import pandas as pd
 
@@ -13,7 +12,9 @@ sys.path.append(".")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
 django.setup()
 
+from app.grist.grist_api import get_data_from_grist  # noqa: E402
 from docia.file_processing.processor.analyze_content import LLMClient  # noqa: E402
+from docia.settings import API_KEY_GRIST  # noqa: E402
 from tests_e2e.test_quality_rib import compare_iban  # noqa: E402
 from tests_e2e.utils import (  # noqa: E402
     analyze_content_quality_test,
@@ -24,9 +25,6 @@ from tests_e2e.utils import (  # noqa: E402
 )
 
 logger = logging.getLogger("docia." + __name__)
-
-PROJECT_PATH = settings.BASE_DIR
-CSV_DIR_PATH = (PROJECT_PATH / ".." / "data" / "test").resolve()
 
 
 def compare_object(llm_value, ref_value, llm_model="albert-small"):
@@ -463,10 +461,10 @@ def get_comparison_functions():
 def create_batch_test(multi_line_coef=1):
     """Test de qualité des informations extraites par le LLM."""
     # Chemin vers le fichier CSV de test
-    csv_path = CSV_DIR_PATH / "test_acte_engagement.csv"
+    # csv_path = CSV_DIR_PATH / "test_acte_engagement.csv"
 
     # Lecture du fichier CSV
-    df_test = pd.read_csv(csv_path)
+    df_test = get_data_from_grist(table="Acte_engagement_gt", api_key=API_KEY_GRIST)
     df_test.fillna("", inplace=True)
     df_test["rib_mandataire"] = df_test["rib_mandataire"].apply(lambda x: json.loads(x))
     df_test["cotraitants"] = df_test["cotraitants"].apply(lambda x: json.loads(x))

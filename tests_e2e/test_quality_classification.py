@@ -4,6 +4,7 @@ import os
 import sys
 
 import django
+
 import pandas as pd
 
 sys.path.append(".")
@@ -15,6 +16,7 @@ from docia.file_processing.processor.classifier import DIC_CLASS_FILE_BY_NAME, c
 from docia.settings import API_KEY_GRIST  # noqa: E402
 
 logger = logging.getLogger("docia." + __name__)
+
 
 def create_batch_test(true_classification: list[str] = None, multi_line_coef=1):
     """Création du batch de test pour la classification."""

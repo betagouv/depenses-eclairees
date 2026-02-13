@@ -8,14 +8,15 @@ sys.path.append(".")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
 django.setup()
 
+from app.grist.grist_api import get_data_from_grist  # noqa: E402
 from docia.file_processing.processor.analyze_content import LLMClient  # noqa: E402
+from docia.settings import API_KEY_GRIST  # noqa: E402
 from tests_e2e.utils import (  # noqa: E402
     analyze_content_quality_test,
     check_global_statistics,
     check_quality_one_field,
     check_quality_one_row,
     compare_normalized_string,
-    get_ground_truth_from_grist,
 )
 
 logger = logging.getLogger("docia." + __name__)
@@ -200,9 +201,7 @@ def get_comparison_functions():
 def create_batch_test(multi_line_coef=1):
     """Test de qualité des informations extraites par le LLM."""
 
-    # Lecture du fichier CSV et remplissage des valeurs manquantes
-    # df_test = pd.read_csv(csv_path)
-    df_test = get_ground_truth_from_grist(table="Fiche_navette_gt").query("commentaire == 'traité'")
+    df_test = get_data_from_grist(table="Fiche_navette_gt", api_key=API_KEY_GRIST).query("commentaire == 'traité'")
 
     df_test.fillna("", inplace=True)
 
