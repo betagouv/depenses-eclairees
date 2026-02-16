@@ -13,7 +13,7 @@ django.setup()
 
 from app.grist.grist_api import get_data_from_grist  # noqa: E402
 from docia.file_processing.processor.classifier import DIC_CLASS_FILE_BY_NAME, classify_files  # noqa: E402
-from docia.settings import GRIST_API_KEY  # noqa: E402
+from django.conf import settings  # noqa: E402
 
 logger = logging.getLogger("docia." + __name__)
 
@@ -21,7 +21,7 @@ logger = logging.getLogger("docia." + __name__)
 def create_batch_test(true_classification: list[str] = None, multi_line_coef=1):
     """Création du batch de test pour la classification."""
     columns_to_keep = ["filename", "num_ej", "classification", "is_ocr", "commentaire", "traitement", "text"]
-    df_test = get_data_from_grist(table="Classif_gt", api_key=GRIST_API_KEY)[columns_to_keep]
+    df_test = get_data_from_grist(table="Classif_gt")[columns_to_keep]
 
     df_test = df_test.query("traitement != 'Alexandre'")
 
@@ -56,9 +56,6 @@ def compare_classification(df_result: pd.DataFrame, errors_only: bool = False):
     """
 
     df_result["is_correct"] = df_result["true_classification"].str[0] == df_result["classification"]
-    # df_result.apply(
-    #     lambda row: lists_equal_ignore_order(row["true_classification"], row["classification"]), axis=1
-    # )
 
     # Préparer l'affichage avec symboles visuels
     def format_status(is_correct):

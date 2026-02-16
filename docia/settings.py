@@ -396,5 +396,5 @@ ALBERT_RATE_PER_MINUTE_BY_MODEL = {
 }
 ALBERT_RATE_PER_MINUTE_DEFAULT = config.int("ALBERT_RATE_PER_MINUTE", default=100)
 
-GRIST_DOCS_URL = config.str("GRIST_DOCS_URL")
-GRIST_API_KEY = config.str("GRIST_API_KEY")
+GRIST_DOCS_URL = config.str("GRIST_DOCS_URL", default="")
+GRIST_API_KEY = config.str("GRIST_API_KEY", default="")
