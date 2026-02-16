@@ -15,9 +15,6 @@ from django.core.files.storage import default_storage
 
 from docia.file_processing.sync.files_utils import get_corrected_extension
 from app.utils import getDate
-from app.grist import post_new_data_to_grist, post_data_to_grist_multiple_keys
-from app.grist import URL_TABLE_ATTACHMENTS, URL_TABLE_ENGAGEMENTS, URL_TABLE_BATCH, API_KEY_GRIST
-
 
 logger = logging.getLogger("docia." + __name__)
 
@@ -745,13 +742,14 @@ def get_file_initial_info(filename, directory_path: str) -> dict:
         'hash': file_hash
     }
 
-def get_files_initial_infos(directory_path: str, save_path = None, save_grist = False, batch_grist = "") -> pd.DataFrame:
+def get_files_initial_infos(directory_path: str, save_path=None) -> pd.DataFrame:
     """
     Analyse un dossier et crée un DataFrame avec les informations sur les fichiers.
-    
+
     Args:
         directory_path (str): Chemin vers le dossier à analyser
-        
+        save_path (str, optional): Chemin où sauvegarder le fichier Excel
+
     Returns:
         pd.DataFrame: DataFrame contenant les informations sur les fichiers
     """
@@ -762,43 +760,14 @@ def get_files_initial_infos(directory_path: str, save_path = None, save_grist = 
         file_infos = get_file_initial_info(filename, directory_path)
 
         files_data.append(file_infos)
-    
+
     dfFiles = pd.DataFrame(files_data).astype(str)
 
-    if(save_path != None):
-        dfFiles.to_excel(f'{save_path}/dfFichiers_{directory_path.split("/")[-1]}_{getDate()}.xlsx', index = False)
+    if save_path is not None:
+        dfFiles.to_excel(f'{save_path}/dfFichiers_{directory_path.split("/")[-1]}_{getDate()}.xlsx', index=False)
         print(f"Liste des fichiers sauvegardées dans {save_path}/dfFichiers_{directory_path.split("/")[-1]}_{getDate()}.xlsx")
 
-    if(save_grist):
-        if(batch_grist != "" and isinstance(batch_grist, str)):
-            dfBatch = dfFiles[["num_EJ"]].drop_duplicates("num_EJ")
-            dfBatch["Batch"] = batch_grist
-
-            post_data_to_grist_multiple_keys(dfToSend=dfBatch,
-                                            list_keys=["num_EJ", "Batch"],
-                                            table_url=URL_TABLE_BATCH,
-                                            api_key=API_KEY_GRIST,
-                                            columns_to_send=[],
-                                            batch_size=100)
-
-        post_new_data_to_grist(dfFiles,
-                               key_column="num_EJ",
-                               table_url=URL_TABLE_ENGAGEMENTS,
-                               api_key=API_KEY_GRIST,
-                               columns_to_send=["num_EJ", "date_creation"])
-        
-        post_new_data_to_grist(dfFiles,
-                               key_column="filename", 
-                               table_url=URL_TABLE_ATTACHMENTS,
-                               api_key=API_KEY_GRIST,
-                               columns_to_send=["filename", "extension", "dossier", "date_creation", "taille", "hash"])
-        
-        # if(batch_name != None):
-        #     dfFiles["Batch"] = batch_name
-        #     dfToSend = dfFiles.drop_duplicates("num_EJ", inplace=True)
-        #     post_new_data_to_grist(dfToSend,"Batch", URL_TABLE_BATCH, API_KEY_GRIST, columns_to_send=["num_EJ", "Batch"])
-
-    return dfFiles.sort_values(by=["filename","extension","hash"])
+    return dfFiles.sort_values(by=["filename", "extension", "hash"])
 
 
 def get_files_chorus_infos(dfFiles: pd.DataFrame, df_ground_truth: pd.DataFrame, directory_path: str, save_path = None) -> pd.DataFrame:

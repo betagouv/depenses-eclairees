@@ -395,3 +395,6 @@ ALBERT_RATE_PER_MINUTE_BY_MODEL = {
     "mistral-ocr-2512": 100,
 }
 ALBERT_RATE_PER_MINUTE_DEFAULT = config.int("ALBERT_RATE_PER_MINUTE", default=100)
+
+GRIST_DOCS_URL = config.str("GRIST_DOCS_URL", default="")
+GRIST_API_KEY = config.str("GRIST_API_KEY", default="")

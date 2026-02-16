@@ -372,6 +372,11 @@ DIC_CLASS_FILE_BY_NAME = {
         "short_name": "Conv. financement",
         "description": "Convention définissant les modalités de financement d'un marché ou d'un projet.",
     },
+    "cv": {
+        "nom_complet": "Curriculum vitae",
+        "short_name": "CV",
+        "description": "Curriculum vitae d'un candidat à un marché public.",
+    },
     "reconduction": {
         "nom_complet": "Reconduction",
         "short_name": "Reconduction",
@@ -461,7 +466,7 @@ DIC_CLASS_FILE_BY_NAME = {
         "description": (
             "Fiche dite navette entre PLACE et Chorus permettant la transmission "
             "d'informations entre les logiciels. Contient la mention explicite de "
-            "'Fiche navette' au début du document."
+            "'Fiche navette PLACE-CHORUS' au début du document."
         ),
     },
     "kbis": {
@@ -469,14 +474,14 @@ DIC_CLASS_FILE_BY_NAME = {
         "short_name": "Kbis",
         "description": "Extrait Kbis certifiant l'inscription au registre du commerce et des sociétés (RCS).",
     },
-    "lettre_candidature": {
-        "nom_complet": "Lettre de candidature",
-        "short_name": "Lettre candidature",
+    "lettre_candidature_dc1": {
+        "nom_complet": "Lettre de candidature DC1",
+        "short_name": "Candidature DC1",
         "description": "Spécifiquement le formulaire DC1",
     },
-    "lettre_candidature_2": {
+    "lettre_candidature_dc2": {
         "nom_complet": "Lettre de candidature DC2",
-        "short_name": "Lettre candidature DC2",
+        "short_name": "Candidature DC2",
         "description": "Spécifiquement le formulaire DC2",
     },
     "lettre_consultation": {

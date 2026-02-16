@@ -5,30 +5,32 @@ from tqdm import tqdm
 from urllib.parse import quote
 
 from app.utils import json_print
-from .config_grist import URL_DOCS_GRIST, URL_TABLE_ATTACHMENTS, URL_TABLE_ENGAGEMENTS, API_KEY_GRIST
+from django.conf import settings  # noqa: E402
 
 
 def check_connexion():
     # Vérifie la connexion à l'API Grist en effectuant une requête GET sur l'URL du document
-    r = requests.get(URL_DOCS_GRIST, headers={"Authorization": API_KEY_GRIST})
+    r = requests.get(settings.GRIST_DOCS_URL, headers={"Authorization": settings.GRIST_API_KEY})
     json_print(r.text)
 
 def get_tables():
     # Vérifie la connexion à l'API Grist en effectuant une requête GET sur l'URL du document
-    r = requests.get(URL_DOCS_GRIST + "/tables", headers={"Authorization": API_KEY_GRIST})
+    r = requests.get(settings.GRIST_DOCS_URL + "/tables", headers={"Authorization": settings.GRIST_API_KEY})
     json_print(r.text)
 
-def get_data_from_grist(table_url, api_key):
+def get_data_from_grist(table: str, api_key: str = None) -> pd.DataFrame:
     """
-    Récupère les données de la table Attachments depuis l'API Grist.
+    Récupère les données d'une table depuis l'API Grist.
     Récupère toutes les données de la table (toutes les colonnes).
     Args:
-        table_url (str): URL de la table (ex: .../tables/Attachments)
+        table (str): Nom de la table (ex: Attachments)
         api_key (str): Clé API Grist
     Returns:
-        pd.DataFrame: DataFrame contenant les données de la table Attachments
+        pd.DataFrame: DataFrame contenant les données de la table
     """
-    records_url = table_url+"/records"
+    if api_key is None:
+        api_key = settings.GRIST_API_KEY
+    records_url = settings.GRIST_DOCS_URL + f"/tables/{table}/records"
     headers = {"Authorization": api_key}
     r = requests.get(records_url, headers=headers)
     r.raise_for_status()

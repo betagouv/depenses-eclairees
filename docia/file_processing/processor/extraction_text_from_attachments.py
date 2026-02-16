@@ -18,8 +18,6 @@ from tqdm import tqdm
 
 import pandas as pd
 
-from app.data.sql.sql import bulk_update_attachments
-from app.grist import API_KEY_GRIST, URL_TABLE_ATTACHMENTS, update_records_in_grist
 from app.utils import clean_nul_bytes, count_words, getDate, log_execution_time
 from docia.file_processing.llm.client import LLMClient
 from docia.file_processing.processor.pdf_drawings import add_drawings_to_pdf
@@ -739,7 +737,6 @@ def df_extract_text(
     ocr_tool: str = "mistral-ocr",
     save_path=None,
     directory_path=None,
-    save_grist=False,
     max_workers=4,
 ):
     """
@@ -787,16 +784,6 @@ def df_extract_text(
     # Afficher les statistiques finales
     display_pdf_stats(dfResult, "Statistiques finales après extraction de texte")
     try:
-        if save_grist:
-            update_records_in_grist(
-                dfResult,
-                key_column="filename",
-                table_url=URL_TABLE_ATTACHMENTS,
-                api_key=API_KEY_GRIST,
-                columns_to_update=["text", "is_OCR", "nb_mot"],
-                batch_size=30,
-            )
-
         if save_path:
             full_save_path = f"{save_path}/textsExtraits_{directory_path.split('/')[-1]}_{getDate()}.csv"
             dfResult.to_csv(full_save_path, index=False)
@@ -869,11 +856,3 @@ def process_file(
 
     nb_words = count_words(text)
     return text, is_ocr, nb_words
-
-
-def save_df_extract_text_result(df: pd.DataFrame):
-    # Clean NUL bytes from text columns before saving to PostgreSQL
-    from app.utils import clean_nul_bytes_from_dataframe
-
-    df_clean = clean_nul_bytes_from_dataframe(df, ["text"])
-    bulk_update_attachments(df_clean, ["is_OCR", "nb_mot", "text"])
