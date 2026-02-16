@@ -211,20 +211,20 @@ def test_bulk_create_links_doc_engagement():
     files_info = FileInfoFactory.create_batch(3)
     for fi in files_info:
         DataEngagementFactory(num_ej=fi.num_ej)
-        DocumentFactory(file=fi.file)
+        DocumentFactory(filename=fi.filename)
     bulk_create_links_document_engagement(files_info)
     RelModel = Document.engagements.through
-    links = list(RelModel.objects.order_by("document__file").values("document__file", "dataengagement__num_ej"))
-    assert links == [{"document__file": fi.file.name, "dataengagement__num_ej": fi.num_ej} for fi in files_info]
+    links = list(RelModel.objects.order_by("document__filename").values("document__filename", "dataengagement__num_ej"))
+    assert links == [{"document__filename": fi.filename, "dataengagement__num_ej": fi.num_ej} for fi in files_info]
 
 
 @pytest.mark.django_db
 def test_bulk_create_links_doc_engagement_ignores_duplicates():
     file_info = FileInfoFactory()
     ej = DataEngagementFactory(num_ej=file_info.num_ej)
-    doc = DocumentFactory(file=file_info.file)
+    doc = DocumentFactory(filename=file_info.filename)
     doc.engagements.add(ej)
     bulk_create_links_document_engagement([file_info])
     RelModel = Document.engagements.through
-    links = list(RelModel.objects.order_by("document__file").values("document__file", "dataengagement__num_ej"))
-    assert links == [{"document__file": doc.file.name, "dataengagement__num_ej": ej.num_ej}]
+    links = list(RelModel.objects.order_by("document__filename").values("document__filename", "dataengagement__num_ej"))
+    assert links == [{"document__filename": doc.filename, "dataengagement__num_ej": ej.num_ej}]

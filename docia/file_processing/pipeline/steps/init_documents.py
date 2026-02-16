@@ -88,8 +88,8 @@ def bulk_create_links_document_engagement(files_info: list[FileInfo]):
     # Use through model for efficient bulk creation of M2M relationships
     DocumentEngagement = Document.engagements.through
     # Get doc id by filename
-    files = [fi.file.name for fi in files_info]
-    doc_id_by_file = dict(Document.objects.filter(file__in=files).values_list("file", "id"))
+    files = [fi.filename for fi in files_info]
+    doc_id_by_filename = dict(Document.objects.filter(filename__in=files).values_list("filename", "id"))
     # Get engagements by num_ej
     num_ejs = set(file_info.num_ej for file_info in files_info)
     engagements_by_num_ej = dict(DataEngagement.objects.filter(num_ej__in=num_ejs).values_list("num_ej", "id"))
@@ -97,7 +97,7 @@ def bulk_create_links_document_engagement(files_info: list[FileInfo]):
     # Build the links
     links_doc_engagement = [
         DocumentEngagement(
-            document_id=doc_id_by_file[fi.file.name],
+            document_id=doc_id_by_filename[fi.filename],
             dataengagement_id=engagements_by_num_ej[fi.num_ej],
         )
         for fi in files_info
