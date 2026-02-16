@@ -7,8 +7,9 @@ import time
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import pandas as pd
 from tqdm import tqdm
+
+import pandas as pd
 
 from docia.file_processing.processor.analyze_content import analyze_file_text
 from docia.file_processing.processor.attributes_query import ATTRIBUTES

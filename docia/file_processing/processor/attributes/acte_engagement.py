@@ -144,13 +144,13 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
         "schema": {
             "type": "object",
             "properties": {
-                "banque": {"type": ["string","null"]},
-                "iban": {"type": ["string","null"]},
-                "code_banque": {"type": ["string","null"]},
-                "code_guichet": {"type": ["string","null"]},
-                "numero_compte": {"type": ["string","null"]},
-                "cle_rib": {"type": ["string","null"]}
-            }
+                "banque": {"type": ["string", "null"]},
+                "iban": {"type": ["string", "null"]},
+                "code_banque": {"type": ["string", "null"]},
+                "code_guichet": {"type": ["string", "null"]},
+                "numero_compte": {"type": ["string", "null"]},
+                "cle_rib": {"type": ["string", "null"]},
+            },
         },
     },
     "cotraitants": {

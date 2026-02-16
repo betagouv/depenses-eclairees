@@ -11,9 +11,7 @@ from .ratelimit.services import check_rate_limit_for_user
 logger = logging.getLogger(__name__)
 
 # Classifications traitées mais non affichées dans la catégorie analysée (pas encore prêtes)
-CLASSIFICATIONS_AFFICHEES = frozenset(
-    {"acte_engagement", "ccap", "rib"}
-)
+CLASSIFICATIONS_AFFICHEES = frozenset({"acte_engagement", "ccap", "rib"})
 
 
 def home(request):
