@@ -35,8 +35,7 @@ def home(request):
             # check whether it's valid:
             if form.is_valid():
                 num_ej = form.cleaned_data["num_ej"]
-                # if not user_can_view_ej(request.user, num_ej):
-                if False:
+                if not user_can_view_ej(request.user, num_ej):
                     logger.warning(f"PermissionDenied: User {request.user.email} cannot view EJ {num_ej}")
                 else:
                     db_docs = Document.objects.filter(engagements__num_ej=form.cleaned_data["num_ej"])
