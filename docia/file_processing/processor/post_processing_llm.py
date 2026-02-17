@@ -2,46 +2,53 @@ import copy
 import logging
 import re
 
+from schwifty import IBAN
+
 logger = logging.getLogger("docia." + __name__)
 
 
 def check_consistency_iban(iban: str) -> bool:
     """
-    Vérifie la validité d'un IBAN selon la norme ISO 13616.
-    Format accepté : Français 27 caractères, ou ''.
-    Retourne True si valide, False sinon.
+    Vérifie la validité d'un IBAN via schwifty (ISO 13616 + clé RIB française si applicable).
+    Format accepté : IBAN français 27 caractères (avec ou sans espaces), ou chaîne vide / None.
+    Retourne True si valide ou vide, False sinon.
     """
-
     if not iban:
         return True
 
-    # Longueur minimale (2 lettres pays + 2 chiffres contrôle + BBAN)
-    elif len(iban) != 27:
+    try:
+        IBAN(iban, validate_bban=True)
+        return True
+    except Exception:
         return False
 
-    # 2. Déplacer les 4 premiers caractères à la fin
-    rearranged = iban[4:] + iban[:4]
-    rearranged = rearranged.upper()
 
-    # 3. Remplacer chaque lettre par sa valeur numérique A=10, B=11, ...
-    converted = ""
-    for char in rearranged:
-        if char.isdigit():
-            converted += char
-        elif char.isalpha():
-            # A -> 10, ..., Z -> 35
-            converted += str(ord(char) - 55)
+def try_correct_false_iban(iban: str) -> str | None:
+    """
+    Tente de corriger un IBAN invalide en supposant une erreur d'un seul caractère
+    (ex. lecture OCR). Teste toutes les possibilités à chaque position ; si une seule
+    correction donne un IBAN cohérent (schwifty), la renvoie, sinon None.
+    """
+    if not iban or len(iban) != 27:
+        return None
+
+    valid_candidates: set[str] = set()
+
+    for i in range(27):
+        if i <= 1:
+            possible_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         else:
-            return False  # caractère invalide
+            possible_chars = "0123456789"
+        for char in possible_chars:
+            if char == iban[i]:
+                continue
+            candidate = iban[:i] + char + iban[i + 1 :]
+            if check_consistency_iban(candidate):
+                valid_candidates.add(candidate)
 
-    # 4. Calcul mod 97 sur un nombre potentiellement très grand
-    # On calcule le modulo progressivement (méthode standard IBAN)
-    remainder = 0
-    for digit in converted:
-        remainder = (remainder * 10 + int(digit)) % 97
-
-    # 5. Un IBAN est valide si le résultat = 1
-    return remainder == 1
+    if len(valid_candidates) == 1:
+        return valid_candidates.pop()
+    return None
 
 
 ################################################################################
@@ -75,7 +82,20 @@ def post_processing_bank_account(bank_account_input: dict[str, str]) -> dict[str
         account_number = bank_account_input.get("numero_compte", "")
         check_digit = bank_account_input.get("cle_rib", "")
         if bank_code and bank_guichet and account_number and check_digit:
-            iban = "FR76" + bank_code + bank_guichet + account_number + check_digit
+            try:
+                iban = str(IBAN.generate("FR", bank_code=bank_code + bank_guichet, account_code=account_number))
+            except Exception:
+                iban = None
+        else:
+            iban = None
+
+    # Nouveau cas : seulement le numero_compte
+    elif "numero_compte" in bank_account_input:
+        account_number = bank_account_input.get("numero_compte", "")
+        if account_number:
+            # On ne connait pas les autres champs, donc on met des X pour compléter
+            # "FR76" + "XXXXXXXXXX" + numero_compte + "XX"
+            iban = "FR76" + "X" * 10 + account_number + "X" * 2
         else:
             iban = None
 
@@ -93,10 +113,11 @@ def post_processing_bank_account(bank_account_input: dict[str, str]) -> dict[str
 
     if not iban and not bank_name:
         return None
-    elif not check_consistency_iban(iban):
+    if not check_consistency_iban(iban):
+        iban = try_correct_false_iban(iban)
+    if not iban:
         return {"banque": bank_name, "iban": None}
-    else:
-        return {"banque": bank_name, "iban": iban}
+    return {"banque": bank_name, "iban": iban}
 
 
 def post_processing_amount(amount: str) -> str:
@@ -161,8 +182,8 @@ def post_processing_co_contractors(co_contractors: list[dict[str, str]]) -> list
     for co_contractor in co_contractors:
         clean_siret = post_processing_siret(co_contractor["siret"])
 
-        # On ajoute à la liste seulement si le nom et le siret sont définis
-        if co_contractor["nom"] and clean_siret:
+        # On ajoute à la liste seulement si le nom est bien défini
+        if co_contractor["nom"]:
             clean_co_contractors_list.append({"nom": co_contractor["nom"], "siret": clean_siret})
     # On retourne la liste nettoyée des cotraitants
     return clean_co_contractors_list if clean_co_contractors_list else None
@@ -281,7 +302,8 @@ def post_processing_iban(iban: str) -> str:
     """
     clean_iban = re.sub(r"\s+", "", iban).upper()
     if not check_consistency_iban(clean_iban):
-        return None
+        corrected = try_correct_false_iban(clean_iban)
+        return corrected
     return clean_iban if clean_iban else None
 
 

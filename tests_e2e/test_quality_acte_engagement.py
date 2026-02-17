@@ -6,8 +6,6 @@ from datetime import datetime
 
 import django
 
-import pandas as pd
-
 sys.path.append(".")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
 django.setup()
@@ -21,6 +19,8 @@ from tests_e2e.utils import (  # noqa: E402
     check_global_statistics,
     check_quality_one_field,
     check_quality_one_row,
+    compare_exact_string,
+    get_fields_with_comparison_errors,
     normalize_string,
 )
 
@@ -195,37 +195,14 @@ def compare_main_company(llm_value, ref_value):
         return llm_norm_no_space == ref_norm_no_space
 
 
-def compare_siret(llm_value, ref_value):
-    """Compare siret : comparaison exacte."""
-
-    # Gestion des valeurs vides ou None
-    if not llm_value and not ref_value:
-        return True
-
-    if not llm_value or not ref_value:
-        return False
-
-    llm_str = llm_value.replace(" ", "")
-    ref_str = ref_value.replace(" ", "")
-    return llm_str == ref_str
-
-
-def compare_siren(llm_value, ref_value):
-    """Compare siren : comparaison exacte."""
-    # Gestion des valeurs vides ou None
-    if not llm_value and not ref_value:
-        return True
-
-    if not llm_value or not ref_value:
-        return False
-
-    llm_str = str(llm_value) if not pd.isna(llm_value) else ""
-    ref_str = str(ref_value) if not pd.isna(ref_value) else ""
-    return llm_str == ref_str
-
-
 def compare_mandatee_bank_account(llm_val: dict[str, str], ref_val: dict[str, str]):
-    """Compare rib_mandataire : format JSON, comparaison des 5 champs."""
+    """Compare rib_mandataire : format JSON, comparaison des champs IBAN et banque.
+
+    - Si les deux IBANs sont non vides/non None, on valide si compare_iban renvoie True
+    (les banques ne comptent pas alors).
+    - Si les deux IBANs sont vides ou None, on valide si les banques sont équivalentes.
+    - Si un seul IBAN est non vide, alors False.
+    """
 
     # Gestion des valeurs vides ou None
     if not llm_val and not ref_val:
@@ -234,13 +211,21 @@ def compare_mandatee_bank_account(llm_val: dict[str, str], ref_val: dict[str, st
     if not llm_val or not ref_val:
         return False
 
+    llm_iban = llm_val.get("iban")
+    ref_iban = ref_val.get("iban")
+
     llm_banque = normalize_string(llm_val.get("banque", ""))
     ref_banque = normalize_string(ref_val.get("banque", ""))
-    return compare_iban(llm_val.get("iban"), ref_val.get("iban")) and llm_banque == ref_banque
 
+    # Si les IBAN sont présents dans les deux, compare uniquement les IBAN
+    if llm_iban and ref_iban:
+        return compare_iban(llm_iban, ref_iban)
 
-def compare_advance(llm_value, ref_value):
-    """Compare avance : renvoie False."""
+    # Si les IBAN sont tous les deux vides, compare la banque
+    elif not llm_iban and not ref_iban:
+        return llm_banque == ref_banque
+
+    # Si un seul IBAN est vide, on considère que c'est différent
     return False
 
 
@@ -260,7 +245,7 @@ def compare_co_contractors(llm_val: list[dict[str, str]], ref_val: list[dict[str
         for i, search_item in enumerate(search_list):
             if i in excluded:
                 continue
-            if compare_main_company(search_item["nom"], item["nom"]) and compare_siret(
+            if compare_main_company(search_item["nom"], item["nom"]) and compare_exact_string(
                 search_item["siret"], item["siret"]
             ):
                 return i
@@ -308,7 +293,7 @@ def compare_subcontractors(llm_val: list[dict[str, str]], ref_val: list[dict[str
         # On essaye de le retrouver dans la liste de référence
         for subcontractor_ref in ref_val:
             # On compare le nom (avec la fonction de normalisation) et le siret
-            if compare_main_company(subcontractor_llm["nom"], subcontractor_ref["nom"]) and compare_siret(
+            if compare_main_company(subcontractor_llm["nom"], subcontractor_ref["nom"]) and compare_exact_string(
                 subcontractor_llm["siret"], subcontractor_ref["siret"]
             ):
                 this_subcontractor_valid = True  # Un match est trouvé
@@ -367,18 +352,6 @@ def compare_other_bank_accounts(llm_val: list[dict[str, dict[str, str]]], ref_va
     return not missing_items and not additional_items
 
 
-def compare_amount(llm_val, ref_val):
-    """Compare montant : comparaison des valeurs."""
-    # Gestion des valeurs vides ou None
-    if not llm_val and not ref_val:
-        return True
-
-    if not llm_val or not ref_val:
-        return False
-
-    return llm_val == ref_val
-
-
 def parse_date(date_str):
     """Parse une date au format DD/MM/YYYY ou autres formats courants."""
     if not date_str:
@@ -428,6 +401,48 @@ def compare_duration(llm_val, ref_val):
         return False
 
 
+def compare_montants_en_annexe(llm_val, ref_val):
+    """Compare montants_en_annexe : dict avec annexe_financière (bool|null) et classification (null | list[str])."""
+    if not llm_val and not ref_val:
+        return True
+
+    if not llm_val or not ref_val:
+        return False
+
+    if llm_val.get("annexe_financière") != ref_val.get("annexe_financière"):
+        return False
+
+    llm_cl, ref_cl = llm_val.get("classification"), ref_val.get("classification")
+
+    if llm_cl is None and ref_cl is None:
+        return True
+    if llm_cl is None or ref_cl is None:
+        return False
+
+    return sorted(llm_cl) == sorted(ref_cl)
+
+
+def compare_contract_form(llm_val, ref_val):
+    """
+    Compare forme_marche : comparaison exacte de chaque sous-champ.
+    Structure attendue : lot_concerne (dict avec numero_lot, titre_lot), marche_subsequent (bool),
+    marche_parent (str).
+    """
+    if not llm_val and not ref_val:
+        return True
+
+    if not llm_val or not ref_val:
+        return False
+
+    if llm_val.get("lot_concerne") != ref_val.get("lot_concerne"):
+        return False
+    if llm_val.get("marche_subsequent") != ref_val.get("marche_subsequent"):
+        return False
+    if llm_val.get("marche_parent") != ref_val.get("marche_parent"):
+        return False
+    return True
+
+
 def get_comparison_functions():
     """Mapping des colonnes vers leurs fonctions de comparaison
 
@@ -442,51 +457,72 @@ def get_comparison_functions():
         "objet_marche": compare_object,
         "administration_beneficiaire": compare_beneficiary_administration,
         "societe_principale": compare_main_company,
-        "siret_mandataire": compare_siret,
-        "siren_mandataire": compare_siren,
+        "siret_mandataire": compare_exact_string,
+        "siren_mandataire": compare_exact_string,
         "rib_mandataire": compare_mandatee_bank_account,
-        "avance": compare_advance,
         "cotraitants": compare_co_contractors,
         "sous_traitants": compare_subcontractors,
         "rib_autres": compare_other_bank_accounts,
-        "montant_ttc": compare_amount,
-        "montant_ht": compare_amount,
+        "montant_ttc": compare_exact_string,
+        "montant_ht": compare_exact_string,
         "date_signature_mandataire": compare_date,
         "date_signature_administration": compare_date,
         "date_notification": compare_date,
         "duree": compare_duration,
+        "conserve_avance": compare_exact_string,
+        "montants_en_annexe": compare_montants_en_annexe,
+        "forme_marche": compare_contract_form,
+        "code_cpv": compare_exact_string,
+        "montant_tva": compare_exact_string,
+        "mode_consultation": compare_exact_string,
+        "mode_reconduction": compare_exact_string,
+        "ligne_imputation_budgetaire": compare_exact_string,
     }
 
 
-def create_batch_test(multi_line_coef=1):
+def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-medium", debug_mode=False):
     """Test de qualité des informations extraites par le LLM."""
 
-    df_test = get_data_from_grist(table="Acte_engagement_gt")
-    df_test.fillna("", inplace=True)
+    # Lecture du fichier CSV
+    df_test = get_data_from_grist(table="Acte_engagement_gt_v2")
+    df_test["montant_ht"] = df_test["montant_ht"].apply(lambda x: f"{float(x):.2f}" if x else "")
+    df_test["montant_ttc"] = df_test["montant_ttc"].apply(lambda x: f"{float(x):.2f}" if x else "")
+    df_test["montant_tva"] = df_test["montant_tva"].apply(lambda x: f"{float(x):.2f}" if x else "")
     df_test["rib_mandataire"] = df_test["rib_mandataire"].apply(lambda x: json.loads(x))
     df_test["cotraitants"] = df_test["cotraitants"].apply(lambda x: json.loads(x))
     df_test["sous_traitants"] = df_test["sous_traitants"].apply(lambda x: json.loads(x))
     df_test["duree"] = df_test["duree"].apply(lambda x: json.loads(x))
     df_test["rib_autres"] = df_test["rib_autres"].apply(lambda x: json.loads(x))
-    df_test["siret_mandataire"] = df_test["siret_mandataire"].astype(str).apply(lambda x: x.split(".")[0])
-    df_test["siren_mandataire"] = df_test["siren_mandataire"].astype(str).apply(lambda x: x.split(".")[0])
-    df_test["montant_ht"] = df_test["montant_ht"].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "")
-    df_test["montant_ttc"] = df_test["montant_ttc"].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "")
+    df_test["montants_en_annexe"] = df_test["montants_en_annexe"].apply(lambda x: json.loads(x))
+    df_test["forme_marche"] = df_test["forme_marche"].apply(lambda x: json.loads(x))
 
     # Lancement du test
-    return analyze_content_quality_test(df_test, "acte_engagement", multi_line_coef=multi_line_coef)
+    return analyze_content_quality_test(
+        df_test,
+        "acte_engagement",
+        multi_line_coef=multi_line_coef,
+        max_workers=max_workers,
+        llm_model=llm_model,
+        debug_mode=debug_mode,
+    )
 
 
 if __name__ == "__main__":
-    df_test, df_result, df_merged = create_batch_test()
+    df_test, df_result, df_merged = create_batch_test(llm_model="openweight-medium", debug_mode=True, max_workers=30)
 
-    EXCLUDED_COLUMNS = ["objet_marche", "administration_beneficiaire", "avance"]
+    EXCLUDED_COLUMNS = ["objet_marche", "administration_beneficiaire"]
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "rib_mandataire", comparison_functions)
-    check_quality_one_field(df_merged, "cotraitants", comparison_functions)
+    check_quality_one_field(df_merged, "mode_reconduction", comparison_functions, only_errors=True)
 
-    check_quality_one_row(df_merged, 0, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
+    check_quality_one_row(df_merged, 26, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
 
     check_global_statistics(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
+
+    fields_with_errors = get_fields_with_comparison_errors(
+        df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS
+    )
+
+    for v in fields_with_errors.values():
+        print(json.dumps(v))

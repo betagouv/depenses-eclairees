@@ -19,19 +19,46 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
         "search": "",
         "output_field": "objet_marche",
     },
-    "lot_concerne": {
-        "consigne": """LOT_CONCERNE
-   Définition : le lot du marché concerné par le contrat.
+    "forme_marche": {
+        "consigne": """FORME MARCHE
+   Définition : Informations sur la forme du marché concernant les lots, les marchés subséquents et les marchés parents.
    Indices :
-   - Chercher après les mentions "Objet" et "Lot", ou autre mention similaire, en particulier en début du document.
-   - Renvoyer le numéro du lot, ainsi que le titre du lot s'il est disponible : "Lot X : [titre du lot]"
-   - Ne rien renvoyer si aucun lot trouvé.
+   - Chercher après les mentions "Objet", "Lot", "marché subséquent", "marché parent", ou autres mentions similaires, en particulier en début du document.
+   - Pour le champ lot_concerne :
+     * Si le marché concerne un lot spécifique, identifier le numéro du lot (chercher "Lot X", "Lot n°X", etc.) et son titre. Si pas de titre explicite trouvée, renvoyer null pour titre_lot.
+     * Si le marché n'est pas un lot, renvoyer null pour numero_lot et titre_lot.
+   - Pour le champ marche_subsequent :
+     * Rechercher les mentions explicites de "marché subséquent", "marchés subséquents", ou formulations équivalentes.
+     * Si le document précise que ce marché est un marché subséquent ou fait partie d'un marché à marchés subséquents, renvoyer true.
+     * Sinon, renvoyer false.
+   - Pour le champ marche_parent :
+     * Rechercher l'identifiant du marché parent (souvent mentionné comme "accord-cadre", "contrat-cadre", "marché global", etc.).
+     * L'identifiant peut être un numéro de marché, un code, un numéro de consultation ou toute référence unique au marché parent.
+     * Si aucun marché parent n'est mentionné ou si son identifiant n'est pas disponible, renvoyer null.
    Format : 
-   - La chaîne de caractères"Lot X : [titre du lot]", où le titre du lot est écrit en minuscule correctement.
-   - Si aucun lot trouvé, renvoyer ''
+   - Un objet JSON avec les trois champs suivants au même niveau :
+     * "lot_concerne" : objet avec "numero_lot" (entier ou null) et "titre_lot" (chaîne ou null)
+     * "marche_subsequent" : booléen (true ou false)
+     * "marche_parent" : chaîne (identifiant du marché parent) ou null
 """,
         "search": "",
-        "output_field": "lot_concerne",
+        "output_field": "forme_marche",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "lot_concerne": {
+                    "type": ["object", "null"],
+                    "properties": {
+                        "numero_lot": {"type": ["integer", "null"]},
+                        "titre_lot": {"type": ["string", "null"]},
+                    },
+                    "required": ["numero_lot", "titre_lot"],
+                },
+                "marche_subsequent": {"type": "boolean"},
+                "marche_parent": {"type": ["string", "null"]},
+            },
+            "required": ["lot_concerne", "marche_subsequent", "marche_parent"],
+        },
     },
     "administration_beneficiaire": {
         "consigne": """ADMINISTRATION_BENEFICIAIRE 
@@ -68,8 +95,11 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
    Définition : Numéro SIRET de la société principale, composé de 14 chiffres.  
    Indices :
    - Peut être mentionné comme "SIRET", ou "numéro d'immatriculation".
-   - Si plusieurs SIRET sont disponibles pour une même entreprise, avec différentes terminaisons (5 derniers chiffres), prendre le numéro le plus élevé.
-        * Exemple : 123 456 789 00001 et 123 456 789 00020, renvoyer 12345678900020 (car 00020 > 00001).
+   - Favoriser les numéros de SIRET indiqués dans l'identification du titulaire, plutôt qu'en signature du document.
+   - Si plusieurs SIRET sont disponibles pour une même entreprise, avec différentes terminaisons (5 derniers chiffres) :
+        * Prendre le numéro de l'établissement concerné (pas le siège social) pour renvoyer le SIRET.
+        * S'il n'y a pas de précisions sur l'établissement concerné, renvoyer le SIRET le plus élevé.
+            -> Exemple : 123 456 789 00001 et 123 456 789 00020, renvoyer 12345678900020 (car 00020 > 00001).
    - Si le numéro de SIRET ne contient pas suffisamment de caractères, ne pas compléter : renvoyer tel quel.
    Format : un numéro composé de 14 chiffres, sans espaces.  
 """,
@@ -95,7 +125,7 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
      Définition : Informations bancaires (IBAN en priorité) du compte à créditer indiqué dans l'acte d'engagement.
      Indices : 
      - Rechercher dans les informations bancaires, en priorité près des mentions "RIB" ou "IBAN".
-     - 1er cas (prioritaire) : l'IBAN est fourni (27 caractères commençant par "FR76"). Renvoyer :
+     - 1er cas (prioritaire) : l'IBAN est fourni (27 caractères commençant par "FR76" pour un RIB français). Renvoyer :
         * 'banque' : Nom de la banque (sans la mention "Banque")
         * 'iban' : IBAN du compte à créditer (souvent 6 groupes de 4 caractères, puis 3 caractères)
      - 2ème cas (uniquement s'il n'y a pas d'IBAN) : l'IBAN n'est pas fourni, mais les autres informations bancaires sont fournies. Renvoyer :
@@ -113,49 +143,15 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
         "output_field": "rib_mandataire",
         "schema": {
             "type": "object",
-            "oneOf": [
-                {
-                    "type": "object",
-                    "properties": {"banque": {"type": "string"}, "iban": {"type": "string"}},
-                    "required": ["banque", "iban"],
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "banque": {"type": "string"},
-                        "code_banque": {"type": "string"},
-                        "code_guichet": {"type": "string"},
-                        "numero_compte": {"type": "string"},
-                        "cle_rib": {"type": "string"},
-                    },
-                    "required": ["banque", "code_banque", "code_guichet", "numero_compte", "cle_rib"],
-                },
-                {},
-            ],
+            "properties": {
+                "banque": {"type": ["string", "null"]},
+                "iban": {"type": ["string", "null"]},
+                "code_banque": {"type": ["string", "null"]},
+                "code_guichet": {"type": ["string", "null"]},
+                "numero_compte": {"type": ["string", "null"]},
+                "cle_rib": {"type": ["string", "null"]},
+            },
         },
-    },
-    #     "avance":{
-    #         "consigne": """AVANCE
-    #      Définition : Information sur la volonté du titulaire de recevoir ou non une avance.
-    #      Indices :
-    #      - Dans un paragraphe dédié au renoncement de l'avance, souvent sous la forme d'une case à cocher à gauche de la mention "Non" ou "Oui".
-    #      - Attention l'extraction du texte peut être ambiguë, notamment pour les cases à cocher :
-    #         * si une des cases est devenu 0 ou O, elle n'était probalement pas cochée : "Ef NON O oul", c'était probablement que "Non" était cochée.
-    #         * si une des cases est devenu x ou X, elle était probablement cochée.
-    #         * si la coche d'une case n'est pas clairement visible, renvoyer "Information insuffisante".
-    #      - Ne rien renvoyer sur l'avance si aucune information sur l'avance trouvée.
-    #      Format : "✓ Conserve le bénéfice de l'avance" ou "✗ Renonce au bénéfice de l'avance" ou "Information insuffisante
-    # """,
-    #         "search": "",
-    #         "output_field": "avance"
-    #     },
-    "citation_avance": {
-        "consigne": """CITATION_AVANCE
-     Définition : La question (souvent "Je renonce au bénéfice de l'avance :")et les réponses extraites du texte du document concernant l'avance.
-     Format : La citation du texte du document telle quelle, sans aucune modification.
-""",
-        "search": "",
-        "output_field": "citation_avance",
     },
     "cotraitants": {
         "consigne": """COTRAITANTS
@@ -165,6 +161,10 @@ Règles d’extraction :
 - Ignorer totalement les entreprises mentionnées comme sous-traitantes.
 - Ignorer toute mention générique contenant le mot “cotraitant” (ex. “Cotraitant”, “cotraitant1”, “cotraitant2”) : ce ne sont pas des entreprises.
 - Une entreprise n’est retenue que si au moins l’un des éléments suivants apparaît dans le texte : un nom réel d’entreprise, un numéro SIRET (14 chiffres) ou SIREN (9 chiffres) valide.
+- Pour le nom (champ "nom") : en cas de choix, préférer la raison sociale plutôt que le nom commercial.
+- Pour le SIRET (champ "siret") : si plusieurs SIRET sont disponibles pour une même entreprise :
+    * Prendre le numéro de l’établissement concerné (pas le siège social) pour renvoyer le SIRET.
+    * S'il n’y a pas de précisions sur l’établissement concerné, renvoyer le SIRET le plus élevé.
 - Si aucun cotraitant réel n’est identifié dans le texte, renvoyer []
 - Format attendu : 
     * une liste JSON : [{"nom": "...", "siret": "..."}]
@@ -203,16 +203,24 @@ Règles d’extraction :
     },
     "rib_autres": {
         "consigne": """RIB_AUTRES
-     Définition : RIB des autres entreprises du groupement, s'il y en a.
+     Définition : RIB des autres entreprises du groupement (cotraitants, etc.), s'il y en a. Informations bancaires (IBAN en priorité) du compte à créditer pour chaque entreprise.
      Indices : 
      - Rechercher dans le paragraphe des comptes à créditer, s'il y a plusieurs RIB indiqués pour plusieurs entreprises différentes.
-        * 'societe' : nom de la société du groupement (si possible cohérent avec le champ cotraitants ci-dessus)
-        * 'rib' : informations bancaires du compte à créditer (banque, IBAN, etc.)
-            * 'banque' : Nom de la banque (sans la mention "Banque"). Ne rien renvoyer si aucune banque trouvée.
-            * 'iban' : IBAN du compte à créditer avec espaces tous les 4 caractères. Ne rien renvoyer si aucun IBAN trouvé.
+     - Pour chaque entreprise (autre que le mandataire), renvoyer 'societe' (nom cohérent avec le champ cotraitants si possible) et 'rib' :
+     - 1er cas (prioritaire) : l'IBAN est fourni (27 caractères commençant par "FR76" pour un RIB français). Renvoyer dans 'rib' :
+        * 'banque' : Nom de la banque (sans la mention "Banque")
+        * 'iban' : IBAN du compte à créditer (souvent 6 groupes de 4 caractères, puis 3 caractères)
+     - 2ème cas (uniquement s'il n'y a pas d'IBAN) : l'IBAN n'est pas fourni, mais les autres informations bancaires sont fournies. Renvoyer dans 'rib' :
+        * 'banque' : Nom de la banque (sans la mention "Banque")
+        * 'code_banque' : code de la banque à 5 chiffres (espaces non compris)
+        * 'code_guichet' : code du guichet à 5 chiffres (espaces non compris)
+        * 'numero_compte' : numéro de compte français à 11 chiffres (espaces non compris)
+        * 'cle_rib' : clé du RIB à 2 chiffres (espaces non compris)
      - S'il n'y a que le RIB du mandataire, renvoyer [].
-     - S'il n'y a pas d'informations sur le compte bancaire d'une entreprise, ne rien renvoyer pour cette entreprise.
-     Format : une liste de dictionnaires json sous format [{"societe": "nom de la société du groupement", "rib": {"banque": "nom de la banque", "iban": "IBAN avec espaces tous les 4 caractères"}}]
+     - S'il n'y a pas d'informations sur le compte bancaire pour une entreprise (ni IBAN, ni informations RIB), ne pas inclure cette entreprise dans la liste.
+     Format : 
+     - 1er cas (prioritaire) : [{"societe": "nom de la société", "rib": {"banque": "nom de la banque", "iban": "IBAN avec espaces tous les 4 caractères"}}]
+     - 2ème cas (secondaire - uniquement s'il n'y a pas d'IBAN) : [{"societe": "nom de la société", "rib": {"banque": "nom de la banque", "code_banque": "...", "code_guichet": "...", "numero_compte": "...", "cle_rib": "..."}}]
 """,
         "search": "Section du document qui décrit le groupement et les entreprises qui le composent.",
         "output_field": "rib_autres",
@@ -224,8 +232,14 @@ Règles d’extraction :
                     "societe": {"type": "string"},
                     "rib": {
                         "type": "object",
-                        "properties": {"banque": {"type": "string"}, "iban": {"type": "string"}},
-                        "required": ["banque", "iban"],
+                        "properties": {
+                            "banque": {"type": ["string", "null"]},
+                            "iban": {"type": ["string", "null"]},
+                            "code_banque": {"type": ["string", "null"]},
+                            "code_guichet": {"type": ["string", "null"]},
+                            "numero_compte": {"type": ["string", "null"]},
+                            "cle_rib": {"type": ["string", "null"]},
+                        },
                     },
                 },
                 "required": ["societe", "rib"],
@@ -296,12 +310,6 @@ Règles d’extraction :
             "required": ["duree_initiale", "duree_reconduction", "nb_reconductions", "delai_tranche_optionnelle"],
         },
     },
-    "duree_explication": {
-        "consigne": """DUREE_EXPLICATION
-        Définition : Explique comment tu as calculé la durée ci-dessus""",
-        "search": "Section du document qui décrit la durée du marché ou le délai d'exécution des prestations.",
-        "output_field": "duree_explication",
-    },
     "date_signature_mandataire": {
         "consigne": """DATE_SIGNATURE_MANDATAIRE
       Définition : Date de signature du document par le mandataire (entreprise prestataire principale). 
@@ -309,6 +317,8 @@ Règles d’extraction :
       - Uniquement la date de signature de l'entreprise mandataire, pas celle de l'administration bénéficiaire.
       - Souvent la première date de signature en cas de plusieurs dates de signature.
       - Repérer les expressions comme "Signé le", "Fait à ...", ou des dates en bas du document associées à une signature.
+        * Si une date est indiquée après "date de signature" ou "Signé le", on considère le document comme signé,
+         même si la signature n'apparaît pas dans le texte extrait.
       - Si le document termine par une date seule, c'est probablement la date de signature de l'administration.
       - Ignorer les dates d'émission ou de création du document, en général en haut du document
       - Ne rien renvoyer si aucune date de signature trouvée pour le mandataire.
@@ -323,8 +333,11 @@ Règles d’extraction :
       Indices : 
       - Uniquement la date de signature de l'acheteur, du pouvoir adjudicateur, ou de l'administration bénéficiaire.
       - Souvent la dernière signature en cas de plusieurs dates de signatures.
-      - Repérer les expressions comme "Signé le", "Fait à ...", ou des dates en bas du document associées à une signature.
+      - Repérer les expressions comme "Signé le", "Fait à ...", "signature électronique", ou des dates en bas du document associées à une signature.
+        * Si une date est indiquée après "date de signature" ou "Signé le", on considère le document comme signé,
+         même si la signature n'apparaît pas dans le texte extrait.
       - Si le document termine par une date seule, c'est surement la date designature de l'administration.
+      - Parfois la signature est électronique : seuls le nom du signataire et la date apparaissent dans le texte. 
       - Ignorer les dates d'émission ou de création du document, en général en haut du document
       - Ne rien renvoyer si aucune date de signature trouvée
      Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
@@ -339,11 +352,115 @@ Règles d’extraction :
       - Parfois en début du document, ou en toute fin de document.
       - Après la mention "Date de notification" ou "Date de début du marché".
       - S'il y a un doute sur la lecture de la date, prendre la date la plus proche postérieure à la signature par l'administration si disponible.
+      - Peut aussi être la date d'un courrier de notification ou d'un mail en annexe du document.
       - S'il n'y a pas de date de notification explicite, ne rien renvoyer.
       - Attention à ne pas confondre la date de notification avec la date de signature.
      Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
 """,
         "search": "",
         "output_field": "date_notification",
+    },
+    "conserve_avance": {
+        "consigne": """CONSERVE_AVANCE
+        Définition : Information sur la volonté du titulaire de conserver ou de renoncer au bénéfice de l'avance.
+        Indices :
+        Le texte présente souvent une phrase de type "Je renonce au bénéfice de l'avance" suivie de deux options : [ ] Non et [ ] Oui.
+        1. Identifie quelle case est cochée (représentée par [X], [x], X, x, ☒ ou autre équivalent) et quelle case ne l'est pas (représentée par [ ], un espace ou autre équivalent).
+        - La coche appartient à l’option (NON ou OUI) la plus proche spatialement.
+        - Si la coche est située entre "NON" et "OUI", elle est associée à l’option située immédiatement à droite.
+        2. Analyse le sens : 
+        - Si "Renonce" est associé à "NON" (coché) -> L'utilisateur VEUT l'avance -> Renvoyer "conserve"
+        - Si "Renonce" est associé à "OUI" (coché) -> L'utilisateur REFUSE l'avance -> Renvoyer "renonce"
+        - Si la phrase est "Je souhaite BENEFICIER de l'avance" : Oui = Conserve -> Renvoyer "conserve", Non = Renonce -> Renvoyer "renonce"
+        - Uniquement si le paragraphe est totalement absent ou si aucune mention ([X], [x], X ou x n'est présente) -> Renvoyer null
+""",
+        "search": "",
+        "output_field": "conserve_avance",
+    },
+    "montants_en_annexe": {
+        "consigne": """MONTANTS_EN_ANNEXE  
+     Définition : Indique si les montants sont précisés dans un autre document en annexe (uniquement ou en complément).
+     Indices : 
+     - Dans le paragraphe de l'engagement du titulaire, près de la mention des prix sur lesquels le titulaire s'engage.
+     - Souvent sous forme d'une case à cocher suivi de la mention "au prix indiqué dans les autres documents annexés ...".
+        * Une case cochée peut être représentée par [X], [x], X, x, ☒ ou autre équivalent.
+        * Une case non cochée peut être représentée par [ ], un espace ou autre équivalent.
+     - Si la mention est cochée ou qu'il est affirmé que les montants sont précisés en annexe, renvoyer :
+        * "annexe_financière": true
+        * "classification": une liste des types de documents mentionnés parmi : "BPU" (correspond aussi à bordereau de prix unitaires), "DPGF", "Annexe financière".
+     - Si la mention n'est pas cochée ou qu'il est affirmé que les montants sont précisés dans le document uniquement, renvoyer :
+        * "annexe_financière": false
+        * "classification": null
+""",
+        "search": "",
+        "output_field": "montants_en_annexe",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "annexe_financière": {"type": ["boolean", "null"]},
+                "classification": {
+                    "type": ["array", "null"],
+                    "items": {
+                        "type": "string",
+                        "enum": ["BPU", "DPGF", "Annexe financière"],
+                    },
+                },
+            },
+            "required": ["annexe_financière", "classification"],
+        },
+    },
+    "code_cpv": {
+        "consigne": """CODE_CPV — Code CPV (catégorie de dépense du marché).
+        - Chercher "CPV", "Code CPV" ; format type 8 chiffres (optionnel + tiret + chiffre), éventuellement suivi de l'intitulé du code.
+        - Ex. 72611000-6 - Fournitures
+        Si plusieurs : priorité au CPV principal, sinon tous séparés par des ";" 
+        Format : "XXXXXXXX-X Intitulé" ou "XXXXXXXX Intitulé". Sinon null.""",
+        "search": "",
+        "output_field": "code_cpv",
+    },
+    "montant_tva": {
+        "consigne": """MONTANT_TVA
+        Définition : Montant de la TVA.
+        Indices :
+        - Rechercher la mention de TVA ou de "taux de TVA". Le montant est souvent sous la forme d'un pourcentage.
+        - Convertir le pourcentage en chiffre décimal entre 0 et 1.
+        - Ne rien renvoyer si aucun montant de TVA trouvé.
+        Format : en "0.XX" avec deux décimales (ex. 0.20 pour 20%).
+        """,
+        "search": "",
+        "output_field": "montant_tva",
+    },
+    "mode_consultation": {
+        "consigne": """MODE_CONSULTATION — Mode de passation du marché (procédure adaptée, appel d'offres, MAPA, etc.).
+        Chercher dans intro, préambule ou visas. Extraire la citation exacte du document, sans reformuler. Sinon null.""",
+        "search": "",
+        "output_field": "mode_consultation",
+    },
+    "mode_reconduction": {
+        "consigne": """MODE_RECONDUCTION — Reconduction du marché : expresse ou tacite ou null.
+        - Sous la forme d'une case cochée ou explicitement mentionné dans le document.
+        - Chercher "reconduction expresse", "reconduction tacite", "reconduit tacitement". Renvoyer "expresse" ou "tacite" si explicite.
+        - Si aucune case cochée, et aucune mention renvoyer null.""",
+        "search": "",
+        "output_field": "mode_reconduction",
+        "schema": {
+            "type": "string",
+            "enum": ["expresse", "tacite", "null"],
+        },
+    },
+    "ligne_imputation_budgetaire": {
+        "consigne": """LIGNE_IMPUTATION_BUDGETAIRE — Ligne budgétaire d’imputation de la dépense.
+        Chercher "imputation budgétaire", "ligne budgétaire", "chapitre", "article". Format type : chiffres/lettres/tirets (ex. 0723-CDIE).
+        Ne pas confondre avec référence de marché. Sinon null.""",
+        "search": "",
+        "output_field": "ligne_imputation_budgetaire",
+    },
+    "remise_catalogue": {
+        "consigne": """REMISE_CATALOGUE — Remise dans le catalogue.
+        - Remise sur le catalogue proposée par le fournisseur titulaire.
+        - Sous la d'un pourcentage à renvoyer tel quel (ex. 10 pour cent -> renvoyer "10").
+        - Si aucune case cochée, et aucune mention renvoyer null.""",
+        "search": "",
+        "output_field": "remise_catalogue",
     },
 }

@@ -1,12 +1,31 @@
+import ast
 import json
+import logging
 import os
 import re
+import time
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+from tqdm import tqdm
 
 import pandas as pd
 
-from docia.file_processing.processor.analyze_content import df_analyze_content
+from docia.file_processing.processor.analyze_content import analyze_file_text
 from docia.file_processing.processor.attributes_query import ATTRIBUTES
+
+logger = logging.getLogger(__name__)
+
+
+def compare_exact_string(llm_value, ref_value):
+    # Gestion des valeurs vides ou None
+    if not llm_value and not ref_value:
+        return True
+
+    if not llm_value or not ref_value:
+        return False
+
+    return llm_value == ref_value
 
 
 def remove_accents(text: str) -> str:
@@ -46,7 +65,75 @@ def compare_normalized_string(actual, expected):
     return normalize_string(actual.replace(" ", "")) == normalize_string(expected.replace(" ", ""))
 
 
-def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, multi_line_coef=1, use_cache=False):
+def df_analyze_content(
+    df: pd.DataFrame,
+    df_attributes: pd.DataFrame,
+    llm_model: str | None = None,
+    temperature: float = 0.0,
+    max_workers: int = 4,
+    debug_mode: bool = False,
+) -> pd.DataFrame:
+    """
+    Analyse le contenu d'un DataFrame en parallèle en utilisant l'API LLM.
+
+    Args:
+        debug_mode: Si True, log le nom du fichier avec l'heure de début et le temps
+            de réponse LLM pour chaque ligne.
+
+    Returns:
+        DataFrame avec les réponses du LLM ajoutées
+    """
+    dfResult = df.copy()
+    dfResult["llm_response"] = None
+    dfResult["structured_data"] = None
+    dfResult["error"] = None
+
+    def process_row(idx):
+        row = df.loc[idx]
+        filename = row["filename"]
+        t0 = time.perf_counter() if debug_mode else None
+        if debug_mode:
+            logger.warning(f"{filename} - début à {time.strftime('%H:%M:%S', time.localtime())}")
+
+        kwargs = {
+            "text": row["text"],
+            "document_type": row["classification"],
+            "temperature": temperature,
+        }
+        if llm_model:
+            kwargs["llm_model"] = llm_model
+
+        try:
+            out = analyze_file_text(**kwargs)
+            result = {"llm_response": out["llm_response"], "structured_data": out["structured_data"], "error": None}
+        except Exception as e:
+            logger.exception(f"Erreur lors de l'analyse du fichier {filename}: {e}")
+            result = {"llm_response": None, "structured_data": None, "error": f"Erreur lors de l'analyse: {str(e)}"}
+
+        if debug_mode:
+            logger.warning(f"{filename} - réponse LLM reçue en {time.perf_counter() - t0:.2f}s")
+        return idx, result
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(process_row, i) for i in df.index]
+
+        for future in tqdm(as_completed(futures), total=len(futures), desc="Traitement des PJ"):
+            idx, result = future.result()
+            for key, value in result.items():
+                dfResult.at[idx, key] = value
+
+    return dfResult
+
+
+def analyze_content_quality_test(
+    df_test: pd.DataFrame,
+    document_type: str,
+    multi_line_coef=1,
+    use_cache=False,
+    max_workers=10,
+    llm_model="openweight-medium",
+    debug_mode=False,
+):
     """Test de qualité des informations extraites par le LLM.
 
     Args:
@@ -54,6 +141,7 @@ def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, mult
         document_type: Type de document à analyser.
         multi_line_coef: Coefficient de multiplication des lignes.
         use_cache: Si True, utilise le cache pour éviter de relancer l'analyse.
+        debug_mode: Si True, log le nom du fichier et les temps (début / durée LLM) pour chaque ligne.
     """
 
     if multi_line_coef > 1:
@@ -63,7 +151,7 @@ def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, mult
     df_analyze = pd.DataFrame()
     df_analyze["filename"] = df_test["filename"]
     df_analyze["classification"] = document_type
-    df_analyze["relevant_content"] = df_test["text"]
+    df_analyze["text"] = df_test["text"]
 
     # Vérification du cache
     cache_file = f"/tmp/cache_results_{document_type}.json"
@@ -76,8 +164,10 @@ def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, mult
         df_result = df_analyze_content(
             df=df_analyze,
             df_attributes=ATTRIBUTES,
-            max_workers=10,
+            max_workers=max_workers,
             temperature=0.1,
+            llm_model=llm_model,
+            debug_mode=debug_mode,
         )
 
     # Sauvegarde des résultats dans le cache
@@ -141,7 +231,7 @@ def _get_value_by_dotted_key(data, key):
             return _get_value_by_dotted_key(data.get(key), key_suffix)
 
 
-def check_quality_one_field(df_merged, col_to_test, comparison_functions):
+def check_quality_one_field(df_merged, col_to_test, comparison_functions, only_errors=False):
     # ============================================================================
     # COMPARAISON POUR UNE COLONNE SPÉCIFIQUE
     # ============================================================================
@@ -168,6 +258,8 @@ def check_quality_one_field(df_merged, col_to_test, comparison_functions):
         # Comparer les valeurs
         try:
             match_result = comparison_func(llm_val, ref_val)
+            if only_errors and match_result:
+                continue
             status = "✅ MATCH" if match_result else "❌ NO MATCH"
             print(f"{status} | {filename} | OCR {'❌' if pbm_ocr else '✅'}")
             print(f"  LLM: {llm_val!r}")
@@ -180,7 +272,7 @@ def check_quality_one_field(df_merged, col_to_test, comparison_functions):
             print()
 
 
-def check_quality_one_row(df_merged, row_idx_to_test, comparison_functions, excluded_columns=None):
+def check_quality_one_row(df_merged, row_idx_to_test, comparison_functions, excluded_columns=None, only_errors=False):
     # ============================================================================
     # COMPARAISON POUR UNE LIGNE SPÉCIFIQUE
     # ============================================================================
@@ -214,6 +306,8 @@ def check_quality_one_row(df_merged, row_idx_to_test, comparison_functions, excl
             try:
                 match_result = comparison_func(llm_val, ref_val)
                 match_result = bool(match_result) if not isinstance(match_result, bool) else match_result
+                if only_errors and match_result:
+                    continue
                 status = "✅ MATCH" if match_result else "❌ NO MATCH"
                 print(f"{status} | {col} | OCR {'❌' if pbm_ocr else '✅'}")
                 print(f"  LLM: {llm_val!r}")
@@ -226,11 +320,76 @@ def check_quality_one_row(df_merged, row_idx_to_test, comparison_functions, excl
                 print()
 
 
+def get_fields_with_comparison_errors(df_merged, comparison_functions, excluded_columns=None):
+    """
+    Pour chaque fichier (ligne) de df_merged, retourne la liste des champs pour lesquels
+    la comparaison entre la valeur LLM et la valeur par défaut (référence) échoue.
+
+    Args:
+        df_merged: DataFrame fusionné (résultats LLM + valeurs de référence).
+        comparison_functions: Dictionnaire colonne -> fonction de comparaison.
+        excluded_columns: Liste de colonnes à exclure de la vérification.
+
+    Returns:
+        dict: {filename: [champ1, champ2, ...]} pour chaque fichier. Les clés sont les
+        noms de fichiers, les valeurs sont les listes de champs en erreur de comparaison.
+    """
+    excluded_columns = excluded_columns or []
+
+    result = {}
+    for idx, row in df_merged.iterrows():
+        filename = row.get("filename", "unknown")
+        llm_data = row.get("structured_data", None)
+        errors = []
+
+        for col, comparison_func in comparison_functions.items():
+            if col in excluded_columns:
+                continue
+
+            ref_val = _get_value_by_dotted_key(row, col)
+            llm_val = _get_value_by_dotted_key(llm_data, col) if llm_data is not None else None
+
+            try:
+                match_result = comparison_func(llm_val, ref_val)
+                if not (bool(match_result) if not isinstance(match_result, bool) else match_result):
+                    errors.append(col)
+            except Exception:
+                errors.append(col)
+
+        result[filename] = errors
+
+    return result
+
+
+def _parse_best_test_errors(row):
+    """Retourne la liste des champs en erreur du meilleur test pour cette ligne (colonne optionnelle)."""
+    val = row.get("best_test_comparison_errors")
+    if val is None or (isinstance(val, float) and pd.isna(val)):
+        return []
+    if isinstance(val, list):
+        return val
+    if isinstance(val, str):
+        val = val.strip()
+        if not val or val in ("[]", "nan"):
+            return []
+        try:
+            return json.loads(val)
+        except (json.JSONDecodeError, TypeError):
+            pass
+        try:
+            parsed = ast.literal_eval(val)
+            return list(parsed) if isinstance(parsed, (list, tuple)) else []
+        except (ValueError, SyntaxError, TypeError):
+            return []
+    return []
+
+
 def check_global_statistics(df_merged, comparison_functions, excluded_columns=None):
     # ============================================================================
     # STATISTIQUES GLOBALES DE COMPARAISON
     # ============================================================================
     excluded_columns = excluded_columns or []
+    use_best_ref = "best_test_comparison_errors" in df_merged.columns
 
     print(f"\n{'=' * 80}")
     print("STATISTIQUES GLOBALES DE COMPARAISON")
@@ -248,6 +407,8 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
         errors = []
         ocr_errors_count = 0
         matches_no_ocr = []
+        regressions_vs_best = 0
+        improvements_vs_best = 0
 
         # Comparer toutes les lignes pour cette colonne
         for idx, row in df_merged.iterrows():
@@ -255,7 +416,7 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
 
             # Vérifier les erreurs OCR pour cette colonne
             pbm_ocr = False
-            if col in row["pbm_ocr"]:
+            if col in row.get("pbm_ocr", []):
                 ocr_errors_count += 1
                 pbm_ocr = True
 
@@ -277,15 +438,30 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
                 match_result = comparison_func(llm_val, ref_val)
                 match_result = bool(match_result) if not isinstance(match_result, bool) else match_result
                 matches.append(match_result)
-                # Si pas de problème OCR, on ajoute aussi à matches_no_ocr
+                # Si pas de problème OCR, on compte aussi dans matches_no_ocr
                 if not pbm_ocr:
                     matches_no_ocr.append(match_result)
+
+                # Écart au meilleur test (si colonne optionnelle présente)
+                if use_best_ref:
+                    best_errors = _parse_best_test_errors(row)
+                    best_had_error = col in best_errors
+                    current_has_error = not match_result
+                    if not best_had_error and current_has_error:
+                        regressions_vs_best += 1
+                    elif best_had_error and not current_has_error:
+                        improvements_vs_best += 1
             except Exception as e:
                 errors.append(f"{filename}: Error in comparison_func: {str(e)}")
                 matches.append(False)
                 # Si pas de problème OCR, on ajoute aussi à matches_no_ocr
                 if not pbm_ocr:
                     matches_no_ocr.append(False)
+                if use_best_ref:
+                    best_errors = _parse_best_test_errors(row)
+                    best_had_error = col in best_errors
+                    if not best_had_error:
+                        regressions_vs_best += 1
 
         # Calculer les statistiques pour cette colonne
         total = len(matches)
@@ -308,37 +484,43 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
             "total_no_ocr": total_no_ocr,
             "matches_no_ocr": matches_no_ocr_count,
         }
+        if use_best_ref:
+            results[col]["delta_vs_best"] = regressions_vs_best - improvements_vs_best
+            results[col]["regressions_vs_best"] = regressions_vs_best
+            results[col]["improvements_vs_best"] = improvements_vs_best
 
     # Affichage des statistiques
-    print(
-        " | ".join(
-            [
-                f"{'Colonne':<35}",
-                f"{'Total':<6}",
-                f"{'Matches':<8}",
-                f"{'Erreurs':<8}",
-                f"{'OCR Errors':<10}",
-                f"{'Accuracy':<10}",
-                f"{'Accuracy (no OCR)':<18}",
-            ]
-        )
-    )
-    print("-" * 120)
+    header_parts = [
+        f"{'Colonne':<35}",
+        f"{'Total':<6}",
+        f"{'Matches':<8}",
+        f"{'Erreurs':<8}",
+        f"{'OCR Errors':<10}",
+        f"{'Accuracy':<10}",
+        f"{'Accuracy (no OCR)':<18}",
+    ]
+    if use_best_ref:
+        header_parts.append(f"{'(+)':<14}")
+        header_parts.append(f"{'(-)':<14}")
+    print(" | ".join(header_parts))
+    print("-" * (160 if use_best_ref else 120))
 
     for col, result in results.items():
-        print(
-            " | ".join(
-                [
-                    f"{col:<35}",
-                    f"{result['total']:<6}",
-                    f"{result['matches']:<8}",
-                    f"{result['errors']:<8}",
-                    f"{result['ocr_errors']:<10}",
-                    f"{result['accuracy'] * 100:>6.2f}%",
-                    f"{result['accuracy_no_ocr'] * 100:>14.2f}%",
-                ]
-            )
-        )
+        row_parts = [
+            f"{col:<35}",
+            f"{result['total']:<6}",
+            f"{result['matches']:<8}",
+            f"{result['errors']:<8}",
+            f"{result['ocr_errors']:<10}",
+            f"{result['accuracy'] * 100:>6.2f}%",
+            f"{result['accuracy_no_ocr'] * 100:>14.2f}%",
+        ]
+        if use_best_ref:
+            imp = result.get("improvements_vs_best", 0)
+            reg = result.get("regressions_vs_best", 0)
+            row_parts.append(f"{'+' + str(imp) if imp else '0':<14}")
+            row_parts.append(f"{'-' + str(reg) if reg else '0':<14}")
+        print(" | ".join(row_parts))
 
     print(f"\n{'=' * 120}")
     print("Résumé global:")
@@ -359,6 +541,10 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
     print(f"Total d'erreurs OCR: {total_ocr_errors}")
     print(f"Accuracy globale: {global_accuracy * 100:.2f}%")
     print(f"Accuracy globale (sans OCR): {global_accuracy_no_ocr * 100:.2f}% ({total_matches_no_ocr}/{total_no_ocr})")
-    print(f"{'=' * 120}\n")
+    if use_best_ref:
+        total_imp = sum(r.get("improvements_vs_best", 0) for r in results.values())
+        total_reg = sum(r.get("regressions_vs_best", 0) for r in results.values())
+        print(f"Écart au meilleur test: Améliorations +{total_imp}, Régressions -{total_reg}")
+    print(f"{'=' * (160 if use_best_ref else 120)}\n")
 
     return global_accuracy

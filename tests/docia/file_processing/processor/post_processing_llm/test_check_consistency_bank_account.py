@@ -28,8 +28,6 @@ def test_check_consistency_iban_invalid_characters():
     """Test avec des caractères invalides dans l'IBAN."""
     # Caractères spéciaux
     assert check_consistency_iban("FR763000100794123456789018@") is False
-    # Espaces
-    assert check_consistency_iban("FR76 30001 0079 4123 4567 8901 85") is False
 
 
 def test_check_consistency_iban_invalid_checksum():
