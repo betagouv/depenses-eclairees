@@ -15,13 +15,11 @@ def check_consistency_iban(iban: str) -> bool:
     """
     if not iban:
         return True
-    
-    if len(iban) != 27:
-        return False
+
     try:
         IBAN(iban, validate_bban=True)
         return True
-    except Exception as e:
+    except Exception:
         return False
 
 
@@ -85,8 +83,8 @@ def post_processing_bank_account(bank_account_input: dict[str, str]) -> dict[str
         check_digit = bank_account_input.get("cle_rib", "")
         if bank_code and bank_guichet and account_number and check_digit:
             try:
-                iban = str(IBAN.generate("FR", bank_code=bank_code+bank_guichet, account_code=account_number))
-            except Exception as e:
+                iban = str(IBAN.generate("FR", bank_code=bank_code + bank_guichet, account_code=account_number))
+            except Exception:
                 iban = None
         else:
             iban = None
@@ -97,7 +95,7 @@ def post_processing_bank_account(bank_account_input: dict[str, str]) -> dict[str
         if account_number:
             # On ne connait pas les autres champs, donc on met des X pour compléter
             # "FR76" + "XXXXXXXXXX" + numero_compte + "XX"
-            iban = "FR76" + "X"*10 + account_number + "X"*2
+            iban = "FR76" + "X" * 10 + account_number + "X" * 2
         else:
             iban = None
 

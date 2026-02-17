@@ -4,6 +4,7 @@ Contexte = parfois tout le texte extrait, parfois seulement une liste de chunks 
 """
 
 import logging
+
 import pandas as pd
 
 from ..llm.client import LLMClient

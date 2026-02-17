@@ -6,8 +6,6 @@ from datetime import datetime
 
 import django
 
-import pandas as pd
-
 sys.path.append(".")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
 django.setup()
@@ -21,9 +19,9 @@ from tests_e2e.utils import (  # noqa: E402
     check_global_statistics,
     check_quality_one_field,
     check_quality_one_row,
+    compare_exact_string,
     get_fields_with_comparison_errors,
     normalize_string,
-    compare_exact_string,
 )
 
 logger = logging.getLogger("docia." + __name__)
@@ -200,7 +198,8 @@ def compare_main_company(llm_value, ref_value):
 def compare_mandatee_bank_account(llm_val: dict[str, str], ref_val: dict[str, str]):
     """Compare rib_mandataire : format JSON, comparaison des champs IBAN et banque.
 
-    - Si les deux IBANs sont non vides/non None, on valide si compare_iban renvoie True (les banques ne comptent pas alors).
+    - Si les deux IBANs sont non vides/non None, on valide si compare_iban renvoie True
+    (les banques ne comptent pas alors).
     - Si les deux IBANs sont vides ou None, on valide si les banques sont équivalentes.
     - Si un seul IBAN est non vide, alors False.
     """
@@ -294,7 +293,7 @@ def compare_subcontractors(llm_val: list[dict[str, str]], ref_val: list[dict[str
         # On essaye de le retrouver dans la liste de référence
         for subcontractor_ref in ref_val:
             # On compare le nom (avec la fonction de normalisation) et le siret
-            if compare_main_company(subcontractor_llm["nom"], subcontractor_ref["nom"]) and compare_siret(
+            if compare_main_company(subcontractor_llm["nom"], subcontractor_ref["nom"]) and compare_exact_string(
                 subcontractor_llm["siret"], subcontractor_ref["siret"]
             ):
                 this_subcontractor_valid = True  # Un match est trouvé
@@ -414,7 +413,7 @@ def compare_montants_en_annexe(llm_val, ref_val):
         return False
 
     llm_cl, ref_cl = llm_val.get("classification"), ref_val.get("classification")
-    
+
     if llm_cl is None and ref_cl is None:
         return True
     if llm_cl is None or ref_cl is None:
@@ -496,9 +495,17 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-m
     df_test["rib_autres"] = df_test["rib_autres"].apply(lambda x: json.loads(x))
     df_test["montants_en_annexe"] = df_test["montants_en_annexe"].apply(lambda x: json.loads(x))
     df_test["forme_marche"] = df_test["forme_marche"].apply(lambda x: json.loads(x))
-    
+
     # Lancement du test
-    return analyze_content_quality_test(df_test, "acte_engagement", multi_line_coef=multi_line_coef, max_workers=max_workers, llm_model=llm_model, debug_mode=debug_mode)
+    return analyze_content_quality_test(
+        df_test,
+        "acte_engagement",
+        multi_line_coef=multi_line_coef,
+        max_workers=max_workers,
+        llm_model=llm_model,
+        debug_mode=debug_mode,
+    )
+
 
 if __name__ == "__main__":
     df_test, df_result, df_merged = create_batch_test(llm_model="openweight-medium", debug_mode=True, max_workers=30)
@@ -507,17 +514,15 @@ if __name__ == "__main__":
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, 'mode_reconduction', comparison_functions, only_errors=True)
+    check_quality_one_field(df_merged, "mode_reconduction", comparison_functions, only_errors=True)
 
     check_quality_one_row(df_merged, 26, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
 
     check_global_statistics(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
 
-    fields_with_errors = get_fields_with_comparison_errors(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
-    
+    fields_with_errors = get_fields_with_comparison_errors(
+        df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS
+    )
+
     for v in fields_with_errors.values():
         print(json.dumps(v))
-
-
-
-    

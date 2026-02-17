@@ -7,10 +7,10 @@ RIB_ATTRIBUTES = {
         "consigne": """IBAN
      Définition : Identifiant international de compte bancaire (IBAN)
      Indices : 
-     - Généralement composé de 27 caractères, commençant souvent par "FR" pour un IBAN en France (souvent "FR76 ...", "FR09 ..." ou autres)
+     - Généralement composé de 27 caractères (pour un RIB Français), commençant souvent par "FR" pour un IBAN en France (souvent "FR76 ...", "FR09 ..." ou autres)
      - Souvent 6 groupes de 4 caractères, puis 3 caractères.
      - Si aucun IBAN trouvé, renvoyer ''
-     Format : l'IBAN de 27 caractères avec espaces tous les 4 caractères (6 groupes de 4 et un groupe de 3)
+     Format : l'IBAN d'entre 21 et 27 caractères (27 si commence par FR) caractères avec espaces tous les 4 caractères (6 groupes de 4 et un groupe de 3)
 """,
         "search": "",
         "output_field": "iban",

@@ -49,23 +49,15 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
                 "lot_concerne": {
                     "type": ["object", "null"],
                     "properties": {
-                        "numero_lot": {
-                            "type": ["integer", "null"]
-                        },
-                        "titre_lot": {
-                            "type": ["string", "null"]
-                        }
+                        "numero_lot": {"type": ["integer", "null"]},
+                        "titre_lot": {"type": ["string", "null"]},
                     },
-                    "required": ["numero_lot", "titre_lot"]
+                    "required": ["numero_lot", "titre_lot"],
                 },
-                "marche_subsequent": {
-                    "type": "boolean"
-                },
-                "marche_parent": {
-                    "type": ["string", "null"]
-                }
+                "marche_subsequent": {"type": "boolean"},
+                "marche_parent": {"type": ["string", "null"]},
             },
-            "required": ["lot_concerne", "marche_subsequent", "marche_parent"]
+            "required": ["lot_concerne", "marche_subsequent", "marche_parent"],
         },
     },
     "administration_beneficiaire": {
@@ -133,7 +125,7 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
      Définition : Informations bancaires (IBAN en priorité) du compte à créditer indiqué dans l'acte d'engagement.
      Indices : 
      - Rechercher dans les informations bancaires, en priorité près des mentions "RIB" ou "IBAN".
-     - 1er cas (prioritaire) : l'IBAN est fourni (27 caractères commençant par "FR76"). Renvoyer :
+     - 1er cas (prioritaire) : l'IBAN est fourni (27 caractères commençant par "FR76" pour un RIB français). Renvoyer :
         * 'banque' : Nom de la banque (sans la mention "Banque")
         * 'iban' : IBAN du compte à créditer (souvent 6 groupes de 4 caractères, puis 3 caractères)
      - 2ème cas (uniquement s'il n'y a pas d'IBAN) : l'IBAN n'est pas fourni, mais les autres informations bancaires sont fournies. Renvoyer :
@@ -152,13 +144,13 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
         "schema": {
             "type": "object",
             "properties": {
-                "banque": {"type": ["string","null"]},
-                "iban": {"type": ["string","null"]},
-                "code_banque": {"type": ["string","null"]},
-                "code_guichet": {"type": ["string","null"]},
-                "numero_compte": {"type": ["string","null"]},
-                "cle_rib": {"type": ["string","null"]}
-            }
+                "banque": {"type": ["string", "null"]},
+                "iban": {"type": ["string", "null"]},
+                "code_banque": {"type": ["string", "null"]},
+                "code_guichet": {"type": ["string", "null"]},
+                "numero_compte": {"type": ["string", "null"]},
+                "cle_rib": {"type": ["string", "null"]},
+            },
         },
     },
     "cotraitants": {
@@ -215,7 +207,7 @@ Règles d’extraction :
      Indices : 
      - Rechercher dans le paragraphe des comptes à créditer, s'il y a plusieurs RIB indiqués pour plusieurs entreprises différentes.
      - Pour chaque entreprise (autre que le mandataire), renvoyer 'societe' (nom cohérent avec le champ cotraitants si possible) et 'rib' :
-     - 1er cas (prioritaire) : l'IBAN est fourni (27 caractères commençant par "FR76"). Renvoyer dans 'rib' :
+     - 1er cas (prioritaire) : l'IBAN est fourni (27 caractères commençant par "FR76" pour un RIB français). Renvoyer dans 'rib' :
         * 'banque' : Nom de la banque (sans la mention "Banque")
         * 'iban' : IBAN du compte à créditer (souvent 6 groupes de 4 caractères, puis 3 caractères)
      - 2ème cas (uniquement s'il n'y a pas d'IBAN) : l'IBAN n'est pas fourni, mais les autres informations bancaires sont fournies. Renvoyer dans 'rib' :
@@ -463,12 +455,12 @@ Règles d’extraction :
         "search": "",
         "output_field": "ligne_imputation_budgetaire",
     },
-    "remise_catalogue":{
+    "remise_catalogue": {
         "consigne": """REMISE_CATALOGUE — Remise dans le catalogue.
         - Remise sur le catalogue proposée par le fournisseur titulaire.
         - Sous la d'un pourcentage à renvoyer tel quel (ex. 10 pour cent -> renvoyer "10").
         - Si aucune case cochée, et aucune mention renvoyer null.""",
         "search": "",
-        "output_field": "remise_catalogue",    
-    }
+        "output_field": "remise_catalogue",
+    },
 }

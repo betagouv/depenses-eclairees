@@ -7,8 +7,9 @@ import time
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import pandas as pd
 from tqdm import tqdm
+
+import pandas as pd
 
 from docia.file_processing.processor.analyze_content import analyze_file_text
 from docia.file_processing.processor.attributes_query import ATTRIBUTES
@@ -124,7 +125,15 @@ def df_analyze_content(
     return dfResult
 
 
-def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, multi_line_coef=1, use_cache=False, max_workers=10, llm_model="openweight-medium", debug_mode=False):
+def analyze_content_quality_test(
+    df_test: pd.DataFrame,
+    document_type: str,
+    multi_line_coef=1,
+    use_cache=False,
+    max_workers=10,
+    llm_model="openweight-medium",
+    debug_mode=False,
+):
     """Test de qualité des informations extraites par le LLM.
 
     Args:
