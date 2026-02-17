@@ -483,20 +483,12 @@ def get_comparison_functions():
 
 def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-medium", debug_mode=False):
     """Test de qualité des informations extraites par le LLM."""
-    # Chemin vers le fichier CSV de test
-    csv_path = CSV_DIR_PATH / "test_acte_engagement_v2.csv"
 
     # Lecture du fichier CSV
-    # df_test = get_data_from_grist(table="Acte_engagement_gt")
-    df_test = pd.read_csv(csv_path)
-    df_test["siret_mandataire"] = df_test["siret_mandataire"].apply(lambda x: f"{x:.0f}" if isinstance(x, (int, float)) else "")
-    df_test["siren_mandataire"] = df_test["siren_mandataire"].apply(lambda x: f"{x:.0f}" if isinstance(x, (int, float)) else "")
-    df_test["montant_ht"] = df_test["montant_ht"].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "")
-    df_test["montant_ttc"] = df_test["montant_ttc"].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "")
-    df_test["montant_tva"] = df_test["montant_tva"].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "")
-    df_test = df_test.astype(str)
-    df_test.fillna("", inplace=True)
-    df_test = df_test.replace("nan", "", inplace=True)
+    df_test = get_data_from_grist(table="Acte_engagement_gt_v2")
+    df_test["montant_ht"] = df_test["montant_ht"].apply(lambda x: f"{float(x):.2f}" if x else "")
+    df_test["montant_ttc"] = df_test["montant_ttc"].apply(lambda x: f"{float(x):.2f}" if x else "")
+    df_test["montant_tva"] = df_test["montant_tva"].apply(lambda x: f"{float(x):.2f}" if x else "")
     df_test["rib_mandataire"] = df_test["rib_mandataire"].apply(lambda x: json.loads(x))
     df_test["cotraitants"] = df_test["cotraitants"].apply(lambda x: json.loads(x))
     df_test["sous_traitants"] = df_test["sous_traitants"].apply(lambda x: json.loads(x))
@@ -509,15 +501,15 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-m
     return analyze_content_quality_test(df_test, "acte_engagement", multi_line_coef=multi_line_coef, max_workers=max_workers, llm_model=llm_model, debug_mode=debug_mode)
 
 if __name__ == "__main__":
-    df_test, df_result, df_merged = create_batch_test(llm_model="openweight-medium", debug_mode=True, max_workers=10)
+    df_test, df_result, df_merged = create_batch_test(llm_model="openweight-medium", debug_mode=True, max_workers=30)
 
     EXCLUDED_COLUMNS = ["objet_marche", "administration_beneficiaire"]
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, 'ligne_imputation_budgetaire', comparison_functions, only_errors=True)
+    check_quality_one_field(df_merged, 'mode_reconduction', comparison_functions, only_errors=True)
 
-    check_quality_one_row(df_merged, 0, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
+    check_quality_one_row(df_merged, 26, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
 
     check_global_statistics(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
 

@@ -233,7 +233,7 @@ class LLMClient:
         def _do_call() -> str:
             post = self._ocr_http_client.post if self._ocr_http_client else httpx.post
             try:
-                response = post(url, headers=headers, json=payload, timeout=180.0)
+                response = post(url, headers=headers, json=payload, timeout=self.timeout)
             except (httpx.ConnectError, httpx.TimeoutException) as e:
                 raise LLMApiError(
                     f"OCR API error: {e!s}",

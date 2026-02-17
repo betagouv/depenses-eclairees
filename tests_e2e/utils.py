@@ -124,7 +124,7 @@ def df_analyze_content(
     return dfResult
 
 
-def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, multi_line_coef=1, use_cache=False, max_workers=10, llm_model="openweight-medium"):
+def analyze_content_quality_test(df_test: pd.DataFrame, document_type: str, multi_line_coef=1, use_cache=False, max_workers=10, llm_model="openweight-medium", debug_mode=False):
     """Test de qualité des informations extraites par le LLM.
 
     Args:

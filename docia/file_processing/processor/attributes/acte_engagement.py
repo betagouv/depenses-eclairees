@@ -466,9 +466,8 @@ Règles d’extraction :
     "remise_catalogue":{
         "consigne": """REMISE_CATALOGUE — Remise dans le catalogue.
         - Remise sur le catalogue proposée par le fournisseur titulaire.
-        - Sous la d'un pourcentage (à exprimer entre 0 et 1).
-        - Si aucune case cochée, et aucune mention renvoyer null.
-        Format : renvoyer le pourcentage entre 0 et 1.""",
+        - Sous la d'un pourcentage à renvoyer tel quel (ex. 10 pour cent -> renvoyer "10").
+        - Si aucune case cochée, et aucune mention renvoyer null.""",
         "search": "",
         "output_field": "remise_catalogue",    
     }
