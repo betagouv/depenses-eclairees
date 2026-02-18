@@ -66,6 +66,23 @@ def format_postal_address(adresse):
 
 
 @register.filter
+def as_percentage(value):
+    """
+    Convertit un taux décimal (ex. 0.20, 0.055) en pourcentage affichable (ex. 20 %, 5.5 %).
+    """
+    if value is None or value == "":
+        return None
+    try:
+        rate = float(value)
+    except (TypeError, ValueError):
+        return value
+    pct = rate * 100
+    if pct == int(pct):
+        return f"{int(pct)} %"
+    return f"{pct:.1f} %"
+
+
+@register.filter
 def list_of_dicts_as_table(list_of_dicts: list[dict], columns):
     rows = []
     headers = [label for key, label in columns]

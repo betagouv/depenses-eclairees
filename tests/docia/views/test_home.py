@@ -353,3 +353,73 @@ def test_rib(client):
     assert "IBAN" in response.text
     # iban_spaces : espace tous les 4 caractères
     assert "FR76 1234 5678 9012 3456 7890 123" in response.text
+
+
+@pytest.mark.django_db
+def test_fiche_navette(client):
+    """Vérifie l'affichage des champs du document fiche navette (parties, accord-cadre, prix, imputations)."""
+    ej, doc = create_ej_and_document()
+    doc.classification = "fiche_navette"
+    doc.structured_data = {
+        "administration_beneficiaire": "[[administration_beneficiaire]]",
+        "objet": "[[objet]]",
+        "societe_principale": "[[societe_principale]]",
+        "accord_cadre": "[[accord_cadre]]",
+        "id_accord_cadre": "[[id_accord_cadre]]",
+        "montant_ht": "15000.00",
+        "reconduction": "Oui",
+        "taux_tva": "0.20",
+        "centre_cout": "DRIEETR075",
+        "centre_financier": "0174-CLIM-SCEE",
+        "activite": "020304DGTUCT",
+        "domaine_fonctionnel": "0203-04-02",
+        "localisation_interministerielle": "N9130",
+        "groupe_marchandise": "40.01.02",
+    }
+    doc.save()
+    user = UserFactory(is_superuser=True)
+    client.force_login(user)
+    response = client.get(f"/?num_ej={ej.num_ej}")
+    assert response.status_code == 200
+
+    # Objet (intro)
+    assert "Objet :" in response.text
+    assert "[[objet]]" in response.text
+
+    # Section Parties
+    assert "Parties" in response.text
+    assert "Administration bénéficiaire" in response.text
+    assert "[[administration_beneficiaire]]" in response.text
+    assert "Société principale" in response.text
+    assert "[[societe_principale]]" in response.text
+
+    # Section Accord-cadre
+    assert "Accord-cadre" in response.text
+    assert "Libellé accord-cadre" in response.text
+    assert "[[accord_cadre]]" in response.text
+    assert "Identifiant accord-cadre" in response.text
+    assert "[[id_accord_cadre]]" in response.text
+
+    # Section Prix et reconduction (taux_tva affiché en % via as_percentage)
+    assert "Prix et reconduction" in response.text
+    assert "Montant HT" in response.text
+    assert "15" in response.text and "000" in response.text  # montant formaté (locale)
+    assert "Taux TVA" in response.text
+    assert "20 %" in response.text
+    assert "Reconduction" in response.text
+    assert "Oui" in response.text
+
+    # Section Imputations budgétaires et comptables
+    assert "Imputations budgétaires et comptables" in response.text
+    assert "Centre de coût" in response.text
+    assert "DRIEETR075" in response.text
+    assert "Centre financier" in response.text
+    assert "0174-CLIM-SCEE" in response.text
+    assert "Activité" in response.text
+    assert "020304DGTUCT" in response.text
+    assert "Domaine fonctionnel" in response.text
+    assert "0203-04-02" in response.text
+    assert "Localisation interministérielle" in response.text
+    assert "N9130" in response.text
+    assert "Groupe de marchandise" in response.text
+    assert "40.01.02" in response.text
