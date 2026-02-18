@@ -11,13 +11,6 @@
   {# Objet : objet_marche visible, lot_concerne en déroulant discret si rempli #}
   <p class="fr-mb-0">
     <strong>Objet :</strong> {{ data.objet_marche|default:"[Non trouvé]" }}
-    {% if data.lot_concerne %}
-      <span class="fr-ml-1w">
-        <button type="button" class="lot-concerne-toggle" aria-expanded="false" aria-controls="{{ doc.id }}_lot" data-fr-js-collapse-button="true">
-          Lot concerné
-        </button>
-      </span>
-    {% endif %}
   </p>
   {% if data.lot_concerne %}
     <div class="fr-collapse lot-concerne-content" id="{{ doc.id }}_lot" data-fr-js-collapse="true" style="--collapse: -48px;">
@@ -118,12 +111,12 @@
   </div>
   {% endif %}
 
-{# Prix : déroulant si au moins un des champs (HT, TTC, TVA, annexes financières) est disponible #}
+{# Prix et avance : déroulant si au moins un des champs (HT, TTC, TVA, annexes financières) est disponible #}
   {% if data.montant_ht or data.montant_ttc or data.montant_tva or data.montants_en_annexe %}
     <section class="fr-accordion" data-fr-js-accordion="true">
       <h3 class="fr-accordion__title">
         <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_prix" data-fr-js-collapse-button="true">
-          Prix
+          Prix et avance
         </button>
       </h3>
       <div class="fr-collapse" id="{{ doc.id }}_prix" data-fr-js-collapse="true" style="--collapse: -48px;">
@@ -326,10 +319,5 @@
     </div>
   </section>
   {% endif %}
-
-  {# Avance et garantie : section grisée en bas du document (même espacement que les autres sections) #}
-  <div class="document-section--disabled">
-    <span class="document-section--disabled__title">Avance et garantie – Bientôt disponible sur Dépenses Eclairées</span>
-  </div>
 </div>
 {% endwith %}
