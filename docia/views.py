@@ -39,15 +39,19 @@ def home(request):
                     db_docs = Document.objects.filter(engagements__num_ej=form.cleaned_data["num_ej"])
                     db_docs = db_docs.order_by("classification")
                     for db_doc in db_docs:
-                        document_data = db_doc.structured_data or {}
-                        ratio_extracted = compute_ratio_data_extraction(document_data)
+                        document_data_raw = db_doc.structured_data or {}
+                        ratio_extracted = compute_ratio_data_extraction(document_data_raw)
                         short_classification = get_short_classification(db_doc.classification)
+                        if db_doc.classification == "acte_engagement":
+                            document_data = enrich_acte_engagement_display(document_data_raw)
+                        else:
+                            document_data = document_data_raw
                         doc = {
                             "id": db_doc.id,
                             "classification": db_doc.classification,
                             "short_classification": short_classification,
                             "filename": db_doc.filename[11:],
-                            "data_as_list": sorted([[key, value] for key, value in document_data.items()]),
+                            "data_as_list": sorted([[key, value] for key, value in document_data_raw.items()]),
                             "data": document_data,
                             "url": db_doc.file.url if db_doc.file else "",
                             "percent_data_extraction": format_ratio_to_percent(ratio_extracted),
@@ -112,3 +116,20 @@ def get_short_classification(classification: str) -> str:
 
 def format_ratio_to_percent(value: float) -> str:
     return f"{value * 100:.0f}%"
+
+
+def enrich_acte_engagement_display(data: dict) -> dict:
+    """
+    Enrichit les données d'un acte d'engagement avec des valeurs précalculées pour l'affichage.
+    Retourne une copie des données avec les champs dérivés (taux TVA en %, montant TVA calculé).
+    """
+    if not data:
+        return data
+    out = dict(data)
+    montant_tva = data.get("montant_tva")
+    montant_ht = data.get("montant_ht")
+    if montant_tva is not None and montant_tva != "":
+        out["montant_tva_display"] = round(float(montant_tva) * 100)
+    if montant_ht is not None and montant_tva is not None and montant_tva != "":
+        out["montant_tva_euros"] = float(montant_ht or 0) * float(montant_tva or 0)
+    return out

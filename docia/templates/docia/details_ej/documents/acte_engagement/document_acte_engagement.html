@@ -1,5 +1,5 @@
 {% load dsfr_tags static docia %}
-{% with id_prefix=doc.filename|add:"_" %}
+{% with id_prefix=doc.filename|add:"_" data=doc.data %}
 
 <div class="fr-mb-4w">
   {# Signataires : entre administration (signataire) et titulaire (societe_principale) #}
@@ -137,11 +137,11 @@
             {% with value=data.montant_ttc|floatformat:2 copy_value=data.montant_ttc %}
               {% include "docia/details_ej/blocks/attribute.html" with title="Montant TTC" id=id_prefix|add:"montant_ttc" suffix=" €" %}
             {% endwith %}
-            {% with value=data.montant_tva|as_percentage copy_value=data.montant_tva %}
+            {% with value=data.montant_tva_display copy_value=data.montant_tva %}
               {% include "docia/details_ej/blocks/attribute.html" with title="Taux TVA" id=id_prefix|add:"montant_tva" suffix=" %" %}
             {% endwith %}
-            {% if data.montant_ht and data.montant_tva %}
-              {% with tva_calcule=data.montant_ht|multiply:data.montant_tva value=tva_calcule|floatformat:2 copy_value=tva_calcule %}
+            {% if data.montant_tva_euros is not None %}
+              {% with value=data.montant_tva_euros|floatformat:2 copy_value=data.montant_tva_euros %}
                 {% include "docia/details_ej/blocks/attribute.html" with title="Montant TVA (calculé)" id=id_prefix|add:"montant_tva_calcule" suffix=" €" %}
               {% endwith %}
             {% endif %}
@@ -164,7 +164,7 @@
               {% if annexe_financiere is None %}
                 <span class="fr-text--mention">Non mentionnée</span>
               {% elif annexe_classification %}
-                {{ annexe_classification|join_list:", " }}
+                {{ annexe_classification|join:", " }}
               {% else %}
                 <span class="fr-text--mention">Non mentionnée</span>
               {% endif %}
