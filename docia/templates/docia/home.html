@@ -36,8 +36,8 @@
         ou par mail à <a href="mailto:contact@depenses-eclairees.beta.gouv.fr">contact@depenses-eclairees.beta.gouv.fr</a>
       {% endif %}
 
-      {# Documents analysés #}
       {% if num_ej %}
+        {% if documents or unprocessed %}
         <section class="fr-mb-4w" aria-label="Résumé du dossier">
           <h2 class="fr-h4 fr-mb-2w">
             Dossier n°&nbsp;{{ num_ej }}
@@ -49,8 +49,10 @@
             {% endwith %}
           </p>
         </section>
+        {% endif %}
       {% endif %}
 
+      {# Documents analysés #}
       {% for doc in documents %}
         <section class="fr-accordion" data-fr-js-accordion="true">
           <h3 class="fr-accordion__title">
