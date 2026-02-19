@@ -3,6 +3,7 @@ import logging
 import re
 
 from schwifty import IBAN
+from schwifty.exceptions import SchwiftyException
 
 logger = logging.getLogger("docia." + __name__)
 
@@ -19,7 +20,7 @@ def check_consistency_iban(iban: str) -> bool:
     try:
         IBAN(iban, validate_bban=True)
         return True
-    except Exception:
+    except SchwiftyException:
         return False
 
 
@@ -84,7 +85,7 @@ def post_processing_bank_account(bank_account_input: dict[str, str]) -> dict[str
         if bank_code and bank_guichet and account_number and check_digit:
             try:
                 iban = str(IBAN.generate("FR", bank_code=bank_code + bank_guichet, account_code=account_number))
-            except Exception:
+            except SchwiftyException:
                 iban = None
         else:
             iban = None
