@@ -50,7 +50,6 @@ class FileInfoFactory(factory.django.DjangoModelFactory):
     file = factory.lazy_attribute(lambda i: f"{i.folder}/{i.filename}")
     filename = factory.Sequence(lambda n: f"file_{n:0>3}.pdf")
     folder = factory.Sequence(lambda n: f"raw/folder{n // 5:0>3}")
-    num_ej = factory.fuzzy.FuzzyText(length=10, chars="0123456789")
     extension = factory.lazy_attribute(lambda i: i.filename.split(".")[-1])
     size = 1042
     hash = factory.lazy_attribute(lambda i: hashlib.md5(i.file.encode()).hexdigest())

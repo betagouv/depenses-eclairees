@@ -7,6 +7,7 @@ from django.db.transaction import atomic
 from celery import group, shared_task
 
 from app.file_manager import cleaner as processor
+from app.file_manager import extract_num_EJ
 from docia.file_processing.models import FileInfo
 from docia.models import DataBatch, DataEngagement, Document
 
@@ -42,7 +43,6 @@ def get_files_info(folder: str, chunk_number: int = 0, chunk_size: int | None = 
             info = processor.get_file_initial_info(filename, folder)
             # Rename some fields
             info = dict(**info)
-            info["num_ej"] = info.pop("num_EJ")
             info["folder"] = info.pop("dossier")
             info["size"] = info.pop("taille")
             info["created_date"] = info.pop("date_creation")
@@ -67,7 +67,9 @@ def bulk_create_engagements(num_ejs):
     DataEngagement.objects.bulk_create(engagements, batch_size=200, ignore_conflicts=True)
 
 
-def bulk_create_attachments(files_info: list[FileInfo]):
+def bulk_create_documents(file_infos: list[FileInfo]):
+    file_infos = remove_duplicates(file_infos)
+    # Filters out duplicate files
     attachments = [
         Document(
             filename=row.filename,
@@ -77,28 +79,28 @@ def bulk_create_attachments(files_info: list[FileInfo]):
             hash=row.hash,
             file=row.file,
         )
-        for row in files_info
+        for row in file_infos
     ]
     Document.objects.bulk_create(attachments, batch_size=200, ignore_conflicts=True)
 
 
-def bulk_create_links_document_engagement(files_info: list[FileInfo]):
+def bulk_create_links_document_engagement_using_filenames(files_info: list[FileInfo]):
     """Create Links between documents and engagements"""
 
     # Use through model for efficient bulk creation of M2M relationships
     DocumentEngagement = Document.engagements.through
-    # Get doc id by filename
-    files = [fi.filename for fi in files_info]
-    doc_id_by_filename = dict(Document.objects.filter(filename__in=files).values_list("filename", "id"))
+    # Get doc id by hash
+    hashes = [fi.hash for fi in files_info]
+    doc_id_by_hash = dict(Document.objects.filter(hash__in=hashes).values_list("hash", "id"))
     # Get engagements by num_ej
-    num_ejs = set(file_info.num_ej for file_info in files_info)
+    num_ejs = set(extract_num_EJ(file_info.filename) for file_info in files_info)
     engagements_by_num_ej = dict(DataEngagement.objects.filter(num_ej__in=num_ejs).values_list("num_ej", "id"))
 
     # Build the links
     links_doc_engagement = [
         DocumentEngagement(
-            document_id=doc_id_by_filename[fi.filename],
-            dataengagement_id=engagements_by_num_ej[fi.num_ej],
+            document_id=doc_id_by_hash[fi.hash],
+            dataengagement_id=engagements_by_num_ej[extract_num_EJ(fi.filename)],
         )
         for fi in files_info
     ]
@@ -118,7 +120,29 @@ def bulk_create_batches(num_ejs, batch):
     DataBatch.objects.bulk_create(batches, batch_size=200, ignore_conflicts=True)
 
 
+def remove_duplicates(file_infos: list[FileInfo]):
+    # First deduplicate from the list
+    # Sort to put shortest paths first
+    file_infos = sorted(file_infos, key=lambda info: (len(info.file.name.split("/")), info.filename))
+    # Group them by hash
+    items_by_hash = {}
+    for info in file_infos:
+        items_by_hash.setdefault(info.hash, []).append(info)
+
+    # Secondly deduplicate from database
+    existing_hashes = set(
+        Document.objects.filter(hash__in=[info.hash for info in file_infos]).values_list("hash", flat=True)
+    )
+    to_insert = []
+    for hash, infos in items_by_hash.items():
+        if hash not in existing_hashes:
+            to_insert.append(infos[0])
+
+    return to_insert
+
+
 def init_documents_in_folder(folder: str, batch: str, on_success=None):
+    """Init documents using data from files imported using s3 folder."""
     all_files = default_storage.listdir(folder)[1]
     files_count = len(all_files)
     if files_count < 200:
@@ -143,9 +167,9 @@ def init_documents_in_folder(folder: str, batch: str, on_success=None):
 @shared_task
 def task_chunk_init_documents(batch: str, folder: str, *, chunk_number: int = 0, chunk_size: int | None = None):
     files_info = get_files_info(folder, chunk_number, chunk_size)
-    num_ejs = sorted(set(info.num_ej for info in files_info))
+    num_ejs = sorted(set(extract_num_EJ(info.filename) for info in files_info))
     with atomic():
         bulk_create_engagements(num_ejs)
         bulk_create_batches(num_ejs, batch)
-        bulk_create_attachments(files_info)
-        bulk_create_links_document_engagement(files_info)
+        bulk_create_documents(files_info)
+        bulk_create_links_document_engagement_using_filenames(files_info)

@@ -5,13 +5,14 @@ import pytest
 
 from docia.file_processing.models import FileInfo
 from docia.file_processing.pipeline.steps.init_documents import (
-    bulk_create_attachments,
     bulk_create_batches,
+    bulk_create_documents,
     bulk_create_engagements,
-    bulk_create_links_document_engagement,
+    bulk_create_links_document_engagement_using_filenames,
     get_files_info,
     init_documents_in_folder,
     listdir_chunk,
+    remove_duplicates,
 )
 from docia.models import DataBatch, DataEngagement, Document
 from tests.factories.data import DataBatchFactory, DataEngagementFactory, DocumentFactory
@@ -24,16 +25,212 @@ def test_init_documents_in_folder():
         patch("django.core.files.storage.default_storage.listdir", autospec=True) as m_listdir,
         patch("docia.file_processing.pipeline.steps.init_documents.get_files_info", autospec=True) as m_get_files_info,
     ):
-        m_listdir.return_value = ([], ["doc1.pdf", "doc2.pdf"])
-        file_info_1 = FileInfoFactory(filename="doc1.pdf", num_ej="ej1")
-        file_info_2 = FileInfoFactory(filename="doc2.pdf", num_ej="ej1")
+        num_ej1 = "1234567890"
+        num_ej2 = "2234567890"
+        m_listdir.return_value = ([], [f"{num_ej1}_doc1.pdf", f"{num_ej2}_doc2.pdf"])
+        file_info_1 = FileInfoFactory(filename=f"{num_ej1}_doc1.pdf", folder="folder")
+        file_info_2 = FileInfoFactory(filename=f"{num_ej2}_doc2.pdf", folder="folder")
         m_get_files_info.return_value = [file_info_1, file_info_2]
         init_documents_in_folder("folder", "batch1")
         m_listdir.assert_called_once_with("folder")
 
-        ej = DataEngagement.objects.get(num_ej="ej1")
-        data_batch = DataBatch.objects.get(batch="batch1")
-        assert data_batch.ej.id == ej.id
+        batches = list(DataBatch.objects.values("ej__num_ej", "batch"))
+        assert batches == [
+            {"ej__num_ej": num_ej1, "batch": "batch1"},
+            {"ej__num_ej": num_ej2, "batch": "batch1"},
+        ]
+
+        documents = list(
+            Document.objects.order_by("file").values("file", "extension", "hash", "taille", "engagements__num_ej")
+        )
+        assert documents == [
+            {
+                "file": f"folder/{file_info_1.filename}",
+                "extension": "pdf",
+                "hash": file_info_1.hash,
+                "taille": file_info_1.size,
+                "engagements__num_ej": num_ej1,
+            },
+            {
+                "file": f"folder/{file_info_2.filename}",
+                "extension": "pdf",
+                "hash": file_info_2.hash,
+                "taille": file_info_2.size,
+                "engagements__num_ej": num_ej2,
+            },
+        ]
+
+
+@pytest.mark.django_db
+def test_init_documents_in_folder_complex_case():
+    """Case with duplicates"""
+    with (
+        patch("django.core.files.storage.default_storage.listdir", autospec=True) as m_listdir,
+        patch("docia.file_processing.pipeline.steps.init_documents.get_files_info", autospec=True) as m_get_files_info,
+    ):
+        num_ej1 = "1234567890"
+        num_ej2 = "2234567890"
+        m_listdir.return_value = ([], [f"{num_ej1}_doc1.pdf", f"{num_ej2}_doc2.pdf"])
+        file_info_1 = FileInfoFactory(filename=f"{num_ej1}_doc1.pdf", folder="folder")
+        file_info_2 = FileInfoFactory(filename=f"{num_ej2}_doc2.pdf", folder="folder")
+        # Duplicate handling (on FileInfo)
+        file_info_2_dup = FileInfoFactory(hash=file_info_2.hash, filename=f"{num_ej2}_doc2_2.pdf", folder="folder")
+        # Duplicate handling (on Document)
+        file_info_3 = FileInfoFactory(filename=f"{num_ej2}_doc3.pdf", folder="folder")
+        existing_doc = DocumentFactory(hash=file_info_3.hash, taille=42)
+
+        m_get_files_info.return_value = [file_info_1, file_info_2, file_info_2_dup, file_info_3]
+        init_documents_in_folder("folder", "batch1")
+        m_listdir.assert_called_once_with("folder")
+
+        batches = list(DataBatch.objects.values("ej__num_ej", "batch"))
+        assert batches == [
+            {"ej__num_ej": num_ej1, "batch": "batch1"},
+            {"ej__num_ej": num_ej2, "batch": "batch1"},
+        ]
+
+        documents = list(
+            Document.objects.order_by("file").values("file", "extension", "hash", "taille", "engagements__num_ej")
+        )
+        assert documents == [
+            {
+                "file": f"folder/{file_info_1.filename}",
+                "extension": "pdf",
+                "hash": file_info_1.hash,
+                "taille": file_info_1.size,
+                "engagements__num_ej": num_ej1,
+            },
+            {
+                "file": f"folder/{file_info_2.filename}",
+                "extension": "pdf",
+                "hash": file_info_2.hash,
+                "taille": file_info_2.size,
+                "engagements__num_ej": num_ej2,
+            },
+            {
+                "engagements__num_ej": num_ej2,
+                "extension": "txt",
+                "file": existing_doc.file.name,
+                "hash": existing_doc.hash,
+                "taille": 42,
+            },
+        ]
+
+
+@pytest.mark.django_db
+def test_init_documents_in_folder_handle_duplicate_file_info():
+    """Test with duplicate file infos during init_documents process.
+
+    Only one Document should be created, but relationships with
+    Engagements (Batch<>Engagement and Document<>Engagement) should still be created.
+    """
+    with (
+        patch("django.core.files.storage.default_storage.listdir", autospec=True) as m_listdir,
+        patch("docia.file_processing.pipeline.steps.init_documents.get_files_info", autospec=True) as m_get_files_info,
+    ):
+        num_ej1 = "1234567890"
+        num_ej2 = "2234567890"
+        file_info_1 = FileInfoFactory(filename=f"{num_ej1}_doc1.pdf", folder="folder")
+        # Duplicate FileInfo
+        file_info_2 = FileInfoFactory(hash=file_info_1.hash, filename=f"{num_ej2}_doc1.pdf", folder="folder")
+
+        # Set mock returns
+        m_listdir.return_value = ([], [file_info_1.filename, file_info_2.filename])
+        m_get_files_info.return_value = [file_info_1, file_info_2]
+
+        # Call init
+        init_documents_in_folder("folder", "batch1")
+
+        # Assert: Only one document inserted
+        assert Document.objects.count() == 1
+
+        # Assert: Even if duplicates, all relations with Engagement should be inserted
+        batches = list(DataBatch.objects.values("ej__num_ej", "batch"))
+        assert batches == [
+            {"ej__num_ej": num_ej1, "batch": "batch1"},
+            {"ej__num_ej": num_ej2, "batch": "batch1"},
+        ]
+
+        # Assert: Even if duplicates, all relations with Engagement should be inserted
+        documents = list(Document.objects.order_by("engagements__num_ej").values("hash", "engagements__num_ej", "file"))
+        assert documents == [
+            {
+                "engagements__num_ej": num_ej1,
+                "hash": file_info_1.hash,
+                "file": file_info_1.file,
+            },
+            {
+                "engagements__num_ej": num_ej2,
+                "hash": file_info_1.hash,
+                "file": file_info_1.file,
+            },
+        ]
+
+
+@pytest.mark.django_db
+def test_init_documents_in_folder_handle_duplicate_document():
+    """Test with an existing Document (same hash) during init_documents process.
+
+    No Document should be created, but relationships with Engagements (Batch<>Engagement
+    and Document<>Engagement) should still be created. Previous relationships should
+    be preserved.
+    """
+    with (
+        patch("django.core.files.storage.default_storage.listdir", autospec=True) as m_listdir,
+        patch("docia.file_processing.pipeline.steps.init_documents.get_files_info", autospec=True) as m_get_files_info,
+    ):
+        num_ej1 = "1234567890"
+        num_ej2 = "2234567890"
+        file_info_1 = FileInfoFactory(filename=f"{num_ej1}_doc1.pdf", folder="folder")
+        # Existing Document
+        existing_doc = DocumentFactory(filename="existing_doc.pdf", hash=file_info_1.hash, taille=42)
+        existing_doc.engagements.add(DataEngagementFactory(num_ej=num_ej2))
+
+        # Mock
+        m_listdir.return_value = ([], [file_info_1.filename])
+        m_get_files_info.return_value = [file_info_1]
+
+        # Call init
+        init_documents_in_folder("folder", "batch1")
+
+        # Assert: No Document inserted
+        assert Document.objects.count() == 1
+
+        # Assert: New rel with Batch should be created
+        batches = list(DataBatch.objects.values("ej__num_ej", "batch").order_by("ej__num_ej"))
+        assert batches == [
+            {"ej__num_ej": num_ej1, "batch": "batch1"},
+        ]
+
+        # Assert: Previous rel should be kept, new one should be created
+        documents = list(Document.objects.order_by("engagements__num_ej").values("file", "hash", "engagements__num_ej"))
+        assert documents == [
+            {
+                "engagements__num_ej": num_ej1,
+                "file": existing_doc.file.name,
+                "hash": existing_doc.hash,
+            },
+            {
+                "engagements__num_ej": num_ej2,
+                "file": existing_doc.file.name,
+                "hash": existing_doc.hash,
+            },
+        ]
+
+
+@pytest.mark.django_db
+def test_remove_duplicate_takes_shortest_path():
+    """Make sure we pick the shortest path (minimal nesting level and shortest filename."""
+    # Even if this file path is shorter, the nesting level is too high
+    file_info2 = FileInfoFactory(file="f/a.zip_/t.pdf", hash="toto")
+    # This is the shortest path (taking account nesting level and filename)
+    file_info_expected = FileInfoFactory(file="folder/toto.pdf", hash="toto")
+    # Same nesting level, but longer filename
+    file_info3 = FileInfoFactory(file="folder/totofjfiufrr.pdf", hash="toto")
+
+    result = remove_duplicates([file_info_expected, file_info2, file_info3])
+
+    assert result == [file_info_expected]
 
 
 @pytest.mark.parametrize(
@@ -49,7 +246,7 @@ def test_init_documents_in_folder_chunking(number_of_files, chunks, chunk_size):
         patch("django.core.files.storage.default_storage.listdir", autospec=True) as m_listdir,
         patch("docia.file_processing.pipeline.steps.init_documents.get_files_info", autospec=True) as m_get_files_info,
     ):
-        m_listdir.return_value = ([], [f"doc{i}.pdf" for i in range(1, number_of_files)])
+        m_listdir.return_value = ([], [f"{str(i) * 10}_doc{i}.pdf" for i in range(1, number_of_files)])
         m_get_files_info.return_value = []
         init_documents_in_folder("folder", "batch1")
         m_listdir.assert_called_once_with("folder")
@@ -66,7 +263,6 @@ def test_get_files_info():
         i = FileInfoFactory.build(filename=filename, folder=directory_path)
         data = {
             "filename": i.filename,
-            "num_EJ": i.num_ej,
             "dossier": i.folder,
             "extension": i.extension,
             "date_creation": i.created_date,
@@ -78,18 +274,16 @@ def test_get_files_info():
 
     def assert_files_info(files_info):
         assert len(files_info) == 2
-        assert files_info[0].filename == "doc1.pdf"
-        assert files_info[0].num_ej == gen_data_infos[0]["num_EJ"]
+        assert files_info[0].filename == "0123456789_doc1.pdf"
         assert files_info[0].folder == gen_data_infos[0]["dossier"]
-        assert files_info[0].file.name == "folder/doc1.pdf"
+        assert files_info[0].file.name == "folder/0123456789_doc1.pdf"
         assert files_info[0].extension == gen_data_infos[0]["extension"]
         assert files_info[0].created_date == gen_data_infos[0]["date_creation"]
         assert files_info[0].size == gen_data_infos[0]["taille"]
         assert files_info[0].hash == gen_data_infos[0]["hash"]
-        assert files_info[1].filename == "doc2.pdf"
-        assert files_info[1].num_ej == gen_data_infos[1]["num_EJ"]
+        assert files_info[1].filename == "0987654321_doc2.pdf"
         assert files_info[1].folder == gen_data_infos[1]["dossier"]
-        assert files_info[1].file.name == "folder/doc2.pdf"
+        assert files_info[1].file.name == "folder/0987654321_doc2.pdf"
         assert files_info[1].extension == gen_data_infos[1]["extension"]
         assert files_info[1].created_date == gen_data_infos[1]["date_creation"]
         assert files_info[1].size == gen_data_infos[1]["taille"]
@@ -100,7 +294,7 @@ def test_get_files_info():
         patch("docia.file_processing.pipeline.steps.init_documents.listdir_chunk", autospec=True) as m_listdir,
     ):
         m_get_file_info.side_effect = mock_get_file_initial_info
-        m_listdir.return_value = ["doc1.pdf", "doc2.pdf"]
+        m_listdir.return_value = ["0123456789_doc1.pdf", "0987654321_doc2.pdf"]
         files_info = get_files_info("folder", 1, 10)
         assert_files_info(files_info)
         files_info = FileInfo.objects.order_by("filename")
@@ -190,41 +384,71 @@ def assert_documents_equals_files_info(qs_documents, files_info):
 
 
 @pytest.mark.django_db
-def test_bulk_create_attachments():
+def test_bulk_create_documents():
     files_info = FileInfoFactory.create_batch(3)
-    bulk_create_attachments(files_info)
+    bulk_create_documents(files_info)
     assert_documents_equals_files_info(Document.objects.all(), files_info)
 
 
 @pytest.mark.django_db
-def test_bulk_create_attachments_ignore_duplicates():
+def test_bulk_create_documents_ignore_duplicates():
     file_info = FileInfoFactory()
     # Run the bulk_create twice
-    bulk_create_attachments([file_info])
-    bulk_create_attachments([file_info])
+    bulk_create_documents([file_info])
+    bulk_create_documents([file_info])
     # Assert only one inserted
     assert_documents_equals_files_info(Document.objects.all(), [file_info])
 
 
 @pytest.mark.django_db
 def test_bulk_create_links_doc_engagement():
-    files_info = FileInfoFactory.create_batch(3)
+    """Test that links between Documents and Engagements are created correctly."""
+    # Create Engagements
+    ej1 = DataEngagementFactory()
+    ej2 = DataEngagementFactory()
+    ej3 = DataEngagementFactory()
+    ej_list = [ej1, ej2, ej3]
+
+    # Create FileInfo objects with filenames matching the Engagements
+    files_info = [
+        FileInfoFactory(filename=f"{ej1.num_ej}_doc1.pdf"),
+        FileInfoFactory(filename=f"{ej2.num_ej}_doc2.pdf"),
+        FileInfoFactory(filename=f"{ej3.num_ej}_doc3.pdf"),
+    ]
+
+    # Create Documents with the same hash and filename as the FileInfo objects
     for fi in files_info:
-        DataEngagementFactory(num_ej=fi.num_ej)
-        DocumentFactory(filename=fi.filename)
-    bulk_create_links_document_engagement(files_info)
+        DocumentFactory(hash=fi.hash, filename=fi.filename)
+
+    # Call the function to create links between Documents and Engagements using filenames
+    bulk_create_links_document_engagement_using_filenames(files_info)
+
+    # Verify that the links were created correctly
     RelModel = Document.engagements.through
     links = list(RelModel.objects.order_by("document__filename").values("document__filename", "dataengagement__num_ej"))
-    assert links == [{"document__filename": fi.filename, "dataengagement__num_ej": fi.num_ej} for fi in files_info]
+    assert links == [
+        {"document__filename": fi.filename, "dataengagement__num_ej": ej.num_ej} for fi, ej in zip(files_info, ej_list)
+    ]
 
 
 @pytest.mark.django_db
 def test_bulk_create_links_doc_engagement_ignores_duplicates():
-    file_info = FileInfoFactory()
-    ej = DataEngagementFactory(num_ej=file_info.num_ej)
-    doc = DocumentFactory(filename=file_info.filename)
+    """Test that links creation ignores duplicates.
+
+    If a Document already has a link to an Engagement, the function should not create a duplicate link.
+    """
+    # Create an Engagement and a FileInfo
+    ej = DataEngagementFactory()
+    file_info = FileInfoFactory(filename=f"{ej.num_ej}_doc.pdf")
+
+    # Create a Document with the same hash as the FileInfo and link it to the Engagement
+    doc = DocumentFactory(hash=file_info.hash)
     doc.engagements.add(ej)
-    bulk_create_links_document_engagement([file_info])
+
+    # Call the function to create links between Documents and Engagements using filenames
+    bulk_create_links_document_engagement_using_filenames([file_info])
+
+    # Verify that no duplicate link was created
     RelModel = Document.engagements.through
     links = list(RelModel.objects.order_by("document__filename").values("document__filename", "dataengagement__num_ej"))
     assert links == [{"document__filename": doc.filename, "dataengagement__num_ej": ej.num_ej}]
