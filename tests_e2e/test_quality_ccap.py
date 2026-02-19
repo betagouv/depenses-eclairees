@@ -21,6 +21,7 @@ from tests_e2e.utils import (  # noqa: E402
     compare_with_llm,
     normalize_string,
     get_fields_with_comparison_errors,
+    compare_exact_string,
 )
 
 logger = logging.getLogger("docia." + __name__)
@@ -107,7 +108,29 @@ def compare_lots_duration(llm_val: list[dict], ref_val: list[dict]):
     return True
 
 
-def compare_price_revision_formula(llm_val: str, ref_val: str):
+def compare_contract_duration(llm_val: dict, ref_val: dict):
+    """Compare la durée du marché."""
+    if not llm_val and not ref_val:
+        return True
+
+    if not llm_val or not ref_val:
+        return False
+
+    try:
+        if llm_val.get("duree_initiale") != ref_val.get("duree_initiale"):
+            return False
+        if llm_val.get("duree_reconduction") != ref_val.get("duree_reconduction"):
+            return False
+        if llm_val.get("nb_reconductions") != ref_val.get("nb_reconductions"):
+            return False
+        if llm_val.get("delai_tranche_optionnelle") != ref_val.get("delai_tranche_optionnelle"):
+            return False
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
+def compare_price_revision_formula(llm_val: dict, ref_val: dict):
     """Compare la formule de révision des prix."""
     if not llm_val and not ref_val:
         return True
@@ -115,19 +138,7 @@ def compare_price_revision_formula(llm_val: str, ref_val: str):
     if not llm_val or not ref_val:
         return False
 
-    return False
-
-
-def compare_reference_index(llm_val: str, ref_val: str):
-    """Compare l'index de référence."""
-
-    if not llm_val and not ref_val:
-        return True
-
-    if not llm_val or not ref_val:
-        return False
-
-    return False
+    return llm_val == ref_val
 
 
 def compare_advance_condition(llm_val: str, ref_val: str):
@@ -138,18 +149,8 @@ def compare_advance_condition(llm_val: str, ref_val: str):
     if not llm_val or not ref_val:
         return False
 
-    return False
+    return llm_val == ref_val
 
-
-def compare_price_revision(llm_val: str, ref_val: str):
-    """Compare la révision des prix."""
-    if not llm_val and not ref_val:
-        return True
-
-    if not llm_val or not ref_val:
-        return False
-
-    return False
 
 
 def compare_lots_amount(llm_val: list[dict], ref_val: list[dict]):
@@ -178,27 +179,6 @@ def compare_lots_amount(llm_val: list[dict], ref_val: list[dict]):
     return True
 
 
-def compare_amount(llm_val: str, ref_val: str):
-    """Compare les montants HT."""
-    if not llm_val and not ref_val:
-        return True
-    if not llm_val or not ref_val:
-        return False
-
-    return normalize_string(str(llm_val)) == normalize_string(str(ref_val))
-
-
-def compare_global_contract(llm_val, ref_val):
-    """Compare le CCAG."""
-    if not llm_val and not ref_val:
-        return True
-
-    if not llm_val or not ref_val:
-        return False
-
-    return normalize_string(str(llm_val)) == normalize_string(str(ref_val))
-
-
 # Mapping des colonnes vers leurs fonctions de comparaison
 def get_comparison_functions():
     """
@@ -210,6 +190,7 @@ def get_comparison_functions():
         dict: Dictionnaire associant les noms de colonnes à leurs fonctions de comparaison
     """
     return {
+        "id_marche": compare_exact_string,
         "objet_marche": lambda a, e: compare_with_llm(a, e, prompt=PROMPT_OBJECT),
         "forme_marche": compare_contract_form,
         "lots.*.titre": compare_lots_title,
@@ -218,11 +199,21 @@ def get_comparison_functions():
         "lots.*.montant_ht": compare_lots_amount,
         "duree_marche": compare_duration,
         "formule_revision_prix": compare_price_revision_formula,
-        "index_reference": compare_reference_index,
+        "index_reference": compare_exact_string,
         "condition_avance": compare_advance_condition,
-        "revision_prix": compare_price_revision,
-        "montant_ht": compare_amount,
-        "ccag": compare_global_contract,
+        "revision_prix": compare_exact_string,
+        "montant_ht": compare_exact_string,
+        "ccag": compare_exact_string,
+        "mode_consultation": compare_exact_string,
+        "regle_attribution_bc": compare_exact_string,
+        "type_reconduction": compare_exact_string,
+        "debut_execution": compare_exact_string,
+        "retenue_garantie": compare_exact_string,
+        "mois_zero_revision": compare_exact_string,
+        "clause_sauvegarde_revision": compare_exact_string,
+        "delai_execution_bc_ms": compare_exact_string,
+        "penalites": compare_exact_string,
+        "code_cpv": compare_exact_string,
     }
 
 
@@ -241,11 +232,11 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-m
 if __name__ == "__main__":
     df_test, df_result, df_merged = create_batch_test(multi_line_coef=1, max_workers=30, llm_model="openweight-medium", debug_mode=True)
 
-    EXCLUDED_COLUMNS = ["objet_marche", "formule_revision_prix", "condition_avance", "revision_prix", "index_reference"]
+    EXCLUDED_COLUMNS = ["objet_marche", "formule_revision_prix"]
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "lots.*.montant_ht", comparison_functions)
+    check_quality_one_field(df_merged, "formule_revision_prix", comparison_functions, only_errors=True)
 
     check_quality_one_row(df_merged, 18, comparison_functions)
 
@@ -257,3 +248,30 @@ if __name__ == "__main__":
 
     for v in fields_with_errors.values():
         print(json.dumps(v))
+
+
+
+# "intro",
+# "id_marche",
+# "lots",
+# "forme_marche",
+# "forme_marche_lots",
+# "duree_marche",
+# "duree_lots",
+# "montant_ht",
+# "montant_ht_lots",
+# "ccag",
+# "condition_avance",
+# "formule_revision_prix", ------ schema de données ne va pas
+# "index_reference", ---- standardiser schema de données
+# "revision_prix",
+# "mode_consultation",  ---- standardiser schema de données
+# "regle_attribution_bc", -- modif prompt ajouter lots
+# "type_reconduction", -- bcp d'erreurs llm
+# "debut_execution", --- bcp d'erreurs llm
+# "retenue_garantie", -- OK
+# "mois_zero",
+# "clause_sauvegarde_revision", -- bcp d'erreurs llm
+# "delai_execution_bc_ms", -- trop d'erreurs llm
+# "penalites",
+# "code_cpv"

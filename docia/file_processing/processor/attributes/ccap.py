@@ -327,40 +327,58 @@ CCAP_ATTRIBUTES = {
     },
     "formule_revision_prix": {
         "consigne": """FORMULE_REVISION_PRIX
-            Définition : Détail de la formule mathématique permettant de réviser les prix du marché.
-            Indices :
-            - Rechercher la clause "Prix révisables" ou "Modalités de révision".
-            - La formule exprime généralement un coefficient de révision (noté 'C', 'K', ou 'Cn') qui s'applique au prix initial (P0).
-            - Identifier :
-                1. La partie fixe (ou "marge d'amortissement") : c'est le chiffre constant qui n'est pas multiplié par un indice (ex: 0.15).
-                2. Les termes variables : chaque terme est composé d'un poids (ex: 0.85) et d'un ratio d'indices (Indice nouveau / Indice de référence).
-            - Attention : La somme de la partie fixe et des poids des termes variables doit normalement être égale à 1 (ou 100%).
-            Format : Renvoyer un objet structuré détaillant la partie fixe et la liste des indices avec leurs poids respectifs.
+    Définition : Détail de la formule mathématique permettant de réviser les prix du marché.
+    Indices :
+    - Rechercher la clause "Formule de révision" ou "Coefficient de révision".
+    - La formule exprime généralement un coefficient de révision (noté 'C', 'K', ou 'Cn') qui s'applique au prix initial (P0).
+    A. Identifier :
+        1. La partie fixe (ou "marge d'amortissement") : c'est le chiffre constant qui n'est pas multiplié par un indice (ex: 0.15).
+        2. Les termes variables : chaque terme est composé d'un poids (ex: 0.85) et d'un ratio d'indices (Indice nouveau / Indice de référence).
+    - Attention : La somme de la partie fixe et des poids des termes variables doit normalement être égale à 1 (ou 100%).
+    Exemple de formule : "C = 0.30 + 0.20 * I_1N / I_10N + 0.50 * I_2N / I_20N".
+    Ici, le coefficient C a trois facteurs :
+        * partie fixe, de poids 0.30.
+        * facteur évolution de l'indice 1 (I_1N / I_10N), de poids 0.20. 
+        * facteur évolution de l'indice 2 (I_2N / I_20N), de poids 0.50. 
+    B. TEMPORALITÉ ET DÉFINITIONS - Pour chaque indice de la formule, extraire précisément :
+        1. Nom et Source : Le nom de l'indice (ex: Syntec, BT01) et sa source (ex: INSEE).
+        2. Indice de Référence (le dénominateur, ex: I0 ou S0) : 
+        - Extraire la règle de date/mois de base (ex: "valeur du 3ème mois précédant la date de notification").
+        3. Indice Nouveau (le numérateur, ex: In ou Sn) : 
+       - Extraire la règle de calcul de la nouvelle valeur (ex: "dernier indice publié au mois de la prestation" ou "valeur connue avec un décalage de 3 mois").
+        Format : Renvoyer un objet structuré détaillant la partie fixe et la liste des termes_variables avec leurs poids respectifs.
         """,
         "search": "formule de révision des prix coefficient C K partie fixe terme fixe pondération",
         "output_field": "formule_revision_prix",
         "schema": {
             "type": "object",
             "properties": {
-                "formule_brute": {
-                    "type": "string", 
-                    "description": "La formule telle qu'écrite dans le texte (ex: P=P0*(0.15+0.85*S/S0))"
-                },
-                "partie_fixe": {
-                    "type": "number", 
-                    "description": "La valeur constante dans la formule (ex: 0.15). Si absente, renvoyer 0."
-                },
+                "formule_brute": {"type": ["string", "null"]},
+                "partie_fixe": {"type": ["number", "null"]},
                 "termes_variables": {
-                    "type": "array",
+                    "type": ["array", "null"],
                     "items": {
                         "type": "object",
                         "properties": {
-                            "poids": {"type": "number", "description": "Le coefficient multiplicateur de l'indice (ex: 0.85)"},
-                            "nom_indice": {"type": "string", "description": "Le nom de l'indice utilisé (ex: SYNTEC, BT01)"},
-                            "indice_reference": {"type": "string", "description": "Le symbole de l'indice de base (ex: S0, M0)"},
-                            "indice_nouveau": {"type": "string", "description": "Le symbole de l'indice de révision (ex: S, M, Sn)"}
+                            "poids": {"type": ["number", "null"]},
+                            "nom_indice": {"type": ["string", "null"]},
+                            "source_indice": {"type": ["string", "null"]},
+                            "indice_reference": {
+                                "type": ["object", "null"],
+                                "properties": {
+                                    "symbole": {"type": ["string", "null"]},
+                                    "regle_temporelle": {"type": ["string", "null"]}
+                                }
+                            },
+                            "indice_nouveau": {
+                                "type": ["object", "null"],
+                                "properties": {
+                                    "symbole": {"type": ["string", "null"]},
+                                    "regle_temporelle": {"type": ["string", "null"]}
+                                }
+                            }
                         },
-                        "required": ["poids", "nom_indice"]
+                        "required": ["poids", "nom_indice", "indice_reference", "indice_nouveau"]
                     }
                 }
             },
@@ -368,8 +386,8 @@ CCAP_ATTRIBUTES = {
         }
     },
     "index_reference": {
-        "consigne": """INDEX_REFERENCE_CCAP
-    Définition : Index de référence
+        "consigne": """INDEX_REFERENCE
+    Définition : Index de référence utilisé pour la révision des prix.
     Indices :
     - Dans une section spécifique de l'index de référence.
     Format : le nom de l'index de référence.
@@ -381,12 +399,15 @@ CCAP_ATTRIBUTES = {
         "consigne": """REVISION_PRIX
      Définition : Les prix sont révisables ou fermes.
      Indices :
-     - Dans la section spécifique de la formule de révision des prix.
-     - Si les prix sont fermes, renvoyer "Prix fermes".
-     - Sinon, renvoyer "Prix révisables".
+     - Dans la section spécifique aux prix et à leur révision.
+     - Si les prix sont révisables, ils peuvent être réviser par une formule, ou bien par
+     un nouveau document financier (BPU, catalogue de prix).
+     - Si les prix sont fermes, la mention "prix fermes" est présente.
+     - Si aucune mention des prix n'est présente, renvoyer null.
 """,
         "search": "",
-        "output_field": "revision_prix"
+        "output_field": "revision_prix",
+        "schema": {"type": ["string", "null"], "enum": ["fermes", "révisables"]},
     },
     "mode_consultation": {
         "consigne": """MODE_CONSULTATION
@@ -404,7 +425,7 @@ CCAP_ATTRIBUTES = {
     Définition : Méthode de choix du titulaire pour l'émission des bons de commande (concerne les accords-cadres multi-attributaires).
     Indices : 
     - Chercher si les bons de commande sont attribués "en cascade", "au tour de rôle", ou après "remise en concurrence".
-    - Si le marché est mono-attributaire, renvoyer "/".
+    - Si le marché est mono-attributaire, renvoyer "null
     Format : Texte court décrivant la méthode.
 """,
         "search": "attribution bons de commande cascade tour de rôle remise en concurrence",
@@ -421,7 +442,7 @@ CCAP_ATTRIBUTES = {
 """,
         "search": "reconduction tacite expresse renouvellement",
         "output_field": "type_reconduction",
-        "schema": {"type": ["string", "null"], "enum": ["tacite", "expresse", "null"]},
+        "schema": {"type": ["string", "null"], "enum": ["tacite", "expresse", None]},
     },
     "debut_execution": {
         "consigne": """DEBUT_EXECUTION
@@ -433,25 +454,67 @@ CCAP_ATTRIBUTES = {
         "search": "début exécution prise d'effet notification ordre de service",
         "output_field": "debut_execution",
     },
-    "condition_avance": {
-        "consigne": """CONDITION_AVANCE
-    Définition : Modalités financières de l'avance versée au titulaire.
-    Indices : 
-    - Chercher le taux (souvent 5%, 20% ou 30%).
-    - Identifier les conditions (ex: "montant > 50 000€ HT et durée > 2 mois").
-    - Repérer les seuils de remboursement (ex: début à 65%, fin à 80% du montant).
-    Format : JSON {"taux_avance": "XX%", "conditions": "texte", "remboursement": "texte"}.
+    "avance": {
+        "consigne": """AVANCE
+    Définition : Paramètres précis de calcul, de déclenchement et de remboursement de l'avance.
+    - Dans un paragraphe dédié à l'avance.
+    1. TAUX : 
+       - Identifier le taux standard (souvent 5%).
+       - Identifier si un taux spécifique "PME" est mentionné (souvent 20% ou 30%).
+    2. DÉCLENCHEMENT :
+       - Déterminer si l'avance est "systématique" ou "sous conditions".
+       - Si sous conditions, extraire le seuil de montant (ex: 50000) et la durée minimale en mois (ex: 2).
+    3. ASSIETTE DE CALCUL :
+       - Déterminer si le calcul se fait sur le montant "HT" ou "TTC".
+       - Identifier la base : "montant initial du marché", "montant du bon de commande", ou "montant de la tranche".
+    4. COEFFICIENT DE DURÉE :
+       - Vérifier si une règle de prorata est mentionnée pour les durées > 12 mois (ex: "12 / durée en mois"). Si oui, mettre le champ à true.
+    5. REMBOURSEMENT :
+       - Identifier le seuil de début de remboursement (quand le montant des prestations atteint X%) 
+       et de fin de remboursement (quand il atteint Y%).
+       - Note : Si le texte cite uniquement les articles R.2191-11 ou R.2191-12 sans chiffres : 
+         * Si taux avance <= 30% : début = 65%, fin = 80%.
+         * Si taux avance > 30% : début = 0%, fin = 80%.
+    Format : Renvoyer un objet JSON structuré. Si une information est absente, renvoyer null.
 """,
-        "search": "avance montant taux remboursement précompte",
-        "output_field": "condition_avance",
+        "search": "avance taux PME montant 50000 durée 2 mois assiette HT TTC remboursement précompte 65% 80% prorata 12 mois",
+        "output_field": "avance",
         "schema": {
             "type": "object",
             "properties": {
-                "taux_avance": {"type": "string"},
-                "conditions": {"type": "string"},
-                "remboursement": {"type": "string"},
+                "taux": {
+                    "type": ["object", "null"],
+                    "properties": {
+                        "standard": {"type": ["string", "null"]},
+                        "pme": {"type": ["string", "null"]}
+                    }
+                },
+                "declenchement": {
+                    "type": ["object", "null"],
+                    "properties": {
+                        "type": {"type": ["string", "null"], "enum": ["systématique", "sous conditions"]},
+                        "seuil_montant_ht": {"type": ["number", "null"]},
+                        "seuil_duree_mois": {"type": ["number", "null"]}
+                    }
+                },
+                "assiette": {
+                    "type": ["object", "null"],
+                    "properties": {
+                        "unite_fiscale": {"type": ["string", "null"], "enum": ["HT", "TTC"]},
+                        "base_calcul": {"type": ["string", "null"]}
+                    }
+                },
+                "coefficient_duree_applicable": {"type": ["boolean", "null"]},
+                "remboursement": {
+                    "type": ["object", "null"],
+                    "properties": {
+                        "pourcentage_debut": {"type": ["string", "null"]},
+                        "pourcentage_fin": {"type": ["string", "null"]}
+                    }
+                }
             },
-        },
+            "required": ["taux", "declenchement", "assiette", "remboursement"]
+        }
     },
     "retenue_garantie": {
         "consigne": """RETENUE_GARANTIE
@@ -464,8 +527,8 @@ CCAP_ATTRIBUTES = {
         "search": "retenue de garantie caution garantie à première demande",
         "output_field": "retenue_garantie",
     },
-    "mois_zero": {
-        "consigne": """MOIS_ZERO
+    "mois_zero_revision": {
+        "consigne": """MOIS_ZERO_REVISION
     Définition : Mois de référence de l'indice pour la révision des prix.
     Indices : 
     - Souvent appelé "M0" ou "mois d'établissement des prix".
@@ -473,7 +536,7 @@ CCAP_ATTRIBUTES = {
     Format : "01/MM/AAAA" ou texte descriptif.
 """,
         "search": "mois zéro M0 établissement des prix",
-        "output_field": "mois_zero",
+        "output_field": "mois_zero_revision",
     },
     "clause_sauvegarde_revision": {
         "consigne": """CLAUSE_SAUVEGARDE_REVISION

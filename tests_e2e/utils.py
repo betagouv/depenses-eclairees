@@ -714,8 +714,8 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
         f"{'Accuracy (no OCR)':<18}",
     ]
     if use_best_ref:
-        header_parts.append(f"{'(+)':<14}")
-        header_parts.append(f"{'(-)':<14}")
+        header_parts.append(f"{'(+)':<5}")
+        header_parts.append(f"{'(-)':<5}")
     print(" | ".join(header_parts))
     print("-" * (160 if use_best_ref else 120))
 
@@ -732,8 +732,8 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
         if use_best_ref:
             imp = result.get("improvements_vs_best", 0)
             reg = result.get("regressions_vs_best", 0)
-            row_parts.append(f"{'+' + str(imp) if imp else '0':<14}")
-            row_parts.append(f"{'-' + str(reg) if reg else '0':<14}")
+            row_parts.append(f"{'+' + str(imp) if imp else '0':<5}")
+            row_parts.append(f"{'-' + str(reg) if reg else '0':<5}")
         print(" | ".join(row_parts))
 
     print(f"\n{'=' * 120}")
