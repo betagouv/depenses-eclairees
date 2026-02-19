@@ -386,8 +386,8 @@ def test_fiche_navette(client):
     assert "Objet :" in response.text
     assert "[[objet]]" in response.text
 
-    # Section Parties
-    assert "Parties" in response.text
+    # Section Signataires
+    assert "Signataires" in response.text
     assert "Administration bénéficiaire" in response.text
     assert "[[administration_beneficiaire]]" in response.text
     assert "Société principale" in response.text

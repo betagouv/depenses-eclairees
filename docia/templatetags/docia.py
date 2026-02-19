@@ -70,12 +70,9 @@ def as_percentage(value):
     """
     Convertit un taux décimal (ex. 0.20, 0.055) en pourcentage affichable (ex. 20 %, 5.5 %).
     """
-    if value is None or value == "":
+    if not value:
         return None
-    try:
-        rate = float(value)
-    except (TypeError, ValueError):
-        return value
+    rate = float(value)
     pct = rate * 100
     if pct == int(pct):
         return f"{int(pct)} %"

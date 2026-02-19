@@ -8,14 +8,14 @@
 </div>
 
 <div class="document-sections fr-mt-2v">
-  {# Parties #}
+  {# Signataires #}
   <section class="fr-accordion" data-fr-js-accordion="true">
     <h3 class="fr-accordion__title">
-      <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_parties" data-fr-js-collapse-button="true">
-        Parties
+      <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_signataires" data-fr-js-collapse-button="true">
+        Signataires
       </button>
     </h3>
-    <div class="fr-collapse" id="{{ doc.id }}_parties" data-fr-js-collapse="true" style="--collapse: -48px;">
+    <div class="fr-collapse" id="{{ doc.id }}_signataires" data-fr-js-collapse="true" style="--collapse: -48px;">
       <ul class="fr-list">
         {% with value=data.administration_beneficiaire copy_value=data.administration_beneficiaire %}
           {% include "docia/details_ej/blocks/attribute.html" with title="Administration bénéficiaire" id=id_prefix|add:"administration_beneficiaire" %}
