@@ -34,10 +34,10 @@ class Document(BaseModel):
         db_default=RandomUUID(),
         editable=False,
     )
-    filename = models.CharField(unique=True)
-    file = models.FileField(null=True, blank=True, max_length=1000, unique=True)
+    filename = models.CharField()
+    file = models.FileField(max_length=1000, unique=True)
     extension = models.CharField(null=True, blank=True)  # noqa: DJ001
-    dossier = models.CharField(null=True, blank=True)  # noqa: DJ001
+    dossier = models.CharField()
     engagements = models.ManyToManyField(
         DataEngagement,
         related_name="documents",
@@ -53,7 +53,7 @@ class Document(BaseModel):
     date_creation = models.DateField(null=True, blank=True)  # noqa: DJ001
     batch = models.CharField(null=True, blank=True)  # noqa: DJ001
     taille = models.IntegerField(null=True, blank=True)  # noqa: DJ001
-    hash = models.CharField(null=True, blank=True)  # noqa: DJ001
+    hash = models.CharField(unique=True)
     classification = models.CharField(max_length=255, null=True, blank=True)  # noqa: DJ001
     classification_type = models.CharField(max_length=255, null=True, blank=True)  # noqa: DJ001
 

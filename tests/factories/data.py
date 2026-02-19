@@ -1,3 +1,5 @@
+import hashlib
+
 import factory
 
 from docia.documents.models import EngagementScope
@@ -8,7 +10,7 @@ class DataEngagementFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = DataEngagement
 
-    num_ej = factory.Sequence(lambda n: f"EJ{n:0>3}")
+    num_ej = factory.Sequence(lambda n: f"{n:0>10}")
 
 
 class DataBatchFactory(factory.django.DjangoModelFactory):
@@ -27,6 +29,7 @@ class DocumentFactory(factory.django.DjangoModelFactory):
     dossier = factory.Sequence(lambda n: f"raw/folder{n // 5:0>3}")
     file = factory.lazy_attribute(lambda a: f"{a.dossier}/{a.filename}")
     extension = factory.lazy_attribute(lambda a: a.filename.split(".")[-1])
+    hash = factory.lazy_attribute(lambda i: hashlib.md5(i.file.encode()).hexdigest())
 
 
 class EngagementScopeFactory(factory.django.DjangoModelFactory):

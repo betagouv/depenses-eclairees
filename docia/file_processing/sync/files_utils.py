@@ -10,17 +10,20 @@ import olefile
 logger = logging.getLogger(__name__)
 
 
-def detect_file_extension_from_content(file_path: str) -> str:
-    with default_storage.open(file_path, "rb") as f:
-        header = f.read(1024)
-        mime = magic.from_buffer(header, mime=True)
-        if mime == "application/octet-stream":
-            header += f.read(4096)
+def detect_file_extension_from_content(file: str | bytes) -> str:
+    if isinstance(file, bytes):
+        mime = magic.from_buffer(file)
+    else:
+        with default_storage.open(file, "rb") as f:
+            header = f.read(1024)
             mime = magic.from_buffer(header, mime=True)
+            if mime == "application/octet-stream":
+                header += f.read(4096)
+                mime = magic.from_buffer(header, mime=True)
 
     # Handle ole files (old Microsoft Office formats)
     if mime == "application/x-ole-storage":
-        ext = guess_office_type(file_path)
+        ext = guess_office_type(file)
     else:
         ext = mimetypes.guess_extension(mime, strict=False)
 
@@ -31,14 +34,21 @@ def detect_file_extension_from_content(file_path: str) -> str:
     if ext:
         return ext.strip(".")
     else:
-        logger.warning("Could not guess extension for mime %r (file=%s)", mime, file_path)
+        logger.warning("Could not guess extension for mime %r (file=%s)", mime, file)
         return "unknown"
 
 
-def guess_office_type(file_path: str) -> str:
-    with default_storage.open(file_path, "rb") as f:
-        ole = olefile.OleFileIO(f)
+def guess_office_type(file: str | bytes) -> str:
+    def _read(fd):
+        ole = olefile.OleFileIO(fd)
         names = {".".join(e) for e in ole.listdir()}
+        return names
+
+    if isinstance(file, bytes):
+        names = _read(file)
+    else:
+        with default_storage.open(file, "rb") as f:
+            names = _read(f)
 
     if "WordDocument" in names:
         return "doc"
@@ -52,14 +62,14 @@ def guess_office_type(file_path: str) -> str:
     return "unknown"
 
 
-def get_corrected_extension(filename: str, file_path: str) -> str:
+def get_corrected_extension(filename: str, file: str | bytes) -> str:
     """
     Obtient l'extension correcte d'un fichier en comparant l'extension du nom
     avec l'extension détectée par le contenu
 
     Args:
         filename (str): Nom du fichier
-        file_path (str): Chemin complet vers le fichier
+        file (str): Chemin complet vers le fichier
 
     Returns:
         str: Extension correcte (sans le point)
@@ -68,7 +78,7 @@ def get_corrected_extension(filename: str, file_path: str) -> str:
     name_ext = os.path.splitext(filename)[1].strip(".").lower()
 
     # Extension détectée par le contenu
-    content_ext = detect_file_extension_from_content(file_path)
+    content_ext = detect_file_extension_from_content(file)
 
     # Si les deux correspondent, retourner l'extension
     if name_ext == content_ext:

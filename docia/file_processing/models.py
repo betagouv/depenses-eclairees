@@ -105,7 +105,6 @@ class FileInfo(BaseModel):
     file = models.FileField(null=True, blank=True, max_length=1000, unique=True)
     filename = models.CharField(max_length=1000)
     folder = models.CharField()
-    num_ej = models.CharField(max_length=20)
     extension = models.CharField(max_length=10)
     size = models.PositiveIntegerField()
     hash = models.CharField()
