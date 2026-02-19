@@ -299,27 +299,6 @@ CCAP_ATTRIBUTES = {
         "search": "",
         "output_field": "ccag",
     },
-    #     "formule_revision_prix": {
-    #         "consigne": """FORMULE_REVISION_PRIX
-    #      Définition : Formule de révision des prix
-    #      Indices :
-    #      - Dans la section spécifique de la formule de révision des prix.
-    #      - La formule de révision est souvent de la forme "C = ..."
-    #      Format : [la formule mathématiques de révision des prix, la définition des variables]
-    # """,
-    #         "search": "",
-    #         "output_field": "formule_revision_prix"
-    #     },
-    #     "index_reference": {
-    #         "consigne": """INDEX_REFERENCE_CCAP
-    #      Définition : Index de référence
-    #      Indices :
-    #      - Dans une section spécifique de l'index de référence.
-    #      Format : le nom de l'index de référence.
-    # """,
-    #         "search": "",
-    #         "output_field": "index_reference"
-    #     },
     "condition_avance": {
         "consigne": """CONDITIONS_AVANCE
    Définition : Conditions de déclenchement et calcul du montant de l'avance à payer.
@@ -346,16 +325,222 @@ CCAP_ATTRIBUTES = {
             "required": ["condition_declenchement", "montant_avance", "montant_reference", "remboursement"],
         },
     },
+    "formule_revision_prix": {
+        "consigne": """FORMULE_REVISION_PRIX
+            Définition : Détail de la formule mathématique permettant de réviser les prix du marché.
+            Indices :
+            - Rechercher la clause "Prix révisables" ou "Modalités de révision".
+            - La formule exprime généralement un coefficient de révision (noté 'C', 'K', ou 'Cn') qui s'applique au prix initial (P0).
+            - Identifier :
+                1. La partie fixe (ou "marge d'amortissement") : c'est le chiffre constant qui n'est pas multiplié par un indice (ex: 0.15).
+                2. Les termes variables : chaque terme est composé d'un poids (ex: 0.85) et d'un ratio d'indices (Indice nouveau / Indice de référence).
+            - Attention : La somme de la partie fixe et des poids des termes variables doit normalement être égale à 1 (ou 100%).
+            Format : Renvoyer un objet structuré détaillant la partie fixe et la liste des indices avec leurs poids respectifs.
+        """,
+        "search": "formule de révision des prix coefficient C K partie fixe terme fixe pondération",
+        "output_field": "formule_revision_prix",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "formule_brute": {
+                    "type": "string", 
+                    "description": "La formule telle qu'écrite dans le texte (ex: P=P0*(0.15+0.85*S/S0))"
+                },
+                "partie_fixe": {
+                    "type": "number", 
+                    "description": "La valeur constante dans la formule (ex: 0.15). Si absente, renvoyer 0."
+                },
+                "termes_variables": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "poids": {"type": "number", "description": "Le coefficient multiplicateur de l'indice (ex: 0.85)"},
+                            "nom_indice": {"type": "string", "description": "Le nom de l'indice utilisé (ex: SYNTEC, BT01)"},
+                            "indice_reference": {"type": "string", "description": "Le symbole de l'indice de base (ex: S0, M0)"},
+                            "indice_nouveau": {"type": "string", "description": "Le symbole de l'indice de révision (ex: S, M, Sn)"}
+                        },
+                        "required": ["poids", "nom_indice"]
+                    }
+                }
+            },
+            "required": ["formule_brute", "partie_fixe", "termes_variables"]
+        }
+    },
+    "index_reference": {
+        "consigne": """INDEX_REFERENCE_CCAP
+    Définition : Index de référence
+    Indices :
+    - Dans une section spécifique de l'index de référence.
+    Format : le nom de l'index de référence.
+""",
+        "search": "",
+        "output_field": "index_reference"
+    },
+    "revision_prix": {
+        "consigne": """REVISION_PRIX
+     Définition : Les prix sont révisables ou fermes.
+     Indices :
+     - Dans la section spécifique de la formule de révision des prix.
+     - Si les prix sont fermes, renvoyer "Prix fermes".
+     - Sinon, renvoyer "Prix révisables".
+""",
+        "search": "",
+        "output_field": "revision_prix"
+    },
+    "mode_consultation": {
+        "consigne": """MODE_CONSULTATION
+    Définition : Procédure de passation utilisée pour le marché.
+    Indices : 
+    - Chercher des mentions comme "Appel d'offres ouvert/restreint", "Procédure adaptée" (ou MAPA), "Marché négocié".
+    - Souvent cité en référence aux articles du Code de la Commande Publique (ex: L.2123-1).
+    Format : Texte brut extrait du document (ex: "Procédure adaptée article R.2123-1").
+""",
+        "search": "procédure passation consultation article code commande publique",
+        "output_field": "mode_consultation",
+    },
+    "regle_attribution_bc": {
+        "consigne": """REGLE_ATTRIBUTION_BC
+    Définition : Méthode de choix du titulaire pour l'émission des bons de commande (concerne les accords-cadres multi-attributaires).
+    Indices : 
+    - Chercher si les bons de commande sont attribués "en cascade", "au tour de rôle", ou après "remise en concurrence".
+    - Si le marché est mono-attributaire, renvoyer "/".
+    Format : Texte court décrivant la méthode.
+""",
+        "search": "attribution bons de commande cascade tour de rôle remise en concurrence",
+        "output_field": "regle_attribution_bc",
+    },
+    "type_reconduction": {
+        "consigne": """TYPE_RECONDUCTION
+    Définition : Modalité de renouvellement du marché.
+    Indices :
+    - "Tacite" : le marché se renouvelle sauf dénonciation.
+    - "Expresse" : l'acheteur doit envoyer un courrier pour renouveler.
+    - Si aucune mention de modalité de renouvellement n'est présente, renvoyer null.
+    Format : "tacite" ou "expresse" ou null.
+""",
+        "search": "reconduction tacite expresse renouvellement",
+        "output_field": "type_reconduction",
+        "schema": {"type": ["string", "null"], "enum": ["tacite", "expresse", "null"]},
+    },
+    "debut_execution": {
+        "consigne": """DEBUT_EXECUTION
+    Définition : Point de départ de la durée du marché ou des prestations.
+    Indices : 
+    - Souvent : "à la date de notification", "à compter de l'ordre de service (OS)", ou une date fixe.
+    Format : Texte court (ex: "date de notification" ou "1er janvier 2024").
+""",
+        "search": "début exécution prise d'effet notification ordre de service",
+        "output_field": "debut_execution",
+    },
+    "condition_avance": {
+        "consigne": """CONDITION_AVANCE
+    Définition : Modalités financières de l'avance versée au titulaire.
+    Indices : 
+    - Chercher le taux (souvent 5%, 20% ou 30%).
+    - Identifier les conditions (ex: "montant > 50 000€ HT et durée > 2 mois").
+    - Repérer les seuils de remboursement (ex: début à 65%, fin à 80% du montant).
+    Format : JSON {"taux_avance": "XX%", "conditions": "texte", "remboursement": "texte"}.
+""",
+        "search": "avance montant taux remboursement précompte",
+        "output_field": "condition_avance",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "taux_avance": {"type": "string"},
+                "conditions": {"type": "string"},
+                "remboursement": {"type": "string"},
+            },
+        },
+    },
+    "retenue_garantie": {
+        "consigne": """RETENUE_GARANTIE
+    Définition : Somme retenue sur les paiements pour garantir la bonne exécution.
+    Indices : 
+    - Chercher un pourcentage (souvent 5%) prélevé sur les acomptes.
+    - Mentionner si elle peut être remplacée par une caution.
+    Format : Paragraphe libre résumant les conditions. Si absent, renvoyer null.
+""",
+        "search": "retenue de garantie caution garantie à première demande",
+        "output_field": "retenue_garantie",
+    },
+    "mois_zero": {
+        "consigne": """MOIS_ZERO
+    Définition : Mois de référence de l'indice pour la révision des prix.
+    Indices : 
+    - Souvent appelé "M0" ou "mois d'établissement des prix".
+    - Peut être une date précise ou une description relative (ex: "mois de la notification").
+    Format : "01/MM/AAAA" ou texte descriptif.
+""",
+        "search": "mois zéro M0 établissement des prix",
+        "output_field": "mois_zero",
+    },
+    "clause_sauvegarde_revision": {
+        "consigne": """CLAUSE_SAUVEGARDE_REVISION
+    Définition : Limite ou condition d'annulation de la révision des prix.
+    Indices : 
+    - Chercher des seuils de variation (ex: "+/- 2%").
+    - Identifier la conséquence : blocage du prix ou annulation de la révision.
+    Format : JSON {"seuil": "XX%", "consequence": "texte"}.
+""",
+        "search": "clause de sauvegarde révision blocage seuil",
+        "output_field": "clause_sauvegarde_revision",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "seuil": {"type": "string"},
+                "consequence": {"type": "string"},
+            },
+        },
+    },
+    "delai_execution_bc_ms": {
+        "consigne": """DELAI_EXECUTION_BC_MS
+    Définition : Délai imparti pour réaliser les prestations d'un Bon de Commande (BC) ou d'un Marché Subséquent (MS).
+    Indices : 
+    - Distinguer si le délai est fixe (ex: "15 jours") ou déterminé à chaque commande.
+    Format : JSON {"type": "BC" ou "MS", "delai": "texte"}.
+""",
+        "search": "délai exécution bon de commande marché subséquent",
+        "output_field": "delai_execution_bc_ms",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "type": {"type": "string", "enum": ["BC", "MS"]},
+                "delai": {"type": "string"},
+            },
+        },
+    },
+    "penalites": {
+        "consigne": """PENALITES
+    Définition : Sanctions financières en cas de retard ou de mauvaise exécution.
+    Indices : 
+    - Lister chaque type de pénalité séparément.
+    - Si une pénalité n'est pas proportionnelle (montant variable par paliers), créer plusieurs entrées forfaitaires.
+    Format : Liste de JSON [{"condition": "ex: retard livraison", "montant": "valeur numérique", "unite": "ex: par jour de retard"}].
+""",
+        "search": "pénalités retard inexécution déduction",
+        "output_field": "penalites",
+        "schema": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "condition": {"type": "string"},
+                    "montant": {"type": "string"},
+                    "unite": {"type": "string"},
+                },
+            },
+        },
+    },
+    "code_cpv": {
+        "consigne": """CODE_CPV
+    Définition : Nomenclature européenne pour les marchés publics.
+    Indices : 
+    - Format type : 8 chiffres (ex: 72000000-5).
+    - Si absent du document, renvoyer null (ne pas essayer de le deviner).
+    Format : Code numérique.
+""",
+        "search": "CPV nomenclature",
+        "output_field": "code_cpv",
+    },
 }
-
-#     "revision_prix": {
-#         "consigne": """REVISION_PRIX
-#      Définition : Les prix sont révisables ou fermes.
-#      Indices :
-#      - Dans la section spécifique de la formule de révision des prix.
-#      - Si les prix sont fermes, renvoyer "Prix fermes".
-#      - Sinon, renvoyer "Prix révisables".
-# """,
-#         "search": "",
-#         "output_field": "revision_prix"
-#     },

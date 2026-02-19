@@ -20,6 +20,7 @@ from tests_e2e.utils import (  # noqa: E402
     compare_duration,
     compare_with_llm,
     normalize_string,
+    get_fields_with_comparison_errors,
 )
 
 logger = logging.getLogger("docia." + __name__)
@@ -225,7 +226,7 @@ def get_comparison_functions():
     }
 
 
-def create_batch_test(multi_line_coef=1):
+def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-medium", debug_mode=False):
     """Test de qualité des informations extraites par le LLM."""
 
     df_test = get_data_from_grist(table="Ccap_gt_v2")
@@ -234,11 +235,11 @@ def create_batch_test(multi_line_coef=1):
         df_test[col] = df_test[col].apply(lambda x: json.loads(x))
 
     # Lancement du test
-    return analyze_content_quality_test(df_test.iloc[0:5], "ccap", multi_line_coef=multi_line_coef)
+    return analyze_content_quality_test(df_test, "ccap", multi_line_coef=multi_line_coef, max_workers=max_workers, llm_model=llm_model, debug_mode=debug_mode)
 
 
 if __name__ == "__main__":
-    df_test, df_result, df_merged = create_batch_test()
+    df_test, df_result, df_merged = create_batch_test(multi_line_coef=1, max_workers=30, llm_model="openweight-medium", debug_mode=True)
 
     EXCLUDED_COLUMNS = ["objet_marche", "formule_revision_prix", "condition_avance", "revision_prix", "index_reference"]
 
@@ -249,3 +250,10 @@ if __name__ == "__main__":
     check_quality_one_row(df_merged, 18, comparison_functions)
 
     check_global_statistics(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
+
+    fields_with_errors = get_fields_with_comparison_errors(
+        df_merged.sort_values(by="filename"), comparison_functions, excluded_columns=EXCLUDED_COLUMNS
+    )
+
+    for v in fields_with_errors.values():
+        print(json.dumps(v))
