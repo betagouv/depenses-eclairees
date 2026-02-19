@@ -22,6 +22,7 @@ from tests_e2e.utils import (  # noqa: E402
     compare_with_llm,
     get_fields_with_comparison_errors,
     normalize_string,
+    get_fields_with_comparison_errors,
 )
 
 logger = logging.getLogger("docia." + __name__)
