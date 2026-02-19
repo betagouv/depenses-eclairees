@@ -405,7 +405,7 @@ def test_fiche_navette(client):
     assert "Montant HT" in response.text
     assert "15" in response.text and "000" in response.text  # montant formaté (locale)
     assert "Taux TVA" in response.text
-    assert "20 %" in response.text
+    assert "20&nbsp;%" in response.text
     assert "Reconduction" in response.text
     assert "Oui" in response.text
 

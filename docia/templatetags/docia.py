@@ -1,4 +1,5 @@
 from django import template
+from django.utils.safestring import mark_safe
 
 register = template.Library()
 
@@ -75,8 +76,8 @@ def as_percentage(value):
     rate = float(value)
     pct = rate * 100
     if pct == int(pct):
-        return f"{int(pct)} %"
-    return f"{pct:.1f} %"
+        return mark_safe(f"{int(pct)}&nbsp;%")
+    return mark_safe(f"{pct:.1f}&nbsp;%")
 
 
 @register.filter
