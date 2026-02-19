@@ -23,6 +23,7 @@ from tests_e2e.utils import (  # noqa: E402
     get_fields_with_comparison_errors,
     normalize_string,
     get_fields_with_comparison_errors,
+    compare_exact_string,
 )
 
 logger = logging.getLogger("docia." + __name__)
@@ -228,3 +229,30 @@ if __name__ == "__main__":
 
     for v in fields_with_errors.values():
         print(json.dumps(v))
+
+
+
+# "intro",
+# "id_marche",
+# "lots",
+# "forme_marche",
+# "forme_marche_lots",
+# "duree_marche",
+# "duree_lots",
+# "montant_ht",
+# "montant_ht_lots",
+# "ccag",
+# "condition_avance",
+# "formule_revision_prix", ------ schema de données ne va pas
+# "index_reference", ---- standardiser schema de données
+# "revision_prix",
+# "mode_consultation",  ---- standardiser schema de données
+# "regle_attribution_bc", -- modif prompt ajouter lots
+# "type_reconduction", -- bcp d'erreurs llm
+# "debut_execution", --- bcp d'erreurs llm
+# "retenue_garantie", -- OK
+# "mois_zero",
+# "clause_sauvegarde_revision", -- bcp d'erreurs llm
+# "delai_execution_bc_ms", -- trop d'erreurs llm
+# "penalites",
+# "code_cpv"

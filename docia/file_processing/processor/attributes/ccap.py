@@ -456,17 +456,9 @@ CCAP_ATTRIBUTES = {
        - Si le marché est ferme (non reconductible), renvoyer null.
     Format : "tacite", "expresse" ou null.
 """,
-        "search": "reconduction tacite expresse décision expresse durée reconductible",
-        "output_field": "mention_reconduction",
+        "search": "reconduction tacite expresse renouvellement",
+        "output_field": "type_reconduction",
         "schema": {"type": ["string", "null"], "enum": ["tacite", "expresse", None]},
-    },
-    "explication_reconduction": {
-        "consigne": """EXPLICATION_RECONDUCTION
-    Définition : Modalité de reconduction du marché.
-    Expliquer le choix de la réponse en fonction de la modalité de reconduction du marché par un court paragraphe.
-""",
-        "search": "reconduction tacite expresse",
-        "output_field": "explication_reconduction",
     },
     "debut_execution": {
         "consigne": """DEBUT_EXECUTION
@@ -480,27 +472,26 @@ CCAP_ATTRIBUTES = {
     },
     "avance": {
         "consigne": """AVANCE
-    Définition : Paramètres de l'avance selon les clauses du marché et le Code de la Commande Publique (CCP).
-    1. TAUX (Standard & PME) :
-       - Extraire les taux sous forme d'un pourcentage.
-       - Il y a un taux principal, et un taux spécifique aux PME.
-       - Si le document ne donne pas plus de précision, les taux par défaut s'appliquent :
-         * Taux Standard (si aucune précision, par défaut) : 5%.
-         * Taux PME (si aucune précision, par défaut) : 30%.
+    Définition : Paramètres précis de calcul, de déclenchement et de remboursement de l'avance.
+    - Dans un paragraphe dédié à l'avance.
+    1. TAUX : 
+       - Identifier le taux standard (souvent 5%).
+       - Identifier si un taux spécifique "PME" est mentionné (souvent 20% ou 30%).
     2. DÉCLENCHEMENT :
-       - L'avance est obligatoire si : Montant > 50 000 € HT ET Durée > 2 mois.
-       - Si ces seuils ne sont pas mentionnés mais que le document parle d'avance, 
-       considérer ces seuils comme acquis par défaut.
-    3. ASSIETTE & CALCUL (Art. R2191-7) :
-       - Base de calcul : Montant initial TTC du marché, de la tranche, du lot ou du bon de commande, ...
-       - Unité fiscale : Par défaut "TTC" (sauf mention contraire).
-       - Règle de durée : coefficient de prorata temporis (12 * Montant TTC / Durée en mois). Renvoyer "True" sauf mention contraire.
-    4. REMBOURSEMENT (Art. R2191-11) :
-       - Si le marché est silencieux ou renvoie au Code :
-         * Si Taux Avance <= 30% : Début de remboursement à 65% d'exécution, Fin à 80%.
-         * Si Taux Avance > 30% : Début dès la 1ère demande de paiement (0%), Fin à 80%.
-       - Si le document précise d'autres seuils, extraire les valeurs du document.
-    Format : Renvoyer un objet JSON. Pour les champs déduits du Code (et non écrits en clair), ajouter la mention "(par défaut CCP)".
+       - Déterminer si l'avance est "systématique" ou "sous conditions".
+       - Si sous conditions, extraire le seuil de montant (ex: 50000) et la durée minimale en mois (ex: 2).
+    3. ASSIETTE DE CALCUL :
+       - Déterminer si le calcul se fait sur le montant "HT" ou "TTC".
+       - Identifier la base : "montant initial du marché", "montant du bon de commande", ou "montant de la tranche".
+    4. COEFFICIENT DE DURÉE :
+       - Vérifier si une règle de prorata est mentionnée pour les durées > 12 mois (ex: "12 / durée en mois"). Si oui, mettre le champ à true.
+    5. REMBOURSEMENT :
+       - Identifier le seuil de début de remboursement (quand le montant des prestations atteint X%) 
+       et de fin de remboursement (quand il atteint Y%).
+       - Note : Si le texte cite uniquement les articles R.2191-11 ou R.2191-12 sans chiffres : 
+         * Si taux avance <= 30% : début = 65%, fin = 80%.
+         * Si taux avance > 30% : début = 0%, fin = 80%.
+    Format : Renvoyer un objet JSON structuré. Si une information est absente, renvoyer null.
 """,
         "search": "avance taux PME montant 50000 durée 2 mois assiette HT TTC remboursement précompte 65% 80% prorata 12 mois",
         "output_field": "avance",
@@ -509,34 +500,37 @@ CCAP_ATTRIBUTES = {
             "properties": {
                 "taux": {
                     "type": ["object", "null"],
-                    "properties": {"standard": {"type": ["string", "null"]}, "pme": {"type": ["string", "null"]}},
+                    "properties": {
+                        "standard": {"type": ["string", "null"]},
+                        "pme": {"type": ["string", "null"]}
+                    }
                 },
                 "declenchement": {
                     "type": ["object", "null"],
                     "properties": {
+                        "type": {"type": ["string", "null"], "enum": ["systématique", "sous conditions"]},
                         "seuil_montant_ht": {"type": ["number", "null"]},
-                        "seuil_duree_mois": {"type": ["number", "null"]},
-                    },
+                        "seuil_duree_mois": {"type": ["number", "null"]}
+                    }
                 },
                 "assiette": {
                     "type": ["object", "null"],
                     "properties": {
                         "unite_fiscale": {"type": ["string", "null"], "enum": ["HT", "TTC"]},
-                        "base_calcul": {"type": ["string", "null"]},
-                        "regle_prorata_12_mois": {"type": ["boolean", "null"]},
-                    },
-                    "required": ["base_calcul"],
+                        "base_calcul": {"type": ["string", "null"]}
+                    }
                 },
+                "coefficient_duree_applicable": {"type": ["boolean", "null"]},
                 "remboursement": {
                     "type": ["object", "null"],
                     "properties": {
                         "pourcentage_debut": {"type": ["string", "null"]},
-                        "pourcentage_fin": {"type": ["string", "null"]},
-                    },
-                },
+                        "pourcentage_fin": {"type": ["string", "null"]}
+                    }
+                }
             },
-            "required": ["taux", "declenchement", "assiette", "remboursement"],
-        },
+            "required": ["taux", "declenchement", "assiette", "remboursement"]
+        }
     },
     "retenue_garantie": {
         "consigne": """RETENUE_GARANTIE
