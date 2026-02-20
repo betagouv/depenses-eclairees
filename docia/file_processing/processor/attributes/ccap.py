@@ -74,7 +74,7 @@ CCAP_ATTRIBUTES = {
         Définition : Identifier la forme de passation du marché.
         Indices :
         - Rechercher dans les sections de la forme du marché et dans celle définissant les lots.
-        - SI le marché comporte des lots (le champ LOTS n'est pas []), renvoyer : structure = "allotie", tranches = null, forme_prix = null
+        - SI le marché comporte des lots (le champ LOTS n'est pas []), renvoyer : structure = "allotie", tranches = null, forme_prix = null, attributaires = null
         - OU ALORS si le marché ne comprend pas de lots (LOTS = [])
             (1) Identifier la structure d'exécution marché :
                 * Si le marché n'a pas de lots et donne lieu à des marchés subséquents (le document précise par exemple "pour les marchés subséquents, ..."), structure = "à marchés subséquents"
@@ -90,7 +90,11 @@ CCAP_ATTRIBUTES = {
                 * Prix forfaitaires : les prix sont forfaitaires si le document précise que les prix sont forfaitaires, ou qu'il cite un document de décomposition (globale) des prix forfaitaires (ou DGPF ou DPGF).
                 * Prix mixtes : les prix sont mixtes si le document précise que les prix sont mixtes, ou qu'ils sont à la fois unitaires et forfaitaires.
                 * Par défaut, la forme des prix est forfaitaire.
-        Format : un json {'structure': ..., 'tranches': ..., 'forme_prix': ...}.
+            (4) Identifier le nombre d'attibutaires du marché :
+                * Si le marché est mono-attributaire, renvoyer 1.
+                * Si le marché est multi-attributaire, chercher le nombre d'attibutaires maximum.
+                * Sinon attributaires = null
+        Format : un json {'structure': ..., 'tranches': ..., 'forme_prix': ..., 'attributaires': ...}.
    """,
         "search": "",
         "output_field": "forme_marche",
@@ -103,8 +107,9 @@ CCAP_ATTRIBUTES = {
                         "structure": {"type": "string", "enum": ["allotie"]},
                         "tranches": {"type": "null"},
                         "forme_prix": {"type": "null"},
+                        "attributaires": {"type": "null"},
                     },
-                    "required": ["structure", "tranches", "forme_prix"],
+                    "required": ["structure", "tranches", "forme_prix", "attributaires"],
                 },
                 {
                     "type": "object",
@@ -112,8 +117,9 @@ CCAP_ATTRIBUTES = {
                         "structure": {"type": "string", "enum": ["simple", "à marchés subséquents"]},
                         "tranches": {"type": ["integer", "null"]},
                         "forme_prix": {"type": "string", "enum": ["unitaires", "forfaitaires", "mixtes"]},
+                        "attributaires": {"type": ["integer", "null"]},
                     },
-                    "required": ["structure", "tranches", "forme_prix"],
+                    "required": ["structure", "tranches", "forme_prix", "attributaires"],
                 },
             ],
         },
@@ -140,7 +146,10 @@ CCAP_ATTRIBUTES = {
             * Prix unitaires : les prix sont unitaires si le document précise que les prix sont unitaires, ou qu'il cite un document de bordereaux de prix unitaires (ou BPU). forme_prix = "unitaires".
             * Prix forfaitaires : les prix sont forfaitaires si le document précise que les prix sont forfaitaires, ou qu'il cite un document de décomposition (globale) des prix forfaitaires (ou DGPF ou DPGF). forme_prix = "forfaitaires".
             * ATTENTION : La qualification "mixtes" est prioritaire : dès lors qu’un même lot comporte à la fois des prestations à prix unitaires et à prix forfaitaires, la forme des prix du lot DOIT être "mixtes", même si les documents BPU ou DPGF sont cités.
-        Format : une liste de json [{'numero_lot': numéro du lot, 'structure': structure, 'tranches': nombre de tranches, 'forme_prix': forme_prix, 'citation_tranches': citation_tranches}, {...}]
+        - Pour chaque lot, identifier le nombre d'attibutaires du lot :
+            * Si le lot est mono-attributaire ou qu'il n'est pas fait mention du nombre d'attributaires, renvoyer 1.
+            * Si le lot est multi-attributaire, chercher le nombre d'attibutaires maximum.
+        Format : une liste de json [{'numero_lot': numéro du lot, 'structure': structure, 'tranches': nombre de tranches, 'forme_prix': forme_prix, 'attributaires': nombre d'attibutaires}, {...}]
    """,
         "search": "",
         "output_field": "forme_marche_lots",
@@ -153,8 +162,9 @@ CCAP_ATTRIBUTES = {
                     "structure": {"type": "string", "enum": ["simple", "à marchés subséquents"]},
                     "tranches": {"type": ["integer", "null"]},
                     "forme_prix": {"type": "string", "enum": ["mixtes", "unitaires", "forfaitaires"]},
+                    "attributaires": {"type": ["integer", "null"]},
                 },
-                "required": ["numero_lot", "structure", "tranches", "forme_prix"],
+                "required": ["numero_lot", "structure", "tranches", "forme_prix", "attributaires"],
             },
         },
     },
@@ -291,10 +301,12 @@ CCAP_ATTRIBUTES = {
         "consigne": """CCAG
      Définition : Le CCAG en vigueur pour ce marché.
      Indices : 
-     - Le CCAG s'appliquant sur le maché est de la forme CCAG-"XXXX". Le XXXX est l'acronyme du CCAG de référence : renvoyer XXXX.
-     - Parfois le CCAG est cité en toutes lettres : "CCAG de ...". Déduire l'acronyme. Exemple : "CCAG de la commande publique" renvoyer "CP".
-     - Si aucun CCAG n'est mentionné, renvoyer "".
-     Format : un acronyme de quelques lettres. Exemple : pour "CCAG-XX" renvoyer "XX".
+     - Dans le corps du document, ou en dernier paragraphe dans les dérogations au CCAG.
+     - Souvent cité par la forme "CCAG-XXXX". Le XXXX est l'acronyme du CCAG de référence : renvoyer XXXX.
+     - Si le CCAG spécifique est cité en toutes lettres, renvoyer seulement l'acronyme : Exemple : "CCAG de prestations intellectuelles" renvoyer "PI".
+     - Si un CCAG est mentionné, mais sans préciser lequel (acronyme ou en toutes lettres), renvoyer null.
+     - Si aucun CCAG n'est mentionné, renvoyer null.
+     Format : un acronyme de quelques lettres ou null.
 """,
         "search": "",
         "output_field": "ccag",
@@ -363,22 +375,12 @@ CCAP_ATTRIBUTES = {
                             "poids": {"type": ["number", "null"]},
                             "nom_indice": {"type": ["string", "null"]},
                             "source_indice": {"type": ["string", "null"]},
-                            "indice_reference": {
-                                "type": ["object", "null"],
-                                "properties": {
-                                    "symbole": {"type": ["string", "null"]},
-                                    "regle_temporelle": {"type": ["string", "null"]}
-                                }
-                            },
-                            "indice_nouveau": {
-                                "type": ["object", "null"],
-                                "properties": {
-                                    "symbole": {"type": ["string", "null"]},
-                                    "regle_temporelle": {"type": ["string", "null"]}
-                                }
-                            }
+                            "symbole_indice_reference": {"type": ["string", "null"]},
+                            "regle_temporelle_indice_reference": {"type": ["string", "null"]},
+                            "symbole_indice_nouveau": {"type": ["string", "null"]},
+                            "regle_temporelle_indice_nouveau": {"type": ["string", "null"]}
                         },
-                        "required": ["poids", "nom_indice", "indice_reference", "indice_nouveau"]
+                        "required": ["poids", "nom_indice", "source_indice", "symbole_indice_reference", "regle_temporelle_indice_reference", "symbole_indice_nouveau", "regle_temporelle_indice_nouveau"]
                     }
                 }
             },
@@ -397,50 +399,80 @@ CCAP_ATTRIBUTES = {
     },
     "revision_prix": {
         "consigne": """REVISION_PRIX
-     Définition : Les prix sont révisables ou fermes.
+     Définition : Evolution possible des prix du marché.
      Indices :
-     - Dans la section spécifique aux prix et à leur révision.
-     - Si les prix sont révisables, ils peuvent être réviser par une formule, ou bien par
-     un nouveau document financier (BPU, catalogue de prix).
-     - Si les prix sont fermes, la mention "prix fermes" est présente.
-     - Si aucune mention des prix n'est présente, renvoyer null.
+     - Dans la section spécifique aux prix.
+     - Les prix peuvent être :
+        * Révisables : les prix sont révisables par une formule, ou bien par un nouveau document financier (BPU, catalogue de prix).
+        * Fermes : les prix sont fermes, c'est à dire qu'ils ne peuvent pas être révisés. Formules "fermes" ou "définitifs".
+     - Si aucun paragraphe sur la révision des prix n'est présent et aucune mention de prix fermes ou révisables, renvoyer null.
 """,
         "search": "",
         "output_field": "revision_prix",
-        "schema": {"type": ["string", "null"], "enum": ["fermes", "révisables"]},
+        "schema": {"type": ["string", "null"], "enum": ["fermes", "révisables", None]},
     },
     "mode_consultation": {
         "consigne": """MODE_CONSULTATION
-    Définition : Procédure de passation utilisée pour le marché.
-    Indices : 
-    - Chercher des mentions comme "Appel d'offres ouvert/restreint", "Procédure adaptée" (ou MAPA), "Marché négocié".
-    - Souvent cité en référence aux articles du Code de la Commande Publique (ex: L.2123-1).
-    Format : Texte brut extrait du document (ex: "Procédure adaptée article R.2123-1").
+    Définition : Identification de la procédure de passation.
+    - Si mention de L.2123-1 ou R.2123-1 -> type_procedure : "Procédure adaptée (MAPA)"
+    - Si mention de L.2124-2, R.2161-2 (Appel d'offres) ou L.2124-3 (Négociation) -> type_procedure : "Procédure formalisée".
+    - Si procédure formalisée (L.2124-2, R.2161-2, etc.), préciser la forme :
+        * "Procédure formalisée - Appel d'offres ouvert"
+        * "Procédure formalisée - Appel d'offres restreint"
+        * "Procédure formalisée - Avec négociation"
+        * "Procédure formalisée - Dialogue compétitif"
+    Note : Si le texte est ambigu, privilégier l'article de loi cité pour déterminer la catégorie.
 """,
-        "search": "procédure passation consultation article code commande publique",
+        "search": "procédure passation consultation appel d'offres MAPA procédure adaptée article L.2123-1 R.2122-8 formalisée",
         "output_field": "mode_consultation",
+        "schema": {
+            "type": ["object", "null"],
+            "properties": {
+                "type_procedure": {
+                    "type": ["string", "null"],
+                    "enum": [
+                        "Procédure adaptée (MAPA)",
+                        "Procédure formalisée - Appel d'offres ouvert",
+                        "Procédure formalisée - Appel d'offres restreint",
+                        "Procédure formalisée - Avec négociation",
+                        "Procédure formalisée - Dialogue compétitif",
+                        "Sans publicité ni mise en concurrence"
+                    ]
+                }
+            }
+        }
     },
     "regle_attribution_bc": {
         "consigne": """REGLE_ATTRIBUTION_BC
     Définition : Méthode de choix du titulaire pour l'émission des bons de commande (concerne les accords-cadres multi-attributaires).
     Indices : 
-    - Chercher si les bons de commande sont attribués "en cascade", "au tour de rôle", ou après "remise en concurrence".
-    - Si le marché est mono-attributaire, renvoyer "null
-    Format : Texte court décrivant la méthode.
+    - Dans la section exécution des bons de commande ou règles d'attribution.
+    - Pour un marché multi-attributaire, chercher si les bons de commande sont attribués :
+    * "En cascade" : le texte cite le terme de "cascade", avec un premier titulaire qui reçoit toutes les commandes sauf s'il fait défaut.
+    * "A tour de rôle" : les bons de commandes sont répartis "par tour de rôle", ou par "rotation" des titulaires.
+    * "Avec remise en concurrence" : le texte parle de remise en concurrence et de marchés subséquents.
+    * "Avec minimums d'attribution" (suivis des montants minimums si disponibles) :
+    le marché est multi-attributaire à bons de commande mais ne cite aucune des règles ci-dessus.
+    Dans ce cas, chercher les parts minimales de commande attribuées par titulaire.
+    Ex : 1er : 10%, 2e : 10%, 3e : 5% -> renvoyer "Avec minimums d'attribtion 10%, 10%, 5%".
+    - Si le marché est mono-attributaire, ne rien renvoyer.
+    Format : string parmi "En cascade", "A tour de rôle", "Avec remise en concurrence", "Avec minimums d'attribution".
 """,
         "search": "attribution bons de commande cascade tour de rôle remise en concurrence",
         "output_field": "regle_attribution_bc",
     },
     "type_reconduction": {
         "consigne": """TYPE_RECONDUCTION
-    Définition : Modalité de renouvellement du marché.
+    Définition : Modalité de reconduction du marché.
     Indices :
-    - "Tacite" : le marché se renouvelle sauf dénonciation.
-    - "Expresse" : l'acheteur doit envoyer un courrier pour renouveler.
-    - Si aucune mention de modalité de renouvellement n'est présente, renvoyer null.
+    - Dans le paragraphe sur la durée du marché, ou concernant la reconduction du marché.
+    - Si le marché est reconductible, chercher la modalité de reconduction parmi :
+    * "Tacite" : le marché se reconduit sans besoin d'une expression de reconduction.
+    * "Expresse" : le marché se reconduit par une expression de reconduction.
+    * "Null" : si le marché n'est pas reconductible, ou si la modalité de reconduction n'est pas précisée.
     Format : "tacite" ou "expresse" ou null.
 """,
-        "search": "reconduction tacite expresse renouvellement",
+        "search": "reconduction tacite expresse",
         "output_field": "type_reconduction",
         "schema": {"type": ["string", "null"], "enum": ["tacite", "expresse", None]},
     },
@@ -456,31 +488,32 @@ CCAP_ATTRIBUTES = {
     },
     "avance": {
         "consigne": """AVANCE
-    Définition : Paramètres précis de calcul, de déclenchement et de remboursement de l'avance.
-    - Dans un paragraphe dédié à l'avance.
-    1. TAUX : 
-       - Identifier le taux standard (souvent 5%).
-       - Identifier si un taux spécifique "PME" est mentionné (souvent 20% ou 30%).
+    Définition : Paramètres de l'avance selon les clauses du marché et le Code de la Commande Publique (CCP).
+    1. TAUX (Standard & PME) :
+       - Extraire le taux écrit, sous forme d'un pourcentage (ex: 5%).
+       - Extraire le taux spécifique au PME, ou valeur par défaut.
+       - Si le document ne donne pas plus de précision, les taux par défaut s'appliquent :
+         * Taux Standard (si aucune précision, par défaut) : 5%.
+         * Taux PME (si aucune précision, par défaut) : 30%.
     2. DÉCLENCHEMENT :
-       - Déterminer si l'avance est "systématique" ou "sous conditions".
-       - Si sous conditions, extraire le seuil de montant (ex: 50000) et la durée minimale en mois (ex: 2).
-    3. ASSIETTE DE CALCUL :
-       - Déterminer si le calcul se fait sur le montant "HT" ou "TTC".
-       - Identifier la base : "montant initial du marché", "montant du bon de commande", ou "montant de la tranche".
-    4. COEFFICIENT DE DURÉE :
-       - Vérifier si une règle de prorata est mentionnée pour les durées > 12 mois (ex: "12 / durée en mois"). Si oui, mettre le champ à true.
-    5. REMBOURSEMENT :
-       - Identifier le seuil de début de remboursement (quand le montant des prestations atteint X%) 
-       et de fin de remboursement (quand il atteint Y%).
-       - Note : Si le texte cite uniquement les articles R.2191-11 ou R.2191-12 sans chiffres : 
-         * Si taux avance <= 30% : début = 65%, fin = 80%.
-         * Si taux avance > 30% : début = 0%, fin = 80%.
-    Format : Renvoyer un objet JSON structuré. Si une information est absente, renvoyer null.
+       - L'avance est obligatoire si : Montant > 50 000 € HT ET Durée > 2 mois.
+       - Si ces seuils ne sont pas mentionnés mais que le document parle d'avance, 
+       considérer ces seuils comme acquis par défaut.
+    3. ASSIETTE & CALCUL (Art. R2191-7) :
+       - Base de calcul : Montant initial TTC du marché, de la tranche, du bon de commande, ...
+       - Unité fiscale : Par défaut "TTC" (sauf mention contraire).
+       - Règle de durée : coefficient de prorata temporis (12 * Montant TTC / Durée en mois). Renvoyer "True" sauf mention contraire.
+    4. REMBOURSEMENT (Art. R2191-11) :
+       - Si le marché est silencieux ou renvoie au Code :
+         * Si Taux Avance <= 30% : Début de remboursement à 65% d'exécution, Fin à 80%.
+         * Si Taux Avance > 30% : Début dès la 1ère demande de paiement (0%), Fin à 80%.
+       - Si le document précise d'autres seuils, extraire les valeurs du document.
+    Format : Renvoyer un objet JSON. Pour les champs déduits du Code (et non écrits en clair), ajouter la mention "(par défaut CCP)".
 """,
         "search": "avance taux PME montant 50000 durée 2 mois assiette HT TTC remboursement précompte 65% 80% prorata 12 mois",
         "output_field": "avance",
         "schema": {
-            "type": "object",
+            "type": ["object", "null"],
             "properties": {
                 "taux": {
                     "type": ["object", "null"],
@@ -492,7 +525,6 @@ CCAP_ATTRIBUTES = {
                 "declenchement": {
                     "type": ["object", "null"],
                     "properties": {
-                        "type": {"type": ["string", "null"], "enum": ["systématique", "sous conditions"]},
                         "seuil_montant_ht": {"type": ["number", "null"]},
                         "seuil_duree_mois": {"type": ["number", "null"]}
                     }
@@ -501,10 +533,11 @@ CCAP_ATTRIBUTES = {
                     "type": ["object", "null"],
                     "properties": {
                         "unite_fiscale": {"type": ["string", "null"], "enum": ["HT", "TTC"]},
-                        "base_calcul": {"type": ["string", "null"]}
-                    }
+                        "base_calcul": {"type": ["string", "null"]},
+                        "regle_prorata_12_mois": {"type": ["boolean", "null"]}
+                    },
+                    "required": ["base_calcul"]
                 },
-                "coefficient_duree_applicable": {"type": ["boolean", "null"]},
                 "remboursement": {
                     "type": ["object", "null"],
                     "properties": {
@@ -556,15 +589,16 @@ CCAP_ATTRIBUTES = {
             },
         },
     },
-    "delai_execution_bc_ms": {
-        "consigne": """DELAI_EXECUTION_BC_MS
-    Définition : Délai imparti pour réaliser les prestations d'un Bon de Commande (BC) ou d'un Marché Subséquent (MS).
+    "delai_execution_entite": {
+        "consigne": """DELAI EXECUTION ENTITE
+    Définition : Délai impart pour émettre et cloturer des bons de commande (BC) et des marchés subséquents (MS).
     Indices : 
-    - Distinguer si le délai est fixe (ex: "15 jours") ou déterminé à chaque commande.
+    - Dans la section exécution des bons de commande ou des marchés subséquents s'il y en a.
+    - Chercher le délai pour émettre et cloturé des bons de commande (BC) et des marchés subséquents (MS).
     Format : JSON {"type": "BC" ou "MS", "delai": "texte"}.
 """,
-        "search": "délai exécution bon de commande marché subséquent",
-        "output_field": "delai_execution_bc_ms",
+        "search": "délai exécution bon de commande marché subséquent émettre cloturer",
+        "output_field": "delai_execution_entite",
         "schema": {
             "type": "object",
             "properties": {
@@ -578,6 +612,10 @@ CCAP_ATTRIBUTES = {
     Définition : Sanctions financières en cas de retard ou de mauvaise exécution.
     Indices : 
     - Lister chaque type de pénalité séparément.
+    - Pour chaque pénalité, trouver :
+        * La condition de la pénalité
+        * Le montant de la pénalité : en €, en %, en quantité simple.
+        * L'unité de la pénalité : par jour de retard, par quantité de quelque chose, etc.
     - Si une pénalité n'est pas proportionnelle (montant variable par paliers), créer plusieurs entrées forfaitaires.
     Format : Liste de JSON [{"condition": "ex: retard livraison", "montant": "valeur numérique", "unite": "ex: par jour de retard"}].
 """,
@@ -599,11 +637,36 @@ CCAP_ATTRIBUTES = {
         "consigne": """CODE_CPV
     Définition : Nomenclature européenne pour les marchés publics.
     Indices : 
-    - Format type : 8 chiffres (ex: 72000000-5).
+    - Un code CPV est de la forme : 
+        * 8 chiffres (ex: 72000000-5) suivi d'un indice de classement (ex: -5)
+        * Suivi éventuellement de l'intitulé du code (ex: "Fournitures")
+    - Renvoyer la liste des codes CPV présents dans le document.
+    - Selon que les codes CPV sont décomposés en plusieurs lots ou non :
+        * sous la forme d'une liste simple si les codes ne sont pas ventilés par lots
+        * Sous une liste de dictionnaires si les codes sont ventilés par lots.
     - Si absent du document, renvoyer null (ne pas essayer de le deviner).
-    Format : Code numérique.
+    Format : une liste de codes CPV ou null.
 """,
         "search": "CPV nomenclature",
         "output_field": "code_cpv",
+        "schema": {
+            "type": ["array", "null"],
+            "items": {
+                "oneOf": [
+                    {"type": "string"},
+                    {
+                        "type": "object",
+                        "properties": {
+                            "numero_lot": {"type": "integer"},
+                            "codes_cpv": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                            },
+                        },
+                        "required": ["numero_lot", "codes_cpv"],
+                    },
+                ],
+            },
+        },
     },
 }

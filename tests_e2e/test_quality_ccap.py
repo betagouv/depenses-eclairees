@@ -58,8 +58,10 @@ def compare_contract_form(llm_val: dict, ref_val: dict):
     ref_tranches = ref_val.get("tranches")
     llm_forme_prix = llm_val.get("forme_prix")
     ref_forme_prix = ref_val.get("forme_prix")
+    llm_attributaires = llm_val.get("attributaires")
+    ref_attributaires = ref_val.get("attributaires")
 
-    return llm_structure == ref_structure and llm_tranches == ref_tranches and llm_forme_prix == ref_forme_prix
+    return llm_structure == ref_structure and llm_tranches == ref_tranches and llm_forme_prix == ref_forme_prix and llm_attributaires == ref_attributaires
 
 
 def compare_lots_contract_form(llm_val: list[dict], ref_val: list[dict]):
@@ -200,7 +202,7 @@ def get_comparison_functions():
         "duree_marche": compare_duration,
         "formule_revision_prix": compare_price_revision_formula,
         "index_reference": compare_exact_string,
-        "condition_avance": compare_advance_condition,
+        "avance": compare_advance_condition,
         "revision_prix": compare_exact_string,
         "montant_ht": compare_exact_string,
         "ccag": compare_exact_string,
@@ -221,7 +223,7 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-m
     """Test de qualité des informations extraites par le LLM."""
 
     df_test = get_data_from_grist(table="Ccap_gt_v2")
-    df_test.fillna("", inplace=True)
+    df_test = df_test.sort_values(by="filename").reset_index(drop=True)
     for col in ("lots", "forme_marche", "duree_marche", "montant_ht", "pbm_ocr"):
         df_test[col] = df_test[col].apply(lambda x: json.loads(x))
 
@@ -230,13 +232,13 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-m
 
 
 if __name__ == "__main__":
-    df_test, df_result, df_merged = create_batch_test(multi_line_coef=1, max_workers=30, llm_model="openweight-medium", debug_mode=True)
+    df_test, df_result, df_merged = create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-medium", debug_mode=True)
 
-    EXCLUDED_COLUMNS = ["objet_marche", "formule_revision_prix"]
+    EXCLUDED_COLUMNS = ["objet_marche"]
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "formule_revision_prix", comparison_functions, only_errors=True)
+    check_quality_one_field(df_merged, "avance", comparison_functions, only_errors=False)
 
     check_quality_one_row(df_merged, 18, comparison_functions)
 
