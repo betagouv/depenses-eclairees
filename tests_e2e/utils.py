@@ -65,6 +65,90 @@ def compare_normalized_string(actual, expected):
     return normalize_string(actual.replace(" ", "")) == normalize_string(expected.replace(" ", ""))
 
 
+def compare_duration(actual, expected):
+    """Compare duree : nombre de mois, comparaison exacte."""
+
+    # Gestion des valeurs vides ou None
+    if not actual and not expected:
+        return True
+
+    if not actual or not expected:
+        return False
+
+    try:
+        if actual.get("duree_initiale") != expected.get("duree_initiale"):
+            return False
+        if actual.get("duree_reconduction") != expected.get("duree_reconduction"):
+            return False
+        if actual.get("nb_reconductions") != expected.get("nb_reconductions"):
+            return False
+        if actual.get("delai_tranche_optionnelle") != expected.get("delai_tranche_optionnelle"):
+            return False
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
+def compare_address(actual, expected):
+    """Compare l'adresse : comparaison des valeurs selon la structure JSON.
+
+    Structure attendue : {
+        'numero_voie': 'le numéro de voie',
+        'nom_voie': 'le nom de la voie',
+        'complement_adresse': 'le complément d'adresse éventuel',
+        'code_postal': 'le code postal',
+        'ville': 'la ville',
+        'pays': 'le pays'
+    }
+    """
+    # Gestion des valeurs vides ou None
+    if not actual and not expected:
+        return True
+
+    if not actual or not expected:
+        return False
+
+    # Liste des champs à comparer
+    fields = ["numero_voie", "nom_voie", "complement_adresse", "code_postal", "ville", "pays"]
+
+    # Comparer chaque champ
+    for field in fields:
+        llm_field_val = actual.get(field, "")
+        ref_field_val = expected.get(field, "")
+
+        # Normaliser les valeurs vides
+        def _normalize(s):
+            s = s.strip().upper()
+            s = remove_accents(s)
+            s = re.sub(r"[-']", " ", s)
+            s = re.sub(r"\s\s", " ", s)
+            return s
+
+        llm_field_val = _normalize(llm_field_val)
+        ref_field_val = _normalize(ref_field_val)
+
+        # Comparer les valeurs du champ
+        if llm_field_val != ref_field_val:
+            return False
+
+    return True
+
+
+def compare_mandatee_bank_account(actual, expected):
+    """Compare rib_mandataire : format JSON, comparaison des 5 champs."""
+
+    # Gestion des valeurs vides ou None
+    if not actual and not expected:
+        return True
+
+    if not actual or not expected:
+        return False
+
+    llm_banque = normalize_string(actual.get("banque", ""))
+    ref_banque = normalize_string(expected.get("banque", ""))
+    return compare_normalized_string(actual.get("iban"), expected.get("iban")) and llm_banque == ref_banque
+
+
 def df_analyze_content(
     df: pd.DataFrame,
     df_attributes: pd.DataFrame,

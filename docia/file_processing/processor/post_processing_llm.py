@@ -532,6 +532,19 @@ CLEAN_FUNCTIONS = {
             "taux_tva": post_processing_percentage,
         },
     },
+    "sous_traitance": {
+        "fields": {
+            "adresse_postale_titulaire": post_processing_postal_address,
+            "siret_titulaire": post_processing_siret,
+            "adresse_postale_sous_traitant": post_processing_postal_address,
+            "siret_sous_traitant": post_processing_siret,
+            "montant_tva": post_processing_percentage,
+            "montant_sous_traitance_ttc": post_processing_amount,
+            "montant_sous_traitance_ht": post_processing_amount,
+            "rib_sous_traitant": post_processing_bank_account,
+            "duree_sous_traitance": post_processing_duration,
+        },
+    },
 }
 
 

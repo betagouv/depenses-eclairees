@@ -284,7 +284,7 @@ def get_comparison_functions():
 def create_batch_test(multi_line_coef=1):
     """Test de qualité des informations extraites par le LLM."""
 
-    df_test = get_data_from_grist(table="Ccap_v2_gt")
+    df_test = get_data_from_grist(table="Ccap_gt_v2")
     df_test.fillna("", inplace=True)
     for col in ("lots", "forme_marche", "duree_marche", "montant_ht", "pbm_ocr"):
         df_test[col] = df_test[col].apply(lambda x: json.loads(x))
