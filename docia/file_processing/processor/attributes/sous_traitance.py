@@ -13,7 +13,7 @@ SOUS_TRAITANCE_ATTRIBUTES = {
      Format : le nom de l'administration bénéficiaire en toutes lettres (pas d'acronymes si possible). 
 """,
         "search": "",
-        "output_field": "administration_bénéficiaire",
+        "output_field": "administration_beneficiaire",
     },
     "objet_marche": {
         "consigne": """OBJET_MARCHE
