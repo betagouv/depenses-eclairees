@@ -428,9 +428,10 @@ CCAP_ATTRIBUTES = {
         "consigne": """REGLE_ATTRIBUTION_BC
     Définition : Méthode de choix du titulaire pour l'émission des bons de commande (concerne les accords-cadres multi-attributaires).
     Indices : 
+    - Dans la section exécution des bons de commande ou règles d'attribution.
     - Pour un marché multi-attributaire, chercher si les bons de commande sont attribués :
     * "En cascade" : le texte cite le terme de "cascade", avec un premier titulaire qui reçoit toutes les commandes sauf s'il fait défaut.
-    * "A tour de rôle" : le texte cite les termes de "tour de rôle", ou de "rotation".
+    * "A tour de rôle" : les bons de commandes sont répartis "par tour de rôle", ou par "rotation" des titulaires.
     * "Avec remise en concurrence" : le texte parle de remise en concurrence et de marchés subséquents.
     * "Avec minimums d'attribution" (suivis des montants minimums si disponibles) :
     le marché est multi-attributaire à bons de commande mais ne cite aucune des règles ci-dessus.
@@ -456,7 +457,7 @@ CCAP_ATTRIBUTES = {
        - Si le marché est ferme (non reconductible), renvoyer null.
     Format : "tacite", "expresse" ou null.
 """,
-        "search": "reconduction tacite expresse renouvellement",
+        "search": "reconduction tacite expresse",
         "output_field": "type_reconduction",
         "schema": {"type": ["string", "null"], "enum": ["tacite", "expresse", None]},
     },
@@ -472,26 +473,27 @@ CCAP_ATTRIBUTES = {
     },
     "avance": {
         "consigne": """AVANCE
-    Définition : Paramètres précis de calcul, de déclenchement et de remboursement de l'avance.
-    - Dans un paragraphe dédié à l'avance.
-    1. TAUX : 
-       - Identifier le taux standard (souvent 5%).
-       - Identifier si un taux spécifique "PME" est mentionné (souvent 20% ou 30%).
+    Définition : Paramètres de l'avance selon les clauses du marché et le Code de la Commande Publique (CCP).
+    1. TAUX (Standard & PME) :
+       - Extraire le taux écrit, sous forme d'un pourcentage (ex: 5%).
+       - Extraire le taux spécifique au PME, ou valeur par défaut.
+       - Si le document ne donne pas plus de précision, les taux par défaut s'appliquent :
+         * Taux Standard (si aucune précision, par défaut) : 5%.
+         * Taux PME (si aucune précision, par défaut) : 30%.
     2. DÉCLENCHEMENT :
-       - Déterminer si l'avance est "systématique" ou "sous conditions".
-       - Si sous conditions, extraire le seuil de montant (ex: 50000) et la durée minimale en mois (ex: 2).
-    3. ASSIETTE DE CALCUL :
-       - Déterminer si le calcul se fait sur le montant "HT" ou "TTC".
-       - Identifier la base : "montant initial du marché", "montant du bon de commande", ou "montant de la tranche".
-    4. COEFFICIENT DE DURÉE :
-       - Vérifier si une règle de prorata est mentionnée pour les durées > 12 mois (ex: "12 / durée en mois"). Si oui, mettre le champ à true.
-    5. REMBOURSEMENT :
-       - Identifier le seuil de début de remboursement (quand le montant des prestations atteint X%) 
-       et de fin de remboursement (quand il atteint Y%).
-       - Note : Si le texte cite uniquement les articles R.2191-11 ou R.2191-12 sans chiffres : 
-         * Si taux avance <= 30% : début = 65%, fin = 80%.
-         * Si taux avance > 30% : début = 0%, fin = 80%.
-    Format : Renvoyer un objet JSON structuré. Si une information est absente, renvoyer null.
+       - L'avance est obligatoire si : Montant > 50 000 € HT ET Durée > 2 mois.
+       - Si ces seuils ne sont pas mentionnés mais que le document parle d'avance, 
+       considérer ces seuils comme acquis par défaut.
+    3. ASSIETTE & CALCUL (Art. R2191-7) :
+       - Base de calcul : Montant initial TTC du marché, de la tranche, du bon de commande, ...
+       - Unité fiscale : Par défaut "TTC" (sauf mention contraire).
+       - Règle de durée : coefficient de prorata temporis (12 * Montant TTC / Durée en mois). Renvoyer "True" sauf mention contraire.
+    4. REMBOURSEMENT (Art. R2191-11) :
+       - Si le marché est silencieux ou renvoie au Code :
+         * Si Taux Avance <= 30% : Début de remboursement à 65% d'exécution, Fin à 80%.
+         * Si Taux Avance > 30% : Début dès la 1ère demande de paiement (0%), Fin à 80%.
+       - Si le document précise d'autres seuils, extraire les valeurs du document.
+    Format : Renvoyer un objet JSON. Pour les champs déduits du Code (et non écrits en clair), ajouter la mention "(par défaut CCP)".
 """,
         "search": "avance taux PME montant 50000 durée 2 mois assiette HT TTC remboursement précompte 65% 80% prorata 12 mois",
         "output_field": "avance",
@@ -508,7 +510,6 @@ CCAP_ATTRIBUTES = {
                 "declenchement": {
                     "type": ["object", "null"],
                     "properties": {
-                        "type": {"type": ["string", "null"], "enum": ["systématique", "sous conditions"]},
                         "seuil_montant_ht": {"type": ["number", "null"]},
                         "seuil_duree_mois": {"type": ["number", "null"]}
                     }
@@ -517,10 +518,11 @@ CCAP_ATTRIBUTES = {
                     "type": ["object", "null"],
                     "properties": {
                         "unite_fiscale": {"type": ["string", "null"], "enum": ["HT", "TTC"]},
-                        "base_calcul": {"type": ["string", "null"]}
-                    }
+                        "base_calcul": {"type": ["string", "null"]},
+                        "regle_prorata_12_mois": {"type": ["boolean", "null"]}
+                    },
+                    "required": ["base_calcul"]
                 },
-                "coefficient_duree_applicable": {"type": ["boolean", "null"]},
                 "remboursement": {
                     "type": ["object", "null"],
                     "properties": {

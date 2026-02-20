@@ -213,7 +213,7 @@ if __name__ == "__main__":
         multi_line_coef=1, max_workers=10, llm_model="openweight-medium", debug_mode=True
     )
 
-    EXCLUDED_COLUMNS = ["objet_marche", "formule_revision_prix"]
+    EXCLUDED_COLUMNS = ["objet_marche"]
 
     comparison_functions = get_comparison_functions()
 
