@@ -1,4 +1,5 @@
 from django import template
+from django.utils.safestring import mark_safe
 
 register = template.Library()
 
@@ -63,6 +64,20 @@ def format_postal_address(adresse):
     ligne2 = " ".join(filter(None, [code_postal, ville]))
     parts = [p for p in [ligne1, ligne2, pays] if p]
     return ", ".join(parts)
+
+
+@register.filter
+def as_percentage(value):
+    """
+    Convertit un taux décimal (ex. 0.20, 0.055) en pourcentage affichable (ex. 20 %, 5.5 %).
+    """
+    if not value:
+        return None
+    rate = float(value)
+    pct = rate * 100
+    if pct == int(pct):
+        return mark_safe(f"{int(pct)}&nbsp;%")
+    return mark_safe(f"{pct:.1f}&nbsp;%")
 
 
 @register.filter

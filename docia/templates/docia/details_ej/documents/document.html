@@ -9,6 +9,8 @@
         {% include "docia/details_ej/documents/ccap/document_ccap.html" with doc=doc %}
       {% elif doc.classification == "rib" %}
         {% include "docia/details_ej/documents/rib/document_rib.html" with doc=doc %}
+      {% elif doc.classification == "fiche_navette" %}
+        {% include "docia/details_ej/documents/fiche_navette/document_fiche_navette.html" with doc=doc %}
       {% else %}
         {% include "docia/details_ej/documents/default/document_default.html" with doc=doc %}
       {% endif %}

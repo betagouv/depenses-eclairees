@@ -1,0 +1,120 @@
+{% load dsfr_tags static docia %}
+{% with id_prefix=doc.filename|add:"_" %}
+
+<div class="fr-mb-4w">
+  <p class="fr-mb-0">
+    <strong>Objet :</strong> {{ data.objet|default:"[Non trouvé]" }}
+  </p>
+</div>
+
+<div class="document-sections fr-mt-2v">
+  {# Signataires #}
+  <section class="fr-accordion" data-fr-js-accordion="true">
+    <h3 class="fr-accordion__title">
+      <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_signataires" data-fr-js-collapse-button="true">
+        Signataires
+      </button>
+    </h3>
+    <div class="fr-collapse" id="{{ doc.id }}_signataires" data-fr-js-collapse="true" style="--collapse: -48px;">
+      <ul class="fr-list">
+        {% with value=data.administration_beneficiaire copy_value=data.administration_beneficiaire %}
+          {% include "docia/details_ej/blocks/attribute.html" with title="Administration bénéficiaire" id=id_prefix|add:"administration_beneficiaire" %}
+        {% endwith %}
+        {% with value=data.societe_principale copy_value=data.societe_principale %}
+          {% include "docia/details_ej/blocks/attribute.html" with title="Société principale" id=id_prefix|add:"societe_principale" %}
+        {% endwith %}
+      </ul>
+    </div>
+  </section>
+
+  {# Accord-cadre #}
+  {% if data.accord_cadre or data.id_accord_cadre %}
+    <section class="fr-accordion" data-fr-js-accordion="true">
+      <h3 class="fr-accordion__title">
+        <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_accord_cadre" data-fr-js-collapse-button="true">
+          Accord-cadre
+        </button>
+      </h3>
+      <div class="fr-collapse" id="{{ doc.id }}_accord_cadre" data-fr-js-collapse="true" style="--collapse: -48px;">
+        <ul class="fr-list">
+          {% with value=data.accord_cadre copy_value=data.accord_cadre %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Libellé accord-cadre" id=id_prefix|add:"accord_cadre" %}
+          {% endwith %}
+          {% with value=data.id_accord_cadre copy_value=data.id_accord_cadre %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Identifiant accord-cadre" id=id_prefix|add:"id_accord_cadre" %}
+          {% endwith %}
+        </ul>
+      </div>
+    </section>
+  {% else %}
+    <div class="document-section--disabled">
+      <span class="document-section--disabled__title">Accord-cadre – Non disponible dans le document.</span>
+    </div>
+  {% endif %}
+
+  {# Prix et TVA #}
+  {% if data.montant_ht or data.taux_tva or data.reconduction %}
+    <section class="fr-accordion" data-fr-js-accordion="true">
+      <h3 class="fr-accordion__title">
+        <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_prix" data-fr-js-collapse-button="true">
+          Prix et reconduction
+        </button>
+      </h3>
+      <div class="fr-collapse" id="{{ doc.id }}_prix" data-fr-js-collapse="true" style="--collapse: -48px;">
+        <ul class="fr-list">
+          {% with value=data.montant_ht copy_value=data.montant_ht %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Montant HT" id=id_prefix|add:"montant_ht" suffix=" €" %}
+          {% endwith %}
+          {% with value=data.taux_tva|as_percentage copy_value=data.taux_tva %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Taux TVA" id=id_prefix|add:"taux_tva" %}
+          {% endwith %}
+          {% with value=data.reconduction copy_value=data.reconduction %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Reconduction" id=id_prefix|add:"reconduction" %}
+          {% endwith %}
+        </ul>
+      </div>
+    </section>
+  {% else %}
+    <div class="document-section--disabled">
+      <span class="document-section--disabled__title">Prix et reconduction – Non disponibles dans le document.</span>
+    </div>
+  {% endif %}
+
+  {# Imputations budgétaires et comptables #}
+  {% if data.centre_cout or data.centre_financier or data.activite or data.domaine_fonctionnel or data.localisation_interministerielle or data.groupe_marchandise %}
+    <section class="fr-accordion" data-fr-js-accordion="true">
+      <h3 class="fr-accordion__title">
+        <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_centres" data-fr-js-collapse-button="true">
+          Imputations budgétaires et comptables
+        </button>
+      </h3>
+      <div class="fr-collapse" id="{{ doc.id }}_centres" data-fr-js-collapse="true" style="--collapse: -48px;">
+        <ul class="fr-list">
+          {% with value=data.centre_cout copy_value=data.centre_cout %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Centre de coût" id=id_prefix|add:"centre_cout" %}
+          {% endwith %}
+          {% with value=data.centre_financier copy_value=data.centre_financier %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Centre financier" id=id_prefix|add:"centre_financier" %}
+          {% endwith %}
+          {% with value=data.activite copy_value=data.activite %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Activité" id=id_prefix|add:"activite" %}
+          {% endwith %}
+          {% with value=data.domaine_fonctionnel copy_value=data.domaine_fonctionnel %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Domaine fonctionnel" id=id_prefix|add:"domaine_fonctionnel" %}
+          {% endwith %}
+          {% with value=data.localisation_interministerielle copy_value=data.localisation_interministerielle %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Localisation interministérielle" id=id_prefix|add:"localisation_interministerielle" %}
+          {% endwith %}
+          {% with value=data.groupe_marchandise copy_value=data.groupe_marchandise %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Groupe de marchandise" id=id_prefix|add:"groupe_marchandise" %}
+          {% endwith %}
+        </ul>
+      </div>
+    </section>
+  {% else %}
+    <div class="document-section--disabled">
+      <span class="document-section--disabled__title">Imputations budgétaires et comptables – Non disponibles dans le document.</span>
+    </div>
+  {% endif %}
+</div>
+{% endwith %}
