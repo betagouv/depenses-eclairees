@@ -502,37 +502,34 @@ CCAP_ATTRIBUTES = {
             "properties": {
                 "taux": {
                     "type": ["object", "null"],
-                    "properties": {
-                        "standard": {"type": ["string", "null"]},
-                        "pme": {"type": ["string", "null"]}
-                    }
+                    "properties": {"standard": {"type": ["string", "null"]}, "pme": {"type": ["string", "null"]}},
                 },
                 "declenchement": {
                     "type": ["object", "null"],
                     "properties": {
                         "seuil_montant_ht": {"type": ["number", "null"]},
-                        "seuil_duree_mois": {"type": ["number", "null"]}
-                    }
+                        "seuil_duree_mois": {"type": ["number", "null"]},
+                    },
                 },
                 "assiette": {
                     "type": ["object", "null"],
                     "properties": {
                         "unite_fiscale": {"type": ["string", "null"], "enum": ["HT", "TTC"]},
                         "base_calcul": {"type": ["string", "null"]},
-                        "regle_prorata_12_mois": {"type": ["boolean", "null"]}
+                        "regle_prorata_12_mois": {"type": ["boolean", "null"]},
                     },
-                    "required": ["base_calcul"]
+                    "required": ["base_calcul"],
                 },
                 "remboursement": {
                     "type": ["object", "null"],
                     "properties": {
                         "pourcentage_debut": {"type": ["string", "null"]},
-                        "pourcentage_fin": {"type": ["string", "null"]}
-                    }
-                }
+                        "pourcentage_fin": {"type": ["string", "null"]},
+                    },
+                },
             },
-            "required": ["taux", "declenchement", "assiette", "remboursement"]
-        }
+            "required": ["taux", "declenchement", "assiette", "remboursement"],
+        },
     },
     "retenue_garantie": {
         "consigne": """RETENUE_GARANTIE

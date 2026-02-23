@@ -23,7 +23,7 @@ from tests_e2e.utils import (  # noqa: E402
     get_fields_with_comparison_errors,
     normalize_string,
     get_fields_with_comparison_errors,
-    compare_exact_string,
+    normalize_string,
 )
 
 logger = logging.getLogger("docia." + __name__)
@@ -229,7 +229,6 @@ if __name__ == "__main__":
 
     for v in fields_with_errors.values():
         print(json.dumps(v))
-
 
 
 # "intro",
