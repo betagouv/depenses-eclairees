@@ -311,32 +311,6 @@ CCAP_ATTRIBUTES = {
         "search": "",
         "output_field": "ccag",
     },
-    "condition_avance": {
-        "consigne": """CONDITIONS_AVANCE
-   Définition : Conditions de déclenchement et calcul du montant de l'avance à payer.
-   Indices :
-   - Rechercher les conditions de montant minimum HT et durée minimum, s'il y en a. Sinon, renvoyer "Avance systématique".
-   - Trouver le montant de l'avance en %.
-   - Trouver le montant de référence pour le calcul de l'avance (bon de commande, montant annuel, montant minimum HT, ...).
-   - Repérer les seuils de remboursement (début et fin)
-   - Si pour le remboursement, il est fait référence uniquement au code de la commande publique (R.2191-11) :
-      - Pour des montants <= 30% du marché TTC, c'est à partir de 65% du montant TTC que le remboursement se déclenche. Renvoyer "65%".
-      - Pour des montants > 30% du marché TTC, c'est dès le premier paiement. Renvoyer "0%".
-   Format : {'condition_declenchement':"", 'montant_avance':XX%, 'montant_reference':"", 'remboursement':XX%-XX%}
-""",
-        "search": "avance accordée titulaire montant initial durée exécution remboursement précompte",
-        "output_field": "condition_avance_ccap",
-        "schema": {
-            "type": "object",
-            "properties": {
-                "condition_declenchement": {"type": "string"},
-                "montant_avance": {"type": "string"},
-                "montant_reference": {"type": "string"},
-                "remboursement": {"type": "string"},
-            },
-            "required": ["condition_declenchement", "montant_avance", "montant_reference", "remboursement"],
-        },
-    },
     "formule_revision_prix": {
         "consigne": """FORMULE_REVISION_PRIX
     Définition : Détail de la formule mathématique permettant de réviser les prix du marché.
@@ -489,8 +463,8 @@ CCAP_ATTRIBUTES = {
         "consigne": """AVANCE
     Définition : Paramètres de l'avance selon les clauses du marché et le Code de la Commande Publique (CCP).
     1. TAUX (Standard & PME) :
-       - Extraire le taux écrit, sous forme d'un pourcentage (ex: 5%).
-       - Extraire le taux spécifique au PME, ou valeur par défaut.
+       - Extraire les taux sous forme d'un pourcentage.
+       - Il y a un taux principal, et un taux spécifique aux PME.
        - Si le document ne donne pas plus de précision, les taux par défaut s'appliquent :
          * Taux Standard (si aucune précision, par défaut) : 5%.
          * Taux PME (si aucune précision, par défaut) : 30%.
@@ -499,7 +473,7 @@ CCAP_ATTRIBUTES = {
        - Si ces seuils ne sont pas mentionnés mais que le document parle d'avance, 
        considérer ces seuils comme acquis par défaut.
     3. ASSIETTE & CALCUL (Art. R2191-7) :
-       - Base de calcul : Montant initial TTC du marché, de la tranche, du bon de commande, ...
+       - Base de calcul : Montant initial TTC du marché, de la tranche, du lot ou du bon de commande, ...
        - Unité fiscale : Par défaut "TTC" (sauf mention contraire).
        - Règle de durée : coefficient de prorata temporis (12 * Montant TTC / Durée en mois). Renvoyer "True" sauf mention contraire.
     4. REMBOURSEMENT (Art. R2191-11) :
