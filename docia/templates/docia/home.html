@@ -36,12 +36,32 @@
         ou par mail à <a href="mailto:contact@depenses-eclairees.beta.gouv.fr">contact@depenses-eclairees.beta.gouv.fr</a>
       {% endif %}
 
+      {% if num_ej %}
+        {% if documents or unprocessed %}
+        <section class="fr-mb-4w" aria-label="Résumé du dossier">
+          <h2 class="fr-h4 fr-mb-2w">
+            Dossier n°&nbsp;{{ num_ej }}
+          </h2>
+          <p class="fr-text fr-text--sm fr-mb-0">
+            {% with nb_analyses=documents|length nb_unprocessed=unprocessed|length %}
+            <span class="fr-badge fr-badge--success">{{ nb_analyses }} document{{ nb_analyses|pluralize }} analysé{{ nb_analyses|pluralize }} par l'IA</span>
+            <span class="fr-badge">{{ nb_analyses|add:nb_unprocessed }} document{{ nb_analyses|add:nb_unprocessed|pluralize }} disponible{{ nb_analyses|add:nb_unprocessed|pluralize }} au total</span>
+            {% endwith %}
+          </p>
+        </section>
+        {% endif %}
+      {% endif %}
+
       {# Documents analysés #}
       {% for doc in documents %}
         <section class="fr-accordion" data-fr-js-accordion="true">
           <h3 class="fr-accordion__title">
             <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}" data-fr-js-collapse-button="true">
-              {{ doc.title }}&nbsp;-&nbsp;&nbsp;<span class="fr-icon-focus-3-line" aria-hidden="true"></span>&nbsp;{{ doc.percent_data_extraction }} infos trouvées
+              <span class="fr-badge fr-badge--info fr-badge--no-icon">{{ doc.short_classification }}</span>
+              <span class="fr-ml-1w">{{ doc.filename }}</span>
+              <span class="fr-badge fr-badge--sm fr-ml-1w">
+                <span class="fr-icon-focus-3-line" aria-hidden="true"></span>&nbsp;{{ doc.percent_data_extraction }} infos remplies
+              </span>
             </button>
           </h3>
           {% include "docia/details_ej/documents/document.html" with doc=doc %}
@@ -57,11 +77,15 @@
             </button>
           </h3>
           <div class="fr-collapse" id="unprocessed" data-fr-js-collapse="true" style="--collapse: -48px;">
-            {% for doc in unprocessed %}
-              {{ doc.title }}
-              <a href="{{ doc.url }}" target="_blank">voir</a>
-              <br/>
-            {% endfor %}
+            <ul class="fr-list fr-list--none">
+              {% for doc in unprocessed %}
+              <li class="fr-list__item fr-my-1w">
+                <span class="fr-badge fr-badge--info fr-badge--no-icon">{{ doc.short_classification }}</span>
+                <span class="fr-ml-1w">{{ doc.filename }}</span>
+                <a href="{{ doc.url }}" target="_blank" class="fr-link fr-ml-1w">voir</a>
+              </li>
+              {% endfor %}
+            </ul>
           </div>
         </section>
       {% endif %}

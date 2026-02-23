@@ -483,7 +483,6 @@ def get_comparison_functions():
 def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-medium", debug_mode=False):
     """Test de qualité des informations extraites par le LLM."""
 
-    # Lecture du fichier CSV
     df_test = get_data_from_grist(table="Acte_engagement_gt_v2")
     df_test["montant_ht"] = df_test["montant_ht"].apply(lambda x: f"{float(x):.2f}" if x else "")
     df_test["montant_ttc"] = df_test["montant_ttc"].apply(lambda x: f"{float(x):.2f}" if x else "")

@@ -9,7 +9,7 @@ def get_item(dictionary, key):
     if not dictionary:
         return None
     if "." in key:
-        key, suffix = key.split(".")
+        key, suffix = key.split(".", 1)
         return get_item(dictionary.get(key), suffix)
     else:
         return dictionary.get(key)

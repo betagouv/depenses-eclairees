@@ -216,7 +216,7 @@ if __name__ == "__main__":
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "taux_tva", comparison_functions)
+    check_quality_one_field(df_merged, "groupe_marchandise", comparison_functions)
 
     check_quality_one_row(df_merged, 0, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
 

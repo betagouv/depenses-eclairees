@@ -129,17 +129,24 @@ def test_format_ratio_to_percent():
 
 @pytest.mark.django_db
 def test_acte_engagement(client):
+    """Vérifie l'affichage des champs acte_engagement."""
     ej, doc = create_ej_and_document()
     doc.classification = "acte_engagement"
     doc.structured_data = {
-        "duree": {
-            "duree_initiale": 12,
-            "nb_reconductions": 3,
-            "duree_reconduction": 8,
-            "delai_tranche_optionnelle": 24,
-        },
-        "montant_ht": "40123.50",
-        "montant_ttc": "60123.50",
+        "objet_marche": "[[objet_marche]]",
+        "administration_beneficiaire": "[[administration_beneficiaire]]",
+        "societe_principale": "[[societe_principale]]",
+        "siret_mandataire": "12345678901234",
+        "siren_mandataire": "123456789",
+        "rib_mandataire": {"iban": "[[rib_mandataire.iban]]", "banque": "[[rib_mandataire.banque]]"},
+        "cotraitants": [
+            {"nom": "[[cotraitants.0.nom]]", "siret": "[[cotraitants.0.siret]]"},
+            {"nom": "[[cotraitants.1.nom]]", "siret": "[[cotraitants.1.siret]]"},
+        ],
+        "sous_traitants": [
+            {"nom": "[[sous_traitants.0.nom]]", "siret": "[[sous_traitants.0.siret]]"},
+            {"nom": "[[sous_traitants.1.nom]]", "siret": "[[sous_traitants.1.siret]]"},
+        ],
         "rib_autres": [
             {
                 "societe": "[[rib_autres.0.societe]]",
@@ -150,59 +157,102 @@ def test_acte_engagement(client):
                 "rib": {"banque": "[[rib_autres.1.rib.banque]]", "iban": "[[rib_autres.1.rib.iban]]"},
             },
         ],
-        "cotraitants": [
-            {"nom": "[[cotraitants.0.nom]]", "siret": "[[cotraitants.0.siret]]"},
-            {"nom": "[[cotraitants.1.nom]]", "siret": "[[cotraitants.1.siret]]"},
-        ],
-        "sous_traitants": [
-            {"nom": "[[sous_traitants.0.nom]]", "siret": "[[sous_traitants.0.siret]]"},
-            {"nom": "[[sous_traitants.1.nom]]", "siret": "[[sous_traitants.1.siret]]"},
-        ],
-        "lot_concerne": "[[lot_concerne]]",
-        "objet_marche": "[[objet_marche]]",
-        "rib_mandataire": {"iban": "[[rib_mandataire.iban]]", "banque": "[[rib_mandataire.banque]]"},
-        "siren_mandataire": "123456789",
-        "siret_mandataire": "12345678901234",
-        "date_notification": "[[date_notification]]",
-        "societe_principale": "[[societe_principale]]",
+        "montant_ttc": "60123.50",
+        "montant_ht": "40123.50",
         "date_signature_mandataire": "[[date_signature_mandataire]]",
-        "administration_beneficiaire": "[[administration_beneficiaire]]",
         "date_signature_administration": "[[date_signature_administration]]",
+        "date_notification": "[[date_notification]]",
+        "duree": {
+            "duree_initiale": 12,
+            "nb_reconductions": 3,
+            "duree_reconduction": 8,
+            "delai_tranche_optionnelle": 24,
+        },
+        "conserve_avance": "renonce",
+        "montants_en_annexe": {
+            "annexe_financière": True,
+            "classification": ["BPU", "Annexe financière"],
+        },
+        "forme_marche": {
+            "lot_concerne": {"numero_lot": 1, "titre_lot": "[[forme_marche.lot_concerne.titre_lot]]"},
+            "marche_subsequent": True,
+            "marche_parent": "[[forme_marche.marche_parent]]",
+        },
+        "code_cpv": "[[code_cpv]]",
+        "montant_tva": "0.20",
+        "mode_consultation": "[[mode_consultation]]",
+        "mode_reconduction": "tacite",
+        "ligne_imputation_budgetaire": "[[ligne_imputation_budgetaire]]",
+        "lot_concerne": "[[lot_concerne]]",
     }
     doc.save()
     user = UserFactory(is_superuser=True)
     client.force_login(user)
     response = client.get(f"/?num_ej={ej.num_ej}")
     assert response.status_code == 200
-    assert "[[rib_autres.0.societe]]" in response.text
-    assert "[[rib_autres.0.rib.banque]]" in response.text
-    assert "[[rib_autres.0.rib.iban]]" in response.text
-    assert "[[rib_autres.1.societe]]" in response.text
-    assert "[[rib_autres.1.rib.banque]]" in response.text
-    assert "[[rib_autres.1.rib.iban]]" in response.text
-    assert "[[cotraitants.0.nom]]" in response.text
-    assert "[[cotraitants.0.siret]]" in response.text
-    assert "[[cotraitants.1.nom]]" in response.text
-    assert "[[cotraitants.1.siret]]" in response.text
-    assert "[[sous_traitants.0.nom]]" in response.text
-    assert "[[sous_traitants.0.siret]]" in response.text
-    assert "[[sous_traitants.1.nom]]" in response.text
-    assert "[[sous_traitants.1.siret]]" in response.text
-    assert "[[lot_concerne]]" in response.text
-    assert "[[objet_marche]]" in response.text
-    assert "[[rib_mandataire.iban]]" in response.text
-    assert "[[RIB_MANDATAIRE.BANQUE]]" in response.text
-    assert "123 456 789" in response.text
-    assert "123 456 789 012 34" in response.text
-    assert "[[date_notification]]" in response.text
-    assert "[[societe_principale]]" in response.text
-    assert "[[date_signature_mandataire]]" in response.text
-    assert "[[administration_beneficiaire]]" in response.text
-    assert "[[date_signature_administration]]" in response.text
-    # Séparateur de milliers = espace insécable (U+00A0) avec Django + locale FR
-    assert "40\u00a0123,50 €" in response.text  # Montant total ht
-    assert "60\u00a0123,50 €" in response.text  # Montant total ttc
-    assert "12 mois" in response.text
+    text = response.text
+
+    # Ordre des assertions = ordre des sections dans document_acte_engagement.html
+
+    # En-tête (signataires + objet)
+    assert "[[administration_beneficiaire]]" in text
+    assert "[[societe_principale]]" in text
+    assert "[[objet_marche]]" in text
+    assert "[[lot_concerne]]" in text
+
+    # Section Informations générales
+    assert "[[forme_marche.lot_concerne.titre_lot]]" in text
+    assert "[[forme_marche.marche_parent]]" in text
+    assert "[[code_cpv]]" in text
+    assert "[[ligne_imputation_budgetaire]]" in text
+    assert "[[mode_consultation]]" in text
+
+    # Section Titulaire
+    assert "123 456 789" in text
+    assert "123 456 789 012 34" in text
+    assert "Oui" in text  # En groupement
+
+    # Section Prix
+    assert "40\u00a0123,50 €" in text
+    assert "60\u00a0123,50 €" in text
+    assert "20" in text  # Taux TVA (affiché en %, calculé dans la vue)
+    assert "Non" in text  # conserve_avance = renonce
+    assert "BPU" in text or "Annexe financière" in text  # montants_en_annexe
+
+    # Section Durée du marché
+    assert "12 mois" in text
+    assert "Nombre de reconductions" in text
+    assert "8 mois" in text
+    assert "tacite" in text  # Type reconduction
+
+    # Section Informations bancaires
+    assert "[[rib_mandataire.iban]]" in text
+    assert "[[RIB_MANDATAIRE.BANQUE]]" in text
+
+    # Section Dates et signatures
+    assert "[[date_signature_mandataire]]" in text
+    assert "[[date_signature_administration]]" in text
+    assert "[[date_notification]]" in text
+
+    # Section Cotraitants
+    assert "[[cotraitants.0.nom]]" in text
+    assert "[[cotraitants.0.siret]]" in text
+    assert "[[cotraitants.1.nom]]" in text
+    assert "[[cotraitants.1.siret]]" in text
+
+    # Section Sous-traitants
+    assert "[[sous_traitants.0.nom]]" in text
+    assert "[[sous_traitants.0.siret]]" in text
+    assert "[[sous_traitants.1.nom]]" in text
+    assert "[[sous_traitants.1.siret]]" in text
+
+    # Section RIBs (sous-traitants / co-traitants)
+    assert "[[rib_autres.0.societe]]" in text
+    assert "[[rib_autres.0.rib.banque]]" in text
+    assert "[[rib_autres.0.rib.iban]]" in text
+    assert "[[rib_autres.1.societe]]" in text
+    assert "[[rib_autres.1.rib.banque]]" in text
+    assert "[[rib_autres.1.rib.iban]]" in text
 
 
 @pytest.mark.django_db

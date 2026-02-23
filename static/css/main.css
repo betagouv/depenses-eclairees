@@ -35,6 +35,12 @@
     font-weight: 500;
 }
 
+/* Réduction des espacements dans les blocs attributs : le DSFR applique un margin-bottom (24px / 1.5rem) sur fr-text--sm */
+.fr-list .fr-list__item .fr-text--sm {
+    margin-top: 0.3rem;
+    margin-bottom: 0.3rem;
+}
+
 /* SIREN / SIRET : espace tous les 3 chiffres (affichage via filtre) + chiffres à chasse fixe */
 .siren-siret-format {
     font-variant-numeric: tabular-nums;
