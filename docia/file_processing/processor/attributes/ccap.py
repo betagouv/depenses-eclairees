@@ -442,20 +442,31 @@ CCAP_ATTRIBUTES = {
         "search": "attribution bons de commande cascade tour de rôle remise en concurrence",
         "output_field": "regle_attribution_bc",
     },
-    "type_reconduction": {
-        "consigne": """TYPE_RECONDUCTION
+    "mention_reconduction": {
+        "consigne": """MENTION_RECONDUCTION
+    Définition : Extraction de la mention explicite du mode de reconduction dans le texte du document.
+    Instructions :
+    1. RECHERCHE : Identifier la clause relative à la reconduction du marché.
+    2. EXTRACTION STRICTE :
+       - Renvoyer "tacite" uniquement si la reconduction est qualifiée de "tacite" dans le texte : ex "le marché est reconductible tacitement ...".
+       - Renvoyer "expresse" uniquement si la reconduction est qualifiée de "expresse".
+    3. CAS DE NULLITÉ :
+       - Si le marché est reconductible mais que le texte ne précise pas si c'est tacite ou expresse, renvoyer null.
+       - Ne pas essayer de deviner le mode de reconduction.
+       - Si le marché est ferme (non reconductible), renvoyer null.
+    Format : "tacite", "expresse" ou null.
+""",
+        "search": "reconduction tacite expresse décision expresse durée reconductible",
+        "output_field": "mention_reconduction",
+        "schema": {"type": ["string", "null"], "enum": ["tacite", "expresse", None]},
+    },
+    "explication_reconduction": {
+        "consigne": """EXPLICATION_RECONDUCTION
     Définition : Modalité de reconduction du marché.
-    Indices :
-    - Dans le paragraphe sur la durée du marché, ou concernant la reconduction du marché.
-    - Si le marché est reconductible, chercher la modalité de reconduction parmi :
-    * "Tacite" : le marché se reconduit sans besoin d'une expression de reconduction.
-    * "Expresse" : le marché se reconduit par une expression de reconduction.
-    * "Null" : si le marché n'est pas reconductible, ou si la modalité de reconduction n'est pas précisée.
-    Format : "tacite" ou "expresse" ou null.
+    Expliquer le choix de la réponse en fonction de la modalité de reconduction du marché par un court paragraphe.
 """,
         "search": "reconduction tacite expresse",
-        "output_field": "type_reconduction",
-        "schema": {"type": ["string", "null"], "enum": ["tacite", "expresse", None]},
+        "output_field": "explication_reconduction",
     },
     "debut_execution": {
         "consigne": """DEBUT_EXECUTION
