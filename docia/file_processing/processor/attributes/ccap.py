@@ -446,10 +446,9 @@ CCAP_ATTRIBUTES = {
         "consigne": """REGLE_ATTRIBUTION_BC
     Définition : Méthode de choix du titulaire pour l'émission des bons de commande (concerne les accords-cadres multi-attributaires).
     Indices : 
-    - Dans la section exécution des bons de commande ou règles d'attribution.
     - Pour un marché multi-attributaire, chercher si les bons de commande sont attribués :
     * "En cascade" : le texte cite le terme de "cascade", avec un premier titulaire qui reçoit toutes les commandes sauf s'il fait défaut.
-    * "A tour de rôle" : les bons de commandes sont répartis "par tour de rôle", ou par "rotation" des titulaires.
+    * "A tour de rôle" : le texte cite les termes de "tour de rôle", ou de "rotation".
     * "Avec remise en concurrence" : le texte parle de remise en concurrence et de marchés subséquents.
     * "Avec minimums d'attribution" (suivis des montants minimums si disponibles) :
     le marché est multi-attributaire à bons de commande mais ne cite aucune des règles ci-dessus.

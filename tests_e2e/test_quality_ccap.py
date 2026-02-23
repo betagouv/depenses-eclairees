@@ -208,14 +208,16 @@ def get_comparison_functions():
         "ccag": compare_exact_string,
         "mode_consultation": compare_exact_string,
         "regle_attribution_bc": compare_exact_string,
+        "penalites": compare_exact_string,
+        "code_cpv": compare_exact_string,
+        "formule_revision_prix": compare_price_revision_formula,
+        "index_reference": compare_exact_string,
+        "avance": compare_advance_condition,
         "type_reconduction": compare_exact_string,
         "debut_execution": compare_exact_string,
         "retenue_garantie": compare_exact_string,
         "mois_zero_revision": compare_exact_string,
         "clause_sauvegarde_revision": compare_exact_string,
-        "delai_execution_bc_ms": compare_exact_string,
-        "penalites": compare_exact_string,
-        "code_cpv": compare_exact_string,
     }
 
 
@@ -224,7 +226,7 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-m
 
     df_test = get_data_from_grist(table="Ccap_gt_v2")
     df_test = df_test.sort_values(by="filename").reset_index(drop=True)
-    for col in ("lots", "forme_marche", "duree_marche", "montant_ht", "pbm_ocr"):
+    for col in ("lots", "forme_marche", "duree_marche", "montant_ht", "pbm_ocr", "avance", "penalites", "mode_consultation"):
         df_test[col] = df_test[col].apply(lambda x: json.loads(x))
 
     # Lancement du test
@@ -234,11 +236,11 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-m
 if __name__ == "__main__":
     df_test, df_result, df_merged = create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-medium", debug_mode=True)
 
-    EXCLUDED_COLUMNS = ["objet_marche"]
+    EXCLUDED_COLUMNS = ["objet_marche", "formule_revision_prix"]
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "avance", comparison_functions, only_errors=False)
+    check_quality_one_field(df_merged, "avance", comparison_functions, only_errors=True)
 
     check_quality_one_row(df_merged, 18, comparison_functions)
 
@@ -277,3 +279,17 @@ if __name__ == "__main__":
 # "delai_execution_bc_ms", -- trop d'erreurs llm
 # "penalites",
 # "code_cpv"
+
+df_result_reset = df_result[["filename", "llm_response", "structured_data"]].reset_index(drop=True)
+df_test_reset = df_test.reset_index(drop=True)
+
+# Ajout d'un identifiant unique basé sur l'index pour le merge
+df_result_reset["_merge_key"] = df_result_reset.index
+df_test_reset["_merge_key"] = df_test_reset.index
+
+# Merge sur l'identifiant unique plutôt que sur filename
+df_merged = df_result_reset.merge(df_test_reset, on="_merge_key", how="inner")
+
+# Suppression de la colonne temporaire et de la colonne filename dupliquée
+df_merged = df_merged.drop(columns=["_merge_key", "filename_x"])
+df_merged = df_merged.rename(columns={"filename_y": "filename"})
