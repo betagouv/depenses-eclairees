@@ -368,3 +368,106 @@ def test_fiche_navette(client):
     assert "N9130" in response.text
     assert "Groupe de marchandise" in response.text
     assert "40.01.02" in response.text
+
+
+@pytest.mark.django_db
+def test_sous_traitance(client):
+    """Vérifie l'affichage du document sous-traitance (accroche titulaire/sous-traitant, sections style acte_engagement)."""
+    ej, doc = create_ej_and_document()
+    doc.classification = "sous_traitance"
+    doc.structured_data = {
+        "objet_marche": "[[objet_marche]]",
+        "administration_beneficiaire": "[[administration_beneficiaire]]",
+        "societe_principale": "[[societe_principale]]",
+        "adresse_postale_titulaire": {
+            "numero_voie": "1",
+            "nom_voie": "rue Example",
+            "complement_adresse": "",
+            "code_postal": "75001",
+            "ville": "Paris",
+            "pays": "France",
+        },
+        "siret_titulaire": "12345678901234",
+        "societe_sous_traitant": "[[societe_sous_traitant]]",
+        "siret_sous_traitant": "98765432109876",
+        "montant_sous_traitance_ht": "10000.00",
+        "montant_sous_traitance_ttc": "12000.00",
+        "montant_tva": "0.20",
+        "description_prestations": "[[description_prestations]]",
+        "duree_sous_traitance": {
+            "duree_initiale": 12,
+            "duree_reconduction": 12,
+            "nb_reconductions": 2,
+            "delai_tranche_optionnelle": None,
+        },
+        "paiement_direct": "oui",
+        "conserve_avance": "conserve",
+        "rib_sous_traitant": {"banque": "BNP", "iban": "FR7612345678901234567890123"},
+        "date_signature": "15/01/2025",
+    }
+    doc.save()
+    user = UserFactory(is_superuser=True)
+    client.force_login(user)
+    response = client.get(f"/?num_ej={ej.num_ej}")
+    assert response.status_code == 200
+
+    # Accroche : déclaration entre titulaire et sous-traitant
+    assert "Déclaration de sous-traitance entre" in response.text
+    assert "titulaire" in response.text
+    assert "sous-traitant" in response.text
+    assert "[[societe_principale]]" in response.text
+    assert "[[societe_sous_traitant]]" in response.text
+
+    # Objet (intro, comme acte_engagement)
+    assert "Objet :" in response.text
+    assert "[[objet_marche]]" in response.text
+
+    # Section Titulaire – [nom]
+    assert "Titulaire –" in response.text
+    assert "Raison sociale" in response.text
+    assert "Administration bénéficiaire" in response.text
+    assert "[[administration_beneficiaire]]" in response.text
+    assert "[[societe_principale]]" in response.text
+    assert "Adresse postale" in response.text
+    assert "1 rue Example" in response.text
+    assert "75001 Paris" in response.text
+    assert "SIRET" in response.text
+    assert "123 456 789 012 34" in response.text
+
+    # Section Sous-traitant – [nom]
+    assert "Sous-traitant –" in response.text
+    assert "[[societe_sous_traitant]]" in response.text
+    assert "987 654 321 098 76" in response.text
+
+    # Section Montants et TVA
+    assert "Montants et TVA" in response.text
+    assert "Montant sous-traitance HT" in response.text
+    assert "Montant sous-traitance TTC" in response.text
+    assert "Taux TVA" in response.text
+    assert "20&nbsp;%" in response.text
+
+    # Section Durée (phrase + détail)
+    assert "Durée de la sous-traitance" in response.text
+    assert "Durée d'exécution" in response.text
+    assert "12 mois" in response.text
+    assert "reconductible" in response.text
+    assert "Nombre de reconductions" in response.text
+    assert "2" in response.text
+
+    # Section Description des prestations
+    assert "Description des prestations" in response.text
+    assert "[[description_prestations]]" in response.text
+
+    # Section Paiement
+    assert "Éligible au paiement direct" in response.text
+    assert "oui" in response.text
+    assert "Avance" in response.text
+    assert "conserve" in response.text
+    assert "RIB sous-traitant" in response.text
+    assert "BNP" in response.text
+    assert "FR76 1234 5678 9012 3456 7890 123" in response.text
+
+    # Section Dates et signature
+    assert "Dates et signature" in response.text
+    assert "Date de signature" in response.text
+    assert "15/01/2025" in response.text

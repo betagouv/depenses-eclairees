@@ -1,0 +1,222 @@
+{% load dsfr_tags static docia %}
+{% with id_prefix=doc.filename|add:"_" %}
+
+<div class="fr-mb-4w">
+  {# Accroche : déclaration de sous-traitance entre titulaire et sous-traitant #}
+  <p class="fr-text--lg fr-mb-1v">
+    Déclaration de sous-traitance entre <strong>{{ data.societe_principale|default:"[Non trouvé]" }}</strong> (titulaire)
+    et <strong>{{ data.societe_sous_traitant|default:"[Non trouvé]" }}</strong> (sous-traitant).
+  </p>
+
+  {# Objet #}
+  <p class="fr-mb-0">
+    <strong>Objet :</strong> {{ data.objet_marche|default:"[Non trouvé]" }}
+  </p>
+</div>
+
+{# Sous-sections déroulantes #}
+<div class="document-sections fr-mt-2v">
+  {# Titulaire : titre "Titulaire – Nom du titulaire", contenu déroulant #}
+  <section class="fr-accordion" data-fr-js-accordion="true">
+    <h3 class="fr-accordion__title">
+      <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_titulaire_detail" data-fr-js-collapse-button="true">
+        Titulaire – {{ data.societe_principale|default:"[Non trouvé]" }}
+      </button>
+    </h3>
+    <div class="fr-collapse" id="{{ doc.id }}_titulaire_detail" data-fr-js-collapse="true" style="--collapse: -48px;">
+      <ul class="fr-list">
+        {% with value=data.societe_principale copy_value=data.societe_principale %}
+          {% include "docia/details_ej/blocks/attribute.html" with title="Raison sociale" id=id_prefix|add:"societe_principale" %}
+        {% endwith %}
+        {% with value=data.administration_beneficiaire copy_value=data.administration_beneficiaire %}
+          {% include "docia/details_ej/blocks/attribute.html" with title="Administration bénéficiaire (donneur d’ordre)" id=id_prefix|add:"administration_beneficiaire" %}
+        {% endwith %}
+        {% with value=data.adresse_postale_titulaire|format_postal_address copy_value=data.adresse_postale_titulaire %}
+          {% include "docia/details_ej/blocks/attribute.html" with title="Adresse postale" id=id_prefix|add:"adresse_postale_titulaire" %}
+        {% endwith %}
+        {% with value=data.siret_titulaire|format_siren_siret copy_value=data.siret_titulaire %}
+          {% include "docia/details_ej/blocks/attribute.html" with title="SIRET" id=id_prefix|add:"siret_titulaire" value_class="siren-siret-format" %}
+        {% endwith %}
+      </ul>
+    </div>
+  </section>
+
+  {# Sous-traitant : titre "Sous-traitant – Nom du sous-traitant" #}
+  <section class="fr-accordion" data-fr-js-accordion="true">
+    <h3 class="fr-accordion__title">
+      <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_sous_traitant_detail" data-fr-js-collapse-button="true">
+        Sous-traitant – {{ data.societe_sous_traitant|default:"[Non trouvé]" }}
+      </button>
+    </h3>
+    <div class="fr-collapse" id="{{ doc.id }}_sous_traitant_detail" data-fr-js-collapse="true" style="--collapse: -48px;">
+      <ul class="fr-list">
+        {% with value=data.societe_sous_traitant copy_value=data.societe_sous_traitant %}
+          {% include "docia/details_ej/blocks/attribute.html" with title="Raison sociale" id=id_prefix|add:"societe_sous_traitant" %}
+        {% endwith %}
+        {% with value=data.adresse_postale_sous_traitant|format_postal_address copy_value=data.adresse_postale_sous_traitant %}
+          {% include "docia/details_ej/blocks/attribute.html" with title="Adresse postale" id=id_prefix|add:"adresse_postale_sous_traitant" %}
+        {% endwith %}
+        {% with value=data.siret_sous_traitant|format_siren_siret copy_value=data.siret_sous_traitant %}
+          {% include "docia/details_ej/blocks/attribute.html" with title="SIRET" id=id_prefix|add:"siret_sous_traitant" value_class="siren-siret-format" %}
+        {% endwith %}
+      </ul>
+    </div>
+  </section>
+
+  {# Montants et TVA #}
+  {% if data.montant_sous_traitance_ht or data.montant_sous_traitance_ttc or data.montant_tva %}
+    <section class="fr-accordion" data-fr-js-accordion="true">
+      <h3 class="fr-accordion__title">
+        <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_prix" data-fr-js-collapse-button="true">
+          Montants et TVA
+        </button>
+      </h3>
+      <div class="fr-collapse" id="{{ doc.id }}_prix" data-fr-js-collapse="true" style="--collapse: -48px;">
+        <ul class="fr-list">
+          {% with value=data.montant_sous_traitance_ht copy_value=data.montant_sous_traitance_ht %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Montant sous-traitance HT" id=id_prefix|add:"montant_sous_traitance_ht" suffix=" €" %}
+          {% endwith %}
+          {% with value=data.montant_sous_traitance_ttc copy_value=data.montant_sous_traitance_ttc %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Montant sous-traitance TTC" id=id_prefix|add:"montant_sous_traitance_ttc" suffix=" €" %}
+          {% endwith %}
+          {% with value=data.montant_tva|as_percentage copy_value=data.montant_tva %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Taux TVA" id=id_prefix|add:"montant_tva" %}
+          {% endwith %}
+        </ul>
+      </div>
+    </section>
+  {% else %}
+    <div class="document-section--disabled">
+      <span class="document-section--disabled__title">Montants et TVA – Non disponibles dans le document.</span>
+    </div>
+  {% endif %}
+
+  {# Durée : style acte_engagement (phrase + détail optionnel) #}
+  {% with duree=data.duree_sous_traitance %}
+    {% if duree and duree.duree_initiale %}
+      <section class="fr-accordion" data-fr-js-accordion="true">
+        <h3 class="fr-accordion__title">
+          <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_duree" data-fr-js-collapse-button="true">
+            Durée de la sous-traitance
+          </button>
+        </h3>
+        <div class="fr-collapse" id="{{ doc.id }}_duree" data-fr-js-collapse="true" style="--collapse: -48px;">
+          <p class="fr-mb-2v">
+            Durée d'exécution : <strong>{{ duree.duree_initiale }} mois</strong>
+            {% if duree.nb_reconductions %}
+              (reconductible)
+            {% else %}
+              (non reconductible)
+            {% endif %}
+          </p>
+          {% if duree.nb_reconductions or duree.duree_reconduction or duree.delai_tranche_optionnelle %}
+            <ul class="fr-list">
+              {% if duree.nb_reconductions %}
+                {% with value=duree.nb_reconductions %}
+                  {% include "docia/details_ej/blocks/attribute.html" with title="Nombre de reconductions" id=id_prefix|add:"nb_reconductions" %}
+                {% endwith %}
+              {% endif %}
+              {% if duree.duree_reconduction %}
+                {% with value=duree.duree_reconduction suffix=" mois" %}
+                  {% include "docia/details_ej/blocks/attribute.html" with title="Durée d'une reconduction" id=id_prefix|add:"duree_reconduction" %}
+                {% endwith %}
+              {% endif %}
+              {% if duree.delai_tranche_optionnelle %}
+                {% with value=duree.delai_tranche_optionnelle suffix=" mois" %}
+                  {% include "docia/details_ej/blocks/attribute.html" with title="Délai tranche(s) optionnelle(s)" id=id_prefix|add:"delai_tranche_optionnelle" %}
+                {% endwith %}
+              {% endif %}
+            </ul>
+          {% endif %}
+        </div>
+      </section>
+    {% else %}
+      <div class="document-section--disabled">
+        <span class="document-section--disabled__title">Durée de la sous-traitance – Non disponible dans le document.</span>
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {# Description des prestations #}
+  {% if data.description_prestations %}
+    <section class="fr-accordion" data-fr-js-accordion="true">
+      <h3 class="fr-accordion__title">
+        <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_prestations" data-fr-js-collapse-button="true">
+          Description des prestations
+        </button>
+      </h3>
+      <div class="fr-collapse" id="{{ doc.id }}_prestations" data-fr-js-collapse="true" style="--collapse: -48px;">
+        <ul class="fr-list">
+          {% with value=data.description_prestations copy_value=data.description_prestations %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Prestations" id=id_prefix|add:"description_prestations" %}
+          {% endwith %}
+        </ul>
+      </div>
+    </section>
+  {% endif %}
+
+  {# Paiement : paiement direct, avance, RIB sous-traitant #}
+  {% if data.paiement_direct or data.rib_sous_traitant or data.conserve_avance %}
+    <section class="fr-accordion" data-fr-js-accordion="true">
+      <h3 class="fr-accordion__title">
+        <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_paiement" data-fr-js-collapse-button="true">
+          Paiement
+        </button>
+      </h3>
+      <div class="fr-collapse" id="{{ doc.id }}_paiement" data-fr-js-collapse="true" style="--collapse: -48px;">
+        <ul class="fr-list">
+          {% with value=data.paiement_direct copy_value=data.paiement_direct %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Éligible au paiement direct" id=id_prefix|add:"paiement_direct" %}
+          {% endwith %}
+          {% with value=data.conserve_avance copy_value=data.conserve_avance %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Avance" id=id_prefix|add:"conserve_avance" %}
+          {% endwith %}
+          {% if data.rib_sous_traitant %}
+            {% with rib=data.rib_sous_traitant %}
+              <li class="fr-list__item">
+                <span class="fr-text--sm fr-text--mention">RIB sous-traitant&nbsp;</span>
+                <span class="fr-text--sm">
+                  {% if rib.iban %}
+                    {{ rib.banque|default:"" }}{% if rib.banque %} – {% endif %}{{ rib.iban|iban_spaces }}
+                  {% elif rib.code_banque %}
+                    {{ rib.banque|default:"" }}{% if rib.banque %} – {% endif %}Code banque {{ rib.code_banque }}, guichet {{ rib.code_guichet }}, compte {{ rib.numero_compte }}, clé {{ rib.cle_rib }}
+                  {% else %}
+                    <span class="fr-text--mention">[Non trouvé]</span>
+                  {% endif %}
+                  {% include "docia/blocks/button_copy.html" with id=id_prefix|add:"rib_sous_traitant" value=rib %}
+                </span>
+              </li>
+            {% endwith %}
+          {% endif %}
+        </ul>
+      </div>
+    </section>
+  {% else %}
+    <div class="document-section--disabled">
+      <span class="document-section--disabled__title">Paiement – Non disponible dans le document.</span>
+    </div>
+  {% endif %}
+
+  {# Dates et signature #}
+  {% if data.date_signature %}
+    <section class="fr-accordion" data-fr-js-accordion="true">
+      <h3 class="fr-accordion__title">
+        <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_dates" data-fr-js-collapse-button="true">
+          Dates et signature
+        </button>
+      </h3>
+      <div class="fr-collapse" id="{{ doc.id }}_dates" data-fr-js-collapse="true" style="--collapse: -48px;">
+        <ul class="fr-list">
+          {% with value=data.date_signature copy_value=data.date_signature %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Date de signature" id=id_prefix|add:"date_signature" %}
+          {% endwith %}
+        </ul>
+      </div>
+    </section>
+  {% else %}
+    <div class="document-section--disabled">
+      <span class="document-section--disabled__title">Dates et signature – Non trouvées dans le document.</span>
+    </div>
+  {% endif %}
+</div>
+{% endwith %}
