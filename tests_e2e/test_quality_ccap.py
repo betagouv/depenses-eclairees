@@ -262,7 +262,7 @@ if __name__ == "__main__":
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "formule_revision_prix", comparison_functions, only_errors=True)
+    check_quality_one_field(df_merged, "type_reconduction", comparison_functions, only_errors=False)
 
     check_quality_one_row(df_merged, 18, comparison_functions)
 
