@@ -19,9 +19,9 @@ from tests_e2e.utils import (  # noqa: E402
     check_quality_one_row,
     compare_duration,
     compare_with_llm,
-    normalize_string,
-    get_fields_with_comparison_errors,
     compare_exact_string,
+    get_fields_with_comparison_errors,
+    normalize_string,
 )
 
 logger = logging.getLogger("docia." + __name__)
@@ -61,7 +61,12 @@ def compare_contract_form(llm_val: dict, ref_val: dict):
     llm_attributaires = llm_val.get("attributaires")
     ref_attributaires = ref_val.get("attributaires")
 
-    return llm_structure == ref_structure and llm_tranches == ref_tranches and llm_forme_prix == ref_forme_prix and llm_attributaires == ref_attributaires
+    return (
+        llm_structure == ref_structure
+        and llm_tranches == ref_tranches
+        and llm_forme_prix == ref_forme_prix
+        and llm_attributaires == ref_attributaires
+    )
 
 
 def compare_lots_contract_form(llm_val: list[dict], ref_val: list[dict]):
@@ -154,7 +159,6 @@ def compare_advance_condition(llm_val: str, ref_val: str):
     return llm_val == ref_val
 
 
-
 def compare_lots_amount(llm_val: list[dict], ref_val: list[dict]):
     """Compare les montants HT des lots."""
     if not llm_val and not ref_val:
@@ -210,9 +214,9 @@ def get_comparison_functions():
         "regle_attribution_bc": compare_exact_string,
         "penalites": compare_exact_string,
         "code_cpv": compare_exact_string,
+        "avance": compare_advance_condition,
         "formule_revision_prix": compare_price_revision_formula,
         "index_reference": compare_exact_string,
-        "avance": compare_advance_condition,
         "type_reconduction": compare_exact_string,
         "debut_execution": compare_exact_string,
         "retenue_garantie": compare_exact_string,
@@ -226,15 +230,33 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-m
 
     df_test = get_data_from_grist(table="Ccap_gt_v2")
     df_test = df_test.sort_values(by="filename").reset_index(drop=True)
-    for col in ("lots", "forme_marche", "duree_marche", "montant_ht", "pbm_ocr", "avance", "penalites", "mode_consultation"):
+    for col in (
+        "lots",
+        "forme_marche",
+        "duree_marche",
+        "montant_ht",
+        "pbm_ocr",
+        "avance",
+        "penalites",
+        "mode_consultation",
+    ):
         df_test[col] = df_test[col].apply(lambda x: json.loads(x))
 
     # Lancement du test
-    return analyze_content_quality_test(df_test, "ccap", multi_line_coef=multi_line_coef, max_workers=max_workers, llm_model=llm_model, debug_mode=debug_mode)
+    return analyze_content_quality_test(
+        df_test,
+        "ccap",
+        multi_line_coef=multi_line_coef,
+        max_workers=max_workers,
+        llm_model=llm_model,
+        debug_mode=debug_mode,
+    )
 
 
 if __name__ == "__main__":
-    df_test, df_result, df_merged = create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-medium", debug_mode=True)
+    df_test, df_result, df_merged = create_batch_test(
+        multi_line_coef=1, max_workers=10, llm_model="openweight-medium", debug_mode=True
+    )
 
     EXCLUDED_COLUMNS = ["objet_marche", "formule_revision_prix"]
 
@@ -252,7 +274,6 @@ if __name__ == "__main__":
 
     for v in fields_with_errors.values():
         print(json.dumps(v))
-
 
 
 # "intro",

@@ -352,14 +352,22 @@ CCAP_ATTRIBUTES = {
                             "symbole_indice_reference": {"type": ["string", "null"]},
                             "regle_temporelle_indice_reference": {"type": ["string", "null"]},
                             "symbole_indice_nouveau": {"type": ["string", "null"]},
-                            "regle_temporelle_indice_nouveau": {"type": ["string", "null"]}
+                            "regle_temporelle_indice_nouveau": {"type": ["string", "null"]},
                         },
-                        "required": ["poids", "nom_indice", "source_indice", "symbole_indice_reference", "regle_temporelle_indice_reference", "symbole_indice_nouveau", "regle_temporelle_indice_nouveau"]
-                    }
-                }
+                        "required": [
+                            "poids",
+                            "nom_indice",
+                            "source_indice",
+                            "symbole_indice_reference",
+                            "regle_temporelle_indice_reference",
+                            "symbole_indice_nouveau",
+                            "regle_temporelle_indice_nouveau",
+                        ],
+                    },
+                },
             },
-            "required": ["formule_brute", "partie_fixe", "termes_variables"]
-        }
+            "required": ["formule_brute", "partie_fixe", "termes_variables"],
+        },
     },
     "index_reference": {
         "consigne": """INDEX_REFERENCE
@@ -369,7 +377,7 @@ CCAP_ATTRIBUTES = {
     Format : le nom de l'index de référence.
 """,
         "search": "",
-        "output_field": "index_reference"
+        "output_field": "index_reference",
     },
     "revision_prix": {
         "consigne": """REVISION_PRIX
@@ -410,11 +418,11 @@ CCAP_ATTRIBUTES = {
                         "Procédure formalisée - Appel d'offres restreint",
                         "Procédure formalisée - Avec négociation",
                         "Procédure formalisée - Dialogue compétitif",
-                        "Sans publicité ni mise en concurrence"
-                    ]
+                        "Sans publicité ni mise en concurrence",
+                    ],
                 }
-            }
-        }
+            },
+        },
     },
     "regle_attribution_bc": {
         "consigne": """REGLE_ATTRIBUTION_BC
@@ -490,37 +498,34 @@ CCAP_ATTRIBUTES = {
             "properties": {
                 "taux": {
                     "type": ["object", "null"],
-                    "properties": {
-                        "standard": {"type": ["string", "null"]},
-                        "pme": {"type": ["string", "null"]}
-                    }
+                    "properties": {"standard": {"type": ["string", "null"]}, "pme": {"type": ["string", "null"]}},
                 },
                 "declenchement": {
                     "type": ["object", "null"],
                     "properties": {
                         "seuil_montant_ht": {"type": ["number", "null"]},
-                        "seuil_duree_mois": {"type": ["number", "null"]}
-                    }
+                        "seuil_duree_mois": {"type": ["number", "null"]},
+                    },
                 },
                 "assiette": {
                     "type": ["object", "null"],
                     "properties": {
                         "unite_fiscale": {"type": ["string", "null"], "enum": ["HT", "TTC"]},
                         "base_calcul": {"type": ["string", "null"]},
-                        "regle_prorata_12_mois": {"type": ["boolean", "null"]}
+                        "regle_prorata_12_mois": {"type": ["boolean", "null"]},
                     },
-                    "required": ["base_calcul"]
+                    "required": ["base_calcul"],
                 },
                 "remboursement": {
                     "type": ["object", "null"],
                     "properties": {
                         "pourcentage_debut": {"type": ["string", "null"]},
-                        "pourcentage_fin": {"type": ["string", "null"]}
-                    }
-                }
+                        "pourcentage_fin": {"type": ["string", "null"]},
+                    },
+                },
             },
-            "required": ["taux", "declenchement", "assiette", "remboursement"]
-        }
+            "required": ["taux", "declenchement", "assiette", "remboursement"],
+        },
     },
     "retenue_garantie": {
         "consigne": """RETENUE_GARANTIE
