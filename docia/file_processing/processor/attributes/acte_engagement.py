@@ -207,7 +207,7 @@ Règles d’extraction :
      Indices : 
      - Rechercher dans le paragraphe des comptes à créditer, s'il y a plusieurs RIB indiqués pour plusieurs entreprises différentes.
      - Pour chaque entreprise (autre que le mandataire), renvoyer 'societe' (nom cohérent avec le champ cotraitants si possible) et 'rib' :
-     - 1er cas (prioritaire) : l'IBAN est fourni (27 caractères commençant par "FR76" pour un RIB français). Renvoyer dans 'rib' :
+     - 1er cas (prioritaire) : l'IBAN est fourni (27 caractères commençant par "FR76"). Renvoyer dans 'rib' :
         * 'banque' : Nom de la banque (sans la mention "Banque")
         * 'iban' : IBAN du compte à créditer (souvent 6 groupes de 4 caractères, puis 3 caractères)
      - 2ème cas (uniquement s'il n'y a pas d'IBAN) : l'IBAN n'est pas fourni, mais les autres informations bancaires sont fournies. Renvoyer dans 'rib' :
