@@ -81,6 +81,15 @@ def as_percentage(value):
 
 
 @register.filter
+def is_cpv_by_lot(value):
+    """True si code_cpv est une liste de dicts par lot (avec numero_lot), False sinon (liste de strings)."""
+    if not value or not isinstance(value, list) or len(value) == 0:
+        return False
+    first = value[0]
+    return isinstance(first, dict) and "numero_lot" in first
+
+
+@register.filter
 def list_of_dicts_as_table(list_of_dicts: list[dict], columns):
     rows = []
     headers = [label for key, label in columns]
