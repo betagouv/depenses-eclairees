@@ -50,6 +50,7 @@ package-mode = false
 dev = [
     "freezegun",
     "pytest",
+    "xlwt",
     "pytest-cov",
     "pytest-django",
     "pytest-factoryboy",

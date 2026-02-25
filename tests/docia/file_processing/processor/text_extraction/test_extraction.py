@@ -1,3 +1,5 @@
+"""Tests du module extraction.py (extract_text, process_file, dispatch par type)."""
+
 from unittest import mock
 
 import pytest
