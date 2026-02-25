@@ -6,7 +6,6 @@ from django.conf import settings
 
 import pydantic
 import requests
-from requests_toolbelt.adapters.host_header_ssl import HostHeaderSSLAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -49,12 +48,10 @@ class ApiDocumentMetadata:
 class SyncClient:
     def __init__(
         self,
-        auth_base_url: str,
         base_url: str,
+        auth_base_url: str,
         client_id: str,
         client_secret: str,
-        auth_hostname: str,
-        api_hostname: str,
     ):
         self.base_url = base_url
         if not self.base_url.endswith("/"):
@@ -62,14 +59,10 @@ class SyncClient:
         self.auth_base_url = auth_base_url
         if not self.auth_base_url.endswith("/"):
             self.auth_base_url += "/"
-        self.auth_hostname = auth_hostname
-        self.api_hostname = api_hostname
         self.client_id = client_id
         self.client_secret = client_secret
         self.token = ""
         self.session = requests.Session()
-        self.session.mount(self.auth_base_url, HostHeaderSSLAdapter())
-        self.session.mount(self.base_url, HostHeaderSSLAdapter())
 
     @classmethod
     def from_settings(cls):
@@ -78,8 +71,6 @@ class SyncClient:
             auth_base_url=settings.FILE_SYNC_AUTH_BASE_URL,
             client_id=settings.FILE_SYNC_CLIENT_ID,
             client_secret=settings.FILE_SYNC_CLIENT_SECRET,
-            api_hostname=settings.FILE_SYNC_API_HOSTNAME,
-            auth_hostname=settings.FILE_SYNC_AUTH_HOSTNAME,
         )
 
     def authenticate(self):
@@ -92,9 +83,6 @@ class SyncClient:
         response = self.session.post(
             self.auth_base_url + "oauth/token",
             data=data,
-            headers={
-                "Host": self.auth_hostname,
-            },
         )
         data = response.json()
         self.token = data["access_token"]
@@ -107,15 +95,13 @@ class SyncClient:
 
     def list_documents_for_ej(self, num_ej: str) -> list[ApiDocumentMetadata]:
         """Get list of documents associated with an engagement number"""
+        object_type = "BUS2201"
         endpoint = "export_pj_ej/pieces_jointes_metadata"
-        params = {"$filter": f"num_ej eq '{num_ej.strip()}'"}
+        params = {"$filter": f"num_ej eq '{num_ej}' and object_type eq '{object_type}'"}
 
         response = self.session.get(
             self.base_url + endpoint,
             params=params,
-            headers={
-                "Host": self.api_hostname,
-            },
         )
         response.raise_for_status()
 
@@ -137,9 +123,6 @@ class SyncClient:
         endpoint = f"export_pj_ej/pieces_jointes_data('{doc_id.strip()}')/$value"
         response = self.session.get(
             self.base_url + endpoint,
-            headers={
-                "Host": self.api_hostname,
-            },
         )
         response.raise_for_status()
         return response.content
