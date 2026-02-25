@@ -6,8 +6,6 @@ import re
 import time
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
-
 from tqdm import tqdm
 
 import pandas as pd
@@ -64,31 +62,6 @@ def compare_normalized_string(actual, expected):
         return False
 
     return normalize_string(actual.replace(" ", "")) == normalize_string(expected.replace(" ", ""))
-
-
-def parse_date(date_str):
-    """Parse une date au format DD/MM/YYYY ou autres formats courants."""
-    if not date_str:
-        return None
-    date_str = str(date_str).strip()
-    formats = ["%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%Y/%m/%d"]
-    for fmt in formats:
-        try:
-            return datetime.strptime(date_str, fmt).date()
-        except ValueError:
-            continue
-    return None
-
-
-def compare_date(llm_value, ref_value):
-    """Compare date : comparaison de dates."""
-    llm_date = parse_date(llm_value)
-    ref_date = parse_date(ref_value)
-    if llm_date is None and ref_date is None:
-        return True
-    if llm_date is None or ref_date is None:
-        return False
-    return llm_date == ref_date
 
 
 def compare_duration(actual, expected):
@@ -185,11 +158,11 @@ def compare_mandatee_bank_account(actual, expected):
     return False
 
 
-def default_prompt_compare_with_llm(actual, expected):
-    return {
-        "system": "Vous êtes un expert en analyse sémantique de documents juridiques. "
-        "Votre rôle est d'évaluer la proximité de sens entre deux descriptions d'objets.",
-        "user": f"""
+# Prompts pour compare_with_llm : chaînes à compléter avec {actual} et {expected}
+DEFAULT_PROMPT_COMPARE_WITH_LLM = {
+    "system": "Vous êtes un expert en analyse sémantique de documents juridiques. "
+    "Votre rôle est d'évaluer la proximité de sens entre deux descriptions d'objets.",
+    "user": """
             Compare les deux descriptions d'objet suivantes et détermine si elles décrivent 
             la même chose ou des choses sémantiquement équivalentes.
 
@@ -203,15 +176,13 @@ def default_prompt_compare_with_llm(actual, expected):
                 "explication": "brève explication de votre analyse"
             }}
         """,
-    }
+}
 
-
-def prompt_object(actual, expected):
-    return {
-        "system": "Vous êtes un expert en analyse sémantique de documents juridiques. "
-        """Votre rôle est d'évaluer si deux descriptions d'objets décrivent la même chose 
-        ou des choses sémantiquement équivalentes.""",
-        "user": f""" 
+PROMPT_OBJECT = {
+    "system": "Vous êtes un expert en analyse sémantique de documents juridiques. "
+    "Votre rôle est d'évaluer si deux descriptions d'objets décrivent la même chose "
+    "ou des choses sémantiquement équivalentes.",
+    "user": """
         Compare les deux descriptions d'objets suivantes et détermine si elles décrivent 
         la même chose ou des choses sémantiquement équivalentes.
 
@@ -230,16 +201,14 @@ def prompt_object(actual, expected):
             "explication": "brève explication de votre analyse"
         }}
     """,
-    }
+}
 
-
-def prompt_beneficiary_administration(actual, expected):
-    return {
-        "system": "Vous êtes un expert en analyse de documents administratifs publics. "
-        "Votre rôle est d'évaluer si deux chaînes désignent la même administration bénéficiaire (structure "
-        "administrative ou publique bénéficiaire d'une commande) "
-        "ou deux entités publiques équivalentes.",
-        "user": f"""
+PROMPT_BENEFICIARY_ADMINISTRATION = {
+    "system": "Vous êtes un expert en analyse de documents administratifs publics. "
+    "Votre rôle est d'évaluer si deux chaînes désignent la même administration bénéficiaire (structure "
+    "administrative ou publique bénéficiaire d'une commande) "
+    "ou deux entités publiques équivalentes.",
+    "user": """
             Compare les deux mentions suivantes concernant l'administration bénéficiaire d'un 
             contrat ou acte administratif, et détermine si elles désignent la même structure, 
             entité ou administration bénéficiaire, ou des administrations équivalentes (avec 
@@ -267,11 +236,25 @@ def prompt_beneficiary_administration(actual, expected):
                 "explication": "brève explication de votre analyse"
             }}
         """,
-    }
+}
 
+def compare_with_llm(
+    actual,
+    expected,
+    prompt=None,
+    llm_model="openweight-medium",
+):
+    """Compare deux valeurs en utilisant un LLM comme juge pour évaluer la proximité de sens.
 
-def compare_with_llm(actual, expected, llm_model="openweight-medium", field: str = None):
-    """Compare deux valeurs en utilisant un LLM comme juge pour évaluer la proximité de sens."""
+    Args:
+        actual: Valeur extraite par le LLM.
+        expected: Valeur de référence.
+        prompt: Dict avec clés "system" et "user" (chaîne template avec {actual} et {expected}).
+                Par défaut: DEFAULT_PROMPT_COMPARE_WITH_LLM.
+        llm_model: Modèle LLM à utiliser.
+    """
+    if prompt is None:
+        prompt = DEFAULT_PROMPT_COMPARE_WITH_LLM
     # Gestion des valeurs vides ou None
     if not actual and not expected:
         return True
@@ -279,20 +262,12 @@ def compare_with_llm(actual, expected, llm_model="openweight-medium", field: str
     if not actual or not expected:
         return False
 
-    if not field:
-        prompt = default_prompt_compare_with_llm(actual, expected)
-    elif field == "beneficiary_administration":
-        prompt = prompt_beneficiary_administration(actual, expected)
-    elif field == "object":
-        prompt = prompt_object(actual, expected)
-    else:
-        raise ValueError(f"Field {field} not supported")
+    user_content = prompt["user"].format(actual=actual, expected=expected)
 
     try:
         llm_env = LLMClient()
         system_prompt = prompt.get("system", "")
-        user_prompt = prompt.get("user", "")
-        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
+        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_content}]
         result = llm_env.ask_llm(
             messages=messages, model=llm_model, response_format={"type": "json_object"}, temperature=0
         )

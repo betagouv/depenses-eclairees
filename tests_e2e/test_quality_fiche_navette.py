@@ -11,6 +11,8 @@ django.setup()
 
 from app.grist.grist_api import get_data_from_grist  # noqa: E402
 from tests_e2e.utils import (  # noqa: E402
+    PROMPT_BENEFICIARY_ADMINISTRATION,
+    PROMPT_OBJECT,
     analyze_content_quality_test,
     check_global_statistics,
     check_quality_one_field,
@@ -33,8 +35,8 @@ def get_comparison_functions():
         dict: Dictionnaire associant les noms de colonnes à leurs fonctions de comparaison
     """
     return {
-        "objet": lambda a, e: compare_with_llm(a, e, field="object"),
-        "administration_beneficiaire": lambda a, e: compare_with_llm(a, e, field="beneficiary_administration"),
+        "objet": lambda a, e: compare_with_llm(a, e, prompt=PROMPT_OBJECT),
+        "administration_beneficiaire": lambda a, e: compare_with_llm(a, e, prompt=PROMPT_BENEFICIARY_ADMINISTRATION),
         "societe_principale": compare_normalized_string,
         "accord_cadre": compare_normalized_string,
         "id_accord_cadre": compare_normalized_string,
@@ -68,7 +70,7 @@ if __name__ == "__main__":
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "groupe_marchandise", comparison_functions)
+    check_quality_one_field(df_merged, "objet", comparison_functions)
 
     check_quality_one_row(df_merged, 0, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
 

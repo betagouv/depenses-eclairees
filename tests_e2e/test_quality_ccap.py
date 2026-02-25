@@ -12,6 +12,7 @@ django.setup()
 
 from app.grist.grist_api import get_data_from_grist  # noqa: E402
 from tests_e2e.utils import (  # noqa: E402
+    PROMPT_OBJECT,
     analyze_content_quality_test,
     check_global_statistics,
     check_quality_one_field,
@@ -208,7 +209,7 @@ def get_comparison_functions():
         dict: Dictionnaire associant les noms de colonnes à leurs fonctions de comparaison
     """
     return {
-        "objet_marche": lambda a, e: compare_with_llm(a, e, field="object"),
+        "objet_marche": lambda a, e: compare_with_llm(a, e, prompt=PROMPT_OBJECT),
         "forme_marche": compare_contract_form,
         "lots.*.titre": compare_lots_title,
         "lots.*.forme": compare_lots_contract_form,

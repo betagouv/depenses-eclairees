@@ -12,11 +12,12 @@ django.setup()
 
 from app.grist.grist_api import get_data_from_grist  # noqa: E402
 from tests_e2e.utils import (  # noqa: E402
+    PROMPT_BENEFICIARY_ADMINISTRATION,
+    PROMPT_OBJECT,
     analyze_content_quality_test,
     check_global_statistics,
     check_quality_one_field,
     check_quality_one_row,
-    compare_date,
     compare_duration,
     compare_exact_string,
     compare_mandatee_bank_account,
@@ -204,8 +205,8 @@ def get_comparison_functions():
         dict: Dictionnaire associant les noms de colonnes à leurs fonctions de comparaison
     """
     return {
-        "objet_marche": lambda a, e: compare_with_llm(a, e, field="object"),
-        "administration_beneficiaire": lambda a, e: compare_with_llm(a, e, field="beneficiary_administration"),
+        "objet_marche": lambda a, e: compare_with_llm(a, e, prompt=PROMPT_OBJECT),
+        "administration_beneficiaire": lambda a, e: compare_with_llm(a, e, prompt=PROMPT_BENEFICIARY_ADMINISTRATION),
         "societe_principale": compare_normalized_string,
         "siret_mandataire": compare_exact_string,
         "siren_mandataire": compare_exact_string,
@@ -215,9 +216,9 @@ def get_comparison_functions():
         "rib_autres": compare_other_bank_accounts,
         "montant_ttc": compare_exact_string,
         "montant_ht": compare_exact_string,
-        "date_signature_mandataire": compare_date,
-        "date_signature_administration": compare_date,
-        "date_notification": compare_date,
+        "date_signature_mandataire": compare_exact_string,
+        "date_signature_administration": compare_exact_string,
+        "date_notification": compare_exact_string,
         "duree": compare_duration,
         "conserve_avance": compare_exact_string,
         "montants_en_annexe": compare_montants_en_annexe,
