@@ -6,6 +6,7 @@ import re
 import time
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
 from tqdm import tqdm
 
 import pandas as pd
@@ -237,6 +238,7 @@ PROMPT_BENEFICIARY_ADMINISTRATION = {
             }}
         """,
 }
+
 
 def compare_with_llm(
     actual,
