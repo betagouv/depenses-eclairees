@@ -18,6 +18,9 @@ from django.urls import reverse_lazy
 
 import environ
 
+from docia.file_processing.sync.dns import init_custom_dns_resolver
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -399,9 +402,9 @@ ALBERT_RATE_PER_MINUTE_DEFAULT = config.int("ALBERT_RATE_PER_MINUTE", default=10
 GRIST_DOCS_URL = config.str("GRIST_DOCS_URL", default="")
 GRIST_API_KEY = config.str("GRIST_API_KEY", default="")
 
+FILE_SYNC_DNS = config.dict("FILE_SYNC_DNS", default={})
+init_custom_dns_resolver()
 FILE_SYNC_API_BASE_URL = config.str("FILE_SYNC_API_BASE_URL", default="")
-FILE_SYNC_API_HOSTNAME = config.str("FILE_SYNC_API_HOSTNAME", default="")
 FILE_SYNC_AUTH_BASE_URL = config.str("FILE_SYNC_AUTH_BASE_URL", default="")
-FILE_SYNC_AUTH_HOSTNAME = config.str("FILE_SYNC_AUTH_HOSTNAME", default="")
 FILE_SYNC_CLIENT_ID = config.str("FILE_SYNC_CLIENT_ID", default="")
 FILE_SYNC_CLIENT_SECRET = config.str("FILE_SYNC_CLIENT_SECRET", default="")
