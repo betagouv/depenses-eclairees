@@ -1,6 +1,7 @@
 import logging
 import unicodedata
 from dataclasses import dataclass
+from typing import Literal
 
 from django.conf import settings
 
@@ -52,6 +53,7 @@ class SyncClient:
         auth_base_url: str,
         client_id: str,
         client_secret: str,
+        env: Literal["prod","sandbox"],
     ):
         self.base_url = base_url
         if not self.base_url.endswith("/"):
@@ -63,6 +65,7 @@ class SyncClient:
         self.client_secret = client_secret
         self.token = ""
         self.session = requests.Session()
+        self.env = env
 
     @classmethod
     def from_settings(cls):
@@ -71,6 +74,7 @@ class SyncClient:
             auth_base_url=settings.FILE_SYNC_AUTH_BASE_URL,
             client_id=settings.FILE_SYNC_CLIENT_ID,
             client_secret=settings.FILE_SYNC_CLIENT_SECRET,
+            env=settings.FILE_SYNC_ENV,
         )
 
     def authenticate(self):
@@ -95,9 +99,12 @@ class SyncClient:
 
     def list_documents_for_ej(self, num_ej: str) -> list[ApiDocumentMetadata]:
         """Get list of documents associated with an engagement number"""
-        object_type = "BUS2201"
         endpoint = "export_pj_ej/pieces_jointes_metadata"
-        params = {"$filter": f"num_ej eq '{num_ej}' and object_type eq '{object_type}'"}
+        if self.env == "prod":
+            params = {"$filter": f"num_ej eq '{num_ej}'"}
+        else:
+            object_type = "BUS2201"
+            params = {"$filter": f"num_ej eq '{num_ej}' and object_type eq '{object_type}'"}
 
         response = self.session.get(
             self.base_url + endpoint,
