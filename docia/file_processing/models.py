@@ -111,14 +111,14 @@ class FileInfo(BaseModel):
     size = models.PositiveIntegerField()
     hash = models.CharField()
     created_date = models.DateField()
-    original_filename = models.CharField(max_length=1000)
+    original_filename = models.CharField(max_length=1000, blank=True, default="")
 
     def __str__(self):
         return f"{self.external_id} {self.filename}"
 
 
 class ExternalDocumentMetadata(BaseModel):
-    external_id = models.CharField()
+    external_id = models.CharField(unique=True)
     name = models.CharField()
     size = models.IntegerField()
 
