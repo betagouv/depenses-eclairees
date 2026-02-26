@@ -4,7 +4,7 @@ from unittest import mock
 
 import pytest
 
-from docia.file_processing.processor.extraction_text_from_attachments import (
+from docia.file_processing.processor.text_extraction import (
     UnsupportedFileType,
     extract_text,
     extract_text_from_txt,
@@ -18,28 +18,28 @@ def test_extract_text():
     file_content = b"content"
 
     with mock.patch(
-        "docia.file_processing.processor.text_extraction.extract_pdf.extract_text_from_pdf", autospec=True
+        "docia.file_processing.processor.text_extraction.text_extract_document.extract_text_from_pdf", autospec=True
     ) as m:
         m.return_value = ("hello", True)
         extract_text(file_content, "file.pdf", "pdf")
         m.assert_called_once_with(file_content, 50, ocr_tool="mistral-ocr")
 
     with mock.patch(
-        "docia.file_processing.processor.text_extraction.extract_pdf.extract_text_from_docx", autospec=True
+        "docia.file_processing.processor.text_extraction.text_extract_document.extract_text_from_docx", autospec=True
     ) as m:
         m.return_value = ("hello", True)
         extract_text(file_content, "file.docx", "docx")
         m.assert_called_once_with(file_content, "file.docx")
 
     with mock.patch(
-        "docia.file_processing.processor.text_extraction.extract_pdf.extract_text_from_txt", autospec=True
+        "docia.file_processing.processor.text_extraction.text_extract_document.extract_text_from_txt", autospec=True
     ) as m:
         m.return_value = ("hello", True)
         extract_text(file_content, "file.txt", "txt")
         m.assert_called_once_with(file_content, "file.txt")
 
     with mock.patch(
-        "docia.file_processing.processor.text_extraction.extract_pdf.extract_text_from_doc", autospec=True
+        "docia.file_processing.processor.text_extraction.text_extract_document.extract_text_from_doc", autospec=True
     ) as m:
         m.return_value = ("hello", True)
         extract_text(file_content, "file.doc", "doc")
@@ -50,7 +50,7 @@ def test_extract_text():
 def test_extract_text_from_image(extension):
     file_content = b"content"
     with mock.patch(
-        "docia.file_processing.processor.text_extraction.extract_pdf.extract_text_from_image", autospec=True
+        "docia.file_processing.processor.text_extraction.text_extract_document.extract_text_from_image", autospec=True
     ) as m:
         m.return_value = ("hello", True)
         extract_text(file_content, f"file.{extension}", extension)

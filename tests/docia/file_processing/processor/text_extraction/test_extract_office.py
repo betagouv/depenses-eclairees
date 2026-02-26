@@ -1,4 +1,4 @@
-from docia.file_processing.processor.extraction_text_from_attachments import (
+from docia.file_processing.processor.text_extraction import (
     extract_text_from_doc,
     extract_text_from_docx,
     extract_text_from_odt,

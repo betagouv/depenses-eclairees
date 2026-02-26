@@ -5,7 +5,7 @@ Utilise les assets générés par generate_excel_assets.py (plusieurs onglets, c
 
 import pytest
 
-from docia.file_processing.processor.extraction_text_from_attachments import (
+from docia.file_processing.processor.text_extraction import (
     extract_text_from_ods,
     extract_text_from_xls,
     extract_text_from_xlsx,

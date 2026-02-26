@@ -230,12 +230,7 @@ def extract_text_from_xlsx(file_content: bytes, file_path: str = "", sep: str = 
     Returns:
         (texte markdown, False) — pas d'OCR pour Excel
     """
-    try:
-        wb = load_workbook(io.BytesIO(file_content), read_only=False, data_only=True)
-    except Exception as e:
-        print(f"Erreur lecture XLSX {file_path}: {e}")
-        return "", False
-
+    wb = load_workbook(io.BytesIO(file_content), read_only=False, data_only=True)
     sheet_names = wb.sheetnames
     parts = [MERGE_LEGEND]
     for name in sheet_names:
@@ -255,13 +250,8 @@ def extract_text_from_ods(file_content: bytes, file_path: str = "", sep: str = "
     Returns:
         (texte markdown, False)
     """
-    try:
-        with zipfile.ZipFile(io.BytesIO(file_content), "r") as z:
-            content_xml = z.read("content.xml")
-    except Exception as e:
-        print(f"Erreur lecture ODS {file_path}: {e}")
-        return "", False
-
+    with zipfile.ZipFile(io.BytesIO(file_content), "r") as z:
+        content_xml = z.read("content.xml")
     sheets = _ods_parse_content(content_xml)
     parts = [MERGE_LEGEND]
     for name, rows in sheets:
@@ -281,11 +271,7 @@ def extract_text_from_xls(file_content: bytes, file_path: str = "", sep: str = "
     try:
         wb = xlrd.open_workbook(file_contents=file_content, formatting_info=True)
     except (xlrd.XLRDError, NotImplementedError):
-        try:
-            wb = xlrd.open_workbook(file_contents=file_content, formatting_info=False)
-        except Exception as e:
-            print(f"Erreur lecture XLS {file_path}: {e}")
-            return "", False
+        wb = xlrd.open_workbook(file_contents=file_content, formatting_info=False)
 
     sheet_names = wb.sheet_names()
     parts = [MERGE_LEGEND]

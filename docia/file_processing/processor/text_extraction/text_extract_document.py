@@ -1,5 +1,5 @@
 """
-Extraction de texte depuis les formats actuels : PDF, images, doc, docx, odt, txt.
+Extraction de texte depuis les documents : PDF, images, doc, docx, odt, txt.
 """
 
 import io
