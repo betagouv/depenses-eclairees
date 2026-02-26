@@ -7,8 +7,8 @@ Ce module réexporte les symboles utilisés par le pipeline et les tests.
 from docia.file_processing.processor.text_extraction import (
     SUPPORTED_FILES_TYPE,
     UnsupportedFileType,
-    display_pdf_stats,
     df_extract_text,
+    display_pdf_stats,
     extract_text,
     process_df_row,
     process_file,

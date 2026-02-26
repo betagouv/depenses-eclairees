@@ -6,8 +6,8 @@ Réparti en extraction.py (orchestration), extract_pdf.py (formats actuels), ext
 from docia.file_processing.processor.text_extraction.extraction import (
     SUPPORTED_FILES_TYPE,
     UnsupportedFileType,
-    display_pdf_stats,
     df_extract_text,
+    display_pdf_stats,
     extract_text,
     process_df_row,
     process_file,

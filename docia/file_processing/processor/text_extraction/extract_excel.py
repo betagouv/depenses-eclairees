@@ -1,15 +1,30 @@
 """
 Extraction de texte depuis les fichiers Excel : xlsx, xls, ods.
 Retourne un contenu markdown (tableaux avec |, légende des fusions, ## par feuille).
+Sans pandas : listes Python + openpyxl (xlsx), xlrd (xls). ODS : stdlib uniquement (zip + XML).
 """
 
 import io
+import xml.etree.ElementTree as ET
+import zipfile
 
-import pandas as pd
 import xlrd
 from openpyxl import load_workbook
 
-MERGE_LEGEND = "Légende : **#** = cellule appartenant à une plage fusionnée verticalement (la valeur figure dans la première cellule en haut de la plage)."
+MERGE_LEGEND = """Légende : **#** = cellule appartenant à une plage fusionnée verticalement 
+(la valeur figure dans la première cellule en haut de la plage)."""
+
+# Type pour une feuille : liste de lignes, chaque ligne = liste de valeurs de cellules
+SheetRows = list[list]
+
+
+def _is_empty(v) -> bool:
+    """Valeur considérée comme vide (sans pandas)."""
+    if v is None:
+        return True
+    if isinstance(v, float):
+        return v != v  # NaN
+    return str(v).strip() == ""
 
 
 def _merged_continuation_cells(ws) -> set[tuple[int, int]]:
@@ -27,15 +42,15 @@ def _merged_continuation_cells(ws) -> set[tuple[int, int]]:
     return continuation
 
 
-def _sheet_to_dataframe_with_merge_markers(ws) -> pd.DataFrame:
+def _sheet_to_rows_with_merge_markers(ws) -> SheetRows:
     """Lit une feuille openpyxl. Cellules fusionnées verticalement : valeur en haut, '#' ailleurs."""
     continuation = _merged_continuation_cells(ws)
     max_row = ws.max_row or 0
     max_col = ws.max_column or 0
     if max_row == 0 or max_col == 0:
-        return pd.DataFrame()
+        return []
 
-    rows = []
+    rows: SheetRows = []
     for r in range(1, max_row + 1):
         row_vals = []
         for c in range(1, max_col + 1):
@@ -45,70 +60,71 @@ def _sheet_to_dataframe_with_merge_markers(ws) -> pd.DataFrame:
                 cell = ws.cell(row=r, column=c)
                 row_vals.append(cell.value)
         rows.append(row_vals)
-    return pd.DataFrame(rows)
+    return rows
 
 
-def _drop_empty_rows(df: pd.DataFrame) -> pd.DataFrame:
+def _drop_empty_rows(rows: SheetRows) -> SheetRows:
     """Supprime les lignes dont toutes les cellules sont vides."""
-    if df.empty:
-        return df
-    mask = df.apply(
-        lambda row: any(not pd.isna(v) and str(v).strip() != "" for v in row),
-        axis=1,
-    )
-    return df.loc[mask].reset_index(drop=True)
+    if not rows:
+        return []
+    return [row for row in rows if any(not _is_empty(v) for v in row)]
 
 
-def _drop_trailing_empty_columns(df: pd.DataFrame) -> pd.DataFrame:
+def _drop_trailing_empty_columns(rows: SheetRows) -> SheetRows:
     """Supprime les colonnes entièrement vides à droite."""
-    if df.empty:
-        return df
-    for col_idx in range(len(df.columns) - 1, -1, -1):
-        col = df.iloc[:, col_idx]
-        if any(not pd.isna(v) and str(v).strip() != "" for v in col):
-            break
-    else:
-        return pd.DataFrame()
-    return df.iloc[:, : col_idx + 1]
+    if not rows:
+        return []
+    ncols = max(len(r) for r in rows) if rows else 0
+    if ncols == 0:
+        return []
+    for col_idx in range(ncols - 1, -1, -1):
+        if any((not _is_empty(row[col_idx]) if col_idx < len(row) else False) for row in rows):
+            return [r[: col_idx + 1] for r in rows]
+    return []
 
 
-def _dataframe_to_markdown_pipe(df: pd.DataFrame) -> str:
-    """Convertit un DataFrame en table markdown avec |."""
-    if df.empty:
+def _rows_to_markdown_pipe(rows: SheetRows) -> str:
+    """Convertit des lignes de cellules en table markdown avec |."""
+    if not rows:
         return ""
-    df = df.fillna("")
+    ncols = max(len(r) for r in rows)
     lines = []
-    for _, row in df.iterrows():
-        cells = [str(v).strip().replace("\r\n", " ").replace("\n", " ").replace("\r", " ") for v in row]
+    for row in rows:
+        # Pad à ncols pour tableaux rectangulaires
+        padded = (row + [""] * ncols)[:ncols]
+        cells = [
+            ("" if _is_empty(v) else str(v).strip()).replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
+            for v in padded
+        ]
         lines.append("| " + " | ".join(cells) + " |")
     return "\n".join(lines)
 
 
 def _xlsx_sheet_to_markdown(ws) -> str:
     """Contenu d'une feuille openpyxl en markdown."""
-    df = _sheet_to_dataframe_with_merge_markers(ws)
-    if df.empty:
+    rows = _sheet_to_rows_with_merge_markers(ws)
+    if not rows:
         return ""
-    df = _drop_empty_rows(df)
-    if df.empty:
+    rows = _drop_empty_rows(rows)
+    if not rows:
         return ""
-    df = _drop_trailing_empty_columns(df)
-    if df.empty:
+    rows = _drop_trailing_empty_columns(rows)
+    if not rows:
         return ""
-    return _dataframe_to_markdown_pipe(df)
+    return _rows_to_markdown_pipe(rows)
 
 
-def _ods_sheet_to_markdown(df: pd.DataFrame) -> str:
-    """Feuille ODS (DataFrame) en markdown."""
-    if df.empty:
+def _rows_to_markdown(rows: SheetRows) -> str:
+    """Feuille (liste de lignes) en markdown."""
+    if not rows:
         return ""
-    df = _drop_empty_rows(df)
-    if df.empty:
+    rows = _drop_empty_rows(rows)
+    if not rows:
         return ""
-    df = _drop_trailing_empty_columns(df)
-    if df.empty:
+    rows = _drop_trailing_empty_columns(rows)
+    if not rows:
         return ""
-    return _dataframe_to_markdown_pipe(df)
+    return _rows_to_markdown_pipe(rows)
 
 
 def _xls_merged_continuation_cells(sheet) -> set[tuple[int, int]]:
@@ -116,7 +132,7 @@ def _xls_merged_continuation_cells(sheet) -> set[tuple[int, int]]:
     continuation: set[tuple[int, int]] = set()
     if not hasattr(sheet, "merged_cells"):
         return continuation
-    for (rlo, rhi, clo, chi) in sheet.merged_cells:
+    for rlo, rhi, clo, chi in sheet.merged_cells:
         if rhi - rlo <= 1:
             continue
         for r in range(rlo + 1, rhi):
@@ -125,15 +141,15 @@ def _xls_merged_continuation_cells(sheet) -> set[tuple[int, int]]:
     return continuation
 
 
-def _xls_sheet_to_dataframe(sheet) -> pd.DataFrame:
-    """Feuille xlrd → DataFrame avec marqueurs de fusion."""
+def _xls_sheet_to_rows(sheet) -> SheetRows:
+    """Feuille xlrd → liste de lignes avec marqueurs de fusion."""
     continuation = _xls_merged_continuation_cells(sheet)
     nrows = sheet.nrows
     ncols = sheet.ncols
     if nrows == 0 or ncols == 0:
-        return pd.DataFrame()
+        return []
 
-    rows = []
+    rows: SheetRows = []
     for r in range(nrows):
         row_vals = []
         for c in range(ncols):
@@ -142,21 +158,64 @@ def _xls_sheet_to_dataframe(sheet) -> pd.DataFrame:
             else:
                 row_vals.append(sheet.cell_value(r, c))
         rows.append(row_vals)
-    return pd.DataFrame(rows)
+    return rows
 
 
 def _xls_sheet_to_markdown(sheet) -> str:
     """Feuille xlrd en markdown."""
-    df = _xls_sheet_to_dataframe(sheet)
-    if df.empty:
-        return ""
-    df = _drop_empty_rows(df)
-    if df.empty:
-        return ""
-    df = _drop_trailing_empty_columns(df)
-    if df.empty:
-        return ""
-    return _dataframe_to_markdown_pipe(df)
+    rows = _xls_sheet_to_rows(sheet)
+    return _rows_to_markdown(rows)
+
+
+# Namespaces ODF (OASIS) pour parser content.xml
+_ODF_NS = {
+    "office": "urn:oasis:names:tc:opendocument:xmlns:office:1.0",
+    "table": "urn:oasis:names:tc:opendocument:xmlns:table:1.0",
+    "text": "urn:oasis:names:tc:opendocument:xmlns:text:1.0",
+}
+_TABLE_TABLE = "{%s}table" % _ODF_NS["table"]
+_TABLE_ROW = "{%s}table-row" % _ODF_NS["table"]
+_TABLE_CELL = "{%s}table-cell" % _ODF_NS["table"]
+_TABLE_COVERED = "{%s}covered-table-cell" % _ODF_NS["table"]
+_OFFICE_VALUE = "{%s}value" % _ODF_NS["office"]
+_TEXT_P = "{%s}p" % _ODF_NS["text"]
+
+
+def _ods_cell_text_elt(cell_elt) -> str:
+    """Extrait le texte d'une cellule depuis un élément XML (table:table-cell)."""
+    val = cell_elt.get(_OFFICE_VALUE)
+    if val is not None and str(val).strip():
+        return str(val).strip()
+    for p in cell_elt.findall(f".//{_TEXT_P}"):
+        text = "".join(p.itertext()).strip()
+        if text:
+            return text
+    return ""
+
+
+def _ods_parse_sheet(table_elt) -> tuple[str, SheetRows]:
+    """Parse un élément table:table ; retourne (nom, lignes)."""
+    name = table_elt.get("{%s}name" % _ODF_NS["table"], "") or ""
+    rows: SheetRows = []
+    for row_elt in table_elt.findall(f".//{_TABLE_ROW}"):
+        line = []
+        for child in row_elt:
+            if child.tag == _TABLE_CELL:
+                line.append(_ods_cell_text_elt(child))
+            elif child.tag == _TABLE_COVERED:
+                line.append("#")
+        if line:
+            rows.append(line)
+    return name, rows
+
+
+def _ods_parse_content(content_xml: bytes) -> list[tuple[str, SheetRows]]:
+    """Parse content.xml d'un ODS ; retourne [(nom_feuille, rows), ...]."""
+    root = ET.fromstring(content_xml)
+    result = []
+    for table_elt in root.iter(_TABLE_TABLE):
+        result.append(_ods_parse_sheet(table_elt))
+    return result
 
 
 def extract_text_from_xlsx(file_content: bytes, file_path: str = "", sep: str = "\n\n") -> tuple[str, bool]:
@@ -177,44 +236,39 @@ def extract_text_from_xlsx(file_content: bytes, file_path: str = "", sep: str = 
         print(f"Erreur lecture XLSX {file_path}: {e}")
         return "", False
 
-    try:
-        sheet_names = wb.sheetnames
-        parts = [MERGE_LEGEND]
-        for name in sheet_names:
-            ws = wb[name]
-            md = _xlsx_sheet_to_markdown(ws)
-            if md:
-                parts.append(f"## {name}\n\n{md}")
-        wb.close()
-        return sep.join(parts), False
-    except Exception as e:
-        print(f"Erreur extraction XLSX {file_path}: {e}")
-        return "", False
+    sheet_names = wb.sheetnames
+    parts = [MERGE_LEGEND]
+    for name in sheet_names:
+        ws = wb[name]
+        md = _xlsx_sheet_to_markdown(ws)
+        if md:
+            parts.append(f"## {name}\n\n{md}")
+    wb.close()
+    return sep.join(parts), False
 
 
 def extract_text_from_ods(file_content: bytes, file_path: str = "", sep: str = "\n\n") -> tuple[str, bool]:
     """
     Extrait le texte (markdown) d'un fichier ODS à partir de son contenu binaire.
+    Utilise uniquement la stdlib : zipfile + xml.etree (pas de pandas ni odfpy).
 
     Returns:
         (texte markdown, False)
     """
     try:
-        all_sheets: dict = pd.read_excel(io.BytesIO(file_content), engine="odf", sheet_name=None)
+        with zipfile.ZipFile(io.BytesIO(file_content), "r") as z:
+            content_xml = z.read("content.xml")
     except Exception as e:
         print(f"Erreur lecture ODS {file_path}: {e}")
         return "", False
 
-    try:
-        parts = [MERGE_LEGEND]
-        for name, df in all_sheets.items():
-            md = _ods_sheet_to_markdown(df)
-            if md:
-                parts.append(f"## {name}\n\n{md}")
-        return sep.join(parts), False
-    except Exception as e:
-        print(f"Erreur extraction ODS {file_path}: {e}")
-        return "", False
+    sheets = _ods_parse_content(content_xml)
+    parts = [MERGE_LEGEND]
+    for name, rows in sheets:
+        md = _rows_to_markdown(rows)
+        if md:
+            parts.append(f"## {name}\n\n{md}")
+    return sep.join(parts), False
 
 
 def extract_text_from_xls(file_content: bytes, file_path: str = "", sep: str = "\n\n") -> tuple[str, bool]:
@@ -233,18 +287,11 @@ def extract_text_from_xls(file_content: bytes, file_path: str = "", sep: str = "
             print(f"Erreur lecture XLS {file_path}: {e}")
             return "", False
 
-    try:
-        sheet_names = wb.sheet_names()
-        parts = [MERGE_LEGEND]
-        for name in sheet_names:
-            try:
-                sheet = wb.sheet_by_name(name)
-            except xlrd.XLRDError:
-                continue
-            md = _xls_sheet_to_markdown(sheet)
-            if md:
-                parts.append(f"## {name}\n\n{md}")
-        return sep.join(parts), False
-    except Exception as e:
-        print(f"Erreur extraction XLS {file_path}: {e}")
-        return "", False
+    sheet_names = wb.sheet_names()
+    parts = [MERGE_LEGEND]
+    for name in sheet_names:
+        sheet = wb.sheet_by_name(name)
+        md = _xls_sheet_to_markdown(sheet)
+        if md:
+            parts.append(f"## {name}\n\n{md}")
+    return sep.join(parts), False

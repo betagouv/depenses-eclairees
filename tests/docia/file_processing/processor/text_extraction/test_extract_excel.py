@@ -59,7 +59,7 @@ def test_extract_text_from_xls():
 
 
 def test_extract_text_from_ods():
-    """ODS : 2 onglets, cellules fusionnées (pandas/odf peut représenter les fusions différemment)."""
+    """ODS : 2 onglets, cellules fusionnées (extraction stdlib ZIP+XML)."""
     path = ASSETS_DIR / "sample.ods"
     if not path.exists():
         pytest.skip("sample.ods manquant. Exécuter generate_excel_assets.py.")
@@ -71,7 +71,5 @@ def test_extract_text_from_ods():
     assert FEUILLE1 in text
     assert FEUILLE2 in text
     assert "|" in text
-    # Au moins une des données attendues (Titre fusionné peut être absente selon lecture odf des fusions)
-    assert any(
-        s in text for s in (TITRE_FUSIONNE, SECTION, TOTAL, "Ligne 1", "Col A", "V2", "V3", "Fin")
-    )
+    # Au moins une des données attendues
+    assert any(s in text for s in (TITRE_FUSIONNE, SECTION, TOTAL, "Ligne 1", "Col A", "V2", "V3", "Fin"))

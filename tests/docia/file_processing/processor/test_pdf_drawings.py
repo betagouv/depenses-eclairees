@@ -19,7 +19,6 @@ from docia.file_processing.processor.pdf_drawings import (
     is_square,
     points_to_cm,
 )
-
 from tests.docia.file_processing.processor.text_extraction.utils import ASSETS_DIR
 
 

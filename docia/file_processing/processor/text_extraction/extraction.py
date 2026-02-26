@@ -6,6 +6,7 @@ import logging
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from django.core.files.storage import default_storage
+
 from tqdm import tqdm
 
 import pandas as pd
@@ -166,7 +167,9 @@ def df_extract_text(
             executor.submit(process_df_row, row, word_threshold, ocr_tool)
             for row in dfResult.reset_index().to_dict("records")
         ]
-        for future in tqdm(as_completed(futures), total=len(futures), desc="Extraction du texte des fichiers (parallèle)"):
+        for future in tqdm(
+            as_completed(futures), total=len(futures), desc="Extraction du texte des fichiers (parallèle)"
+        ):
             idx, result = future.result()
             for key, value in result.items():
                 dfResult.at[idx, key] = value
