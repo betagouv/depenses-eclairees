@@ -121,15 +121,12 @@ def format_ratio_to_percent(value: float) -> str:
 def enrich_acte_engagement_display(data: dict) -> dict:
     """
     Enrichit les données d'un acte d'engagement avec des valeurs précalculées pour l'affichage.
-    Retourne une copie des données avec les champs dérivés (taux TVA en %, montant TVA calculé).
+    Modifie data en place (montant_tva_euros).
     """
     if not data:
         return data
-    out = dict(data)
     montant_tva = data.get("montant_tva")
     montant_ht = data.get("montant_ht")
-    if montant_tva is not None and montant_tva != "":
-        out["montant_tva_display"] = round(float(montant_tva) * 100)
     if montant_ht is not None and montant_tva is not None and montant_tva != "":
-        out["montant_tva_euros"] = float(montant_ht or 0) * float(montant_tva or 0)
-    return out
+        data["montant_tva_euros"] = float(montant_ht or 0) * float(montant_tva or 0)
+    return data

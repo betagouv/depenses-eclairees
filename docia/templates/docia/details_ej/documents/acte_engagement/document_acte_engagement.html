@@ -130,8 +130,8 @@
             {% with value=data.montant_ttc|floatformat:2 copy_value=data.montant_ttc %}
               {% include "docia/details_ej/blocks/attribute.html" with title="Montant TTC" id=id_prefix|add:"montant_ttc" suffix=" €" %}
             {% endwith %}
-            {% with value=data.montant_tva_display copy_value=data.montant_tva %}
-              {% include "docia/details_ej/blocks/attribute.html" with title="Taux TVA" id=id_prefix|add:"montant_tva" suffix=" %" %}
+            {% with value=data.montant_tva|as_percentage copy_value=data.montant_tva %}
+              {% include "docia/details_ej/blocks/attribute.html" with title="Taux TVA" id=id_prefix|add:"montant_tva" suffix="" %}
             {% endwith %}
             {% if data.montant_tva_euros is not None %}
               {% with value=data.montant_tva_euros|floatformat:2 copy_value=data.montant_tva_euros %}
