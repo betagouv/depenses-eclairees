@@ -53,7 +53,7 @@ class SyncClient:
         auth_base_url: str,
         client_id: str,
         client_secret: str,
-        env: Literal["prod","sandbox"],
+        env: Literal["prod", "sandbox"],
     ):
         self.base_url = base_url
         if not self.base_url.endswith("/"):
