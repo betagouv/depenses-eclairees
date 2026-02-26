@@ -8,8 +8,8 @@ from docia.file_processing.pipeline.steps.init_documents import (
     bulk_create_batches,
     bulk_create_documents,
     bulk_create_engagements,
-    bulk_create_links_document_engagement_using_filenames,
     bulk_create_links_document_engagement_using_external_data,
+    bulk_create_links_document_engagement_using_filenames,
     get_files_info,
     init_documents_from_external_filter_by_num_ejs,
     init_documents_in_folder,
@@ -76,7 +76,9 @@ def test_init_documents_in_folder_complex_case():
         file_info_1 = FileInfoFactory(external_id=None, filename=f"{num_ej1}_doc1.pdf", folder="folder")
         file_info_2 = FileInfoFactory(external_id=None, filename=f"{num_ej2}_doc2.pdf", folder="folder")
         # Duplicate handling (on FileInfo)
-        file_info_2_dup = FileInfoFactory(external_id=None, hash=file_info_2.hash, filename=f"{num_ej2}_doc2_2.pdf", folder="folder")
+        file_info_2_dup = FileInfoFactory(
+            external_id=None, hash=file_info_2.hash, filename=f"{num_ej2}_doc2_2.pdf", folder="folder"
+        )
         # Duplicate handling (on Document)
         file_info_3 = FileInfoFactory(external_id=None, filename=f"{num_ej2}_doc3.pdf", folder="folder")
         existing_doc = DocumentFactory(hash=file_info_3.hash, taille=42)
@@ -134,7 +136,9 @@ def test_init_documents_in_folder_handle_duplicate_file_info():
         num_ej2 = "2234567890"
         file_info_1 = FileInfoFactory(external_id=None, filename=f"{num_ej1}_doc1.pdf", folder="folder")
         # Duplicate FileInfo
-        file_info_2 = FileInfoFactory(external_id=None, hash=file_info_1.hash, filename=f"{num_ej2}_doc1.pdf", folder="folder")
+        file_info_2 = FileInfoFactory(
+            external_id=None, hash=file_info_1.hash, filename=f"{num_ej2}_doc1.pdf", folder="folder"
+        )
 
         # Set mock returns
         m_listdir.return_value = ([], [file_info_1.filename, file_info_2.filename])

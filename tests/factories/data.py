@@ -1,7 +1,6 @@
+import hashlib
 import random
 import string
-
-import hashlib
 
 import factory
 

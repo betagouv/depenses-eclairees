@@ -20,7 +20,6 @@ import environ
 
 from docia.file_processing.sync.dns import init_custom_dns_resolver
 
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
