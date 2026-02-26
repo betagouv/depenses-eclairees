@@ -428,9 +428,10 @@ CCAP_ATTRIBUTES = {
         "consigne": """REGLE_ATTRIBUTION_BC
     Définition : Méthode de choix du titulaire pour l'émission des bons de commande (concerne les accords-cadres multi-attributaires).
     Indices : 
+    - Dans la section exécution des bons de commande ou règles d'attribution.
     - Pour un marché multi-attributaire, chercher si les bons de commande sont attribués :
     * "En cascade" : le texte cite le terme de "cascade", avec un premier titulaire qui reçoit toutes les commandes sauf s'il fait défaut.
-    * "A tour de rôle" : le texte cite les termes de "tour de rôle", ou de "rotation".
+    * "A tour de rôle" : les bons de commandes sont répartis "par tour de rôle", ou par "rotation" des titulaires.
     * "Avec remise en concurrence" : le texte parle de remise en concurrence et de marchés subséquents.
     * "Avec minimums d'attribution" (suivis des montants minimums si disponibles) :
     le marché est multi-attributaire à bons de commande mais ne cite aucune des règles ci-dessus.
@@ -456,17 +457,9 @@ CCAP_ATTRIBUTES = {
        - Si le marché est ferme (non reconductible), renvoyer null.
     Format : "tacite", "expresse" ou null.
 """,
-        "search": "reconduction tacite expresse décision expresse durée reconductible",
-        "output_field": "mention_reconduction",
-        "schema": {"type": ["string", "null"], "enum": ["tacite", "expresse", None]},
-    },
-    "explication_reconduction": {
-        "consigne": """EXPLICATION_RECONDUCTION
-    Définition : Modalité de reconduction du marché.
-    Expliquer le choix de la réponse en fonction de la modalité de reconduction du marché par un court paragraphe.
-""",
         "search": "reconduction tacite expresse",
-        "output_field": "explication_reconduction",
+        "output_field": "type_reconduction",
+        "schema": {"type": ["string", "null"], "enum": ["tacite", "expresse", None]},
     },
     "debut_execution": {
         "consigne": """DEBUT_EXECUTION
@@ -482,8 +475,8 @@ CCAP_ATTRIBUTES = {
         "consigne": """AVANCE
     Définition : Paramètres de l'avance selon les clauses du marché et le Code de la Commande Publique (CCP).
     1. TAUX (Standard & PME) :
-       - Extraire les taux sous forme d'un pourcentage.
-       - Il y a un taux principal, et un taux spécifique aux PME.
+       - Extraire le taux écrit, sous forme d'un pourcentage (ex: 5%).
+       - Extraire le taux spécifique au PME, ou valeur par défaut.
        - Si le document ne donne pas plus de précision, les taux par défaut s'appliquent :
          * Taux Standard (si aucune précision, par défaut) : 5%.
          * Taux PME (si aucune précision, par défaut) : 30%.
@@ -492,7 +485,7 @@ CCAP_ATTRIBUTES = {
        - Si ces seuils ne sont pas mentionnés mais que le document parle d'avance, 
        considérer ces seuils comme acquis par défaut.
     3. ASSIETTE & CALCUL (Art. R2191-7) :
-       - Base de calcul : Montant initial TTC du marché, de la tranche, du lot ou du bon de commande, ...
+       - Base de calcul : Montant initial TTC du marché, de la tranche, du bon de commande, ...
        - Unité fiscale : Par défaut "TTC" (sauf mention contraire).
        - Règle de durée : coefficient de prorata temporis (12 * Montant TTC / Durée en mois). Renvoyer "True" sauf mention contraire.
     4. REMBOURSEMENT (Art. R2191-11) :

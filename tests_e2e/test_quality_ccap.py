@@ -211,7 +211,7 @@ if __name__ == "__main__":
         multi_line_coef=1, max_workers=10, llm_model="openweight-medium", debug_mode=True
     )
 
-    EXCLUDED_COLUMNS = ["objet_marche", "formule_revision_prix"]
+    EXCLUDED_COLUMNS = ["objet_marche"]
 
     comparison_functions = get_comparison_functions()
 
@@ -227,3 +227,29 @@ if __name__ == "__main__":
 
     for v in fields_with_errors.values():
         print(json.dumps(v))
+
+
+# "intro",
+# "id_marche",
+# "lots",
+# "forme_marche",
+# "forme_marche_lots",
+# "duree_marche",
+# "duree_lots",
+# "montant_ht",
+# "montant_ht_lots",
+# "ccag",
+# "condition_avance",
+# "formule_revision_prix", ------ schema de données ne va pas
+# "index_reference", ---- standardiser schema de données
+# "revision_prix",
+# "mode_consultation",  ---- standardiser schema de données
+# "regle_attribution_bc", -- modif prompt ajouter lots
+# "type_reconduction", -- bcp d'erreurs llm
+# "debut_execution", --- bcp d'erreurs llm
+# "retenue_garantie", -- OK
+# "mois_zero",
+# "clause_sauvegarde_revision", -- bcp d'erreurs llm
+# "delai_execution_bc_ms", -- trop d'erreurs llm
+# "penalites",
+# "code_cpv"
