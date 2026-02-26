@@ -11,52 +11,18 @@ django.setup()
 
 
 from app.grist.grist_api import get_data_from_grist  # noqa: E402
-from docia.file_processing.processor.analyze_content import LLMClient  # noqa: E402
 from tests_e2e.utils import (  # noqa: E402
+    PROMPT_OBJECT,
     analyze_content_quality_test,
     check_global_statistics,
     check_quality_one_field,
     check_quality_one_row,
+    compare_duration,
+    compare_with_llm,
     normalize_string,
 )
 
 logger = logging.getLogger("docia." + __name__)
-
-
-def compare_contract_object(llm_val, ref_val, llm_model="openweight-medium"):
-    """Compare l'objet du marché CCAP."""
-    if not llm_val and not ref_val:
-        return True
-    if not llm_val or not ref_val:
-        return False
-
-    try:
-        llm_env = LLMClient()
-        system_prompt = (
-            "Vous êtes un expert en analyse sémantique de documents juridiques. "
-            "Votre rôle est d'évaluer la proximité de sens entre deux descriptions d'objets."
-        )
-        user_prompt = f"""
-            Compare les deux descriptions d'objet de marché suivantes et détermine si 
-            elles décrivent la même chose.
-
-            Valeur extraite par le LLM: {llm_val}
-            Valeur de référence: {ref_val}
-
-            Réponds UNIQUEMENT avec un JSON valide:
-            {{
-                "sont_proches": true ou false,
-                "explication": "brève explication"
-            }}
-        """
-        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
-        result = llm_env.ask_llm(
-            messages=messages, model=llm_model, response_format={"type": "json_object"}, temperature=0
-        )
-        return bool(result.get("sont_proches", False))
-    except Exception as e:
-        logger.error(f"Error calling LLM for compare_contract_object: {e}")
-        return False
 
 
 def compare_lots_title(llm_val: list[dict[str, str]], ref_val: list[dict[str, str]]):
@@ -138,28 +104,6 @@ def compare_lots_duration(llm_val: list[dict], ref_val: list[dict]):
         else:
             return False
     return True
-
-
-def compare_contract_duration(llm_val: dict, ref_val: dict):
-    """Compare la durée du marché."""
-    if not llm_val and not ref_val:
-        return True
-
-    if not llm_val or not ref_val:
-        return False
-
-    try:
-        if llm_val.get("duree_initiale") != ref_val.get("duree_initiale"):
-            return False
-        if llm_val.get("duree_reconduction") != ref_val.get("duree_reconduction"):
-            return False
-        if llm_val.get("nb_reconductions") != ref_val.get("nb_reconductions"):
-            return False
-        if llm_val.get("delai_tranche_optionnelle") != ref_val.get("delai_tranche_optionnelle"):
-            return False
-        return True
-    except (ValueError, TypeError):
-        return False
 
 
 def compare_price_revision_formula(llm_val: str, ref_val: str):
@@ -265,13 +209,13 @@ def get_comparison_functions():
         dict: Dictionnaire associant les noms de colonnes à leurs fonctions de comparaison
     """
     return {
-        "objet_marche": compare_contract_object,
+        "objet_marche": lambda a, e: compare_with_llm(a, e, prompt=PROMPT_OBJECT),
         "forme_marche": compare_contract_form,
         "lots.*.titre": compare_lots_title,
         "lots.*.forme": compare_lots_contract_form,
         "lots.*.duree_lot": compare_lots_duration,
         "lots.*.montant_ht": compare_lots_amount,
-        "duree_marche": compare_contract_duration,
+        "duree_marche": compare_duration,
         "formule_revision_prix": compare_price_revision_formula,
         "index_reference": compare_reference_index,
         "condition_avance": compare_advance_condition,
