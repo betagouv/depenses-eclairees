@@ -18,8 +18,8 @@ from tests_e2e.utils import (  # noqa: E402
     check_quality_one_field,
     check_quality_one_row,
     compare_duration,
-    compare_with_llm,
     compare_exact_string,
+    compare_with_llm,
     get_fields_with_comparison_errors,
     normalize_string,
 )
@@ -115,50 +115,6 @@ def compare_lots_duration(llm_val: list[dict], ref_val: list[dict]):
     return True
 
 
-def compare_contract_duration(llm_val: dict, ref_val: dict):
-    """Compare la durée du marché."""
-    if not llm_val and not ref_val:
-        return True
-
-    if not llm_val or not ref_val:
-        return False
-
-    try:
-        if llm_val.get("duree_initiale") != ref_val.get("duree_initiale"):
-            return False
-        if llm_val.get("duree_reconduction") != ref_val.get("duree_reconduction"):
-            return False
-        if llm_val.get("nb_reconductions") != ref_val.get("nb_reconductions"):
-            return False
-        if llm_val.get("delai_tranche_optionnelle") != ref_val.get("delai_tranche_optionnelle"):
-            return False
-        return True
-    except (ValueError, TypeError):
-        return False
-
-
-def compare_price_revision_formula(llm_val: dict, ref_val: dict):
-    """Compare la formule de révision des prix."""
-    if not llm_val and not ref_val:
-        return True
-
-    if not llm_val or not ref_val:
-        return False
-
-    return llm_val == ref_val
-
-
-def compare_advance_condition(llm_val: str, ref_val: str):
-    """Compare les conditions d'avance CCAP."""
-    if not llm_val and not ref_val:
-        return True
-
-    if not llm_val or not ref_val:
-        return False
-
-    return llm_val == ref_val
-
-
 def compare_lots_amount(llm_val: list[dict], ref_val: list[dict]):
     """Compare les montants HT des lots."""
     if not llm_val and not ref_val:
@@ -204,9 +160,9 @@ def get_comparison_functions():
         "lots.*.duree_lot": compare_lots_duration,
         "lots.*.montant_ht": compare_lots_amount,
         "duree_marche": compare_duration,
-        "formule_revision_prix": compare_price_revision_formula,
+        "formule_revision_prix": compare_exact_string,
         "index_reference": compare_exact_string,
-        "avance": compare_advance_condition,
+        "avance": compare_exact_string,
         "revision_prix": compare_exact_string,
         "montant_ht": compare_exact_string,
         "ccag": compare_exact_string,
@@ -214,9 +170,6 @@ def get_comparison_functions():
         "regle_attribution_bc": compare_exact_string,
         "penalites": compare_exact_string,
         "code_cpv": compare_exact_string,
-        "avance": compare_advance_condition,
-        "formule_revision_prix": compare_price_revision_formula,
-        "index_reference": compare_exact_string,
         "type_reconduction": compare_exact_string,
         "debut_execution": compare_exact_string,
         "retenue_garantie": compare_exact_string,
@@ -262,7 +215,7 @@ if __name__ == "__main__":
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "type_reconduction", comparison_functions, only_errors=False)
+    check_quality_one_field(df_merged, "avance", comparison_functions, only_errors=False)
 
     check_quality_one_row(df_merged, 18, comparison_functions)
 
@@ -274,43 +227,3 @@ if __name__ == "__main__":
 
     for v in fields_with_errors.values():
         print(json.dumps(v))
-
-
-# "intro",
-# "id_marche",
-# "lots",
-# "forme_marche",
-# "forme_marche_lots",
-# "duree_marche",
-# "duree_lots",
-# "montant_ht",
-# "montant_ht_lots",
-# "ccag",
-# "condition_avance",
-# "formule_revision_prix", ------ schema de données ne va pas
-# "index_reference", ---- standardiser schema de données
-# "revision_prix",
-# "mode_consultation",  ---- standardiser schema de données
-# "regle_attribution_bc", -- modif prompt ajouter lots
-# "type_reconduction", -- bcp d'erreurs llm
-# "debut_execution", --- bcp d'erreurs llm
-# "retenue_garantie", -- OK
-# "mois_zero",
-# "clause_sauvegarde_revision", -- bcp d'erreurs llm
-# "delai_execution_bc_ms", -- trop d'erreurs llm
-# "penalites",
-# "code_cpv"
-
-df_result_reset = df_result[["filename", "llm_response", "structured_data"]].reset_index(drop=True)
-df_test_reset = df_test.reset_index(drop=True)
-
-# Ajout d'un identifiant unique basé sur l'index pour le merge
-df_result_reset["_merge_key"] = df_result_reset.index
-df_test_reset["_merge_key"] = df_test_reset.index
-
-# Merge sur l'identifiant unique plutôt que sur filename
-df_merged = df_result_reset.merge(df_test_reset, on="_merge_key", how="inner")
-
-# Suppression de la colonne temporaire et de la colonne filename dupliquée
-df_merged = df_merged.drop(columns=["_merge_key", "filename_x"])
-df_merged = df_merged.rename(columns={"filename_y": "filename"})
