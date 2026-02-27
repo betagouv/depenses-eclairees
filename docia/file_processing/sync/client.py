@@ -1,6 +1,7 @@
 import logging
 import unicodedata
 from dataclasses import dataclass
+from datetime import datetime as dt
 from typing import Literal
 
 from django.conf import settings
@@ -126,6 +127,44 @@ class SyncClient:
                 logger.warning(f"Validation error for document data={data!r} error={e}")
                 raise
         return result
+
+    def list_ej_place(
+        self,
+        date_inf: str,
+        date_sup: str,
+        oa: str,
+        ga: str,
+    ) -> dict:
+        """
+        Liste les EJ (actes d'engagement) dans le périmètre défini.
+        Un seul OA et un seul GA sont supportés (strings).
+        Args:
+            date_inf: Date de début au format DD/MM/AAAA
+            date_sup: Date de fin au format DD/MM/AAAA
+            oa: Organisation d'achat (ex. "XXXX")
+            ga: Groupe acheteurs (ex. "XXX")
+
+        Returns:
+            Réponse JSON de l'API (structure dépendante de l'API).
+        """
+        # Conversion DD/MM/AAAA -> datetime OData (date_inf à 00:00:00, date_sup à 23:59:59)
+        d_inf = dt.strptime(date_inf.strip(), "%d/%m/%Y")
+        d_sup = dt.strptime(date_sup.strip(), "%d/%m/%Y")
+        date_inf_odata = d_inf.strftime("%Y-%m-%dT00:00:00")
+        date_sup_odata = d_sup.strftime("%Y-%m-%dT23:59:59")
+
+        endpoint = "export_pj_ej/liste_ej_place"
+        filter_str = (
+            f"date_reception ge datetime'{date_inf_odata}' and "
+            f"date_reception le datetime'{date_sup_odata}' and "
+            f"pur_org eq '{oa}' and pur_group eq '{ga}'"
+        )
+        response = self.session.get(
+            self.base_url + endpoint,
+            params={"$filter": filter_str},
+        )
+        response.raise_for_status()
+        return response.json()
 
     def download_document(self, doc_id: str) -> bytes:
         """Download document content by ID"""
