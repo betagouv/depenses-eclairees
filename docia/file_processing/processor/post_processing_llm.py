@@ -436,7 +436,7 @@ def create_lots(
         lots_by_number[lot_number] = {
             "numero_lot": lot_number,
             "titre": None,
-            "forme": {"structure": None, "tranches": None, "forme_prix": None},
+            "forme": {"structure": None, "tranches": None, "forme_prix": None, "attributaires": None},
             "duree_lot": None,
             "montant_ht": {"montant_ht_maximum": None, "type_montant": None},
         }
@@ -455,6 +455,7 @@ def create_lots(
                 "structure": item.get("structure"),
                 "tranches": item.get("tranches"),
                 "forme_prix": item.get("forme_prix"),
+                "attributaires": item.get("attributaires"),
             }
 
     # Traiter la durée des lots

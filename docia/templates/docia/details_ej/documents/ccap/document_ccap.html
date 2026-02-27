@@ -7,34 +7,13 @@
     <strong>Objet du contrat :</strong>
     {{ data.objet_marche|default:"[Non trouvé]" }}
   </p>
-
-  {# Phrase sur la forme du marché (affichée seulement si au moins un élément) #}
-  {% with forme=data.forme_marche %}
-    {% if data.lots or forme.structure == "à marchés subséquents" or forme.tranches and forme.tranches > 1 or forme.forme_prix %}
-      <p class="fr-mb-1v">
-        Marché
-        {% if data.lots %}
-          comportant <strong>plusieurs lots</strong>{% if forme.structure == "à marchés subséquents" or forme.tranches and forme.tranches > 1 or forme.forme_prix %}, {% endif %}
-        {% endif %}
-        {% if forme.structure == "à marchés subséquents" %}
-          à <strong>marchés subséquents</strong>{% if forme.tranches and forme.tranches > 1 or forme.forme_prix %}, {% endif %}
-        {% endif %}
-        {% if forme.tranches and forme.tranches > 1 %}
-          décomposé en <strong>{{ forme.tranches }} tranches</strong>{% if forme.forme_prix %}, {% endif %}
-        {% endif %}
-        {% if forme.forme_prix %}
-          à <strong>prix {{ forme.forme_prix }}</strong>
-        {% endif %}
-      </p>
-    {% endif %}
-  {% endwith %}
 </div>
 
 {# Sous-sections #}
 <div class="document-sections fr-mt-2v">
 
-{# Informations générales : CCAG et Identifiant ; section grisée si les deux sont vides #}
-  {% if data.id_marche or data.ccag %}
+{# Informations générales : Identifiant, CCAG, Mode de consultation, Code(s) CPV, Variation des prix, forme du marché #}
+  {% if data.id_marche or data.ccag or data.mode_consultation or data.code_cpv or data.revision_prix or data.forme_marche %}
     <section class="fr-accordion" data-fr-js-accordion="true">
       <h3 class="fr-accordion__title">
         <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_ccap_infos" data-fr-js-collapse-button="true">
@@ -49,12 +28,222 @@
           {% with value=data.ccag copy_value=data.ccag %}
             {% include "docia/details_ej/blocks/attribute.html" with title="CCAG" id=id_prefix|add:"ccag" %}
           {% endwith %}
+          {% if data.mode_consultation and data.mode_consultation.type_procedure %}
+            {% with value=data.mode_consultation.type_procedure copy_value=data.mode_consultation.type_procedure %}
+              {% include "docia/details_ej/blocks/attribute.html" with title="Mode de consultation" id=id_prefix|add:"mode_consultation" %}
+            {% endwith %}
+          {% endif %}
+          {% if data.revision_prix %}
+            {% with value=data.revision_prix copy_value=data.revision_prix %}
+              {% include "docia/details_ej/blocks/attribute.html" with title="Prix" id=id_prefix|add:"revision_prix" %}
+            {% endwith %}
+          {% endif %}
+          {% if data.code_cpv %}
+            <li class="fr-list__item">
+              <span class="fr-text--sm fr-text--mention">Code{% if data.code_cpv|length > 1 %}s{% endif %} CPV&nbsp;</span>
+              <span class="fr-text--sm">
+                {% if data.code_cpv|is_cpv_by_lot %}
+                  {% for item in data.code_cpv %}
+                    Lot {{ item.numero_lot }}&nbsp;: {{ item.codes_cpv|join:", " }}{% if not forloop.last %} — {% endif %}
+                  {% endfor %}
+                {% else %}
+                  {{ data.code_cpv|join:", " }}
+                {% endif %}
+                {% include "docia/blocks/button_copy.html" with id=id_prefix|add:"code_cpv" value=data.code_cpv %}
+              </span>
+            </li>
+          {% endif %}
+          {# Phrase sur la forme du marché : si allotie, uniquement "plusieurs lots" ; sinon structure et tranches en positif/négatif, puis prix et titulaires #}
+          {% with forme=data.forme_marche %}
+            {% if data.lots %}
+              <li class="fr-list__item fr-list__item--full-width">
+                <span class="fr-text--sm fr-text--mention">Forme du marché&nbsp;</span>
+                <p class="fr-text--sm fr-mb-0">Marché comportant <strong>plusieurs lots</strong>.</p>
+              </li>
+            {% elif forme %}
+              <li class="fr-list__item fr-list__item--full-width">
+                <span class="fr-text--sm fr-text--mention">Forme du marché&nbsp;</span>
+                <p class="fr-text--sm fr-mb-0">
+                  Marché
+                  {% if forme.structure == "à marchés subséquents" %}
+                    à <strong>marchés subséquents</strong>
+                  {% else %}
+                    <strong>sans marchés subséquents</strong>
+                  {% endif %},
+                  {% if forme.tranches and forme.tranches > 1 %}
+                    décomposé en <strong>{{ forme.tranches }} tranches</strong>
+                  {% else %}
+                    <strong>sans tranches</strong>
+                  {% endif %}
+                  {% if forme.forme_prix %}
+                    , à <strong>prix {{ forme.forme_prix }}</strong>
+                  {% endif %}
+                  {% if forme.attributaires %}
+                    , avec <strong>{{ forme.attributaires }} titulaire{{ forme.attributaires|pluralize }}</strong>
+                    {% if forme.attributaires > 1 and data.regle_attribution_bc %}
+                      — {{ data.regle_attribution_bc }}
+                    {% endif %}
+                  {% endif %}.
+                </p>
+              </li>
+            {% endif %}
+          {% endwith %}
         </ul>
       </div>
     </section>
   {% else %}
     <div class="document-section--disabled">
       <span class="document-section--disabled__title">Informations générales – Non disponibles dans le document.</span>
+    </div>
+  {% endif %}
+
+{# Avance #}
+{% if data.avance %}
+  <section class="fr-accordion" data-fr-js-accordion="true">
+    <h3 class="fr-accordion__title">
+      <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_ccap_avance" data-fr-js-collapse-button="true">
+        Avance
+      </button>
+    </h3>
+    <div class="fr-collapse" id="{{ doc.id }}_ccap_avance" data-fr-js-collapse="true" style="--collapse: -48px;">
+      <ul class="fr-list">
+        {% with av=data.avance %}
+          {% if av.taux %}
+            {% if av.taux.standard %}
+              {% with value=av.taux.standard copy_value=av.taux.standard %}
+                {% include "docia/details_ej/blocks/attribute.html" with title="Taux avance (hors PME)" id=id_prefix|add:"avance_taux_standard" %}
+              {% endwith %}
+            {% endif %}
+            {% if av.taux.pme %}
+              {% with value=av.taux.pme copy_value=av.taux.pme %}
+                {% include "docia/details_ej/blocks/attribute.html" with title="Taux avance PME" id=id_prefix|add:"avance_taux_pme" %}
+              {% endwith %}
+            {% endif %}
+          {% endif %}
+          {% if av.assiette and av.assiette.base_calcul %}
+            {% with value=av.assiette.base_calcul copy_value=av.assiette.base_calcul %}
+              {% include "docia/details_ej/blocks/attribute.html" with title="Assiette de l'avance" id=id_prefix|add:"avance_base_calcul" %}
+            {% endwith %}
+          {% endif %}
+          <li class="fr-list__item">
+            <span class="fr-text--sm fr-text--mention">Avance rapportée sur 1 an (&gt; 1 an)&nbsp;</span>
+            <span class="fr-text--sm">
+              {% if av.assiette and av.assiette.regle_prorata_12_mois %}
+                Activée <span aria-hidden="true">✓</span>
+              {% else %}
+                Désactivée
+              {% endif %}
+            </span>
+          </li>
+          {% if av.remboursement and av.remboursement.pourcentage_debut and av.remboursement.pourcentage_fin %}
+            <li class="fr-list__item">
+              <span class="fr-text--sm fr-text--mention">Remboursement de l'avance&nbsp;</span>
+              <span class="fr-text--sm">Par précompte entre {{ av.remboursement.pourcentage_debut }} et {{ av.remboursement.pourcentage_fin }} de paiement du montant total</span>
+            </li>
+          {% endif %}
+          {% if av.declenchement and av.declenchement.seuil_montant_ht and av.declenchement.seuil_duree_mois %}
+            <li class="fr-list__item">
+              <span class="fr-text--sm fr-text--mention">Rappel seuil déclenchement&nbsp;</span>
+              <span class="fr-text--sm">Montant min HT {{ av.declenchement.seuil_montant_ht }} € / Durée min {{ av.declenchement.seuil_duree_mois }} mois</span>
+            </li>
+          {% endif %}
+        {% endwith %}
+      </ul>
+    </div>
+  </section>
+{% else %}
+  <div class="document-section--disabled">
+    <span class="document-section--disabled__title">Avance – Non disponible dans le document.</span>
+  </div>
+{% endif %}
+
+{# Révision des prix (active si prix révisables et formule non vide) #}
+{% if data.revision_prix == "révisables" and data.formule_revision_prix and data.formule_revision_prix.formule_brute %}
+  <section class="fr-accordion" data-fr-js-accordion="true">
+    <h3 class="fr-accordion__title">
+      <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_ccap_revision_prix" data-fr-js-collapse-button="true">
+        Révision des prix
+      </button>
+    </h3>
+    <div class="fr-collapse" id="{{ doc.id }}_ccap_revision_prix" data-fr-js-collapse="true" style="--collapse: -48px;">
+      <p class="fr-text--sm fr-mb-2v">{{ data.formule_revision_prix.formule_brute }}</p>
+      {% if data.formule_revision_prix.termes_variables %}
+        <p class="fr-text--sm fr-text--mention fr-mb-1v">Termes variables :</p>
+        <ul class="fr-list">
+          {% for t in data.formule_revision_prix.termes_variables %}
+            <li class="fr-list__item fr-text--sm">
+              {{ t.symbole_indice_reference|default:"" }} / {{ t.symbole_indice_nouveau|default:"" }} : {{ t.nom_indice|default:"" }} ({{ t.source_indice|default:"" }}) pris entre <strong>{{ t.regle_temporelle_indice_reference|default:"" }}</strong> (date de départ) et <strong>{{ t.regle_temporelle_indice_nouveau|default:"" }}</strong> (date d'arrivée).
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+  </section>
+{% endif %}
+
+{# Durée du marché #}
+  {% with duree=data.duree_marche %}
+    {% if duree and duree.duree_initiale %}
+      <section class="fr-accordion" data-fr-js-accordion="true">
+        <h3 class="fr-accordion__title">
+          <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_ccap_duree" data-fr-js-collapse-button="true">
+            Durée
+          </button>
+        </h3>
+        <div class="fr-collapse" id="{{ doc.id }}_ccap_duree" data-fr-js-collapse="true" style="--collapse: -48px;">
+          <p class="fr-mb-2v">
+            Durée d'exécution du marché : <strong>{{ duree.duree_initiale }} mois</strong>
+            {% if duree.nb_reconductions %}
+              (reconductible)
+            {% else %}
+              (non reconductible)
+            {% endif %}
+          </p>
+          {% if duree.nb_reconductions %}
+            <ul class="fr-list">
+              {% with value=duree.nb_reconductions %}
+                {% include "docia/details_ej/blocks/attribute.html" with title="Nombre de reconductions" id=id_prefix|add:"nb_reconductions" %}
+              {% endwith %}
+              {% if duree.duree_reconduction %}
+                {% with value=duree.duree_reconduction suffix=" mois" %}
+                  {% include "docia/details_ej/blocks/attribute.html" with title="Durée d'une reconduction" id=id_prefix|add:"duree_reconduction" %}
+                {% endwith %}
+              {% endif %}
+            </ul>
+          {% endif %}
+        </div>
+      </section>
+    {% else %}
+      <div class="document-section--disabled">
+        <span class="document-section--disabled__title">Durée – Information non disponible dans le document.</span>
+      </div>
+    {% endif %}
+  {% endwith %}
+  {# Pénalités : liste d’attributs "Pénalité pour [condition]" avec montant et unité #}
+  {% if data.penalites %}
+    <section class="fr-accordion" data-fr-js-accordion="true">
+      <h3 class="fr-accordion__title">
+        <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_ccap_penalites" data-fr-js-collapse-button="true">
+          Pénalités
+        </button>
+      </h3>
+      <div class="fr-collapse" id="{{ doc.id }}_ccap_penalites" data-fr-js-collapse="true" style="--collapse: -48px;">
+        <ul class="fr-list">
+          {% for p in data.penalites %}
+            {% with cond=p.condition|default:"" %}
+              {% with titre_penalite="Pénalité pour "|add:cond valeur_penalite=p.montant|default:"" suffix_penalite=" "|add:p.unite|default:"" %}
+                {% with value=valeur_penalite copy_value=p.montant suffix=suffix_penalite %}
+                  {% include "docia/details_ej/blocks/attribute.html" with title=titre_penalite id=id_prefix|add:"penalite_"|add:forloop.counter %}
+                {% endwith %}
+              {% endwith %}
+            {% endwith %}
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+  {% else %}
+    <div class="document-section--disabled">
+      <span class="document-section--disabled__title">Pénalités – Non disponibles dans le document.</span>
     </div>
   {% endif %}
 
@@ -91,45 +280,6 @@
     {% else %}
       <div class="document-section--disabled">
         <span class="document-section--disabled__title">Montants – Information non disponible dans le document.</span>
-      </div>
-    {% endif %}
-  {% endwith %}
-
-  {# Durée du marché #}
-  {% with duree=data.duree_marche %}
-    {% if duree and duree.duree_initiale %}
-      <section class="fr-accordion" data-fr-js-accordion="true">
-        <h3 class="fr-accordion__title">
-          <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_ccap_duree" data-fr-js-collapse-button="true">
-            Durée
-          </button>
-        </h3>
-        <div class="fr-collapse" id="{{ doc.id }}_ccap_duree" data-fr-js-collapse="true" style="--collapse: -48px;">
-          <p class="fr-mb-2v">
-            Durée d'exécution du marché : <strong>{{ duree.duree_initiale }} mois</strong>
-            {% if duree.nb_reconductions %}
-              (reconductible)
-            {% else %}
-              (non reconductible)
-            {% endif %}
-          </p>
-          {% if duree.nb_reconductions %}
-            <ul class="fr-list">
-              {% with value=duree.nb_reconductions %}
-                {% include "docia/details_ej/blocks/attribute.html" with title="Nombre de reconductions" id=id_prefix|add:"nb_reconductions" %}
-              {% endwith %}
-              {% if duree.duree_reconduction %}
-                {% with value=duree.duree_reconduction suffix=" mois" %}
-                  {% include "docia/details_ej/blocks/attribute.html" with title="Durée d'une reconduction" id=id_prefix|add:"duree_reconduction" %}
-                {% endwith %}
-              {% endif %}
-            </ul>
-          {% endif %}
-        </div>
-      </section>
-    {% else %}
-      <div class="document-section--disabled">
-        <span class="document-section--disabled__title">Durée – Information non disponible dans le document.</span>
       </div>
     {% endif %}
   {% endwith %}
@@ -190,14 +340,6 @@
   {% endfor %}
 {% endif %}
 
-  {# Avance : bientôt disponible #}
-  <div class="document-section--disabled">
-    <span class="document-section--disabled__title">Avance – Bientôt disponible sur Dépenses Eclairées</span>
-  </div>
-
-  {# Révision des prix : bientôt disponible #}
-  <div class="document-section--disabled">
-    <span class="document-section--disabled__title">Révision des prix – Bientôt disponible sur Dépenses Eclairées</span>
-  </div>
+  
 </div>
 {% endwith %}

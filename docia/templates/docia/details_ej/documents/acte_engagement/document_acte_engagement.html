@@ -111,8 +111,8 @@
   </div>
   {% endif %}
 
-{# Prix et avance : déroulant si au moins un des champs (HT, TTC, TVA, annexes financières) est disponible #}
-  {% if data.montant_ht or data.montant_ttc or data.montant_tva or data.montants_en_annexe %}
+{# Prix et avance : déroulant si au moins un des champs (HT, TTC, TVA, annexes financières, conserve_avance) est disponible #}
+  {% if data.montant_ht or data.montant_ttc or data.montant_tva or data.montants_en_annexe or data.conserve_avance %}
     <section class="fr-accordion" data-fr-js-accordion="true">
       <h3 class="fr-accordion__title">
         <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_prix" data-fr-js-collapse-button="true">
@@ -130,8 +130,8 @@
             {% with value=data.montant_ttc|floatformat:2 copy_value=data.montant_ttc %}
               {% include "docia/details_ej/blocks/attribute.html" with title="Montant TTC" id=id_prefix|add:"montant_ttc" suffix=" €" %}
             {% endwith %}
-            {% with value=data.montant_tva_display copy_value=data.montant_tva %}
-              {% include "docia/details_ej/blocks/attribute.html" with title="Taux TVA" id=id_prefix|add:"montant_tva" suffix=" %" %}
+            {% with value=data.montant_tva|as_percentage copy_value=data.montant_tva %}
+              {% include "docia/details_ej/blocks/attribute.html" with title="Taux TVA" id=id_prefix|add:"montant_tva" suffix="" %}
             {% endwith %}
             {% if data.montant_tva_euros is not None %}
               {% with value=data.montant_tva_euros|floatformat:2 copy_value=data.montant_tva_euros %}
@@ -169,7 +169,7 @@
     </section>
   {% else %}
     <div class="document-section--disabled">
-      <span class="document-section--disabled__title">Prix – Non disponibles dans le document.</span>
+      <span class="document-section--disabled__title">Prix et avance – Non disponibles dans le document.</span>
     </div>
   {% endif %}
 

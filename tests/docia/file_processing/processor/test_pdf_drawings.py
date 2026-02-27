@@ -1,3 +1,5 @@
+"""Tests du module processor.pdf_drawings (dessins PDF, checkboxes)."""
+
 import pymupdf
 
 from docia.file_processing.processor.pdf_drawings import (
@@ -17,8 +19,7 @@ from docia.file_processing.processor.pdf_drawings import (
     is_square,
     points_to_cm,
 )
-
-from .utils import ASSETS_DIR
+from tests.docia.file_processing.processor.text_extraction.utils import ASSETS_DIR
 
 
 def test_get_drawing_center():

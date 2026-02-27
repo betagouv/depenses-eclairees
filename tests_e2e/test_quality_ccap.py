@@ -11,52 +11,20 @@ django.setup()
 
 
 from app.grist.grist_api import get_data_from_grist  # noqa: E402
-from docia.file_processing.processor.analyze_content import LLMClient  # noqa: E402
 from tests_e2e.utils import (  # noqa: E402
+    PROMPT_OBJECT,
     analyze_content_quality_test,
     check_global_statistics,
     check_quality_one_field,
     check_quality_one_row,
+    compare_duration,
+    compare_exact_string,
+    compare_with_llm,
+    get_fields_with_comparison_errors,
     normalize_string,
 )
 
 logger = logging.getLogger("docia." + __name__)
-
-
-def compare_contract_object(llm_val, ref_val, llm_model="openweight-medium"):
-    """Compare l'objet du marché CCAP."""
-    if not llm_val and not ref_val:
-        return True
-    if not llm_val or not ref_val:
-        return False
-
-    try:
-        llm_env = LLMClient()
-        system_prompt = (
-            "Vous êtes un expert en analyse sémantique de documents juridiques. "
-            "Votre rôle est d'évaluer la proximité de sens entre deux descriptions d'objets."
-        )
-        user_prompt = f"""
-            Compare les deux descriptions d'objet de marché suivantes et détermine si 
-            elles décrivent la même chose.
-
-            Valeur extraite par le LLM: {llm_val}
-            Valeur de référence: {ref_val}
-
-            Réponds UNIQUEMENT avec un JSON valide:
-            {{
-                "sont_proches": true ou false,
-                "explication": "brève explication"
-            }}
-        """
-        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
-        result = llm_env.ask_llm(
-            messages=messages, model=llm_model, response_format={"type": "json_object"}, temperature=0
-        )
-        return bool(result.get("sont_proches", False))
-    except Exception as e:
-        logger.error(f"Error calling LLM for compare_contract_object: {e}")
-        return False
 
 
 def compare_lots_title(llm_val: list[dict[str, str]], ref_val: list[dict[str, str]]):
@@ -90,8 +58,15 @@ def compare_contract_form(llm_val: dict, ref_val: dict):
     ref_tranches = ref_val.get("tranches")
     llm_forme_prix = llm_val.get("forme_prix")
     ref_forme_prix = ref_val.get("forme_prix")
+    llm_attributaires = llm_val.get("attributaires")
+    ref_attributaires = ref_val.get("attributaires")
 
-    return llm_structure == ref_structure and llm_tranches == ref_tranches and llm_forme_prix == ref_forme_prix
+    return (
+        llm_structure == ref_structure
+        and llm_tranches == ref_tranches
+        and llm_forme_prix == ref_forme_prix
+        and llm_attributaires == ref_attributaires
+    )
 
 
 def compare_lots_contract_form(llm_val: list[dict], ref_val: list[dict]):
@@ -140,73 +115,6 @@ def compare_lots_duration(llm_val: list[dict], ref_val: list[dict]):
     return True
 
 
-def compare_contract_duration(llm_val: dict, ref_val: dict):
-    """Compare la durée du marché."""
-    if not llm_val and not ref_val:
-        return True
-
-    if not llm_val or not ref_val:
-        return False
-
-    try:
-        if llm_val.get("duree_initiale") != ref_val.get("duree_initiale"):
-            return False
-        if llm_val.get("duree_reconduction") != ref_val.get("duree_reconduction"):
-            return False
-        if llm_val.get("nb_reconductions") != ref_val.get("nb_reconductions"):
-            return False
-        if llm_val.get("delai_tranche_optionnelle") != ref_val.get("delai_tranche_optionnelle"):
-            return False
-        return True
-    except (ValueError, TypeError):
-        return False
-
-
-def compare_price_revision_formula(llm_val: str, ref_val: str):
-    """Compare la formule de révision des prix."""
-    if not llm_val and not ref_val:
-        return True
-
-    if not llm_val or not ref_val:
-        return False
-
-    return False
-
-
-def compare_reference_index(llm_val: str, ref_val: str):
-    """Compare l'index de référence."""
-
-    if not llm_val and not ref_val:
-        return True
-
-    if not llm_val or not ref_val:
-        return False
-
-    return False
-
-
-def compare_advance_condition(llm_val: str, ref_val: str):
-    """Compare les conditions d'avance CCAP."""
-    if not llm_val and not ref_val:
-        return True
-
-    if not llm_val or not ref_val:
-        return False
-
-    return False
-
-
-def compare_price_revision(llm_val: str, ref_val: str):
-    """Compare la révision des prix."""
-    if not llm_val and not ref_val:
-        return True
-
-    if not llm_val or not ref_val:
-        return False
-
-    return False
-
-
 def compare_lots_amount(llm_val: list[dict], ref_val: list[dict]):
     """Compare les montants HT des lots."""
     if not llm_val and not ref_val:
@@ -233,27 +141,6 @@ def compare_lots_amount(llm_val: list[dict], ref_val: list[dict]):
     return True
 
 
-def compare_amount(llm_val: str, ref_val: str):
-    """Compare les montants HT."""
-    if not llm_val and not ref_val:
-        return True
-    if not llm_val or not ref_val:
-        return False
-
-    return normalize_string(str(llm_val)) == normalize_string(str(ref_val))
-
-
-def compare_global_contract(llm_val, ref_val):
-    """Compare le CCAG."""
-    if not llm_val and not ref_val:
-        return True
-
-    if not llm_val or not ref_val:
-        return False
-
-    return normalize_string(str(llm_val)) == normalize_string(str(ref_val))
-
-
 # Mapping des colonnes vers leurs fonctions de comparaison
 def get_comparison_functions():
     """
@@ -265,43 +152,104 @@ def get_comparison_functions():
         dict: Dictionnaire associant les noms de colonnes à leurs fonctions de comparaison
     """
     return {
-        "objet_marche": compare_contract_object,
+        "id_marche": compare_exact_string,
+        "objet_marche": lambda a, e: compare_with_llm(a, e, prompt=PROMPT_OBJECT),
         "forme_marche": compare_contract_form,
         "lots.*.titre": compare_lots_title,
         "lots.*.forme": compare_lots_contract_form,
         "lots.*.duree_lot": compare_lots_duration,
         "lots.*.montant_ht": compare_lots_amount,
-        "duree_marche": compare_contract_duration,
-        "formule_revision_prix": compare_price_revision_formula,
-        "index_reference": compare_reference_index,
-        "condition_avance": compare_advance_condition,
-        "revision_prix": compare_price_revision,
-        "montant_ht": compare_amount,
-        "ccag": compare_global_contract,
+        "duree_marche": compare_duration,
+        "formule_revision_prix": compare_exact_string,
+        "index_reference": compare_exact_string,
+        "avance": compare_exact_string,
+        "revision_prix": compare_exact_string,
+        "montant_ht": compare_exact_string,
+        "ccag": compare_exact_string,
+        "mode_consultation": compare_exact_string,
+        "regle_attribution_bc": compare_exact_string,
+        "penalites": compare_exact_string,
+        "code_cpv": compare_exact_string,
+        "type_reconduction": compare_exact_string,
+        "debut_execution": compare_exact_string,
+        "retenue_garantie": compare_exact_string,
+        "mois_zero_revision": compare_exact_string,
+        "clause_sauvegarde_revision": compare_exact_string,
     }
 
 
-def create_batch_test(multi_line_coef=1):
+def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-medium", debug_mode=False):
     """Test de qualité des informations extraites par le LLM."""
 
     df_test = get_data_from_grist(table="Ccap_gt_v2")
-    df_test.fillna("", inplace=True)
-    for col in ("lots", "forme_marche", "duree_marche", "montant_ht", "pbm_ocr"):
+    df_test = df_test.sort_values(by="filename").reset_index(drop=True)
+    for col in (
+        "lots",
+        "forme_marche",
+        "duree_marche",
+        "montant_ht",
+        "pbm_ocr",
+        "avance",
+        "penalites",
+        "mode_consultation",
+    ):
         df_test[col] = df_test[col].apply(lambda x: json.loads(x))
 
     # Lancement du test
-    return analyze_content_quality_test(df_test.iloc[0:5], "ccap", multi_line_coef=multi_line_coef)
+    return analyze_content_quality_test(
+        df_test,
+        "ccap",
+        multi_line_coef=multi_line_coef,
+        max_workers=max_workers,
+        llm_model=llm_model,
+        debug_mode=debug_mode,
+    )
 
 
 if __name__ == "__main__":
-    df_test, df_result, df_merged = create_batch_test()
+    df_test, df_result, df_merged = create_batch_test(
+        multi_line_coef=1, max_workers=10, llm_model="openweight-medium", debug_mode=True
+    )
 
-    EXCLUDED_COLUMNS = ["objet_marche", "formule_revision_prix", "condition_avance", "revision_prix", "index_reference"]
+    EXCLUDED_COLUMNS = ["objet_marche"]
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "lots.*.montant_ht", comparison_functions)
+    check_quality_one_field(df_merged, "avance", comparison_functions, only_errors=False)
 
     check_quality_one_row(df_merged, 18, comparison_functions)
 
     check_global_statistics(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
+
+    fields_with_errors = get_fields_with_comparison_errors(
+        df_merged.sort_values(by="filename"), comparison_functions, excluded_columns=EXCLUDED_COLUMNS
+    )
+
+    for v in fields_with_errors.values():
+        print(json.dumps(v))
+
+
+# "intro",
+# "id_marche",
+# "lots",
+# "forme_marche",
+# "forme_marche_lots",
+# "duree_marche",
+# "duree_lots",
+# "montant_ht",
+# "montant_ht_lots",
+# "ccag",
+# "condition_avance",
+# "formule_revision_prix", ------ schema de données ne va pas
+# "index_reference", ---- standardiser schema de données
+# "revision_prix",
+# "mode_consultation",  ---- standardiser schema de données
+# "regle_attribution_bc", -- modif prompt ajouter lots
+# "type_reconduction", -- bcp d'erreurs llm
+# "debut_execution", --- bcp d'erreurs llm
+# "retenue_garantie", -- OK
+# "mois_zero",
+# "clause_sauvegarde_revision", -- bcp d'erreurs llm
+# "delai_execution_bc_ms", -- trop d'erreurs llm
+# "penalites",
+# "code_cpv"

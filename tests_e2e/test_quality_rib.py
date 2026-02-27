@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import re
 import sys
 
 import django
@@ -17,137 +16,11 @@ from tests_e2e.utils import (  # noqa: E402
     check_global_statistics,
     check_quality_one_field,
     check_quality_one_row,
-    normalize_string,
-    remove_accents,
+    compare_address,
+    compare_normalized_string,
 )
 
 logger = logging.getLogger("docia." + __name__)
-
-
-def compare_iban(llm_val: str, ref_val: str):
-    """Compare l'IBAN : comparaison des valeurs."""
-    # Gestion des valeurs vides ou None
-    if not llm_val and not ref_val:
-        return True
-
-    if not llm_val or not ref_val:
-        return False
-
-    llm_val = llm_val.replace(" ", "")
-    ref_val = llm_val.replace(" ", "")
-    return llm_val == ref_val
-
-
-def compare_bic(llm_val: str, ref_val: str):
-    """Compare le BIC : comparaison des valeurs."""
-    # Gestion des valeurs vides ou None
-    if not llm_val and not ref_val:
-        return True
-
-    if not llm_val or not ref_val:
-        return False
-
-    llm_val = llm_val.replace(" ", "")
-    ref_val = llm_val.replace(" ", "")
-    return llm_val == ref_val
-
-
-def compare_bank(llm_val: str, ref_val: str):
-    """Compare la banque : comparaison des valeurs."""
-
-    # Gestion des valeurs vides ou None
-    if not llm_val and not ref_val:
-        return True
-
-    if not llm_val or not ref_val:
-        return False
-
-    llm_norm = normalize_string(llm_val)
-    ref_norm = normalize_string(ref_val)
-
-    if llm_norm == ref_norm:
-        return True
-    else:
-        llm_norm_no_space = llm_norm.replace(" ", "")
-        ref_norm_no_space = ref_norm.replace(" ", "")
-        return llm_norm_no_space == ref_norm_no_space
-
-
-def compare_account_owner(llm_val: str, ref_val: str):
-    """Compare le titulaire du compte : comparaison des valeurs."""
-    # Gestion des valeurs vides ou None
-    if not llm_val and not ref_val:
-        return True
-
-    if not llm_val or not ref_val:
-        return False
-
-    llm_norm = normalize_string(llm_val)
-    ref_norm = normalize_string(ref_val)
-
-    if llm_norm == ref_norm:
-        return True
-    else:
-        llm_norm_no_space = llm_norm.replace(" ", "")
-        ref_norm_no_space = ref_norm.replace(" ", "")
-        return llm_norm_no_space == ref_norm_no_space
-
-
-def compare_address(llm_val: dict[str, str], ref_val: dict[str, str]):
-    """Compare l'adresse : comparaison des valeurs selon la structure JSON.
-
-    Structure attendue : {
-        'numero_voie': 'le numéro de voie',
-        'nom_voie': 'le nom de la voie',
-        'complement_adresse': 'le complément d'adresse éventuel',
-        'code_postal': 'le code postal',
-        'ville': 'la ville',
-        'pays': 'le pays'
-    }
-    """
-    # Gestion des valeurs vides ou None
-    if not llm_val and not ref_val:
-        return True
-
-    if not llm_val or not ref_val:
-        return False
-
-    # Liste des champs à comparer
-    fields = ["numero_voie", "nom_voie", "complement_adresse", "code_postal", "ville", "pays"]
-
-    # Comparer chaque champ
-    for field in fields:
-        llm_field_val = llm_val.get(field, "")
-        ref_field_val = ref_val.get(field, "")
-
-        # Normaliser les valeurs vides
-        def _normalize(s):
-            s = s.strip().upper()
-            s = remove_accents(s)
-            s = re.sub(r"[-']", " ", s)
-            s = re.sub(r"\s\s", " ", s)
-            return s
-
-        llm_field_val = _normalize(llm_field_val)
-        ref_field_val = _normalize(ref_field_val)
-
-        # Comparer les valeurs du champ
-        if llm_field_val != ref_field_val:
-            return False
-
-    return True
-
-
-def compare_domiciliation(llm_val: str, ref_val: str):
-    """Compare la domiciliation : comparaison des valeurs."""
-    # Gestion des valeurs vides ou None
-    if not llm_val and not ref_val:
-        return True
-
-    if not llm_val or not ref_val:
-        return False
-
-    return llm_val == ref_val
 
 
 # Mapping des colonnes vers leurs fonctions de comparaison
@@ -161,12 +34,12 @@ def get_comparison_functions():
         dict: Dictionnaire associant les noms de colonnes à leurs fonctions de comparaison
     """
     return {
-        "iban": compare_iban,
-        "bic": compare_bic,
-        "titulaire_compte": compare_account_owner,
+        "iban": compare_normalized_string,
+        "bic": compare_normalized_string,
+        "titulaire_compte": compare_normalized_string,
         "adresse_postale_titulaire": compare_address,
-        "domiciliation": compare_domiciliation,
-        "banque": compare_bank,
+        "domiciliation": compare_normalized_string,
+        "banque": compare_normalized_string,
     }
 
 

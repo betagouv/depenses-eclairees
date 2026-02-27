@@ -7,22 +7,27 @@
   <p class="fr-text--md fr-mb-3v"><strong>{{ lot.titre }}</strong></p>
 {% endif %}
 
-{# Phrase sur la forme du lot (marché simple ou à marchés subséquents, tranches, forme des prix) #}
+{# Phrase sur la forme du lot : structure et tranches en positif ou négatif, puis prix et titulaires si présents #}
 {% with forme=lot.forme %}
   {% if forme %}
     <p class="fr-mb-2v">
       Lot sous forme de marché
       {% if forme.structure == "à marchés subséquents" %}
-        à <strong>marchés subséquents</strong>{% if forme.tranches and forme.tranches > 1 or forme.forme_prix %}, {% endif %}
+        à <strong>marchés subséquents</strong>
       {% else %}
-        <strong>simple</strong>{% if forme.tranches and forme.tranches > 1 or forme.forme_prix %}, {% endif %}
-      {% endif %}
+        <strong>sans marchés subséquents</strong>
+      {% endif %},
       {% if forme.tranches and forme.tranches > 1 %}
-        décomposé en <strong>{{ forme.tranches }} tranches</strong>{% if forme.forme_prix %}, {% endif %}
+        décomposé en <strong>{{ forme.tranches }} tranches</strong>
+      {% else %}
+        <strong>sans tranches</strong>
       {% endif %}
       {% if forme.forme_prix %}
-        à <strong>prix {{ forme.forme_prix }}</strong>
+        , à <strong>prix {{ forme.forme_prix }}</strong>
       {% endif %}
+      {% if forme.attributaires %}
+        , avec <strong>{{ forme.attributaires }} titulaire{{ forme.attributaires|pluralize }}</strong>
+      {% endif %}.
     </p>
   {% endif %}
 {% endwith %}

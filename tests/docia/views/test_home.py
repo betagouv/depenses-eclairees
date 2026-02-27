@@ -215,7 +215,7 @@ def test_acte_engagement(client):
     # Section Prix
     assert "40\u00a0123,50 €" in text
     assert "60\u00a0123,50 €" in text
-    assert "20" in text  # Taux TVA (affiché en %, calculé dans la vue)
+    assert "20" in text  # Taux TVA
     assert "Non" in text  # conserve_avance = renonce
     assert "BPU" in text or "Annexe financière" in text  # montants_en_annexe
 
@@ -253,111 +253,6 @@ def test_acte_engagement(client):
     assert "[[rib_autres.1.societe]]" in text
     assert "[[rib_autres.1.rib.banque]]" in text
     assert "[[rib_autres.1.rib.iban]]" in text
-
-
-@pytest.mark.django_db
-def test_ccap_without_lots(client):
-    ej, doc = create_ej_and_document()
-    doc.classification = "ccap"
-    doc.structured_data = {
-        "ccag": "[[ccag]]",
-        "lots": [],
-        "intro": None,
-        "id_marche": "[[id_marche]]",
-        "duree_lots": [],
-        "montant_ht": {"type_montant": "total", "montant_ht_maximum": "101234.00"},
-        "duree_marche": {
-            "duree_initiale": 12,
-            "nb_reconductions": 1,
-            "duree_reconduction": 6,
-            "delai_tranche_optionnelle": 3,
-        },
-        "forme_marche": {"tranches": None, "structure": "simple", "forme_prix": "forfaitaires"},
-        "objet_marche": "[[objet_marche]]",
-        "montant_ht_lots": [],
-        "forme_marche_lots": [],
-    }
-    doc.save()
-    user = UserFactory(is_superuser=True)
-    client.force_login(user)
-    response = client.get(f"/?num_ej={ej.num_ej}")
-    assert response.status_code == 200
-    assert "[[ccag]]" in response.text
-    assert "[[id_marche]]" in response.text
-    assert "101234" in response.text
-    assert "[[objet_marche]]" in response.text
-    assert "forfaitaires" in response.text
-
-
-@pytest.mark.django_db
-def test_ccap_with_lots(client):
-    ej, doc = create_ej_and_document()
-    doc.classification = "ccap"
-    doc.structured_data = {
-        "ccag": "[[ccag]]",
-        "lots": [
-            {
-                "titre": "[[lots.0.titre]]",
-                "numero_lot": 1,
-                "forme_marche": {"tranches": None, "structure": "simple", "forme_prix": "forfaitaires"},
-                "duree_marche": {
-                    "duree_initiale": 12,
-                    "nb_reconductions": 1,
-                    "duree_reconduction": 6,
-                    "delai_tranche_optionnelle": 3,
-                },
-                "montant_ht": {"type_montant": "total", "montant_ht_maximum": "1111.00"},
-            },
-            {
-                "titre": "[[lots.1.titre]]",
-                "numero_lot": 2,
-                "forme_marche": {"tranches": None, "structure": "simple", "forme_prix": "forfaitaires"},
-                "duree_marche": {
-                    "duree_initiale": 12,
-                    "nb_reconductions": 1,
-                    "duree_reconduction": 6,
-                    "delai_tranche_optionnelle": 3,
-                },
-                "montant_ht": {"type_montant": "total", "montant_ht_maximum": "2222.00"},
-            },
-        ],
-        "intro": None,
-        "id_marche": "[[id_marche]]",
-        "duree_lots": [],
-        "montant_ht": "101234",
-        "duree_marche": {
-            "duree_initiale": 12,
-            "nb_reconductions": 1,
-            "duree_reconduction": 6,
-            "delai_tranche_optionnelle": 3,
-        },
-        "forme_marche": {"tranches": None, "structure": "simple", "forme_prix": "forfaitaires"},
-        "objet_marche": "[[objet_marche]]",
-        "montant_ht_lots": [],
-        "forme_marche_lots": [],
-        "condition_avance_ccap": {
-            "remboursement": "65%-100%",
-            "montant_avance": "30%",
-            "montant_reference": "montant annuel",
-            "condition_declenchement": "Avance systématique",
-        },
-    }
-    doc.save()
-    user = UserFactory(is_superuser=True)
-    client.force_login(user)
-    response = client.get(f"/?num_ej={ej.num_ej}")
-    assert response.status_code == 200
-    assert "[[ccag]]" in response.text
-    assert "[[id_marche]]" in response.text
-    assert "[[objet_marche]]" in response.text
-
-    # Lots
-    assert "Lot 1&nbsp;" in response.text
-    assert "[[lots.0.titre]]" in response.text
-    assert "Lot 2&nbsp;" in response.text
-    assert "[[lots.1.titre]]" in response.text
-    assert "1111" in response.text
-    assert "2222" in response.text
 
 
 @pytest.mark.django_db

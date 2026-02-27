@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 import pandas as pd
 
-from docia.file_processing.processor.analyze_content import analyze_file_text
+from docia.file_processing.processor.analyze_content import LLMClient, analyze_file_text
 from docia.file_processing.processor.attributes_query import ATTRIBUTES
 
 logger = logging.getLogger(__name__)
@@ -135,8 +135,128 @@ def compare_address(actual, expected):
 
 
 def compare_mandatee_bank_account(actual, expected):
-    """Compare rib_mandataire : format JSON, comparaison des 5 champs."""
+    """Compare rib_mandataire : format JSON, comparaison des champs IBAN et banque.
 
+    - Si les deux IBAN sont non vides, on valide si compare_normalized_string(iban, iban) renvoie True.
+    - Si les deux IBAN sont vides ou None, on valide si les banques sont équivalentes.
+    - Si un seul IBAN est non vide, on renvoie False.
+    """
+    if not actual and not expected:
+        return True
+
+    if not actual or not expected:
+        return False
+
+    llm_iban = actual.get("iban")
+    ref_iban = expected.get("iban")
+    llm_banque = normalize_string(actual.get("banque", ""))
+    ref_banque = normalize_string(expected.get("banque", ""))
+
+    if llm_iban and ref_iban:
+        return compare_normalized_string(llm_iban, ref_iban)
+    if not llm_iban and not ref_iban:
+        return llm_banque == ref_banque
+    return False
+
+
+# Prompts pour compare_with_llm : chaînes à compléter avec {actual} et {expected}
+DEFAULT_PROMPT_COMPARE_WITH_LLM = {
+    "system": "Vous êtes un expert en analyse sémantique de documents juridiques. "
+    "Votre rôle est d'évaluer la proximité de sens entre deux descriptions d'objets.",
+    "user": """
+            Compare les deux descriptions d'objet suivantes et détermine si elles décrivent 
+            la même chose ou des choses sémantiquement équivalentes.
+
+            Valeur extraite par le LLM: {actual}
+            Valeur de référence: {expected}
+
+            Tu dois IMPÉRATIVEMENT répondre UNIQUEMENT avec un JSON valide, sans aucun autre texte, avec cette 
+            structure exacte :
+            {{
+                "sont_equivalentes": true ou false,
+                "explication": "brève explication de votre analyse"
+            }}
+        """,
+}
+
+PROMPT_OBJECT = {
+    "system": "Vous êtes un expert en analyse sémantique de documents juridiques. "
+    "Votre rôle est d'évaluer si deux descriptions d'objets décrivent la même chose "
+    "ou des choses sémantiquement équivalentes.",
+    "user": """
+        Compare les deux descriptions d'objets suivantes et détermine si elles décrivent 
+        la même chose ou des choses sémantiquement équivalentes.
+
+        Valeur extraite par le LLM: {actual}
+        Valeur de référence: {expected}
+
+        Analyse si ces deux descriptions ont le même sens ou un sens proche. Prends en compte :
+        - Les synonymes et formulations équivalentes
+        - Les variations de style ou de formulation
+        - L'essence et le contenu principal, pas seulement la forme exacte
+
+        Tu dois IMPÉRATIVEMENT répondre UNIQUEMENT avec un JSON valide, sans aucun autre texte, avec cette 
+        structure exacte:
+        {{
+            "sont_equivalentes": true ou false,
+            "explication": "brève explication de votre analyse"
+        }}
+    """,
+}
+
+PROMPT_BENEFICIARY_ADMINISTRATION = {
+    "system": "Vous êtes un expert en analyse de documents administratifs publics. "
+    "Votre rôle est d'évaluer si deux chaînes désignent la même administration bénéficiaire (structure "
+    "administrative ou publique bénéficiaire d'une commande) "
+    "ou deux entités publiques équivalentes.",
+    "user": """
+            Compare les deux mentions suivantes concernant l'administration bénéficiaire d'un 
+            contrat ou acte administratif, et détermine si elles désignent la même structure, 
+            entité ou administration bénéficiaire, ou des administrations équivalentes (avec 
+            ou sans variation d'intitulé ou de formulation). Par exemple, si la valeur extraite 
+            par le LLM est plus précise que la valeur de référence, alors on considère que les 
+            deux administrations sont équivalentes.
+
+            Valeur extraite par le LLM: {actual}
+            Valeur de référence: {expected}
+
+            Analyse si ces deux valeurs réfèrent à la même administration ou à une entité équivalente. 
+            Prends en compte :
+            - Les synonymes, reformulations, différences d'intitulé ou d'abréviation (par exemple, 
+              'Préfecture de la région Île-de-France' vs 'Préfecture régionale Île-de-France')
+            - Le contexte administratif ou territorial, les rôles correspondant aux structures (par exemple, 
+              un intitulé de direction qui désigne l'administration bénéficiaire)
+            - Le fait que certaines valeurs peuvent préciser un service ou une direction interne d'une administration 
+              (cela compte pour la même administration si l'essentiel concorde)
+            - Le format doit être le nom complet, sans acronymes sauf s'ils sont officiels et connus
+
+            Tu dois IMPÉRATIVEMENT répondre UNIQUEMENT avec un JSON valide, sans aucun autre texte, avec cette 
+            structure exacte :
+            {{
+                "sont_equivalentes": true ou false,
+                "explication": "brève explication de votre analyse"
+            }}
+        """,
+}
+
+
+def compare_with_llm(
+    actual,
+    expected,
+    prompt=None,
+    llm_model="openweight-medium",
+):
+    """Compare deux valeurs en utilisant un LLM comme juge pour évaluer la proximité de sens.
+
+    Args:
+        actual: Valeur extraite par le LLM.
+        expected: Valeur de référence.
+        prompt: Dict avec clés "system" et "user" (chaîne template avec {actual} et {expected}).
+                Par défaut: DEFAULT_PROMPT_COMPARE_WITH_LLM.
+        llm_model: Modèle LLM à utiliser.
+    """
+    if prompt is None:
+        prompt = DEFAULT_PROMPT_COMPARE_WITH_LLM
     # Gestion des valeurs vides ou None
     if not actual and not expected:
         return True
@@ -144,9 +264,19 @@ def compare_mandatee_bank_account(actual, expected):
     if not actual or not expected:
         return False
 
-    llm_banque = normalize_string(actual.get("banque", ""))
-    ref_banque = normalize_string(expected.get("banque", ""))
-    return compare_normalized_string(actual.get("iban"), expected.get("iban")) and llm_banque == ref_banque
+    user_content = prompt["user"].format(actual=actual, expected=expected)
+
+    try:
+        llm_env = LLMClient()
+        system_prompt = prompt.get("system", "")
+        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_content}]
+        result = llm_env.ask_llm(
+            messages=messages, model=llm_model, response_format={"type": "json_object"}, temperature=0
+        )
+        return bool(result.get("sont_equivalentes", False))
+    except Exception as e:
+        logger.error(f"Error calling LLM for compare_with_llm: {e}")
+        return False
 
 
 def df_analyze_content(
@@ -584,8 +714,8 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
         f"{'Accuracy (no OCR)':<18}",
     ]
     if use_best_ref:
-        header_parts.append(f"{'(+)':<14}")
-        header_parts.append(f"{'(-)':<14}")
+        header_parts.append(f"{'(+)':<5}")
+        header_parts.append(f"{'(-)':<5}")
     print(" | ".join(header_parts))
     print("-" * (160 if use_best_ref else 120))
 
@@ -602,8 +732,8 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
         if use_best_ref:
             imp = result.get("improvements_vs_best", 0)
             reg = result.get("regressions_vs_best", 0)
-            row_parts.append(f"{'+' + str(imp) if imp else '0':<14}")
-            row_parts.append(f"{'-' + str(reg) if reg else '0':<14}")
+            row_parts.append(f"{'+' + str(imp) if imp else '0':<5}")
+            row_parts.append(f"{'-' + str(reg) if reg else '0':<5}")
         print(" | ".join(row_parts))
 
     print(f"\n{'=' * 120}")
