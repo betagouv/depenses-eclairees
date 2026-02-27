@@ -6,6 +6,7 @@ from .acte_engagement import ACTE_ENGAGEMENT_ATTRIBUTES
 from .att_sirene import ATT_SIRENE_ATTRIBUTES
 from .avenant import AVENANT_ATTRIBUTES
 from .bon_de_commande import BON_DE_COMMANDE_ATTRIBUTES
+from .bpu import BPU_ATTRIBUTES
 from .ccap import CCAP_ATTRIBUTES
 from .cctp import CCTP_ATTRIBUTES
 from .devis import DEVIS_ATTRIBUTES
@@ -26,4 +27,5 @@ __all__ = [
     "RIB_ATTRIBUTES",
     "SOUS_TRAITANCE_ATTRIBUTES",
     "ATT_SIRENE_ATTRIBUTES",
+    "BPU_ATTRIBUTES",
 ]

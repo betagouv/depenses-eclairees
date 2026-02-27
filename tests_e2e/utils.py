@@ -393,7 +393,7 @@ def analyze_content_quality_test(
     # Fusion des résultats avec les valeurs de référence
     # Pour éviter le produit cartésien lorsque filename est dupliqué, on utilise l'index
     # Les deux dataframes ont le même nombre de lignes et le même ordre
-    df_result_reset = df_result[["filename", "llm_response", "structured_data"]].reset_index(drop=True)
+    df_result_reset = df_result[["filename", "llm_response", "structured_data", "error"]].reset_index(drop=True)
     df_test_reset = df_test.reset_index(drop=True)
 
     # Ajout d'un identifiant unique basé sur l'index pour le merge

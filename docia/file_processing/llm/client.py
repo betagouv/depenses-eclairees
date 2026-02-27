@@ -155,6 +155,7 @@ class LLMClient:
         response_format: dict = None,
         temperature: float = 0.0,
         rate_per_minute: int | None = None,
+        max_tokens: int | None = None,
         max_retries: int = 3,
         retry_delay: float = 60,
         retry_short_delay: float = 10,
@@ -171,6 +172,7 @@ class LLMClient:
             response_format: Format de réponse à utiliser
             temperature: Température pour la génération (0.0 = déterministe)
             rate_per_minute: Override optionnel pour la limite (sinon depuis settings par modèle, défaut 100).
+            max_tokens: Limite du nombre de tokens en sortie (ex. 10000 pour éviter timeout / dépassement).
             max_retries: Nombre maximum de tentatives en cas d'erreur 429 (défaut: 3)
             retry_delay: Délai d'attente en secondes entre les tentatives erreur rate limit (défaut: 60)
             retry_short_delay: Délai d'attente en secondes entre les tentatives erreur 5XX (défaut: 10)
@@ -186,16 +188,20 @@ class LLMClient:
 
         def _do_call() -> str:
             try:
-                response = self.client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    temperature=temperature,
-                    response_format=response_format if response_format else None,
-                )
+                kwargs = {
+                    "model": model,
+                    "messages": messages,
+                    "temperature": temperature,
+                    "response_format": response_format if response_format else None,
+                }
+                if max_tokens is not None:
+                    kwargs["max_tokens"] = max_tokens
+                response = self.client.chat.completions.create(**kwargs)
                 return response.choices[0].message.content.strip()
             except APIError as e:
                 raise LLMApiError.from_api_error(e) from e
 
+        t0 = time.perf_counter()
         content = self._api_call(
             _do_call,
             max_retries=max_retries,
@@ -203,6 +209,8 @@ class LLMClient:
             retry_short_delay=retry_short_delay,
             limiter=limiter,
         )
+        elapsed = time.perf_counter() - t0
+        logger.info("LLM call finished in %.2fs (model=%s)", elapsed, model)
         return json.loads(content) if response_format else content
 
     def ocr_pdf(

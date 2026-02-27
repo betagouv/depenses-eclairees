@@ -2649,6 +2649,20 @@ files = [
 ]
 
 [[package]]
+name = "odfpy"
+version = "1.4.1"
+description = "Python API and tools to manipulate OpenDocument files"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "odfpy-1.4.1.tar.gz", hash = "sha256:db766a6e59c5103212f3cc92ec8dd50a0f3a02790233ed0b52148b70d3c438ec"},
+]
+
+[package.dependencies]
+defusedxml = "*"
+
+[[package]]
 name = "olefile"
 version = "0.47"
 description = "Python package to parse, read and write Microsoft OLE2 files (Structured Storage or Compound Document, Microsoft Office)"
@@ -5172,4 +5186,4 @@ test = ["pytest", "pytest-cov"]
 [metadata]
 lock-version = "2.1"
 python-versions = "~=3.13"
-content-hash = "8240b2e204be1b7c1dfea823a97a1d9dcfd4dcba2abe7d2d3152c92be339363a"
+content-hash = "bec6ee7278e35e8041f5aaeb4f7aa5cec682cd2766fb2576afada260562b5ceb"

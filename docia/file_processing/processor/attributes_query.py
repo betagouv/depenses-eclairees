@@ -6,6 +6,7 @@ from .attributes import (
     ATT_SIRENE_ATTRIBUTES,
     AVENANT_ATTRIBUTES,
     BON_DE_COMMANDE_ATTRIBUTES,
+    BPU_ATTRIBUTES,
     CCAP_ATTRIBUTES,
     CCTP_ATTRIBUTES,
     DEVIS_ATTRIBUTES,
@@ -28,6 +29,9 @@ DOC_TYPE_ATTRIBUTES_MAPPING = {
     "kbis": KBIS_ATTRIBUTES,
     "rib": RIB_ATTRIBUTES,
     "sous_traitance": SOUS_TRAITANCE_ATTRIBUTES,
+    "bordereau_prix": BPU_ATTRIBUTES,
+    "decomposition_prix": BPU_ATTRIBUTES,
+    "detail_quantitatif_estimatif": BPU_ATTRIBUTES,
 }
 
 # Génère le DataFrame ATTRIBUTES à partir des fichiers séparés

@@ -12,6 +12,7 @@ dependencies = [
     "jupyter",
     "olefile",
     "openai",
+    "odfpy",
     "openpyxl",
     "pandas",
     "Pillow",

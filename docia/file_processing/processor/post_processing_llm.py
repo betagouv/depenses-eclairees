@@ -5,6 +5,8 @@ import re
 from schwifty import IBAN
 from schwifty.exceptions import SchwiftyException
 
+from docia.file_processing.processor.attributes.bpu import post_processing_bpu_flat
+
 logger = logging.getLogger("docia." + __name__)
 
 
@@ -546,6 +548,16 @@ CLEAN_FUNCTIONS = {
             "rib_sous_traitant": post_processing_bank_account,
             "duree_sous_traitance": post_processing_duration,
         },
+    },
+    # BPU : structure plate + reconstruction arborescente
+    "bordereau_prix": {
+        "object": post_processing_bpu_flat,
+    },
+    "decomposition_prix": {
+        "object": post_processing_bpu_flat,
+    },
+    "detail_quantitatif_estimatif": {
+        "object": post_processing_bpu_flat,
     },
 }
 
