@@ -5,6 +5,7 @@ import pytest
 from docia.file_processing.models import ExternalDocumentMetadata, ExternalLinkDocumentOrder
 from docia.file_processing.sync.client import ApiDocumentMetadata
 from docia.file_processing.sync.sync_metadata import DocumentMetadataSync
+from tests.factories.file_processing import ExternalDocumentMetadataFactoryWithOrder
 
 
 @pytest.fixture
@@ -37,11 +38,11 @@ def test_sync(syncer):
     assert inserted_docs == expected_docs
 
     inserted_links = list(
-        ExternalLinkDocumentOrder.objects.order_by("document_external_id").values(
-            "document_external_id", "order_external_id"
+        ExternalLinkDocumentOrder.objects.order_by("external_document_id").values(
+            "external_document_id", "order_id"
         )
     )
-    expected_links = [{"document_external_id": doc.id, "order_external_id": doc.num_ej} for doc in api_docs]
+    expected_links = [{"external_document_id": doc.id, "order_id": doc.num_ej} for doc in api_docs]
     assert inserted_links == expected_links
 
 
@@ -50,11 +51,11 @@ def test_sync_update(syncer):
     """Test that existing documents are updated and new links are created during sync."""
     # Setup
     order_id = "1234567890"
-    db_doc = ExternalDocumentMetadata.objects.create(external_id="0001", name="doc1.pdf", size=100)
-    db_link = ExternalLinkDocumentOrder.objects.create(
-        document_external_id=db_doc.external_id, order_external_id="2234567890"
-    )
-    api_doc = ApiDocumentMetadata(id="0001", name="doc1_up.pdf", num_ej=order_id, size=101)
+    # Existing doc
+    existing_order_id = "2234567890"
+    existing_doc = ExternalDocumentMetadataFactoryWithOrder(link__order_id=existing_order_id)
+    # Api return same doc but with different order link
+    api_doc = ApiDocumentMetadata(id=existing_doc.external_id, name=existing_doc.name, num_ej=order_id, size=existing_doc.size)
 
     # Function call
     with patch.object(syncer.client, "list_documents_for_ej", autospec=True) as m_list:
@@ -67,10 +68,10 @@ def test_sync_update(syncer):
     assert db_docs == expected_docs
 
     db_links = list(
-        ExternalLinkDocumentOrder.objects.order_by("created_at").values("document_external_id", "order_external_id")
+        ExternalLinkDocumentOrder.objects.order_by("created_at").values("external_document_id", "order_id")
     )
     expected_links = [
-        {"document_external_id": db_link.document_external_id, "order_external_id": db_link.order_external_id},
-        {"document_external_id": api_doc.id, "order_external_id": api_doc.num_ej},
+        {"external_document_id": existing_doc.external_id, "order_id": existing_order_id},
+        {"external_document_id": api_doc.id, "order_id": api_doc.num_ej},
     ]
     assert db_links == expected_links

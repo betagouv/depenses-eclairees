@@ -127,11 +127,17 @@ class ExternalDocumentMetadata(BaseModel):
 
 
 class ExternalLinkDocumentOrder(BaseModel):
-    document_external_id = models.CharField()
-    order_external_id = models.CharField()
+    external_document = models.ForeignKey(
+        ExternalDocumentMetadata,
+        on_delete=models.CASCADE,
+        to_field="external_id",
+        related_name="order_link_set",
+        related_query_name="order_link",
+    )
+    order_id = models.CharField()
 
     class Meta:
-        unique_together = [("document_external_id", "order_external_id")]
+        unique_together = [("external_document", "order_id")]
 
     def __str__(self):
-        return f"{self.document_external_id}-{self.order_external_id}"
+        return f"{self.document_id}-{self.order_id}"

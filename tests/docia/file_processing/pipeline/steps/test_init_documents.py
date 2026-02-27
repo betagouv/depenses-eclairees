@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
-from docia.file_processing.models import ExternalLinkDocumentOrder, FileInfo
+from docia.file_processing.models import FileInfo
 from docia.file_processing.pipeline.steps.init_documents import (
     bulk_create_batches,
     bulk_create_documents,
@@ -18,7 +18,8 @@ from docia.file_processing.pipeline.steps.init_documents import (
 )
 from docia.models import DataBatch, DataEngagement, Document
 from tests.factories.data import DataBatchFactory, DataEngagementFactory, DocumentFactory
-from tests.factories.file_processing import FileInfoFactory
+from tests.factories.file_processing import FileInfoFactory, \
+    ExternalLinkDocumentOrderFactory
 
 
 @pytest.mark.django_db
@@ -229,8 +230,8 @@ def test_init_documents_from_external():
     file_info_1, file_info_2 = FileInfoFactory.create_batch(2)
     num_ej1 = "1234567890"
     num_ej2 = "2234567890"
-    ExternalLinkDocumentOrder.objects.create(document_external_id=file_info_1.external_id, order_external_id=num_ej1)
-    ExternalLinkDocumentOrder.objects.create(document_external_id=file_info_2.external_id, order_external_id=num_ej2)
+    ExternalLinkDocumentOrderFactory(external_document__external_id=file_info_1.external_id, order_id=num_ej1)
+    ExternalLinkDocumentOrderFactory(external_document__external_id=file_info_2.external_id, order_id=num_ej2)
 
     init_documents_from_external_filter_by_num_ejs([num_ej1, num_ej2], "batch1")
 
@@ -266,14 +267,14 @@ def test_init_documents_from_external_handles_duplicate_file_info():
     # Create a file info
     file_info = FileInfoFactory()
     num_ej1 = "1234567890"
-    ExternalLinkDocumentOrder.objects.create(document_external_id=file_info.external_id, order_external_id=num_ej1)
+    ExternalLinkDocumentOrderFactory(external_document__external_id=file_info.external_id, order_id=num_ej1)
     # File info with same hash, same ej
     dup_file_info1 = FileInfoFactory(hash=file_info.hash)
-    ExternalLinkDocumentOrder.objects.create(document_external_id=dup_file_info1.external_id, order_external_id=num_ej1)
+    ExternalLinkDocumentOrderFactory(external_document__external_id=dup_file_info1.external_id, order_id=num_ej1)
     # File info with same hash, different ej
     dup_file_info2 = FileInfoFactory(hash=file_info.hash)
     num_ej2 = "2234567890"
-    ExternalLinkDocumentOrder.objects.create(document_external_id=dup_file_info2.external_id, order_external_id=num_ej2)
+    ExternalLinkDocumentOrderFactory(external_document__external_id=dup_file_info2.external_id, order_id=num_ej2)
 
     init_documents_from_external_filter_by_num_ejs([num_ej1, num_ej2], "batch1")
 
@@ -297,7 +298,7 @@ def test_init_documents_from_external_handles_duplicate_existing_document():
     # File info with same hash
     file_info = FileInfoFactory(hash=doc.hash)
     num_ej = "1234567890"
-    ExternalLinkDocumentOrder.objects.create(document_external_id=file_info.external_id, order_external_id=num_ej)
+    ExternalLinkDocumentOrderFactory(external_document__external_id=file_info.external_id, order_id=num_ej)
 
     init_documents_from_external_filter_by_num_ejs([num_ej], "batch1")
 
@@ -555,9 +556,9 @@ def test_bulk_create_links_doc_engagement_using_external():
     expected_links = []
     for fi in files_info:
         ej = DataEngagementFactory()
-        ExternalLinkDocumentOrder.objects.create(
-            document_external_id=fi.external_id,
-            order_external_id=ej.num_ej,
+        ExternalLinkDocumentOrderFactory(
+            external_document__external_id=fi.external_id,
+            order_id=ej.num_ej,
         )
         DocumentFactory(hash=fi.hash, file=fi.file)
         expected_links.append((fi.hash, ej.num_ej))
@@ -579,9 +580,9 @@ def test_bulk_create_links_doc_engagement_using_external_ignores_duplicates():
     """
     file_info = FileInfoFactory()
     ej = DataEngagementFactory()
-    ExternalLinkDocumentOrder.objects.create(
-        document_external_id=file_info.external_id,
-        order_external_id=ej.num_ej,
+    ExternalLinkDocumentOrderFactory(
+        external_document__external_id=file_info.external_id,
+        order_id=ej.num_ej,
     )
     doc = DocumentFactory(hash=file_info.hash, file=file_info.file)
     doc.engagements.add(ej)
