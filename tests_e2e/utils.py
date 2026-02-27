@@ -445,6 +445,69 @@ def _get_value_by_dotted_key(data, key):
             return _get_value_by_dotted_key(data.get(key), key_suffix)
 
 
+def _format_leaf(val) -> str:
+    """Format une valeur feuille pour l'affichage (traitée comme string)."""
+    if val is None:
+        return "None"
+    return str(val)
+
+
+def print_json_diff(ref_data, llm_data, path_prefix: str = ""):
+    """
+    Affiche les différences entre deux JSON (ref vs llm) en parcourant les clés de la référence.
+
+    Pour chaque feuille : affiche le chemin et côte à côte REF | LLM.
+    Les feuilles avec la même valeur sont affichées telles quelles ; celles qui diffèrent
+    sont préfixées par ❌.
+    Les clés présentes seulement dans REF ou seulement dans LLM sont aussi marquées ❌.
+    """
+    # Au moins l'un des deux n'est pas un dict -> feuille
+    if not isinstance(ref_data, dict) or not isinstance(llm_data, dict):
+        ref_str = _format_leaf(ref_data)
+        llm_str = _format_leaf(llm_data)
+        path = path_prefix or "(racine)"
+        diff = ref_str != llm_str
+        prefix = "    ❌ " if diff else "      "
+        print(f"{prefix}{path}:  REF={ref_str!s}  |  LLM={llm_str!s}")
+        return
+
+    if ref_data is None and llm_data is None:
+        return
+
+    ref_keys = set(ref_data.keys())
+    llm_keys = set(llm_data.keys())
+
+    only_ref = ref_keys - llm_keys
+    only_llm = llm_keys - ref_keys
+    common = ref_keys & llm_keys
+
+    for k in sorted(only_ref):
+        print(f"    ❌ [REF seulement] {path_prefix + '.' + k if path_prefix else k}")
+    for k in sorted(only_llm):
+        print(f"    ❌ [LLM seulement] {path_prefix + '.' + k if path_prefix else k}")
+
+    for k in sorted(common):
+        path = f"{path_prefix}.{k}" if path_prefix else k
+        ref_v = ref_data[k]
+        llm_v = llm_data[k]
+
+        if isinstance(ref_v, dict) and isinstance(llm_v, dict):
+            print_json_diff(ref_v, llm_v, path_prefix=path)
+        elif isinstance(ref_v, dict) or isinstance(llm_v, dict):
+            # L'un est dict, l'autre non : afficher comme feuille
+            ref_str = _format_leaf(ref_v)
+            llm_str = _format_leaf(llm_v)
+            diff = ref_str != llm_str
+            prefix = "    ❌ " if diff else "      "
+            print(f"{prefix}{path}:  REF={ref_str!s}  |  LLM={llm_str!s}")
+        else:
+            ref_str = _format_leaf(ref_v)
+            llm_str = _format_leaf(llm_v)
+            diff = ref_str != llm_str
+            prefix = "    ❌ " if diff else "      "
+            print(f"{prefix}{path}:  REF={ref_str!s}  |  LLM={llm_str!s}")
+
+
 def check_quality_one_field(df_merged, col_to_test, comparison_functions, only_errors=False):
     # ============================================================================
     # COMPARAISON POUR UNE COLONNE SPÉCIFIQUE
@@ -478,6 +541,9 @@ def check_quality_one_field(df_merged, col_to_test, comparison_functions, only_e
             print(f"{status} | {filename} | OCR {'❌' if pbm_ocr else '✅'}")
             print(f"  LLM: {llm_val!r}")
             print(f"  REF: {ref_val!r}")
+            if not match_result and isinstance(ref_val, dict) and isinstance(llm_val, dict):
+                print("  Diff détaillée (feuilles REF | LLM):")
+                print_json_diff(ref_val, llm_val)
             print()
         except Exception as e:
             print(f"❌ ERREUR | {filename}: {str(e)} | OCR {'❌' if pbm_ocr else '✅'}")

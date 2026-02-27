@@ -493,38 +493,38 @@ CCAP_ATTRIBUTES = {
          * Si Taux Avance <= 30% : Début de remboursement à 65% d'exécution, Fin à 80%.
          * Si Taux Avance > 30% : Début dès la 1ère demande de paiement (0%), Fin à 80%.
        - Si le document précise d'autres seuils, extraire les valeurs du document.
-    Format : Renvoyer un objet JSON. Pour les champs déduits du Code (et non écrits en clair), ajouter la mention "(par défaut CCP)".
+    Format : Renvoyer un objet JSON. Pour les champs déduits du Code (et non écrits en clair).
 """,
         "search": "avance taux PME montant 50000 durée 2 mois assiette HT TTC remboursement précompte 65% 80% prorata 12 mois",
         "output_field": "avance",
         "schema": {
-            "type": ["object", "null"],
+            "type": ["object"],
             "properties": {
                 "taux": {
-                    "type": ["object", "null"],
-                    "properties": {"standard": {"type": ["string", "null"]}, "pme": {"type": ["string", "null"]}},
+                    "type": ["object"],
+                    "properties": {"standard": {"type": ["string"]}, "pme": {"type": ["string"]}},
                 },
                 "declenchement": {
-                    "type": ["object", "null"],
+                    "type": ["object"],
                     "properties": {
-                        "seuil_montant_ht": {"type": ["number", "null"]},
-                        "seuil_duree_mois": {"type": ["number", "null"]},
+                        "seuil_montant_ht": {"type": ["number"]},
+                        "seuil_duree_mois": {"type": ["number"]},
                     },
                 },
                 "assiette": {
-                    "type": ["object", "null"],
+                    "type": ["object"],
                     "properties": {
                         "unite_fiscale": {"type": ["string", "null"], "enum": ["HT", "TTC"]},
                         "base_calcul": {"type": ["string", "null"]},
-                        "regle_prorata_12_mois": {"type": ["boolean", "null"]},
+                        "regle_prorata_12_mois": {"type": ["boolean"]},
                     },
                     "required": ["base_calcul"],
                 },
                 "remboursement": {
-                    "type": ["object", "null"],
+                    "type": ["object"],
                     "properties": {
-                        "pourcentage_debut": {"type": ["string", "null"]},
-                        "pourcentage_fin": {"type": ["string", "null"]},
+                        "pourcentage_debut": {"type": ["string"]},
+                        "pourcentage_fin": {"type": ["string"]},
                     },
                 },
             },
