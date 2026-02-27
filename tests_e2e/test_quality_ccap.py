@@ -181,7 +181,7 @@ def get_comparison_functions():
 def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-medium", debug_mode=False):
     """Test de qualité des informations extraites par le LLM."""
 
-    df_test = get_data_from_grist(table="Ccap_gt_v2")
+    df_test = get_data_from_grist(table="Ccap_gt")
     df_test = df_test.sort_values(by="filename").reset_index(drop=True)
     for col in (
         "lots",
@@ -215,7 +215,7 @@ if __name__ == "__main__":
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "avance", comparison_functions, only_errors=False)
+    check_quality_one_field(df_merged, "avance", comparison_functions, only_errors=True)
 
     check_quality_one_row(df_merged, 18, comparison_functions)
 
