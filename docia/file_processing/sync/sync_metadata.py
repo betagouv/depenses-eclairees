@@ -42,8 +42,8 @@ class DocumentMetadataSync:
             links.extend(
                 [
                     ExternalLinkDocumentOrder(
-                        document_external_id=doc.id,
-                        order_external_id=doc.num_ej,
+                        external_document_id=doc.id,
+                        order_id=doc.num_ej,
                     )
                     for doc in documents_data
                 ]
