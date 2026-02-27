@@ -27,6 +27,9 @@ class DocumentDownloader:
 
         assert not name.startswith("."), f"File name invalid {name!r}"
 
+        if not self.client.is_authenticated:
+            self.client.authenticate()
+
         # Check if download has already been done
         if FileInfo.objects.filter(external_id=external_id).exists():
             logger.info("Skip file %s / %s: Already exists", external_id, name)
