@@ -102,6 +102,8 @@ class ProcessDocumentStep(BaseModel):
 
 
 class FileInfo(BaseModel):
+    external_id = models.CharField(null=True, blank=True, unique=True)
+    parent = models.ForeignKey("self", null=True, blank=True, on_delete=models.PROTECT)
     file = models.FileField(null=True, blank=True, max_length=1000, unique=True)
     filename = models.CharField(max_length=1000)
     folder = models.CharField()
@@ -109,3 +111,27 @@ class FileInfo(BaseModel):
     size = models.PositiveIntegerField()
     hash = models.CharField()
     created_date = models.DateField()
+    original_filename = models.CharField(max_length=1000, blank=True, default="")
+
+    def __str__(self):
+        return f"{self.external_id} {self.filename}"
+
+
+class ExternalDocumentMetadata(BaseModel):
+    external_id = models.CharField(unique=True)
+    name = models.CharField()
+    size = models.IntegerField()
+
+    def __str__(self):
+        return f"{self.external_id} {self.name}"
+
+
+class ExternalLinkDocumentOrder(BaseModel):
+    document_external_id = models.CharField()
+    order_external_id = models.CharField()
+
+    class Meta:
+        unique_together = [("document_external_id", "order_external_id")]
+
+    def __str__(self):
+        return f"{self.document_external_id}-{self.order_external_id}"

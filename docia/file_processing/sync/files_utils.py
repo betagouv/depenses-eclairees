@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 def detect_file_extension_from_content(file: str | bytes) -> str:
     if isinstance(file, bytes):
-        mime = magic.from_buffer(file)
+        mime = magic.from_buffer(file, mime=True)
     else:
         with default_storage.open(file, "rb") as f:
             header = f.read(1024)
@@ -34,7 +34,8 @@ def detect_file_extension_from_content(file: str | bytes) -> str:
     if ext:
         return ext.strip(".")
     else:
-        logger.warning("Could not guess extension for mime %r (file=%s)", mime, file)
+        log_file = "binary:{file[:10]!r}" if isinstance(file, bytes) else file
+        logger.warning("Could not guess extension for mime %r (file=%s)", mime, log_file)
         return "unknown"
 
 

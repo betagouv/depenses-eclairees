@@ -2,13 +2,14 @@ import logging
 import os
 
 from django.core.files.storage import default_storage
+from django.db import connection
 from django.db.transaction import atomic
 
 from celery import group, shared_task
 
 from app.file_manager import cleaner as processor
 from app.file_manager import extract_num_EJ
-from docia.file_processing.models import FileInfo
+from docia.file_processing.models import ExternalLinkDocumentOrder, FileInfo
 from docia.models import DataBatch, DataEngagement, Document
 
 logger = logging.getLogger(__name__)
@@ -109,6 +110,38 @@ def bulk_create_links_document_engagement_using_filenames(files_info: list[FileI
     DocumentEngagement.objects.bulk_create(links_doc_engagement, batch_size=200, ignore_conflicts=True)
 
 
+def bulk_create_links_document_engagement_using_external_data(file_infos: list[FileInfo]):
+    """Create Links between documents and engagements"""
+
+    # Use through model for efficient bulk creation of M2M relationships
+    DocumentEngagement = Document.engagements.through
+    # Get relations
+    hashes = [info.hash for info in file_infos]
+    SQL_QUERY = """
+    SELECT doc.id, ej.id
+    FROM docia_document doc
+    INNER JOIN docia_fileinfo fi ON fi.hash = doc.hash
+    INNER JOIN docia_externallinkdocumentorder link ON link.document_external_id = fi.external_id
+    INNER JOIN engagements ej ON ej.num_ej = link.order_external_id
+    WHERE doc.hash = ANY(%s)
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(SQL_QUERY, [hashes])
+        links = cursor.fetchall()
+
+    # Build the links
+    links_doc_engagement = [
+        DocumentEngagement(
+            document_id=doc_id,
+            dataengagement_id=ej_id,
+        )
+        for doc_id, ej_id in links
+    ]
+
+    # Insert in database
+    DocumentEngagement.objects.bulk_create(links_doc_engagement, batch_size=200, ignore_conflicts=True)
+
+
 def bulk_create_batches(num_ejs, batch):
     batches = [
         DataBatch(
@@ -139,6 +172,20 @@ def remove_duplicates(file_infos: list[FileInfo]):
             to_insert.append(infos[0])
 
     return to_insert
+
+
+def init_documents_from_external_filter_by_num_ejs(num_ejs: list[str], batch_name: str):
+    """Init documents using data from files imported using External API."""
+    qs_links = ExternalLinkDocumentOrder.objects.filter(order_external_id__in=num_ejs).values_list(
+        "document_external_id", flat=True
+    )
+    fileinfos = list(FileInfo.objects.filter(external_id__in=qs_links))
+    num_ejs = sorted(num_ejs)
+    with atomic():
+        bulk_create_engagements(num_ejs)
+        bulk_create_batches(num_ejs, batch_name)
+        bulk_create_documents(fileinfos)
+        bulk_create_links_document_engagement_using_external_data(fileinfos)
 
 
 def init_documents_in_folder(folder: str, batch: str, on_success=None):
