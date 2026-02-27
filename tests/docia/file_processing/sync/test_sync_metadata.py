@@ -9,9 +9,9 @@ from docia.file_processing.sync.sync_metadata import DocumentMetadataSync
 
 @pytest.fixture
 def syncer():
-    with patch("docia.file_processing.sync.client.SyncClient.authenticate", autospec=True) as m_authenticate:
-        m_authenticate.return_value = None
-        yield DocumentMetadataSync()
+    syncer = DocumentMetadataSync()
+    syncer.client.is_authenticated = True
+    yield syncer
 
 
 @pytest.mark.django_db

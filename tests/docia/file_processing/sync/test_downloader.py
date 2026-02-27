@@ -12,11 +12,16 @@ from tests.factories.file_processing import FileInfoFactory
 from tests.utils import assert_queryset_equal
 
 
-@pytest.mark.django_db
-def test_generic_file_handling(s3_client):
-    """Test that generic (non-zip) files are handled correctly"""
-
+@pytest.fixture
+def downloader():
     downloader = DocumentDownloader()
+    downloader.client.is_authenticated = True
+    yield downloader
+
+
+@pytest.mark.django_db
+def test_generic_file_handling(downloader):
+    """Test that generic (non-zip) files are handled correctly"""
 
     with (
         patch.object(downloader.client, "download_document", autospec=True) as m_client_download,
@@ -63,10 +68,8 @@ def test_generic_file_handling(s3_client):
 
 
 @pytest.mark.django_db
-def test_existing_fileinfo_skip_processing(s3_client, caplog):
+def test_existing_fileinfo_skip_processing(downloader, caplog):
     """Test that download is skipped when FileInfo already exists"""
-
-    downloader = DocumentDownloader()
 
     with (
         patch.object(downloader.client, "download_document", autospec=True) as m_client_download,
@@ -100,10 +103,8 @@ def test_existing_fileinfo_skip_processing(s3_client, caplog):
 
 
 @pytest.mark.django_db
-def test_invalid_zip_file_handling(s3_client, caplog):
+def test_invalid_zip_file_handling(downloader, caplog):
     """Test that invalid zip files are handled gracefully"""
-
-    downloader = DocumentDownloader()
 
     with (
         patch.object(downloader.client, "download_document", autospec=True) as m_client_download,
@@ -127,10 +128,8 @@ def test_invalid_zip_file_handling(s3_client, caplog):
 
 
 @pytest.mark.django_db
-def test_zip_file_with_nested_structure(s3_client):
+def test_zip_file_with_nested_structure(downloader):
     """Test that zip files are handled correctly"""
-
-    downloader = DocumentDownloader()
 
     with (
         patch.object(downloader.client, "download_document", autospec=True) as m_client_download,
@@ -196,9 +195,8 @@ def test_zip_file_with_nested_structure(s3_client):
         assert read_file(f"{prefix}archive.zip_/subarchive.zip_/zzz/sub/toto3.txt") == b"Content of toto3"
 
 
-def test_clean_filename_basic():
+def test_clean_filename_basic(downloader):
     """Test basic filename cleaning functionality"""
-    downloader = DocumentDownloader()
 
     # Test basic filename
     result = downloader.clean_filename("simple_file.txt")
@@ -225,9 +223,8 @@ def test_clean_filename_basic():
     assert result == "file.txt"
 
 
-def test_clean_filename_length_truncation():
+def test_clean_filename_length_truncation(downloader):
     """Test filename length truncation"""
-    downloader = DocumentDownloader()
 
     # Test filename that exceeds maximum length (250 chars total, including extension)
     long_filename = "a" * 300 + ".txt"
@@ -246,9 +243,8 @@ def test_clean_filename_length_truncation():
     assert result.endswith("[trunc].pdf")
 
 
-def test_clean_filename_edge_cases():
+def test_clean_filename_edge_cases(downloader):
     """Test edge cases for filename cleaning"""
-    downloader = DocumentDownloader()
 
     # Test empty filename
     result = downloader.clean_filename("")

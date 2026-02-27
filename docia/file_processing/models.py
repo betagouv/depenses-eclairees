@@ -123,7 +123,7 @@ class ExternalDocumentMetadata(BaseModel):
     size = models.IntegerField()
 
     def __str__(self):
-        return f"{self.external_id} {self.filename}"
+        return f"{self.external_id} {self.name}"
 
 
 class ExternalLinkDocumentOrder(BaseModel):

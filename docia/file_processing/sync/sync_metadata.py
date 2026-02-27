@@ -12,13 +12,15 @@ logger = logging.getLogger(__name__)
 class DocumentMetadataSync:
     def __init__(self):
         self.client = SyncClient.from_settings()
-        self.client.authenticate()
 
     def sync(self, list_num_ej: list[str]):
         """Fetch and store metadata for all documents associated with the provided engagement numbers.
 
         Store results in ExternalDocumentMetadata.
         """
+
+        if not self.client.is_authenticated:
+            self.client.authenticate()
 
         logger.info("Fetch documents data...")
         docs_metadata = []

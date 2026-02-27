@@ -66,6 +66,7 @@ class SyncClient:
         self.token = ""
         self.session = requests.Session()
         self.env = env
+        self.is_authenticated = False
 
     @classmethod
     def from_settings(cls):
@@ -96,6 +97,7 @@ class SyncClient:
                 "Accept": "application/json",
             }
         )
+        self.is_authenticated = True
 
     def list_documents_for_ej(self, num_ej: str) -> list[ApiDocumentMetadata]:
         """Get list of documents associated with an engagement number"""
