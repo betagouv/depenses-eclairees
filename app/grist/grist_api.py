@@ -8,31 +8,32 @@ from app.utils import json_print
 from django.conf import settings  # noqa: E402
 
 
+def auth_headers():
+    return {
+        "Authorization": f"Bearer {settings.GRIST_API_KEY}",
+    }
+
 def check_connexion():
     # Vérifie la connexion à l'API Grist en effectuant une requête GET sur l'URL du document
-    r = requests.get(settings.GRIST_DOCS_URL, headers={"Authorization": settings.GRIST_API_KEY})
+    r = requests.get(settings.GRIST_DOCS_URL, headers=auth_headers())
     json_print(r.text)
 
 def get_tables():
     # Vérifie la connexion à l'API Grist en effectuant une requête GET sur l'URL du document
-    r = requests.get(settings.GRIST_DOCS_URL + "/tables", headers={"Authorization": settings.GRIST_API_KEY})
+    r = requests.get(settings.GRIST_DOCS_URL + "/tables", headers=auth_headers())
     json_print(r.text)
 
-def get_data_from_grist(table: str, api_key: str = None) -> pd.DataFrame:
+def get_data_from_grist(table: str) -> pd.DataFrame:
     """
     Récupère les données d'une table depuis l'API Grist.
     Récupère toutes les données de la table (toutes les colonnes).
     Args:
         table (str): Nom de la table (ex: Attachments)
-        api_key (str): Clé API Grist
     Returns:
         pd.DataFrame: DataFrame contenant les données de la table
     """
-    if api_key is None:
-        api_key = settings.GRIST_API_KEY
     records_url = settings.GRIST_DOCS_URL + f"/tables/{table}/records"
-    headers = {"Authorization": api_key}
-    r = requests.get(records_url, headers=headers)
+    r = requests.get(records_url, headers=auth_headers())
     r.raise_for_status()
     data = r.json()
     # Extraction des champs utiles : fusionne les champs et l'id pour chaque record
