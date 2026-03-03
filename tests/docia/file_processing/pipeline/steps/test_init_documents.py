@@ -18,8 +18,7 @@ from docia.file_processing.pipeline.steps.init_documents import (
 )
 from docia.models import DataBatch, DataEngagement, Document
 from tests.factories.data import DataBatchFactory, DataEngagementFactory, DocumentFactory
-from tests.factories.file_processing import FileInfoFactory, \
-    ExternalLinkDocumentOrderFactory
+from tests.factories.file_processing import ExternalLinkDocumentOrderFactory, FileInfoFactory
 
 
 @pytest.mark.django_db

@@ -5,11 +5,13 @@ import factory.fuzzy
 from factory import SubFactory
 
 from docia.file_processing.models import (
+    ExternalDocumentMetadata,
+    ExternalLinkDocumentOrder,
     FileInfo,
     ProcessDocumentBatch,
     ProcessDocumentJob,
     ProcessDocumentStep,
-    ProcessingStatus, ExternalDocumentMetadata, ExternalLinkDocumentOrder,
+    ProcessingStatus,
 )
 from docia.file_processing.pipeline.pipeline import DEFAULT_PROCESS_STEPS
 from docia.file_processing.pipeline.steps.content_analysis import SUPPORTED_DOCUMENT_TYPES
@@ -68,7 +70,9 @@ class ExternalDocumentMetadataFactory(factory.django.DjangoModelFactory):
 
 
 class ExternalDocumentMetadataFactoryWithOrder(ExternalDocumentMetadataFactory):
-    link = factory.RelatedFactory("tests.factories.file_processing.ExternalLinkDocumentOrderFactory", factory_related_name="external_document")
+    link = factory.RelatedFactory(
+        "tests.factories.file_processing.ExternalLinkDocumentOrderFactory", factory_related_name="external_document"
+    )
 
 
 class ExternalLinkDocumentOrderFactory(factory.django.DjangoModelFactory):
