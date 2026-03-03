@@ -3,181 +3,182 @@ Définitions des attributs à extraire pour les documents de type "devis".
 """
 
 DEVIS_ATTRIBUTES = {
-    "objet": {
-        "consigne": """OBJET
-   Définition : l'objet de la commande ou du marché, c'est-à-dire ce qui a été acheté, ou le service fourni.
-   Indices :
-   - Chercher après les mentions "Objet :", ou autre mention similaire.
-   - Généralement en début de document ou après les coordonnées.
-   - Dans tous les cas, l'objet de la commande doit avoir du sens pour une personne extérieure, et permettre de comprendre l'achat.
-   - Ne rien renvoyer si aucun objet trouvé
-   Format : 
-   - En bon Français
-   - Attention, ne pas inclure le type de document dans l'objet : "Devis pour ..." enlever "Devis pour" / "Avenant pour ..." enlever "Avenant pour".
-   - Si l'objet de la commande est incompréhensible, proposer un objet simple qui reflète le contenu de la commande.
-""",
-        "search": "",
-        "output_field": "objet",
-    },
-    "sujet": {
-        "consigne": """SUJET
-   Définition : sujet de la commande ou du marché, c'est-à-dire ce qui a été acheté, ou le service fourni.
-   Indices :
-   - Soit dans le titre du document, soit dans une section dédiée, ou dans le détail des prestations.
-   - Dans tous les cas, le sujet de la commande doit avoir du sens pour une personne extérieure, et permettre de comprendre le contenu du document.
-   - Ne rien renvoyer si aucun objet trouvé
-   Format : 
-   - En bon Français
-   - Attention, ne pas inclure le type de document dans l'objet : "Devis pour ..." enlever "Devis pour" / "Avenant pour ..." enlever "Avenant pour".
-   - Si l'objet du document est incompréhensible, proposer un objet de devis simple qui reflète le contenu des prestations.
-""",
-        "search": "",
-        "output_field": "sujet",
-    },
-    "type_document": {
-        "consigne": """TYPE_DOCUMENT
-   Définition : catégorie juridique ou administrative du document.
-   Indices :
-   - Le type de document est souvent mentionné au début du document dans le titre ou le sous-titre.
-   - Exemples de types de documents : devis, acte d'engagement, avenant, bon de commande, cachier des charges, ...
-   - Ne rien renvoyer si aucun type de document trouvé
-   Format : en minuscule, sans accent, sans espace (ex: "devis", "acte_engagement", "bon_de_commande")
-""",
-        "search": "",
-        "output_field": "type_document",
-    },
-    "montant_ht": {
-        "consigne": """MONTANT_HT  
-     Définition : Montant du marché hors taxes (également hors TVA).  
-     Indices : 
-     - Rechercher les mentions "hors taxes", "HT", "sans TVA" ou équivalent. 
-     - Extraire le montant exprimé en euros ou en écriture littérale, et mets le en chiffres en euros.
-     - Ne rien envoyer si aucun montant trouvé.
-     Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
-     """,
-        "search": "",
-        "output_field": "montant_ht",
-    },
-    "montant_ttc": {
-        "consigne": """MONTANT_TTC  
-     Définition : Montant du marché toutes taxes comprises (ou avec TVA incluse).  
-     Indices : 
-     - Rechercher les expressions "TTC", "TVA incluse", "TVA comprise". 
-     - Extraire le montant exprimé en euros ou en écriture littérale, et mets le en chiffres en euros.
-     - Ignorer les montants HT (hors taxes) et le montant de TVA seule
-     - Ne rien envoyer si aucun montant trouvé.
-     Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
-""",
-        "search": "",
-        "output_field": "montant_ttc",
-    },
-    "administration_beneficiaire": {
-        "consigne": """ADMINISTRATION_BENEFICIAIRE 
-     Définition : Structure administrative ou publique qui bénéficie de la commande, ou qui achète la prestation.
-     Indices :
-     - Rechercher les mentions d'achateurs, de pouvoir adjudicateur, ou d'autorité contractante.
-     - Le résultat est souvent une direction, un service, ou une administration.
-     - S'il est seulement précisé les rôles ou les postes de persones (ex : le préfet de la région Île-de-France), déduire la direction / le service / l'administration bénéficiaire (ex : la préfecture de la région Île-de-France).
-     Format : le nom de l'administration bénéficiaire en toutes lettres (pas d'acronymes si possible). 
-""",
-        "search": "",
-        "output_field": "administration_bénéficiaire",
-    },
-    "description_prestations": {
-        "consigne": """DESCRIPTION_PRESTATIONS
-   Définition : Description des prestations de la commande ou du marché, structurée et compréhensible.
-   Indices : 
-   - Un texte décrivant le contenu de la prestation, des services attendus ou réalisés, et du matériel utilisé ou acheté.
-   - Des précisions si disponibles sur la date ou la période, le lieu de la prestation, les quantités sont bienvenues.
-   - Attention à ne pas renvoyer de données personnelles (nom, prénom, adresse postales ou coordonnées).
-   - Attention à ne pas renvoyer de détails de prix.
-   Format : en bon Français, reformulé si besoin.
-   """,
-        "search": "",
-        "output_field": "description_prestations",
-    },
     "numero_devis": {
         "consigne": """NUMERO_DEVIS
-   - Chercher les mentions "N° de devis", "Devis n°", "Référence", "Réf."
-   - Format typique : DEV12345, D-2023-123, etc.
-   - Conserver exactement comme écrit, avec tirets ou autres séparateurs
-   - Ne rien renvoyer si aucun identifiant trouvé
+   Définition : Numéro ou référence propre au devis.
+   Indices :
+   - Chercher les mentions "N° devis", "Devis n°", "Réf. devis", "Référence".
+   - La valeur peut être alphanumérique, avec tirets, slashs ou points.
+   - Si plusieurs références sont présentes, privilégier celle explicitement liée au devis.
+   - Si aucune référence n'est trouvée, renvoyer null.
+   Format : chaîne de caractères, conserver exactement la forme trouvée.
 """,
         "search": "",
         "output_field": "numero_devis",
+        "schema": {"type": ["string"]},
     },
-    "date_creation": {
-        "consigne": """DATE_CREATION
-      Définition : Date de création, d'édition ou de rédaction du document.  
-      Indices : 
-      - Chercher au début du document près de "Date" (création), "Émis le" (émission), "Fait le" (rédaction), "Édité le" (édition)
-      - Si plusieurs dates disponibles, privilégier celle d'émission/création
-      - Ignorer les dates de signature en bas du document.
-      - Ne rien renvoyer si aucune date trouvée
-      Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine 
+    "objet": {
+        "consigne": """OBJET
+   Définition : Objet métier du devis (ce qui est acheté ou réalisé).
+   Indices :
+   - Chercher après les mentions "Objet", "Intitulé", "Sujet", ou dans le titre.
+   - Formuler un objet compréhensible par un tiers.
+   - Retirer les préfixes de type de document ("Devis pour", "Avenant pour", etc.).
+   - Si l'objet est absent ou incompréhensible, renvoyer null.
+   Format : phrase courte en français.
 """,
         "search": "",
-        "output_field": "date_creation",
+        "output_field": "objet",
+        "schema": {"type": ["string"]},
+    },
+    "date_emission": {
+        "consigne": """DATE_EMISSION
+   Définition : Date d'émission / édition / création du devis.
+   Indices :
+   - Repérer "Émis le", "Date du devis", "Date d'édition", "Fait le" en en-tête.
+   - En cas de plusieurs dates, privilégier la date d'émission du devis.
+   - Ignorer les dates de signature.
+   - Si aucune date d'émission claire n'est trouvée, renvoyer null.
+   Format : "JJ/MM/AAAA".
+""",
+        "search": "",
+        "output_field": "date_emission",
+        "schema": {"type": ["string"]},
+    },
+    "titulaire": {
+        "consigne": """TITULAIRE
+   Définition : Informations d'identification du prestataire principal du devis.
+   Indices :
+   - Rechercher la société émettrice : raison sociale, SIREN, SIRET, adresse postale.
+   - Privilégier la société contractante principale (pas les sous-traitants).
+   - SIREN : 9 chiffres ; SIRET : 14 chiffres.
+   - Si une information est absente, renvoyer null pour cette clé.
+   - Si aucun titulaire identifiable, renvoyer {"raison_sociale": null, "siren": null, "siret": null, "adresse": null}.
+   Format : objet JSON {"raison_sociale": ..., "siren": ..., "siret": ..., "adresse": ...}.
+""",
+        "search": "",
+        "output_field": "titulaire",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "raison_sociale": {"type": ["string"]},
+                "siren": {"type": ["string"]},
+                "siret": {"type": ["string"]},
+                "adresse": {"type": ["string"]},
+            },
+            "required": ["raison_sociale", "siren", "siret", "adresse"],
+        },
+    },
+    "administration_beneficiaire": {
+        "consigne": """ADMINISTRATION_BENEFICIAIRE
+   Définition : Entité publique bénéficiaire de la prestation.
+   Indices :
+   - Rechercher "acheteur", "pouvoir adjudicateur", "autorité contractante", "bénéficiaire", ou simplement à qui s'adresse le devis.
+   - Inclure, si possible, le ministère puis le niveau direction/service.
+   - Si seul un rôle est mentionné (ex: préfet), déduire l'administration correspondante.
+   - Si aucune administration identifiable n'est trouvée, renvoyer null.
+   Format : nom de l'administration en toutes lettres.
+""",
+        "search": "",
+        "output_field": "administration_beneficiaire",
+        "schema": {"type": ["string"]},
+    },
+    "prestations": {
+        "consigne": """PRESTATIONS
+   Définition : Liste détaillée des lignes de prestations du devis.
+   Indices :
+   - Extraire les lignes de tableau / poste avec code, description, prix unitaire (si présent), quantité (si présente) et montant total.
+   - Les champs attendus par ligne sont :
+     * "code" : code de ligne (ex: UO 2) ou null si absent
+     * "description" : description de la prestation ou null si absente
+     * "prix_unitaire" : prix unitaire en nombre décimal ; à remplir uniquement si la ligne a un prix unitaire (ligne en unitaire). Sinon renvoyer null (ex: ligne forfaitaire).
+     * "quantite" : quantité en nombre décimal ; à remplir uniquement si elle est indiquée pour la ligne. Sinon renvoyer null.
+     * "montant_total" : montant total de la ligne en nombre décimal ; à remplir dans tous les cas pour chaque ligne.
+   - Ne pas ajouter de ligne vide.
+   - Si aucune ligne exploitable n'est trouvée, renvoyer [].
+   Format : tableau JSON d'objets homogènes.
+""",
+        "search": "",
+        "output_field": "prestations",
+        "schema": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "code": {"type": ["string", "null"]},
+                    "description": {"type": ["string", "null"]},
+                    "prix_unitaire": {"type": ["number", "null"]},
+                    "quantite": {"type": ["number", "null"]},
+                    "montant_total": {"type": ["number"]},
+                },
+                "required": ["code", "description", "prix_unitaire", "quantite", "montant_total"],
+            },
+        },
+    },
+    "montants": {
+        "consigne": """MONTANTS
+   Définition : Synthèse financière du devis.
+   Indices :
+   - Extraire les montants HT, TVA, TTC et le taux de TVA.
+   - Convertir en nombres décimaux (sans symbole euro).
+   - "taux_tva" doit être exprimé en pourcentage (ex: 20, 8.5), pas en ratio.
+   - Si une composante est absente, renvoyer null pour cette clé.
+   - Si aucun montant n'est trouvé, renvoyer {"ht": null, "taux_tva": null, "tva": null, "ttc": null}.
+   Format : objet JSON {"ht": ..., "taux_tva": ..., "tva": ..., "ttc": ...}.
+""",
+        "search": "",
+        "output_field": "montants",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "ht": {"type": ["number"]},
+                "taux_tva": {"type": ["number"]},
+                "tva": {"type": ["number"]},
+                "ttc": {"type": ["number"]},
+            },
+            "required": ["ht", "taux_tva", "tva", "ttc"],
+        },
+    },
+    "duree_validite": {
+        "consigne": """DUREE_VALIDITE
+   Définition : Durée de validité de l'offre/devis.
+   Indices :
+   - Rechercher "durée de validité", "devis valable", "offre valable jusqu'au", "validité".
+   - Peut être exprimée en nombre de jours, de mois (convertir en jours si possible) ou sous forme de date limite (calculer le nombre de jours si la date limite est lisible et déduite d'une date de référence, sinon ignorer).
+   - Retourner uniquement le nombre de jours de validité, sous forme de nombre entier.
+   - Si aucune information n'est trouvée, renvoyer null.
+   Format : nombre de jours (ex : 90). 
+""",
+        "search": "",
+        "output_field": "duree_validite",
+        "schema": {"type": ["string", "null"]},
     },
     "date_signature": {
         "consigne": """DATE_SIGNATURE
-      Définition : Date de signature du document par une des parties.  
-      Indices : 
-      - Repérer les expressions comme "Signé le", "Fait à ...", ou des dates en bas du document associées à une signature.
-      - Ignorer les dates d'émission ou de création du document, en général en haut du document
-      - Ne rien renvoyer si aucune date de signature trouvée
-     Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
+   Définition : Date de signature effective du devis.
+   Indices :
+   - Repérer les mentions "Signé le", "Bon pour accord", "Fait à ... le ...", signature électronique.
+   - En cas de plusieurs dates de signature, retenir la plus tardive.
+   - Ignorer la date d'émission.
+   - Si aucune signature datée n'est présente, renvoyer null.
+   Format : "JJ/MM/AAAA".
 """,
         "search": "",
         "output_field": "date_signature",
+        "schema": {"type": ["string"]},
     },
-    "societe_principale": {
-        "consigne": """SOCIETE_PRINCIPALE  
-     Définition : Société principale contractante avec l'administration publique ou ses représentants. Si un groupement est mentionné, extraire la société mandataire ou représentante.  
-     Indices : 
-     - Rechercher les mentions de société, entreprise, titulaire, mandataire, contractant.
-     - En général, l'autre nom de personne morale que l'administration acheteuse.
-     - Le nom de la société est souvent cohérent avec le nom de domaine du site interne.
-     Format : renvoyer le nom de la société telle qu'écrit dans le document.
-""",
-        "search": "",
-        "output_field": "societe_principale",
-    },
-    "siren": {
-        "consigne": """SIREN
-   Définition : numéro de SIREN du prestataire / du titulaire principal, composé de 9 chiffres
+    "dernier_signataire": {
+        "consigne": """DERNIER_SIGNATAIRE
+   Définition : Nom du dernier signataire identifié sur le devis.
    Indices :
-   - Après la mention SIREN au début ou à la fin du document.
-   - A partir d'un numéro de SIRET : les 9 premiers chiffres d'un SIRET de 14 chiffres.
-   - A partir d'un numéro RCS : les 9 chiffres du numéro RCS (après "RCS" ou "N° RCS")
-   - A partir d'un numéro de TVA : les 9 derniers chiffres du numéro de TVA (après l'identifiant du pays et du département ex : FR12)
-   - Ne rien renvoyer si aucun SIREN trouvé
-   Format : un numéro composé de 9 chiffres, sans espaces ni caractères spéciaux
+   - Chercher les noms proches de blocs de signature, cachets ou signatures électroniques.
+   - En cas de signatures multiples, renvoyer la personne associée à la dernière date de signature.
+   - Si seul un signataire est trouvé, renvoyer ce signataire.
+   - Si aucun nom de signataire n'est identifiable, renvoyer null.
+   Format : nom et prénom sous forme texte.
 """,
         "search": "",
-        "output_field": "siren",
-    },
-    "siret": {
-        "consigne": """SIRET  
-   Définition : Numéro SIRET de la société principale, composé de 14 chiffres.  
-   Indices :
-   - Peut être mentionné comme "SIRET", ou "numéro d'immatriculation"
-   Format : un numéro composé de 14 chiffres, sans espaces.  
-""",
-        "search": "",
-        "output_field": "siret",
-    },
-    "n_tva": {
-        "consigne": """N_TVA
-   Définition : numéro de TVA du prestataire / du titulaire principal
-   Indices :
-   - Chercher "N° TVA", "TVA intracommunautaire", "N° Intracommunautaire"
-   - Format typique : FR12345678900, FRXX123456789
-   - Conserver exactement comme écrit, avec tous les caractères
-   - Ne rien renvoyer si aucun numéro TVA trouvé
-   Format : un identifiant composé de 2 lettres et 11 chiffres, sans espaces ni caractères spéciaux.
-""",
-        "search": "",
-        "output_field": "n_tva",
+        "output_field": "dernier_signataire",
+        "schema": {"type": ["string", "null"]},
     },
 }
