@@ -445,6 +445,69 @@ def _get_value_by_dotted_key(data, key):
             return _get_value_by_dotted_key(data.get(key), key_suffix)
 
 
+def _format_leaf(val) -> str:
+    """Format une valeur feuille pour l'affichage (traitée comme string)."""
+    if val is None:
+        return "None"
+    return str(val)
+
+
+def print_json_diff(ref_data, llm_data, path_prefix: str = ""):
+    """
+    Affiche les différences entre deux JSON (ref vs llm) en parcourant les clés de la référence.
+
+    Pour chaque feuille : affiche le chemin et côte à côte REF | LLM.
+    Les feuilles avec la même valeur sont affichées telles quelles ; celles qui diffèrent
+    sont préfixées par ❌.
+    Les clés présentes seulement dans REF ou seulement dans LLM sont aussi marquées ❌.
+    """
+    # Au moins l'un des deux n'est pas un dict -> feuille
+    if not isinstance(ref_data, dict) or not isinstance(llm_data, dict):
+        ref_str = _format_leaf(ref_data)
+        llm_str = _format_leaf(llm_data)
+        path = path_prefix or "(racine)"
+        diff = ref_str != llm_str
+        prefix = "    ❌ " if diff else "      "
+        print(f"{prefix}{path}:  REF={ref_str!s}  |  LLM={llm_str!s}")
+        return
+
+    if ref_data is None and llm_data is None:
+        return
+
+    ref_keys = set(ref_data.keys())
+    llm_keys = set(llm_data.keys())
+
+    only_ref = ref_keys - llm_keys
+    only_llm = llm_keys - ref_keys
+    common = ref_keys & llm_keys
+
+    for k in sorted(only_ref):
+        print(f"    ❌ [REF seulement] {path_prefix + '.' + k if path_prefix else k}")
+    for k in sorted(only_llm):
+        print(f"    ❌ [LLM seulement] {path_prefix + '.' + k if path_prefix else k}")
+
+    for k in sorted(common):
+        path = f"{path_prefix}.{k}" if path_prefix else k
+        ref_v = ref_data[k]
+        llm_v = llm_data[k]
+
+        if isinstance(ref_v, dict) and isinstance(llm_v, dict):
+            print_json_diff(ref_v, llm_v, path_prefix=path)
+        elif isinstance(ref_v, dict) or isinstance(llm_v, dict):
+            # L'un est dict, l'autre non : afficher comme feuille
+            ref_str = _format_leaf(ref_v)
+            llm_str = _format_leaf(llm_v)
+            diff = ref_str != llm_str
+            prefix = "    ❌ " if diff else "      "
+            print(f"{prefix}{path}:  REF={ref_str!s}  |  LLM={llm_str!s}")
+        else:
+            ref_str = _format_leaf(ref_v)
+            llm_str = _format_leaf(llm_v)
+            diff = ref_str != llm_str
+            prefix = "    ❌ " if diff else "      "
+            print(f"{prefix}{path}:  REF={ref_str!s}  |  LLM={llm_str!s}")
+
+
 def check_quality_one_field(df_merged, col_to_test, comparison_functions, only_errors=False):
     # ============================================================================
     # COMPARAISON POUR UNE COLONNE SPÉCIFIQUE
@@ -466,21 +529,28 @@ def check_quality_one_field(df_merged, col_to_test, comparison_functions, only_e
         ref_val = _get_value_by_dotted_key(row, col_to_test)
         llm_val = _get_value_by_dotted_key(llm_data, col_to_test)
 
-        # Extraction des pbm OCR
-        pbm_ocr = col_to_test in row["pbm_ocr"]
-
         # Comparer les valeurs
         try:
             match_result = comparison_func(llm_val, ref_val)
             if only_errors and match_result:
                 continue
             status = "✅ MATCH" if match_result else "❌ NO MATCH"
-            print(f"{status} | {filename} | OCR {'❌' if pbm_ocr else '✅'}")
+            print(f"{status} | {filename}")
             print(f"  LLM: {llm_val!r}")
             print(f"  REF: {ref_val!r}")
+            if not match_result and isinstance(ref_val, dict) and isinstance(llm_val, dict):
+                print("  Diff détaillée (feuilles REF | LLM):")
+                print_json_diff(ref_val, llm_val)
+            elif not match_result and isinstance(ref_val, list) and isinstance(llm_val, list):
+                print("  Diff détaillée (listes REF | LLM):")
+                for i in range(min(len(ref_val), len(llm_val))):
+                    print(f"  {i}:")
+                    print_json_diff(ref_val[i], llm_val[i])
+                if len(ref_val) != len(llm_val):
+                    print(f"  Listes de taille différente: REF={len(ref_val)}, LLM={len(llm_val)}")
             print()
         except Exception as e:
-            print(f"❌ ERREUR | {filename}: {str(e)} | OCR {'❌' if pbm_ocr else '✅'}")
+            print(f"❌ ERREUR | {filename}: {str(e)}")
             print(f"  LLM: {llm_val!r}")
             print(f"  REF: {ref_val!r}")
             print()
@@ -513,9 +583,6 @@ def check_quality_one_row(df_merged, row_idx_to_test, comparison_functions, excl
             ref_val = _get_value_by_dotted_key(row, col)
             llm_val = _get_value_by_dotted_key(llm_data, col)
 
-            # Extraction des pbm OCR
-            pbm_ocr = col in row["pbm_ocr"]
-
             # Comparer les valeurs
             try:
                 match_result = comparison_func(llm_val, ref_val)
@@ -523,12 +590,12 @@ def check_quality_one_row(df_merged, row_idx_to_test, comparison_functions, excl
                 if only_errors and match_result:
                     continue
                 status = "✅ MATCH" if match_result else "❌ NO MATCH"
-                print(f"{status} | {col} | OCR {'❌' if pbm_ocr else '✅'}")
+                print(f"{status} | {col}")
                 print(f"  LLM: {llm_val!r}")
                 print(f"  REF: {ref_val!r}")
                 print()
             except Exception as e:
-                print(f"❌ ERREUR | {col}: {str(e)} | OCR {'❌' if pbm_ocr else '✅'}")
+                print(f"❌ ERREUR | {col}: {str(e)}")
                 print(f"  LLM: {llm_val!r}")
                 print(f"  REF: {ref_val!r}")
                 print()
@@ -619,7 +686,6 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
 
         matches = []
         errors = []
-        ocr_errors_count = 0
         matches_no_ocr = []
         regressions_vs_best = 0
         improvements_vs_best = 0
@@ -628,19 +694,10 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
         for idx, row in df_merged.iterrows():
             filename = row.get("filename", "unknown")
 
-            # Vérifier les erreurs OCR pour cette colonne
-            pbm_ocr = False
-            if col in row.get("pbm_ocr", []):
-                ocr_errors_count += 1
-                pbm_ocr = True
-
             structured_data = row.get("structured_data", None)
             if structured_data is None or pd.isna(structured_data):
                 errors.append(f"{filename}: structured_data is None or NaN")
                 matches.append(False)
-                # Si pas de problème OCR, on compte aussi dans matches_no_ocr
-                if not pbm_ocr:
-                    matches_no_ocr.append(False)
                 continue
 
             # Extraire les valeurs
@@ -652,9 +709,6 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
                 match_result = comparison_func(llm_val, ref_val)
                 match_result = bool(match_result) if not isinstance(match_result, bool) else match_result
                 matches.append(match_result)
-                # Si pas de problème OCR, on compte aussi dans matches_no_ocr
-                if not pbm_ocr:
-                    matches_no_ocr.append(match_result)
 
                 # Écart au meilleur test (si colonne optionnelle présente)
                 if use_best_ref:
@@ -668,9 +722,6 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
             except Exception as e:
                 errors.append(f"{filename}: Error in comparison_func: {str(e)}")
                 matches.append(False)
-                # Si pas de problème OCR, on ajoute aussi à matches_no_ocr
-                if not pbm_ocr:
-                    matches_no_ocr.append(False)
                 if use_best_ref:
                     best_errors = _parse_best_test_errors(row)
                     best_had_error = col in best_errors
@@ -692,7 +743,6 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
             "total": total,
             "matches": matches_count,
             "errors": errors_count,
-            "ocr_errors": ocr_errors_count,
             "accuracy": accuracy,
             "accuracy_no_ocr": accuracy_no_ocr,
             "total_no_ocr": total_no_ocr,
@@ -709,7 +759,6 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
         f"{'Total':<6}",
         f"{'Matches':<8}",
         f"{'Erreurs':<8}",
-        f"{'OCR Errors':<10}",
         f"{'Accuracy':<10}",
         f"{'Accuracy (no OCR)':<18}",
     ]
@@ -725,7 +774,6 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
             f"{result['total']:<6}",
             f"{result['matches']:<8}",
             f"{result['errors']:<8}",
-            f"{result['ocr_errors']:<10}",
             f"{result['accuracy'] * 100:>6.2f}%",
             f"{result['accuracy_no_ocr'] * 100:>14.2f}%",
         ]
@@ -741,7 +789,6 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
     total_comparisons = sum(r["total"] for r in results.values())
     total_matches = sum(r["matches"] for r in results.values())
     total_errors = sum(r["errors"] for r in results.values())
-    total_ocr_errors = sum(r["ocr_errors"] for r in results.values())
     global_accuracy = total_matches / total_comparisons if total_comparisons > 0 else 0.0
 
     # Calculer l'accuracy globale sans OCR
@@ -752,9 +799,7 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
     print(f"Total de comparaisons: {total_comparisons}")
     print(f"Total de matches: {total_matches}")
     print(f"Total d'erreurs: {total_errors}")
-    print(f"Total d'erreurs OCR: {total_ocr_errors}")
     print(f"Accuracy globale: {global_accuracy * 100:.2f}%")
-    print(f"Accuracy globale (sans OCR): {global_accuracy_no_ocr * 100:.2f}% ({total_matches_no_ocr}/{total_no_ocr})")
     if use_best_ref:
         total_imp = sum(r.get("improvements_vs_best", 0) for r in results.values())
         total_reg = sum(r.get("regressions_vs_best", 0) for r in results.values())
