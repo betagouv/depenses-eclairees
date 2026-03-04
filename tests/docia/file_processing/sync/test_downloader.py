@@ -178,7 +178,7 @@ def test_zip_file_with_nested_structure(downloader):
             f"{prefix}archive.zip_/subarchive.zip_/zzz/sub/toto3.txt",
         ]
 
-        assert files == expected_files
+        assert sorted(files) == sorted(expected_files)
 
         def read_file(filepath):
             with default_storage.open(filepath, "rb") as f:
