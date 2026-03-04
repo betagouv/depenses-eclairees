@@ -2,8 +2,11 @@ import datetime
 import hashlib
 
 import factory.fuzzy
+from factory import SubFactory
 
 from docia.file_processing.models import (
+    ExternalDocumentMetadata,
+    ExternalLinkDocumentOrder,
     FileInfo,
     ProcessDocumentBatch,
     ProcessDocumentJob,
@@ -12,7 +15,7 @@ from docia.file_processing.models import (
 )
 from docia.file_processing.pipeline.pipeline import DEFAULT_PROCESS_STEPS
 from docia.file_processing.pipeline.steps.content_analysis import SUPPORTED_DOCUMENT_TYPES
-from tests.factories.data import DocumentFactory
+from tests.factories.data import DocumentFactory, random_external_id, random_num_ej
 
 
 class ProcessDocumentBatchFactory(factory.django.DjangoModelFactory):
@@ -47,6 +50,7 @@ class FileInfoFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = FileInfo
 
+    external_id = factory.lazy_attribute(lambda i: random_external_id())
     file = factory.lazy_attribute(lambda i: f"{i.folder}/{i.filename}")
     filename = factory.Sequence(lambda n: f"file_{n:0>3}.pdf")
     folder = factory.Sequence(lambda n: f"raw/folder{n // 5:0>3}")
@@ -54,3 +58,26 @@ class FileInfoFactory(factory.django.DjangoModelFactory):
     size = 1042
     hash = factory.lazy_attribute(lambda i: hashlib.md5(i.file.encode()).hexdigest())
     created_date = factory.fuzzy.FuzzyDate(start_date=datetime.date(2025, 1, 1))
+
+
+class ExternalDocumentMetadataFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = ExternalDocumentMetadata
+
+    external_id = factory.lazy_attribute(lambda i: random_external_id())
+    name = factory.Sequence(lambda n: f"file_{n:0>3}.pdf")
+    size = factory.fuzzy.FuzzyInteger(100, 10 * 1000 * 1000)
+
+
+class ExternalDocumentMetadataFactoryWithOrder(ExternalDocumentMetadataFactory):
+    link = factory.RelatedFactory(
+        "tests.factories.file_processing.ExternalLinkDocumentOrderFactory", factory_related_name="external_document"
+    )
+
+
+class ExternalLinkDocumentOrderFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = ExternalLinkDocumentOrder
+
+    external_document = SubFactory(ExternalDocumentMetadataFactory)
+    order_id = factory.Sequence(lambda i: random_num_ej())
