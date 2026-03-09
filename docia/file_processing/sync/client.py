@@ -153,11 +153,8 @@ class SyncClient:
     def list_documents_for_ej(self, num_ej: str, return_raw: bool = False) -> list[ApiDocumentMetadata]:
         """Get list of documents associated with an engagement number"""
         endpoint = "export_pj_ej/pieces_jointes_metadata"
-        if self.env == "prod":
-            params = {"$filter": f"num_ej eq '{num_ej}'"}
-        else:
-            object_type = "BUS2201"
-            params = {"$filter": f"num_ej eq '{num_ej}' and object_type eq '{object_type}'"}
+        object_type = "BUS2201"
+        params = {"$filter": f"num_ej eq '{num_ej}' and object_type eq '{object_type}'"}
 
         response = self.session.get(
             self.base_url + endpoint,
