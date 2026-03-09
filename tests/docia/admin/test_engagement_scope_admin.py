@@ -88,10 +88,10 @@ def test_engagement_scope_admin_add_view(admin_client):
 
     # Test POST request to create a new engagement scope
     post_data = {
-        "purchase_organization": "New OA", 
-        "purchase_group": "New GA", 
-        "groups": [group1.pk, group2.pk], 
-        "_save": "Save"
+        "purchase_organization": "New OA",
+        "purchase_group": "New GA",
+        "groups": [group1.pk, group2.pk],
+        "_save": "Save",
     }
 
     response = admin_client.post(add_url, post_data)
@@ -239,8 +239,8 @@ def test_complete_engagement_scope_lifecycle(admin_client):
     post_data = {
         "purchase_organization": "Integration OA",
         "purchase_group": "Integration GA",
-        "groups": [group1.pk], 
-        "_save": "Save"
+        "groups": [group1.pk],
+        "_save": "Save",
     }
 
     response = admin_client.post(add_url, post_data)

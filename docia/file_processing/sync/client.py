@@ -3,11 +3,10 @@ import logging
 import re
 import unicodedata
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal
 
 from django.conf import settings
-from django.utils import timezone
 
 import pydantic
 import requests
