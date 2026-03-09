@@ -26,12 +26,12 @@ class TestGetUserAllowedEj:
         # Create engagements and scopes
         ej1, ej2, ej3, _ej4 = DataEngagementFactory.create_batch(4)
 
-        scope1 = EngagementScopeFactory(name="scope1")
+        scope1 = EngagementScopeFactory(purchase_organization="OA_1", purchase_group="GA_1")
         scope1.engagements.add(ej1, ej2)
         scope1.groups.add(group)
 
         # scope2 is not linked to the group
-        scope2 = EngagementScopeFactory(name="scope2")
+        scope2 = EngagementScopeFactory(purchase_organization="OA_2", purchase_group="GA_2")
         scope2.engagements.add(ej3)
 
         result = get_user_allowed_ej_qs(user)
@@ -52,11 +52,11 @@ class TestGetUserAllowedEj:
         ej2 = DataEngagementFactory(num_ej="EJ002")
         ej3 = DataEngagementFactory(num_ej="EJ003")
 
-        scope1 = EngagementScopeFactory(name="scope1")
+        scope1 = EngagementScopeFactory(purchase_organization="OA_1", purchase_group="GA_1")
         scope1.engagements.add(ej1)
         scope1.groups.add(group1)
 
-        scope2 = EngagementScopeFactory(name="scope2")
+        scope2 = EngagementScopeFactory(purchase_organization="OA_2", purchase_group="GA_2")
         scope2.engagements.add(ej2, ej3)
         scope2.groups.add(group2)
 
@@ -74,11 +74,11 @@ class TestGetUserAllowedEj:
         ej2 = DataEngagementFactory(num_ej="EJ002")
 
         # Create two scopes that both include ej1
-        scope1 = EngagementScopeFactory(name="scope1")
+        scope1 = EngagementScopeFactory(purchase_organization="OA_1", purchase_group="GA_1")
         scope1.engagements.add(ej1, ej2)
         scope1.groups.add(group)
 
-        scope2 = EngagementScopeFactory(name="scope2")
+        scope2 = EngagementScopeFactory(purchase_organization="OA_2", purchase_group="GA_2")
         scope2.engagements.add(ej1)  # ej1 appears in both scopes
         scope2.groups.add(group)
 

@@ -17,8 +17,8 @@ from tests.utils import assert_queryset_equal
 def test_group_admin_form_initialization():
     """Test that the AdminGroupForm initializes correctly"""
     # Create some test scopes
-    scope1 = EngagementScope.objects.create(name="Scope 1")
-    scope2 = EngagementScope.objects.create(name="Scope 2")
+    scope1 = EngagementScope.objects.create(purchase_organization="OA 1", purchase_group="GA 1")
+    scope2 = EngagementScope.objects.create(purchase_organization="OA 2", purchase_group="GA 2")
 
     # Test form initialization with existing group
     group = Group.objects.create(name="Test Group")
@@ -36,8 +36,8 @@ def test_group_admin_form_initialization():
 def test_group_admin_form_save():
     """Test that the AdminGroupForm saves scopes correctly"""
     # Create some test scopes
-    scope1 = EngagementScope.objects.create(name="Scope 1")
-    scope2 = EngagementScope.objects.create(name="Scope 2")
+    scope1 = EngagementScope.objects.create(purchase_organization="OA 1", purchase_group="GA 1")
+    scope2 = EngagementScope.objects.create(purchase_organization="OA 2", purchase_group="GA 2")
 
     # Create form data
     form_data = {"name": "Test Group", "permissions": [], "scopes": [scope1.pk, scope2.pk]}
@@ -58,9 +58,9 @@ def test_group_admin_form_save():
 def test_group_admin_form_update():
     """Test that the AdminGroupForm updates scopes correctly"""
     # Create some test scopes
-    scope1 = EngagementScope.objects.create(name="Scope 1")
-    scope2 = EngagementScope.objects.create(name="Scope 2")
-    scope3 = EngagementScope.objects.create(name="Scope 3")
+    scope1 = EngagementScope.objects.create(purchase_organization="OA 1", purchase_group="GA 1")
+    scope2 = EngagementScope.objects.create(purchase_organization="OA 2", purchase_group="GA 2")
+    scope3 = EngagementScope.objects.create(purchase_organization="OA 3", purchase_group="GA 3")
 
     # Create a group with initial scopes
     group = Group.objects.create(name="Test Group")
@@ -86,10 +86,10 @@ def test_group_admin_form_update():
 def test_group_admin_add_view(admin_client):
     """Test the add group view in admin"""
     # Create some test scopes
-    scope1 = EngagementScope.objects.create(name="Test Scope 1")
-    scope2 = EngagementScope.objects.create(name="Test Scope 2")
+    scope1 = EngagementScope.objects.create(purchase_organization="OA 1", purchase_group="GA 1")
+    scope2 = EngagementScope.objects.create(purchase_organization="OA 2", purchase_group="GA 2")
     # This one should not be added
-    EngagementScope.objects.create(name="Test Scope 3")
+    EngagementScope.objects.create(purchase_organization="OA 3", purchase_group="GA 3")
 
     # Get the add group URL
     add_url = reverse("admin:auth_group_add")
@@ -115,9 +115,9 @@ def test_group_admin_add_view(admin_client):
 def test_group_admin_change_view(admin_client):
     """Test the change group view in admin"""
     # Create some test scopes
-    scope1 = EngagementScope.objects.create(name="Test Scope 1")
-    scope2 = EngagementScope.objects.create(name="Test Scope 2")
-    scope3 = EngagementScope.objects.create(name="Test Scope 3")
+    scope1 = EngagementScope.objects.create(purchase_organization="OA 1", purchase_group="GA 1")
+    scope2 = EngagementScope.objects.create(purchase_organization="OA 2", purchase_group="GA 2")
+    scope3 = EngagementScope.objects.create(purchase_organization="OA 3", purchase_group="GA 3")
 
     # Create a group to edit
     group = Group.objects.create(name="Group to Edit")
@@ -155,8 +155,8 @@ def test_group_admin_change_view(admin_client):
 def test_group_admin_list_view(admin_client):
     """Test the group list view in admin"""
     # Create some test scopes
-    scope1 = EngagementScope.objects.create(name="Test Scope 1")
-    scope2 = EngagementScope.objects.create(name="Test Scope 2")
+    scope1 = EngagementScope.objects.create(purchase_organization="OA 1", purchase_group="GA 1")
+    scope2 = EngagementScope.objects.create(purchase_organization="OA 2", purchase_group="GA 2")
 
     # Create some test groups
     group1 = Group.objects.create(name="Group 1")
@@ -181,8 +181,8 @@ def test_group_admin_list_view(admin_client):
 def test_group_admin_search_functionality(admin_client):
     """Test the search functionality in group admin"""
     # Create some test scopes
-    scope1 = EngagementScope.objects.create(name="Test Scope 1")
-    scope2 = EngagementScope.objects.create(name="Test Scope 2")
+    scope1 = EngagementScope.objects.create(purchase_organization="OA 1", purchase_group="GA 1")
+    scope2 = EngagementScope.objects.create(purchase_organization="OA 2", purchase_group="GA 2")
 
     # Create test groups
     group1 = Group.objects.create(name="Searchable Group")
@@ -207,8 +207,8 @@ def test_group_admin_search_functionality(admin_client):
 def test_complete_group_lifecycle(admin_client):
     """Test the complete lifecycle of a group in admin: create, edit, delete"""
     # Create test scopes
-    scope1 = EngagementScope.objects.create(name="Integration Scope 1")
-    scope2 = EngagementScope.objects.create(name="Integration Scope 2")
+    scope1 = EngagementScope.objects.create(purchase_organization="OA 1", purchase_group="GA 1")
+    scope2 = EngagementScope.objects.create(purchase_organization="OA 2", purchase_group="GA 2")
 
     # Step 1: Create a group
     add_url = reverse("admin:auth_group_add")

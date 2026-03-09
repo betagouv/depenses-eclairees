@@ -1,9 +1,13 @@
+import enum
 import logging
+import re
 import unicodedata
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Literal
 
 from django.conf import settings
+from django.utils import timezone
 
 import pydantic
 import requests
@@ -44,6 +48,54 @@ class ApiDocumentMetadata:
             num_ej=doc.num_ej,
             size=size,
         )
+
+
+class ApiRawEngagementActivity(pydantic.BaseModel):
+    alerte: str = pydantic.Field(...)
+    num_ej: str = pydantic.Field(...)
+    date_reception: str = pydantic.Field(...)  # Format '/Date(<timestamp ms>)/'
+    pur_org: str = pydantic.Field(...)
+    pur_group: str = pydantic.Field(...)
+
+
+@dataclass
+class ApiEngagementActivity:
+    class Type(enum.StrEnum):
+        CREATE = "CREATE"
+        UPDATE = "UPDATE"
+
+    type: Type
+    num_ej: str = pydantic.Field(...)
+    purchase_organization: str = pydantic.Field(...)
+    purchase_group: str = pydantic.Field(...)
+    received_at: datetime = pydantic.Field(...)
+
+    @classmethod
+    def from_raw_activity(cls, activity: ApiRawEngagementActivity):
+        return cls(
+            type=cls.parse_type(activity.alerte),
+            num_ej=activity.num_ej,
+            purchase_organization=activity.pur_org,
+            purchase_group=activity.pur_group,
+            received_at=parse_api_datetime(activity.date_reception),
+        )
+
+    @classmethod
+    def parse_type(cls, value: str) -> Type:
+        if value.endswith("Création"):
+            return cls.Type.CREATE
+        elif value.endswith("Modification"):
+            return cls.Type.UPDATE
+        else:
+            raise ValueError(f"Invalid type {value!r}")
+
+
+def parse_api_datetime(value: str) -> datetime:
+    m = re.match(r"/Date\((?P<timestamp>[0-9]+)\)/", value)
+    if not m:
+        raise ValueError(f"Invalid datetime format {value!r}")
+    ts_ms = int(m.group("timestamp"))
+    return datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc)
 
 
 class SyncClient:
@@ -99,7 +151,7 @@ class SyncClient:
         )
         self.is_authenticated = True
 
-    def list_documents_for_ej(self, num_ej: str) -> list[ApiDocumentMetadata]:
+    def list_documents_for_ej(self, num_ej: str, return_raw: bool = False) -> list[ApiDocumentMetadata]:
         """Get list of documents associated with an engagement number"""
         endpoint = "export_pj_ej/pieces_jointes_metadata"
         if self.env == "prod":
@@ -116,6 +168,9 @@ class SyncClient:
 
         data = response.json()
 
+        if return_raw:
+            return data
+
         result = []
         for doc_data in data["d"]["results"]:
             try:
@@ -124,6 +179,48 @@ class SyncClient:
                 result.append(doc)
             except pydantic.ValidationError as e:
                 logger.warning(f"Validation error for document data={data!r} error={e}")
+                raise
+        return result
+
+    def list_ej_place(
+        self,
+        start: datetime,
+        end: datetime,
+        purchase_organization: str,
+        purchase_group: str,
+        return_raw: bool = False,
+    ) -> list[ApiEngagementActivity]:
+        """
+        Liste les EJ (actes d'engagement) dans le périmètre défini.
+        Un seul OA et un seul GA sont supportés (strings).
+        """
+        start_iso = start.isoformat()
+        end_iso = end.isoformat()
+
+        endpoint = "export_pj_ej/liste_ej_place"
+        filter_str = (
+            f"date_reception ge datetime'{start_iso}' and "
+            f"date_reception le datetime'{end_iso}' and "
+            f"pur_org eq '{purchase_organization}' and pur_group eq '{purchase_group}'"
+        )
+        response = self.session.get(
+            self.base_url + endpoint,
+            params={"$filter": filter_str},
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        if return_raw:
+            return data
+
+        result = []
+        for obj_data in data["d"]["results"]:
+            try:
+                raw_obj = ApiRawEngagementActivity(**obj_data)
+                obj = ApiEngagementActivity.from_raw_activity(raw_obj)
+                result.append(obj)
+            except pydantic.ValidationError as e:
+                logger.warning(f"Validation error for object {data!r} error={e}")
                 raise
         return result
 

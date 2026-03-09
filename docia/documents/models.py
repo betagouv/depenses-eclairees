@@ -18,8 +18,9 @@ class DataEngagement(BaseModel):
     prestataire = models.CharField(null=True, blank=True)  # noqa: DJ001
     administration = models.CharField(null=True, blank=True)  # noqa: DJ001
     siret = models.CharField(max_length=20, null=True, blank=True)  # noqa: DJ001
-    sources_et_conflits = models.JSONField(null=True, blank=True)  # noqa: DJ001
-    date_creation = models.DateField(null=True, blank=True)  # noqa: DJ001
+    sources_et_conflits = models.JSONField(null=True, blank=True)
+    date_creation = models.DateField(null=True, blank=True)
+    external_updated_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "engagements"
@@ -62,7 +63,10 @@ class Document(BaseModel):
 
 
 class EngagementScope(BaseModel):
-    name = models.CharField(max_length=255)
+    # OA: Organisation d'achat
+    purchase_organization = models.CharField(max_length=255)
+    # GA: Groupe d'achat
+    purchase_group = models.CharField(max_length=255)
     engagements = models.ManyToManyField(DataEngagement, related_name="scopes", related_query_name="scopes")
     groups = models.ManyToManyField(
         Group,
@@ -71,8 +75,12 @@ class EngagementScope(BaseModel):
         blank=True,
     )
 
+    class Meta:
+        unique_together = [("purchase_organization", "purchase_group")]
+        verbose_name = "Périmètre"
+
     def __str__(self):
-        return self.name
+        return f"{self.purchase_organization}/{self.purchase_group}"
 
 
 class DataBatch(BaseModel):
