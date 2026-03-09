@@ -171,11 +171,21 @@ class SyncClient:
             return data
 
         result = []
+        doc_by_id = {}  # Save already processed docs to remove duplicates
         for doc_data in data["d"]["results"]:
             try:
                 raw_doc = ApiRawDocumentMetadata(**doc_data)
                 doc = ApiDocumentMetadata.from_raw_doc(raw_doc)
-                result.append(doc)
+                # Remove duplicates on the fly
+                if doc.id not in doc_by_id:
+                    result.append(doc)
+                    doc_by_id[doc.id] = doc
+                else:
+                    # Make sure it's a true duplicate (same filename and size)
+                    duplicate = doc_by_id[doc.id]
+                    if duplicate != doc:
+                        raise ValueError(f"Invalid duplicate: {duplicate!r} != {doc!r}")
+
             except pydantic.ValidationError as e:
                 logger.warning(f"Validation error for document data={data!r} error={e}")
                 raise

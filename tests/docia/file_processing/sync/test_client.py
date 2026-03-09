@@ -139,6 +139,101 @@ def test_list_documents_for_ej_invalid_size(client, caplog):
 
 
 @responses.activate
+def test_list_documents_for_ej_deduplication(client):
+    """Test that duplicate documents are properly removed"""
+
+    # Mock response with duplicate documents (same id_pj)
+    mock_response = {
+        "d": {
+            "results": [
+                {
+                    "id_pj": "doc123",
+                    "nom_pj": "test_document.pdf",
+                    "num_ej": "EJ2023-001",
+                    "size_pj": "1024",
+                },
+                {
+                    "id_pj": "doc123",  # Same ID - should be deduplicated
+                    "nom_pj": "test_document.pdf",  # Same name
+                    "num_ej": "EJ2023-001",
+                    "size_pj": "1024",  # Same size
+                },
+                {
+                    "id_pj": "doc456",
+                    "nom_pj": "another_document.pdf",
+                    "num_ej": "EJ2023-001",
+                    "size_pj": "2048",
+                },
+            ]
+        }
+    }
+    responses.add(
+        responses.GET,
+        "https://filesync.api.testing.beta.gouv.fr/export_pj_ej/pieces_jointes_metadata",
+        json=mock_response,
+        status=200,
+    )
+
+    # List documents
+    documents = client.list_documents_for_ej("EJ2023-001")
+
+    # Verify that duplicates are removed - should only have 2 unique documents
+    expected = [
+        ApiDocumentMetadata(
+            id="doc123",
+            name="test_document.pdf",
+            num_ej="EJ2023-001",
+            size=1024,
+        ),
+        ApiDocumentMetadata(
+            id="doc456",
+            name="another_document.pdf",
+            num_ej="EJ2023-001",
+            size=2048,
+        ),
+    ]
+    assert documents == expected
+
+
+@responses.activate
+def test_list_documents_for_ej_invalid_duplicate(client):
+    """Test that invalid duplicates (different metadata) raise an error"""
+
+    # Mock response with invalid duplicate (same ID but different metadata)
+    mock_response = {
+        "d": {
+            "results": [
+                {
+                    "id_pj": "doc123",
+                    "nom_pj": "test_document.pdf",
+                    "num_ej": "EJ2023-001",
+                    "size_pj": "1024",
+                },
+                {
+                    "id_pj": "doc123",  # Same ID but different name and size
+                    "nom_pj": "different_document.pdf",  # Different name
+                    "num_ej": "EJ2023-001",
+                    "size_pj": "2048",  # Different size
+                },
+            ]
+        }
+    }
+    responses.add(
+        responses.GET,
+        "https://filesync.api.testing.beta.gouv.fr/export_pj_ej/pieces_jointes_metadata",
+        json=mock_response,
+        status=200,
+    )
+
+    # List documents and expect ValueError for invalid duplicate
+    with pytest.raises(ValueError) as exc_info:
+        client.list_documents_for_ej("EJ2023-001")
+
+    # Verify the error message
+    assert "Invalid duplicate" in str(exc_info.value)
+
+
+@responses.activate
 def test_download_document_success(client):
     """Test successful document download"""
 
