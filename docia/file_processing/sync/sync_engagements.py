@@ -4,7 +4,7 @@ from datetime import datetime
 from django.db.transaction import atomic
 
 from docia.documents.models import DataEngagement, EngagementScope
-from docia.file_processing.sync.client import SyncClient, ApiEngagementActivity
+from docia.file_processing.sync.client import ApiEngagementActivity, SyncClient
 
 logger = logging.getLogger(__name__)
 
@@ -78,4 +78,3 @@ class EngagementsSync:
                 num_ejs.add(activity.num_ej)
                 result.append(activity)
         return result
-            
