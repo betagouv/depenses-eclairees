@@ -140,4 +140,4 @@ class ExternalLinkDocumentOrder(BaseModel):
         unique_together = [("external_document", "order_id")]
 
     def __str__(self):
-        return f"{self.document_id}-{self.order_id}"
+        return f"{self.external_document_id}-{self.order_id}"

@@ -97,6 +97,11 @@ def parse_api_datetime(value: str) -> datetime:
     return datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc)
 
 
+def datetime_to_api(value: datetime) -> str:
+    s = value.astimezone(timezone.utc).replace(tzinfo=None).isoformat(timespec="seconds")
+    return f"datetime'{s}'"
+
+
 class SyncClient:
     def __init__(
         self,
@@ -200,13 +205,13 @@ class SyncClient:
         Liste les EJ (actes d'engagement) dans le périmètre défini.
         Un seul OA et un seul GA sont supportés (strings).
         """
-        start_iso = start.isoformat()
-        end_iso = end.isoformat()
+        start_api = datetime_to_api(start)
+        end_api = datetime_to_api(end)
 
         endpoint = "export_pj_ej/liste_ej_place"
         filter_str = (
-            f"date_reception ge datetime'{start_iso}' and "
-            f"date_reception le datetime'{end_iso}' and "
+            f"date_reception ge {start_api} and "
+            f"date_reception le {end_api} and "
             f"pur_org eq '{purchase_organization}' and pur_group eq '{purchase_group}'"
         )
         response = self.session.get(

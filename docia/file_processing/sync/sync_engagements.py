@@ -4,7 +4,7 @@ from datetime import datetime
 from django.db.transaction import atomic
 
 from docia.documents.models import DataEngagement, EngagementScope
-from docia.file_processing.sync.client import SyncClient
+from docia.file_processing.sync.client import SyncClient, ApiEngagementActivity
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +30,11 @@ class EngagementsSync:
         logger.info("Fetch engagements activity...")
         for i, t_scope in enumerate(scopes):
             purchase_organization, purchase_group = t_scope
-            logger.info("Process scope %s (%s/%s)", i, len(scopes), t_scope)
+            logger.info("Process scope %s (%s/%s)", t_scope, i, len(scopes))
 
             # Get data from external system
             activities = self.client.list_ej_place(start, end, purchase_organization, purchase_group)
+            activities = self._remove_duplicate(activities)
 
             # Get or Create the scope
             scope, _created = EngagementScope.objects.get_or_create(
@@ -61,4 +62,20 @@ class EngagementsSync:
                 scope.engagements.add(*db_ids)
             total_synced += len(engagements)
             logger.info("Sync scope %s: Success. %s engagements synced", t_scope, len(engagements))
-        logger.info("Success: % engagements synced", total_synced)
+        logger.info("Success: %s engagements synced", total_synced)
+
+    def _remove_duplicate(self, activities: list[ApiEngagementActivity]) -> list[ApiEngagementActivity]:
+        """
+        Removes duplicate engagement activities based on their engagement number.
+
+        Only the most recent activity for each unique engagement number is retained.
+        """
+        result = []
+        num_ejs = set()
+        sorted_activities = sorted(activities, key=lambda x: x.received_at, reverse=True)
+        for activity in sorted_activities:
+            if activity.num_ej not in num_ejs:
+                num_ejs.add(activity.num_ej)
+                result.append(activity)
+        return result
+            
