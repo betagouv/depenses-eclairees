@@ -51,7 +51,7 @@ def sync_engagements(start: datetime = None):
 def sync_documents(start: datetime = None):
     start = start or _default_start_datetime()
     qs = DataEngagement.objects.filter(external_updated_at__gte=start)
-    qs = qs.order_by("-external_updated_at")
+    qs = qs.order_by("external_updated_at")
     order_ids = list(qs.values_list("num_ej", flat=True))
     doc_syncer = DocumentMetadataSync()
     doc_syncer.sync(order_ids)
@@ -79,11 +79,11 @@ def download_documents(start: datetime = None):
             except Exception as exc:
                 logger.exception(
                     "[%s/%s] Error downloading document %s %s: %s",
-                    i,
+                    i + 1,
                     len(future_to_doc),
                     doc.external_id,
                     doc.name,
                     exc,
                 )
             else:
-                logger.info("[%s/%s] Complete download %s %s", i, len(future_to_doc), doc.external_id, doc.name)
+                logger.info("[%s/%s] Complete download %s %s", i + 1, len(future_to_doc), doc.external_id, doc.name)
