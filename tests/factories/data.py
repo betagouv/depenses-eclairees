@@ -38,7 +38,8 @@ class EngagementScopeFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = EngagementScope
 
-    name = factory.Sequence(lambda n: f"scope_{n}")
+    purchase_organization = factory.Sequence(lambda n: f"OA_{n}")
+    purchase_group = factory.Sequence(lambda n: f"GA_{n}")
 
 
 def random_num_ej():

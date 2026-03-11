@@ -1,6 +1,8 @@
 import datetime
 import hashlib
 
+from django.utils import timezone
+
 import factory.fuzzy
 from factory import SubFactory
 
@@ -15,6 +17,7 @@ from docia.file_processing.models import (
 )
 from docia.file_processing.pipeline.pipeline import DEFAULT_PROCESS_STEPS
 from docia.file_processing.pipeline.steps.content_analysis import SUPPORTED_DOCUMENT_TYPES
+from docia.file_processing.sync.client import ApiEngagementActivity
 from tests.factories.data import DocumentFactory, random_external_id, random_num_ej
 
 
@@ -80,4 +83,23 @@ class ExternalLinkDocumentOrderFactory(factory.django.DjangoModelFactory):
         model = ExternalLinkDocumentOrder
 
     external_document = SubFactory(ExternalDocumentMetadataFactory)
-    order_id = factory.Sequence(lambda i: random_num_ej())
+    order_id = factory.LazyFunction(random_num_ej)
+
+
+class ApiEngagementActivityFactory(factory.Factory):
+    class Meta:
+        model = ApiEngagementActivity
+
+    class Params:
+        created = factory.Trait(type=ApiEngagementActivity.Type.CREATE)
+        updated = factory.Trait(type=ApiEngagementActivity.Type.UPDATE)
+
+    type = factory.fuzzy.FuzzyChoice(list(ApiEngagementActivity.Type))
+
+    num_ej = factory.LazyFunction(random_num_ej)
+    purchase_organization = factory.Sequence(lambda n: f"OA_{n:03d}")
+    purchase_group = factory.Sequence(lambda n: f"GA_{n:03d}")
+
+    received_at = factory.fuzzy.FuzzyDateTime(
+        start_dt=datetime.datetime(2025, 1, 1, tzinfo=timezone.get_current_timezone())
+    )

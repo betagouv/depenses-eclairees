@@ -162,19 +162,22 @@ class AdminGroupForm(forms.ModelForm):
 class CustomGroupAdmin(auth_admin.GroupAdmin):
     """Admin class for Group model extended with scopes"""
 
-    search_fields = ("name", "scopes__name")
+    search_fields = ("name", "scopes__purchase_group", "scopes__purchase_organization")
     fields = ("name", "permissions", "scopes")
     form = AdminGroupForm
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related("scopes")
 
 
 @admin.register(models.EngagementScope)
 class EngagementScopeAdmin(admin.ModelAdmin):
     """Admin class for EngagementScope model"""
 
-    list_display = ("name", "engagement_count", "group_count")
-    search_fields = ("name",)
+    list_display = ("purchase_organization", "engagement_count", "group_count")
+    search_fields = ("purchase_organization", "purchase_group")
     filter_horizontal = ("groups",)
-    fields = ("name", "groups")
+    fields = ("purchase_organization", "purchase_group", "groups")
 
     def engagement_count(self, obj):
         return obj.engagements.count()
