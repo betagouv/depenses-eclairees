@@ -29,7 +29,7 @@ class ExtractTextStepRunner(AbstractStepRunner):
         document.save(update_fields=["text", "is_ocr", "nb_mot"])
 
 
-@shared_task(name="docia.extract_text", queue="heavy_cpu")
+@shared_task(name="docia.extract_text")
 def task_extract_text(step_id: str) -> ProcessingStatus:
     worker = ExtractTextStepRunner()
     return worker.run(step_id)
