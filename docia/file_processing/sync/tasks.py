@@ -16,6 +16,14 @@ from docia.file_processing.sync.sync_metadata import DocumentMetadataSync
 logger = logging.getLogger(__name__)
 
 
+__all__ = [
+    "task_sync_all_externals",
+    "sync_all_externals",
+    "sync_documents",
+    "download_documents",
+]
+
+
 def _default_start_datetime(now: datetime = None) -> datetime:
     now = now or timezone.now()
     start = now - timedelta(days=7)
