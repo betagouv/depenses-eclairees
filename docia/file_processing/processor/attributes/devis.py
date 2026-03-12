@@ -43,7 +43,7 @@ DEVIS_ATTRIBUTES = {
 """,
         "search": "",
         "output_field": "date_emission",
-        "schema": {"type": ["string"]},
+        "schema": {"type": ["string", "null"]},
     },
     "titulaire": {
         "consigne": """TITULAIRE
@@ -51,7 +51,11 @@ DEVIS_ATTRIBUTES = {
    Indices :
    - Rechercher la société émettrice : raison sociale, SIREN, SIRET, adresse postale.
    - Privilégier la société contractante principale (pas les sous-traitants).
-   - SIREN : 9 chiffres ; SIRET : 14 chiffres.
+   - SIRET : 14 chiffres
+   - SIREN : 9 chiffres :
+      * le SIREN est extrait à partir du SIRET, il s'agit des 9 premiers chiffres d'un SIRET de 14 chiffres.
+      * le SIREN peut également être extrait à partir d'un numéro RCS, il s'agit des 9 chiffres du numéro RCS (après "RCS" ou "N° RCS")
+      * le SIREN peut également être extrait à partir d'un numéro de TVA, il s'agit des 9 derniers chiffres du numéro de TVA (après l'identifiant du pays et du département ex : FR12)
    - Si une information est absente, renvoyer null pour cette clé.
    - Si aucun titulaire identifiable, renvoyer {"raison_sociale": null, "siren": null, "siret": null, "adresse": null}.
    Format : objet JSON {"raison_sociale": ..., "siren": ..., "siret": ..., "adresse": ...}.
@@ -81,7 +85,7 @@ DEVIS_ATTRIBUTES = {
 """,
         "search": "",
         "output_field": "administration_beneficiaire",
-        "schema": {"type": ["string"]},
+        "schema": {"type": ["string", "null"]},
     },
     "prestations": {
         "consigne": """PRESTATIONS
@@ -165,7 +169,7 @@ DEVIS_ATTRIBUTES = {
 """,
         "search": "",
         "output_field": "date_signature",
-        "schema": {"type": ["string"]},
+        "schema": {"type": ["string", "null"]},
     },
     "dernier_signataire": {
         "consigne": """DERNIER_SIGNATAIRE

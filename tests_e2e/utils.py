@@ -800,6 +800,7 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
     print(f"Total de matches: {total_matches}")
     print(f"Total d'erreurs: {total_errors}")
     print(f"Accuracy globale: {global_accuracy * 100:.2f}%")
+    print(f"Accuracy globale sans OCR: {global_accuracy_no_ocr * 100:.2f}%")
     if use_best_ref:
         total_imp = sum(r.get("improvements_vs_best", 0) for r in results.values())
         total_reg = sum(r.get("regressions_vs_best", 0) for r in results.values())

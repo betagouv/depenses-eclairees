@@ -36,14 +36,15 @@ def get_comparison_functions():
         "montants": compare_exact_string,
         "duree_validite": compare_exact_string,
         "date_signature": compare_exact_string,
-        "dernier_signataire": compare_exact_string
+        "dernier_signataire": compare_exact_string,
     }
+
 
 def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-medium", debug_mode=False):
     """Test de qualité des informations extraites par le LLM."""
 
     df_test = get_data_from_grist(table="Devis_gt")
-    df_test = df_test.sort_values(by="filename").reset_index(drop=True)
+    df_test = df_test.sort_values(by="filename").reset_index(drop=True).query("commentaire == 'traité'")
     for col in (
         "titulaire",
         "prestations",
@@ -53,7 +54,7 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-m
 
     # Lancement du test
     return analyze_content_quality_test(
-        df_test.iloc[0:6],
+        df_test,
         "devis",
         multi_line_coef=multi_line_coef,
         max_workers=max_workers,
@@ -61,12 +62,13 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-m
         debug_mode=debug_mode,
     )
 
+
 if __name__ == "__main__":
     df_test, df_result, df_merged = create_batch_test(
         multi_line_coef=1, max_workers=30, debug_mode=True, llm_model="openweight-small"
     )
 
-    EXCLUDED_COLUMNS = ["objet"]
+    EXCLUDED_COLUMNS = ["objet", "administration_beneficiaire"]
 
     comparison_functions = get_comparison_functions()
 
