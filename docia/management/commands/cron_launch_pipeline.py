@@ -37,7 +37,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--timedelta", type=str, default="24h", help='Time delta for filtering documents (e.g., "24h", "1d", "7d")'
+            "--timedelta", type=str, default="7d", help='Time delta for filtering documents (e.g., "24h", "1d", "7d")'
         )
 
     def handle(self, *args, **options):
@@ -56,7 +56,7 @@ class Command(BaseCommand):
                 self.style.ERROR(f"Invalid timedelta format: '{timedelta_str}'. Use formats like '24h' or '7d'")
             )
             return
-        qs = DataEngagement.objects.filter(external_updated_at__gt=start)
+        qs = DataEngagement.objects.filter(external_updated_at__gte=start)
         ej_ids = list(qs.values_list("num_ej", flat=True))
         batch_name = f"cron-{now().isoformat()}"
         self.stdout.write("Init documents...")
