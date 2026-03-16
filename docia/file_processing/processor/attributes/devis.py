@@ -7,7 +7,7 @@ DEVIS_ATTRIBUTES = {
         "consigne": """NUMERO_DEVIS
    Définition : Numéro ou référence propre au devis.
    Indices :
-   - Chercher les mentions "N° devis", "Devis n°", "Réf. devis", "Référence".
+   - Chercher les mentions "N° devis", "Devis n°", "Réf. devis", "Référence", N° Dossier.
    - La valeur peut être alphanumérique, avec tirets, slashs ou points.
    - Si plusieurs références sont présentes, privilégier celle explicitement liée au devis.
    - Si aucune référence n'est trouvée, renvoyer null.
@@ -24,11 +24,32 @@ DEVIS_ATTRIBUTES = {
    - Chercher après les mentions "Objet", "Intitulé", "Sujet", ou dans le titre.
    - Formuler un objet compréhensible par un tiers.
    - Retirer les préfixes de type de document ("Devis pour", "Avenant pour", etc.).
-   - Si l'objet est absent ou incompréhensible, renvoyer null.
-   Format : phrase courte en français.
+   - Si l'objet est explicitement présent dans le document, l'extraire tel quel (après nettoyage des préfixes).
+   - Si aucun libellé objet clair n'est trouvé : tenter de déduire un objet court en synthétisant les descriptions
+     des lignes de prestations / du tableau des lignes (thème commun, nature du service ou des fournitures).
+   - Renvoyer null si l'inférence n'aboutit pas à une description de l'objet suffisamment explicite (prestations
+     trop vagues, absentes ou inexploitables pour formuler un objet compréhensible par un tiers).
+   Format : phrase courte en français, ou null.
 """,
         "search": "",
         "output_field": "objet",
+        "schema": {"type": ["string", "null"]},
+    },
+    "raisonnement": {
+        "consigne": """RAISONNEMENT_OBJET
+   Définition : Indiquer comment l'objet a été obtenu (champ objet ci-dessus).
+   Règles :
+   - Si l'objet a été trouvé explicitement dans le document (mention "Objet", "Intitulé", etc.) :
+     renvoyer une phrase du type : "Objet présent dans le document (extrait de la mention ...)".
+   - Si l'objet a été inféré à partir des prestations / lignes du tableau et est suffisamment explicite :
+     renvoyer une phrase du type : "Objet inféré à partir des prestations / lignes du tableau : ..."
+     en résumant brièvement sur quoi s'appuie l'inférence.
+   - Si l'objet est null car l'inférence n'a pas abouti à une description suffisamment explicite :
+     renvoyer une phrase du type : "Objet non trouvé ; inférence impossible ou trop vague (prestations absentes ou inexploitables)".
+   Format : une ou deux phrases en français.
+""",
+        "search": "",
+        "output_field": "raisonnement",
         "schema": {"type": ["string"]},
     },
     "date_emission": {
@@ -51,11 +72,11 @@ DEVIS_ATTRIBUTES = {
    Indices :
    - Rechercher la société émettrice : raison sociale, SIREN, SIRET, adresse postale.
    - Privilégier la société contractante principale (pas les sous-traitants).
-   - SIRET : 14 chiffres
-   - SIREN : 9 chiffres :
-      * le SIREN est extrait à partir du SIRET, il s'agit des 9 premiers chiffres d'un SIRET de 14 chiffres.
-      * le SIREN peut également être extrait à partir d'un numéro RCS, il s'agit des 9 chiffres du numéro RCS (après "RCS" ou "N° RCS")
+   - SIREN : composé de 9 chiffres. Exemple : 437813287.
+      * le SIREN peut être extrait à partir d'un numéro RCS, il s'agit des 9 chiffres du numéro RCS (après "RCS" ou "N° RCS")
       * le SIREN peut également être extrait à partir d'un numéro de TVA, il s'agit des 9 derniers chiffres du numéro de TVA (après l'identifiant du pays et du département ex : FR12)
+      * le SIREN peut également être extrait à partir du SIRET, il s'agit des 9 premiers chiffres d'un SIRET de 14 chiffres.
+   - SIRET : composé de 14 chiffres. Exemple : 43781328700001.
    - Si une information est absente, renvoyer null pour cette clé.
    - Si aucun titulaire identifiable, renvoyer {"raison_sociale": null, "siren": null, "siret": null, "adresse": null}.
    Format : objet JSON {"raison_sociale": ..., "siren": ..., "siret": ..., "adresse": ...}.

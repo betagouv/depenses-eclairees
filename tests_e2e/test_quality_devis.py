@@ -12,12 +12,14 @@ django.setup()
 
 from app.grist.grist_api import get_data_from_grist  # noqa: E402
 from tests_e2e.utils import (  # noqa: E402
+    PROMPT_BENEFICIARY_ADMINISTRATION,
     PROMPT_OBJECT,
     analyze_content_quality_test,
     check_global_statistics,
     check_quality_one_field,
     check_quality_one_row,
     compare_exact_string,
+    compare_normalized_string,
     compare_with_llm,
     get_fields_with_comparison_errors,
 )
@@ -31,20 +33,20 @@ def get_comparison_functions():
         "objet": lambda a, e: compare_with_llm(a, e, prompt=PROMPT_OBJECT),
         "date_emission": compare_exact_string,
         "titulaire": compare_exact_string,
-        "administration_beneficiaire": compare_exact_string,
+        "administration_beneficiaire": lambda a, e: compare_with_llm(a, e, prompt=PROMPT_BENEFICIARY_ADMINISTRATION),
         "prestations": compare_exact_string,
         "montants": compare_exact_string,
         "duree_validite": compare_exact_string,
         "date_signature": compare_exact_string,
-        "dernier_signataire": compare_exact_string,
+        "dernier_signataire": compare_normalized_string,
     }
 
 
 def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-medium", debug_mode=False):
     """Test de qualité des informations extraites par le LLM."""
 
-    df_test = get_data_from_grist(table="Devis_gt")
-    df_test = df_test.sort_values(by="filename").reset_index(drop=True).query("commentaire == 'traité'")
+    df_test = get_data_from_grist(table="Devis_gt").query("commentaire == 'traité'")
+    df_test = df_test.sort_values(by="filename").reset_index(drop=True)
     for col in (
         "titulaire",
         "prestations",
@@ -68,13 +70,13 @@ if __name__ == "__main__":
         multi_line_coef=1, max_workers=30, debug_mode=True, llm_model="openweight-small"
     )
 
-    EXCLUDED_COLUMNS = ["objet", "administration_beneficiaire"]
+    EXCLUDED_COLUMNS = ["objet"]
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "objet", comparison_functions, only_errors=False)
+    check_quality_one_field(df_merged, "date_emission", comparison_functions, only_errors=False)
 
-    check_quality_one_row(df_merged, 1, comparison_functions)
+    check_quality_one_row(df_merged, 8, comparison_functions, excluded_columns=[])
 
     check_global_statistics(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
 
