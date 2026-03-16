@@ -5,13 +5,16 @@ from django.shortcuts import render
 from . import forms
 from .file_processing.processor.classifier import DIC_CLASS_FILE_BY_NAME
 from .models import Document
-from .permissions.checks import user_can_view_ej
 from .ratelimit.services import check_rate_limit_for_user
+from .permissions.checks import user_can_view_ej
 
 logger = logging.getLogger(__name__)
 
 # Classifications traitées mais non affichées dans la catégorie analysée (pas encore prêtes)
-CLASSIFICATIONS_AFFICHEES = frozenset({"acte_engagement", "ccap", "rib", "fiche_navette"})
+CLASSIFICATIONS_AFFICHEES = frozenset({"acte_engagement", "ccap", "rib", "fiche_navette", "sous_traitance"})
+
+# Ordre d'affichage des catégories (chaque catégorie triée par taux de remplissage décroissant)
+ORDER_CLASSIFICATIONS = ("acte_engagement", "ccap", "sous_traitance", "rib", "fiche_navette")
 
 
 def home(request):
@@ -33,8 +36,7 @@ def home(request):
             # check whether it's valid:
             if form.is_valid():
                 num_ej = form.cleaned_data["num_ej"]
-                # if not user_can_view_ej(request.user, num_ej):
-                if False:
+                if not user_can_view_ej(request.user, num_ej):
                     logger.warning(f"PermissionDenied: User {request.user.email} cannot view EJ {num_ej}")
                 else:
                     db_docs = Document.objects.filter(engagements__num_ej=form.cleaned_data["num_ej"])
@@ -56,11 +58,20 @@ def home(request):
                             "data": document_data,
                             "url": db_doc.file.url if db_doc.file else "",
                             "percent_data_extraction": format_ratio_to_percent(ratio_extracted),
+                            "ratio_extracted": ratio_extracted,
                         }
                         if document_data and db_doc.classification in CLASSIFICATIONS_AFFICHEES:
                             documents.append(doc)
                         else:
                             unprocessed.append(doc)
+                    # Trier par catégorie puis par taux de remplissage décroissant
+                    _classification_order = {c: i for i, c in enumerate(ORDER_CLASSIFICATIONS)}
+                    documents.sort(
+                        key=lambda d: (
+                            _classification_order.get(d["classification"], len(ORDER_CLASSIFICATIONS)),
+                            -d["ratio_extracted"],
+                        )
+                    )
     else:
         # Create empty form
         form = forms.GetEJDetailsForm()
