@@ -5,8 +5,8 @@ from django.shortcuts import render
 from . import forms
 from .file_processing.processor.classifier import DIC_CLASS_FILE_BY_NAME
 from .models import Document
-from .ratelimit.services import check_rate_limit_for_user
 from .permissions.checks import user_can_view_ej
+from .ratelimit.services import check_rate_limit_for_user
 
 logger = logging.getLogger(__name__)
 
