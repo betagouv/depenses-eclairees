@@ -447,8 +447,6 @@ def _get_value_by_dotted_key(data, key):
 
 def _format_leaf(val) -> str:
     """Format une valeur feuille pour l'affichage (traitée comme string)."""
-    if val is None:
-        return "None"
     return str(val)
 
 
