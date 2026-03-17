@@ -11,7 +11,48 @@ from .ratelimit.services import check_rate_limit_for_user
 logger = logging.getLogger(__name__)
 
 # Classifications traitées mais non affichées dans la catégorie analysée (pas encore prêtes)
-CLASSIFICATIONS_AFFICHEES = frozenset({"acte_engagement", "ccap", "rib", "fiche_navette"})
+CLASSIFICATIONS_AFFICHEES = frozenset({"acte_engagement", "ccap", "rib", "fiche_navette", "sous_traitance"})
+
+# Ordre d'affichage des catégories (chaque catégorie triée par taux de remplissage décroissant)
+ORDER_CLASSIFICATIONS = ("acte_engagement", "ccap", "sous_traitance", "rib", "fiche_navette")
+
+
+def sort_by_order_and_field(
+    items: list[dict],
+    order_values: tuple | list,
+    order_key: str,
+    *,
+    then_by_field: str | None = None,
+    then_descending: bool = True,
+) -> None:
+    """
+    Trie une liste de dictionnaires en place.
+
+    - Premier critère : ordre défini par order_values (valeur de order_key dans chaque item).
+      Les valeurs absentes de order_values sont placées à la fin.
+    - Second critère (optionnel) : champ then_by_field, décroissant si then_descending=True.
+
+    :param items: Liste de dicts à trier (modifiée en place).
+    :param order_values: Liste ou tuple définissant l'ordre des valeurs pour order_key.
+    :param order_key: Clé du dict utilisée pour le tri principal.
+    :param then_by_field: Clé optionnelle pour le tri secondaire.
+    :param then_descending: Si True, tri secondaire décroissant ; sinon croissant.
+    """
+    order_index = {v: i for i, v in enumerate(order_values)}
+    default_index = len(order_values)
+
+    def sort_key(item):
+        primary = order_index.get(item.get(order_key), default_index)
+        if then_by_field is None:
+            return (primary,)
+        secondary = item.get(then_by_field)
+        if secondary is not None and isinstance(secondary, (int, float)):
+            secondary = -secondary if then_descending else secondary
+        elif then_descending:
+            secondary = float("inf")  # valeurs manquantes en fin de groupe
+        return (primary, secondary)
+
+    items.sort(key=sort_key)
 
 
 def home(request):
@@ -55,11 +96,20 @@ def home(request):
                             "data": document_data,
                             "url": db_doc.file.url if db_doc.file else "",
                             "percent_data_extraction": format_ratio_to_percent(ratio_extracted),
+                            "ratio_extracted": ratio_extracted,
                         }
                         if document_data and db_doc.classification in CLASSIFICATIONS_AFFICHEES:
                             documents.append(doc)
                         else:
                             unprocessed.append(doc)
+                    # Trier par catégorie puis par taux de remplissage décroissant
+                    sort_by_order_and_field(
+                        documents,
+                        ORDER_CLASSIFICATIONS,
+                        "classification",
+                        then_by_field="ratio_extracted",
+                        then_descending=True,
+                    )
     else:
         # Create empty form
         form = forms.GetEJDetailsForm()

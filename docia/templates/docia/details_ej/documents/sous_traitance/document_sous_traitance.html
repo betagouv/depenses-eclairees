@@ -1,0 +1,124 @@
+{% load dsfr_tags static docia %}
+{% with id_prefix=doc.filename|add:"_" %}
+
+<div class="document-sections">
+  {# Titulaire et Sous-traitant : une ligne chacun (libellé – SIRET) #}
+  <ul class="fr-list fr-mb-2w">
+    <li class="fr-list__item">
+      <span class="fr-text--sm fr-text--mention">Titulaire – {{ data.societe_principale|default:"[Non trouvé]" }} – SIRET&nbsp;</span>
+      <span class="fr-text--sm siren-siret-format">
+        {% if data.siret_titulaire %}
+          {{ data.siret_titulaire|format_siren_siret }}
+          {% include "docia/blocks/button_copy.html" with id=id_prefix|add:"siret_titulaire" value=data.siret_titulaire %}
+        {% else %}
+          <span class="fr-text--mention">[Non trouvé]</span>
+        {% endif %}
+      </span>
+    </li>
+    <li class="fr-list__item">
+      <span class="fr-text--sm fr-text--mention">Sous-traitant – {{ data.societe_sous_traitant|default:"[Non trouvé]" }} – SIRET&nbsp;</span>
+      <span class="fr-text--sm siren-siret-format">
+        {% if data.siret_sous_traitant %}
+          {{ data.siret_sous_traitant|format_siren_siret }}
+          {% include "docia/blocks/button_copy.html" with id=id_prefix|add:"siret_sous_traitant" value=data.siret_sous_traitant %}
+        {% else %}
+          <span class="fr-text--mention">[Non trouvé]</span>
+        {% endif %}
+      </span>
+    </li>
+  </ul>
+
+  {# Sous le sous-traitant : paiement direct, avance, prestations, date, durée (affichage direct) #}
+  <ul class="fr-list fr-mb-2w">
+    <li class="fr-list__item">
+      <span class="fr-text--sm fr-text--mention">Éligible au paiement direct&nbsp;</span>
+      <span class="fr-text--sm">
+        {% if data.paiement_direct %}
+          {% if data.paiement_direct|lower == "oui" or data.paiement_direct == "1" %}
+            <span class="fr-icon-check-line" aria-hidden="true"></span> Oui
+          {% else %}
+            <span class="fr-icon-close-line" aria-hidden="true"></span> Non
+          {% endif %}
+        {% else %}
+          <span class="fr-text--mention">[Non trouvé]</span>
+        {% endif %}
+      </span>
+    </li>
+    <li class="fr-list__item">
+      <span class="fr-text--sm fr-text--mention">Souhaite conserver l'avance&nbsp;</span>
+      <span class="fr-text--sm">
+        {% if data.conserve_avance == "conserve" %}
+          <span class="fr-icon-check-line" aria-hidden="true"></span> Oui
+        {% elif data.conserve_avance == "renonce" or data.conserve_avance == "ne_conserve_pas" %}
+          <span class="fr-icon-close-line" aria-hidden="true"></span> Non
+        {% else %}
+          <span class="fr-text--mention">[Non trouvé]</span>
+        {% endif %}
+      </span>
+    </li>
+    <li class="fr-list__item">
+      <span class="fr-text--sm fr-text--mention">Description des prestations&nbsp;</span>
+      <span class="fr-text--sm">
+        {% if data.description_prestations %}
+          {{ data.description_prestations }}
+          {% include "docia/blocks/button_copy.html" with id=id_prefix|add:"description_prestations" value=data.description_prestations %}
+        {% else %}
+          <span class="fr-text--mention">[Non trouvé]</span>
+        {% endif %}
+      </span>
+    </li>
+    <li class="fr-list__item">
+      <span class="fr-text--sm fr-text--mention">Signé le&nbsp;</span>
+      <span class="fr-text--sm">
+        {% if data.date_signature %}
+          {{ data.date_signature }}
+          {% include "docia/blocks/button_copy.html" with id=id_prefix|add:"date_signature" value=data.date_signature %}
+        {% else %}
+          <span class="fr-text--mention">[Non trouvé]</span>
+        {% endif %}
+      </span>
+    </li>
+    <li class="fr-list__item">
+      <span class="fr-text--sm fr-text--mention">Durée des prestations&nbsp;</span>
+      <span class="fr-text--sm">
+        {% with duree=data.duree_sous_traitance %}
+          {% if duree and duree.duree_initiale %}
+            {{ duree.duree_initiale }} mois
+            {% if duree.nb_reconductions %} (reconductible{% if duree.duree_reconduction %} – {{ duree.duree_reconduction }} mois par reconduction{% endif %}{% if duree.nb_reconductions %} – {{ duree.nb_reconductions }} reconduction{% if duree.nb_reconductions > 1 %}s{% endif %}{% endif %}){% else %} (non reconductible){% endif %}
+          {% else %}
+            <span class="fr-text--mention">[Non trouvé]</span>
+          {% endif %}
+        {% endwith %}
+      </span>
+    </li>
+  </ul>
+
+  {# Seul menu déroulant : Montants et TVA #}
+  {% if data.montant_sous_traitance_ht or data.montant_sous_traitance_ttc or data.montant_tva %}
+    <section class="fr-accordion" data-fr-js-accordion="true">
+      <h3 class="fr-accordion__title">
+        <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_prix" data-fr-js-collapse-button="true">
+          Montants et TVA
+        </button>
+      </h3>
+      <div class="fr-collapse" id="{{ doc.id }}_prix" data-fr-js-collapse="true" style="--collapse: -48px;">
+        <ul class="fr-list">
+          {% with value=data.montant_sous_traitance_ht|floatformat:2 copy_value=data.montant_sous_traitance_ht %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Montant sous-traitance HT" id=id_prefix|add:"montant_sous_traitance_ht" suffix=" €" %}
+          {% endwith %}
+          {% with value=data.montant_sous_traitance_ttc|floatformat:2 copy_value=data.montant_sous_traitance_ttc %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Montant sous-traitance TTC" id=id_prefix|add:"montant_sous_traitance_ttc" suffix=" €" %}
+          {% endwith %}
+          {% with value=data.montant_tva|as_percentage copy_value=data.montant_tva %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Taux TVA" id=id_prefix|add:"montant_tva" suffix="" %}
+          {% endwith %}
+        </ul>
+      </div>
+    </section>
+  {% else %}
+    <div class="document-section--disabled">
+      <span class="document-section--disabled__title">Montants et TVA – Non disponibles dans le document.</span>
+    </div>
+  {% endif %}
+</div>
+{% endwith %}
