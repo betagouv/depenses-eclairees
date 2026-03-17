@@ -3,7 +3,11 @@ from unittest.mock import patch
 
 import pytest
 
-from docia.views import compute_ratio_data_extraction, format_ratio_to_percent
+from docia.views import (
+    compute_ratio_data_extraction,
+    format_ratio_to_percent,
+    sort_by_order_and_field,
+)
 from tests.factories.data import DataEngagementFactory, DocumentFactory
 from tests.factories.users import UserFactory
 
@@ -125,6 +129,58 @@ def test_format_ratio_to_percent():
     # Small values are rounded properly
     assert format_ratio_to_percent(0.01) == "1%"
     assert format_ratio_to_percent(0.001) == "0%"  # Rounds to 0
+
+
+def test_sort_by_order_and_field():
+    """Test sort_by_order_and_field : tri par liste de valeurs puis par champ optionnel."""
+    order = ("a", "b", "c")
+
+    # Tri par ordre uniquement (order_key)
+    items = [{"k": "c"}, {"k": "a"}, {"k": "b"}]
+    sort_by_order_and_field(items, order, "k")
+    assert [x["k"] for x in items] == ["a", "b", "c"]
+
+    # Valeurs hors liste vont à la fin
+    items = [{"k": "z"}, {"k": "a"}, {"k": "x"}]
+    sort_by_order_and_field(items, order, "k")
+    assert [x["k"] for x in items] == ["a", "z", "x"]
+
+    # Tri secondaire décroissant (défaut)
+    items = [
+        {"k": "b", "score": 10},
+        {"k": "b", "score": 30},
+        {"k": "a", "score": 5},
+        {"k": "b", "score": 20},
+    ]
+    sort_by_order_and_field(items, order, "k", then_by_field="score", then_descending=True)
+    assert [x["score"] for x in items] == [5, 30, 20, 10]
+
+    # Tri secondaire croissant
+    items = [
+        {"k": "a", "score": 100},
+        {"k": "a", "score": 10},
+    ]
+    sort_by_order_and_field(items, order, "k", then_by_field="score", then_descending=False)
+    assert [x["score"] for x in items] == [10, 100]
+
+    # Sans tri secondaire
+    items = [{"k": "c"}, {"k": "a"}]
+    sort_by_order_and_field(items, order, "k")
+    assert [x["k"] for x in items] == ["a", "c"]
+
+    # Liste vide
+    items = []
+    sort_by_order_and_field(items, order, "k", then_by_field="score")
+    assert items == []
+
+    # Valeur secondaire manquante (None) : en fin de groupe en mode décroissant
+    items = [
+        {"k": "a", "score": 50},
+        {"k": "a", "score": None},
+        {"k": "a", "score": 80},
+    ]
+    sort_by_order_and_field(items, order, "k", then_by_field="score", then_descending=True)
+    assert [x["score"] for x in items] == [80, 50, None]
 
 
 @pytest.mark.django_db
