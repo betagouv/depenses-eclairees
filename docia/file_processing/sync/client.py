@@ -263,7 +263,7 @@ class SyncClient:
                 raise
         return result
 
-    def download_document(self, doc_id: str, *, max_retries: int = 0, retry_delay: float = 0) -> bytes:
+    def download_document(self, doc_id: str, *, max_retries: int = 0, retry_delay: float = 20) -> bytes:
         """Download document content by ID"""
         endpoint = f"export_pj_ej/pieces_jointes_data('{doc_id.strip()}')/$value"
 
@@ -289,7 +289,7 @@ class SyncClient:
                 return func_api()
             except HTTPError as err:
                 # 429 / 5xx / erreurs réseau → retry. 4xx (ex. 400) = faute client → pas de retry.
-                if err.response.code == 429:
+                if err.response.status_code == 429:
                     effective_delay = retry_delay
                 elif 500 <= err.response.status_code < 600:
                     effective_delay = retry_delay
@@ -297,7 +297,13 @@ class SyncClient:
                     raise  # 4xx : on relève tout de suite
                 if attempt < max_retries:
                     wait_time = effective_delay * (1 + 0.1 * random.random()) * (attempt + 1)
-                    logger.warning("%s, wait %.1fs before retry (%d/%d)", err.code, wait_time, attempt + 1, max_retries)
+                    logger.warning(
+                        "%s, wait %.1fs before retry (%d/%d)",
+                        err.response.status_code,
+                        wait_time,
+                        attempt + 1,
+                        max_retries,
+                    )
                     time.sleep(wait_time)
                     continue
                 raise SyncApiError.from_httperror(err)

@@ -44,4 +44,8 @@ class Command(BaseCommand):
 
         end = timezone.now()
         batch_id = sync_and_analyze(start, end, force_analyze=force_analyze)
-        self.stdout.write(self.style.SUCCESS(f"Pipeline launched, batch: {batch_id}"))
+        if batch_id:
+            self.stdout.write(self.style.SUCCESS(f"Pipeline launched, batch: {batch_id}"))
+        else:
+            self.stdout.write(self.style.SUCCESS("Nothing to do"))
+        self.stdout.write(self.style.SUCCESS("DONE."))

@@ -296,7 +296,9 @@ def test_sync_and_analyze_ej_list():
         result = sync_and_analyze_ej_list(num_ejs, force_analyze=True)
 
         # Assertions
-        inserted_ejs = list(DataEngagement.objects.filter(num_ej__in=num_ejs).order_by("num_ej"))
+        inserted_ejs = list(
+            DataEngagement.objects.filter(num_ej__in=num_ejs).order_by("num_ej").values_list("num_ej", flat=True)
+        )
         assert inserted_ejs == num_ejs
         mock_sync_docs.assert_called_once_with(num_ejs)
         mock_init_launch.assert_called_once_with(num_ejs, force_analyze=True)

@@ -229,7 +229,7 @@ def init_documents_and_launch_batch(folder: str, batch_grist: str, target_classi
     return batch_id, gr
 
 
-def sync_and_analyze(start: datetime, end: datetime = None, force_analyze: bool = False) -> str:
+def sync_and_analyze(start: datetime, end: datetime = None, force_analyze: bool = False) -> str | None:
     """
     Synchronize documents within a date range and analyze them.
 
@@ -239,19 +239,20 @@ def sync_and_analyze(start: datetime, end: datetime = None, force_analyze: bool 
         force_analyze: If True, re-analyze already processed documents
 
     Returns:
-        str: Batch ID of the launched processing batch
+        str: Batch ID of the launched processing batch, None if no documents to process
     """
     logger.info("Start sync and analyze (by date)")
     logger.info("Start sync")
     sync_result = sync_all(start, end)
     logger.info("Sync success:")
     for k, v in sync_result.items():
-        logger.info(f"{k}: {v}")
+        v_str = str(v) if len(v) <= 10 else str(len(v))
+        logger.info(f"{k}: {v_str}")
     num_ejs = sync_result["num_ejs"]
     return _init_and_launch_batch(num_ejs, force_analyze=force_analyze)
 
 
-def sync_and_analyze_ej_list(num_ejs: list[str], force_analyze: bool = False) -> str:
+def sync_and_analyze_ej_list(num_ejs: list[str], force_analyze: bool = False) -> str | None:
     """
     Synchronize and analyze documents for a specific list of engagement numbers.
 
@@ -260,7 +261,7 @@ def sync_and_analyze_ej_list(num_ejs: list[str], force_analyze: bool = False) ->
         force_analyze: If True, re-analyze already processed documents
 
     Returns:
-        str: Batch ID of the launched processing batch
+        str: Batch ID of the launched processing batch, None if no documents to process
     """
     logger.info("Start sync and analyze (by ej list)")
     logger.info("Create or update all EJs")
@@ -273,7 +274,7 @@ def sync_and_analyze_ej_list(num_ejs: list[str], force_analyze: bool = False) ->
     return _init_and_launch_batch(num_ejs, force_analyze=force_analyze)
 
 
-def _init_and_launch_batch(num_ejs: list[str], force_analyze: bool = False) -> str:
+def _init_and_launch_batch(num_ejs: list[str], force_analyze: bool = False) -> str | None:
     logger.info("Init documents...")
     batch_name = f"auto-{timezone.now().isoformat()}"
     init_documents_from_external_filter_by_num_ejs(num_ejs, batch_name)
@@ -284,6 +285,10 @@ def _init_and_launch_batch(num_ejs: list[str], force_analyze: bool = False) -> s
     if not force_analyze:
         # Ignore already processed
         qs_docs = qs_docs.filter(structured_data__isnull=True)
+
+    if not qs_docs.exists():
+        logger.info("No documents to process")
+        return None
 
     batch, r = launch_batch(qs_documents=qs_docs)
     return batch.id
