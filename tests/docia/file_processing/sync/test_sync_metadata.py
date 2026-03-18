@@ -38,7 +38,9 @@ def test_sync(syncer):
         syncer.sync([order_id])
 
     # Asserts
-    inserted_docs = list(ExternalDocumentMetadata.objects.order_by("name").values("external_id", "name", "size", "date"))
+    inserted_docs = list(
+        ExternalDocumentMetadata.objects.order_by("name").values("external_id", "name", "size", "date")
+    )
     expected_docs = [{"external_id": doc.id, "name": doc.name, "size": doc.size, "date": doc.date} for doc in api_docs]
     assert inserted_docs == expected_docs
 
@@ -59,7 +61,11 @@ def test_sync_update(syncer):
     existing_doc = ExternalDocumentMetadataFactoryWithOrder(link__order_id=existing_order_id)
     # Api return same doc but with different order link
     api_doc = ApiDocumentMetadata(
-        id=existing_doc.external_id, name=existing_doc.name, num_ej=order_id, size=existing_doc.size, date=dt(2026, 3, 15),
+        id=existing_doc.external_id,
+        name=existing_doc.name,
+        num_ej=order_id,
+        size=existing_doc.size,
+        date=dt(2026, 3, 15),
     )
 
     # Function call

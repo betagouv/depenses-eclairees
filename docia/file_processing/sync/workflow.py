@@ -1,16 +1,16 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from django.conf import settings
 from django.utils import timezone
 
 from docia.documents.models import DataEngagement
+
+from ..models import ExternalDocumentMetadata
 from .downloader import DocumentDownloader
 from .sync_engagements import EngagementsSync
 from .sync_metadata import DocumentMetadataSync
-from ..models import ExternalDocumentMetadata
-
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +85,7 @@ def download_documents(doc_ids: list[str]):
                     doc.external_id,
                     doc.name,
                     exc,
-                    )
+                )
                 errors.append(doc.external_id)
             else:
                 logger.info("[%s/%s] Complete download %s %s", i + 1, len(future_to_doc), doc.external_id, doc.name)

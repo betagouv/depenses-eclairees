@@ -277,11 +277,11 @@ class SyncClient:
         return self._retry_call(_do_call, max_retries=max_retries, retry_delay=retry_delay)
 
     def _retry_call(
-            self,
-            func_api,
-            *,
-            max_retries: int,
-            retry_delay: float,
+        self,
+        func_api,
+        *,
+        max_retries: int,
+        retry_delay: float,
     ):
         """Appelle func_api() en boucle avec retry. func_api doit lever SyncApiError en cas d'erreur."""
         for attempt in range(max_retries + 1):

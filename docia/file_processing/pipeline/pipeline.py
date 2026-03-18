@@ -26,11 +26,12 @@ from docia.file_processing.models import (
 )
 from docia.file_processing.pipeline.steps.classification import task_classify_document
 from docia.file_processing.pipeline.steps.content_analysis import SUPPORTED_DOCUMENT_TYPES, task_analyze_content
-from docia.file_processing.pipeline.steps.init_documents import init_documents_in_folder, \
-    init_documents_from_external_filter_by_num_ejs
+from docia.file_processing.pipeline.steps.init_documents import (
+    init_documents_from_external_filter_by_num_ejs,
+    init_documents_in_folder,
+)
 from docia.file_processing.pipeline.steps.text_extraction import task_extract_text
-from docia.file_processing.sync.workflow import sync_all, \
-    sync_documents_and_download_files
+from docia.file_processing.sync.workflow import sync_all, sync_documents_and_download_files
 from docia.models import Document
 
 logger = logging.getLogger(__name__)

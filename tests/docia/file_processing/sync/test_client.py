@@ -49,9 +49,15 @@ def test_list_documents_for_ej_success(client):
     # Mock the document listing response
     mock_response = {
         "d": {
-            "results": [{"id_pj": "doc123", "nom_pj": "test_document.pdf", "num_ej": "EJ2023-001", "size_pj": "1024",
-                         "date_pj": "/Date(1774001460000)/",  # 2026-03-20 10:11:00 UTC
-                         }],
+            "results": [
+                {
+                    "id_pj": "doc123",
+                    "nom_pj": "test_document.pdf",
+                    "num_ej": "EJ2023-001",
+                    "size_pj": "1024",
+                    "date_pj": "/Date(1774001460000)/",  # 2026-03-20 10:11:00 UTC
+                }
+            ],
         }
     }
     responses.add(
@@ -211,7 +217,7 @@ def test_list_documents_for_ej_deduplication(client):
         {"size_pj": "1111"},
         {"num_ej": "EJ2023-002"},
         {"date_pj": "/Date(1774001410000)/"},
-    ]
+    ],
 )
 @responses.activate
 def test_list_documents_for_ej_invalid_duplicate(client, dict_overwrite):
@@ -219,12 +225,12 @@ def test_list_documents_for_ej_invalid_duplicate(client, dict_overwrite):
 
     # Mock response with invalid duplicate (same ID but different metadata)
     doc_data = {
-                    "id_pj": "doc123",
-                    "nom_pj": "test_document.pdf",
-                    "num_ej": "EJ2023-001",
-                    "size_pj": "1024",
-                    "date_pj": "/Date(1774001460000)/",
-                }
+        "id_pj": "doc123",
+        "nom_pj": "test_document.pdf",
+        "num_ej": "EJ2023-001",
+        "size_pj": "1024",
+        "date_pj": "/Date(1774001460000)/",
+    }
     invalid_dup_doc = {**doc_data, **dict_overwrite}
     mock_response = {
         "d": {

@@ -260,17 +260,18 @@ def test_sync_and_analyze():
     """Test sync_and_analyze function with mocked _init_and_launch_batch."""
     start = datetime(2024, 1, 1)
     end = datetime(2024, 1, 31)
-    
-    with patch("docia.file_processing.pipeline.pipeline.sync_all", autospec=True) as mock_sync_all, \
-         patch("docia.file_processing.pipeline.pipeline._init_and_launch_batch", autospec=True) as mock_init_launch:
-        
+
+    with (
+        patch("docia.file_processing.pipeline.pipeline.sync_all", autospec=True) as mock_sync_all,
+        patch("docia.file_processing.pipeline.pipeline._init_and_launch_batch", autospec=True) as mock_init_launch,
+    ):
         # Setup mock return values
         mock_sync_all.return_value = {"num_ejs": ["ej1", "ej2"]}
         mock_init_launch.return_value = "test_batch_id"
-        
+
         # Call the function
         result = sync_and_analyze(start, end, force_analyze=True)
-        
+
         # Assertions
         mock_sync_all.assert_called_once_with(start, end)
         mock_init_launch.assert_called_once_with(["ej1", "ej2"], force_analyze=True)
@@ -282,15 +283,18 @@ def test_sync_and_analyze_ej_list():
     """Test sync_and_analyze_ej_list function with mocked _init_and_launch_batch."""
     num_ejs = ["ej1", "ej2", "ej3"]
 
-    with patch("docia.file_processing.pipeline.pipeline.sync_documents_and_download_files", autospec=True) as mock_sync_docs, \
-         patch("docia.file_processing.pipeline.pipeline._init_and_launch_batch", autospec=True) as mock_init_launch:
-        
+    with (
+        patch(
+            "docia.file_processing.pipeline.pipeline.sync_documents_and_download_files", autospec=True
+        ) as mock_sync_docs,
+        patch("docia.file_processing.pipeline.pipeline._init_and_launch_batch", autospec=True) as mock_init_launch,
+    ):
         # Setup mock return values
         mock_init_launch.return_value = "test_batch_id"
-        
+
         # Call the function
         result = sync_and_analyze_ej_list(num_ejs, force_analyze=True)
-        
+
         # Assertions
         inserted_ejs = list(DataEngagement.objects.filter(num_ej__in=num_ejs).order_by("num_ej"))
         assert inserted_ejs == num_ejs
@@ -303,7 +307,7 @@ def test_sync_and_analyze_ej_list():
 def test_init_and_launch_batch():
     """Test _init_and_launch_batch function with mocked launch_batch."""
     num_ejs = ["ej1", "ej2"]
-    
+
     # Create DataEngagement objects and documents
     ej1 = DataEngagementFactory(num_ej="ej1")
     ej2 = DataEngagementFactory(num_ej="ej2")
@@ -311,17 +315,20 @@ def test_init_and_launch_batch():
     doc1.engagements.add(ej1)
     doc2 = DocumentFactory()
     doc2.engagements.add(ej2)
-    
-    with patch("docia.file_processing.pipeline.pipeline.init_documents_from_external_filter_by_num_ejs", autospec=True) as mock_init_docs, \
-         patch("docia.file_processing.pipeline.pipeline.launch_batch", autospec=True) as mock_launch_batch:
-        
+
+    with (
+        patch(
+            "docia.file_processing.pipeline.pipeline.init_documents_from_external_filter_by_num_ejs", autospec=True
+        ) as mock_init_docs,
+        patch("docia.file_processing.pipeline.pipeline.launch_batch", autospec=True) as mock_launch_batch,
+    ):
         # Setup mock return values
         mock_init_docs.return_value = None
         mock_launch_batch.return_value = (mock.Mock(id="test_batch_id"), mock.Mock())
-        
+
         # Call the function
         result = _init_and_launch_batch(num_ejs, force_analyze=False)
-        
+
         # Assertions
         mock_init_docs.assert_called_once_with(num_ejs, mock.ANY)
         # Verify that launch_batch was called with the correct queryset
@@ -333,7 +340,7 @@ def test_init_and_launch_batch():
 def test_init_and_launch_batch_force_analyze():
     """Test _init_and_launch_batch function with force_analyze=True."""
     num_ejs = ["ej1", "ej2"]
-    
+
     # Create DataEngagement objects and documents
     ej1 = DataEngagementFactory(num_ej="ej1")
     ej2 = DataEngagementFactory(num_ej="ej2")
@@ -341,17 +348,20 @@ def test_init_and_launch_batch_force_analyze():
     doc1.engagements.add(ej1)
     doc2 = DocumentFactory()
     doc2.engagements.add(ej2)
-    
-    with patch("docia.file_processing.pipeline.pipeline.init_documents_from_external_filter_by_num_ejs", autospec=True) as mock_init_docs, \
-         patch("docia.file_processing.pipeline.pipeline.launch_batch", autospec=True) as mock_launch_batch:
-        
+
+    with (
+        patch(
+            "docia.file_processing.pipeline.pipeline.init_documents_from_external_filter_by_num_ejs", autospec=True
+        ) as mock_init_docs,
+        patch("docia.file_processing.pipeline.pipeline.launch_batch", autospec=True) as mock_launch_batch,
+    ):
         # Setup mock return values
         mock_init_docs.return_value = None
         mock_launch_batch.return_value = (mock.Mock(id="test_batch_id"), mock.Mock())
-        
+
         # Call the function with force_analyze=True
         result = _init_and_launch_batch(num_ejs, force_analyze=True)
-        
+
         # Assertions
         mock_init_docs.assert_called_once_with(num_ejs, mock.ANY)
         mock_launch_batch.assert_called_once()

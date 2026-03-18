@@ -1,9 +1,9 @@
 from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
-from datetime import datetime, timezone, timedelta
 
-import pytest
 import freezegun
+import pytest
 
 from docia.file_processing.models import ProcessDocumentStepType, ProcessingStatus
 from docia.file_processing.pipeline.steps.content_analysis import task_analyze_content
@@ -27,11 +27,11 @@ def test_task_analyze_content():
     )
     last_updated_at = step.job.document.updated_at
     frozen_time = last_updated_at + timedelta(days=30)
-    
+
     with freezegun.freeze_time(frozen_time):
         with patch_analyze_content():
             task_analyze_content(step.id)
-    
+
     step.refresh_from_db()
     assert step.status == ProcessingStatus.SUCCESS
     assert step.error == ""
@@ -49,7 +49,7 @@ def test_do_process_based_on_classification():
         job__document__classification="kbis",
     )
     frozen_time = datetime(2023, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
-    
+
     with freezegun.freeze_time(frozen_time):
         with patch_analyze_content():
             task_analyze_content(step.id)

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import freezegun
@@ -42,7 +42,6 @@ def test_sync_engagements():
 @pytest.mark.django_db
 def test_sync_documents():
     """Test that sync_documents fetches engagements and calls DocumentMetadataSync.sync"""
-    start = datetime(2024, 3, 1, tzinfo=timezone.utc)
 
     # Create test engagements
     ej1 = DataEngagementFactory(external_updated_at=datetime(2024, 3, 2, tzinfo=timezone.utc))
@@ -74,17 +73,17 @@ def test_download_documents():
     doc1 = ExternalDocumentMetadataFactory(name="document1.pdf", size=35 * 1000 * 1000)  # No retry
     doc2 = ExternalDocumentMetadataFactory(name="document2.pdf", size=1000)  # Retry activated
 
-    with patch("docia.file_processing.sync.workflow.DocumentDownloader.download_document", autospec=True) as m_download_document:
-
+    with patch(
+        "docia.file_processing.sync.workflow.DocumentDownloader.download_document", autospec=True
+    ) as m_download_document:
         download_documents([doc1.external_id, doc2.external_id])
 
         # Verify download_document was called
         assert m_download_document.call_count == 2
-        calls = [
-            (c.args[1:], c.kwargs)
-            for c in m_download_document.call_args_list
-        ]
-        assert sorted(calls) == sorted([
-            ((doc1.external_id, doc1.name), dict(max_retries=0)),
-            ((doc2.external_id, doc2.name), dict(max_retries=2)),
-        ])
+        calls = [(c.args[1:], c.kwargs) for c in m_download_document.call_args_list]
+        assert sorted(calls) == sorted(
+            [
+                ((doc1.external_id, doc1.name), dict(max_retries=0)),
+                ((doc2.external_id, doc2.name), dict(max_retries=2)),
+            ]
+        )
