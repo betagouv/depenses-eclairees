@@ -229,6 +229,17 @@ def init_documents_and_launch_batch(folder: str, batch_grist: str, target_classi
 
 
 def sync_and_analyze(start: datetime, end: datetime = None, force_analyze: bool = False) -> str:
+    """
+    Synchronize documents within a date range and analyze them.
+
+    Args:
+        start: Start datetime for synchronization
+        end: Optional end datetime for synchronization (defaults to now)
+        force_analyze: If True, re-analyze already processed documents
+
+    Returns:
+        str: Batch ID of the launched processing batch
+    """
     logger.info("Start sync and analyze (by date)")
     logger.info("Start sync")
     sync_result = sync_all(start, end)
@@ -240,6 +251,16 @@ def sync_and_analyze(start: datetime, end: datetime = None, force_analyze: bool 
 
 
 def sync_and_analyze_ej_list(num_ejs: list[str], force_analyze: bool = False) -> str:
+    """
+    Synchronize and analyze documents for a specific list of engagement numbers.
+
+    Args:
+        num_ejs: List of engagement numbers to process
+        force_analyze: If True, re-analyze already processed documents
+
+    Returns:
+        str: Batch ID of the launched processing batch
+    """
     logger.info("Start sync and analyze (by ej list)")
     logger.info("Create or update all EJs")
     n = DataEngagement.objects.bulk_create(
