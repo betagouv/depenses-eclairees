@@ -121,6 +121,11 @@ class ExternalDocumentMetadata(BaseModel):
     external_id = models.CharField(unique=True)
     name = models.CharField()
     size = models.IntegerField()
+    date = models.DateTimeField()
+
+    @property
+    def size_mo(self):
+        return round(self.size / 1000 / 1000, 2)
 
     def __str__(self):
         return f"{self.external_id} {self.name}"
@@ -141,3 +146,17 @@ class ExternalLinkDocumentOrder(BaseModel):
 
     def __str__(self):
         return f"{self.external_document_id}-{self.order_id}"
+
+
+class DownloadDocumentError(BaseModel):
+    external_document = models.ForeignKey(
+        ExternalDocumentMetadata,
+        on_delete=models.CASCADE,
+        to_field="external_id",
+        related_name="error_set",
+        related_query_name="error",
+    )
+    message = models.CharField()
+
+    def __str__(self):
+        return f"{self.message}"

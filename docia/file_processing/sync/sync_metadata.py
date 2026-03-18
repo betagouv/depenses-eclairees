@@ -13,10 +13,11 @@ class DocumentMetadataSync:
     def __init__(self):
         self.client = SyncClient.from_settings()
 
-    def sync(self, list_num_ej: list[str]):
+    def sync(self, list_num_ej: list[str]) -> list[str]:
         """Fetch and store metadata for all documents associated with the provided engagement numbers.
 
         Store results in ExternalDocumentMetadata.
+        Returns the list of doc external ids insterted/updated.
         """
 
         if not self.client.is_authenticated:
@@ -35,6 +36,7 @@ class DocumentMetadataSync:
                         external_id=doc.id,
                         name=doc.name,
                         size=doc.size,
+                        date=doc.date,
                     )
                     for doc in documents_data
                 ]
@@ -54,8 +56,10 @@ class DocumentMetadataSync:
                 docs_metadata,
                 batch_size=1000,
                 update_conflicts=True,
-                update_fields=["name", "size"],
+                update_fields=["name", "size", "date"],
                 unique_fields=["external_id"],
             )
             ExternalLinkDocumentOrder.objects.bulk_create(links, batch_size=1000, ignore_conflicts=True)
         logger.info("Success: %s documents data inserted", len(docs_metadata))
+        list_doc_ids = [doc.external_id for doc in docs_metadata]
+        return list_doc_ids

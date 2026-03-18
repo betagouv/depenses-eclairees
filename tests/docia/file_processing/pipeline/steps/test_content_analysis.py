@@ -1,6 +1,8 @@
 from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
+import freezegun
 import pytest
 
 from docia.file_processing.models import ProcessDocumentStepType, ProcessingStatus
@@ -24,14 +26,19 @@ def test_task_analyze_content():
         step_type=ProcessDocumentStepType.CONTENT_ANALYSIS, job__document__classification="devis"
     )
     last_updated_at = step.job.document.updated_at
-    with patch_analyze_content():
-        task_analyze_content(step.id)
+    frozen_time = last_updated_at + timedelta(days=30)
+
+    with freezegun.freeze_time(frozen_time):
+        with patch_analyze_content():
+            task_analyze_content(step.id)
+
     step.refresh_from_db()
     assert step.status == ProcessingStatus.SUCCESS
     assert step.error == ""
     assert step.job.document.llm_response == {"nom": "Toto  ."}
     assert step.job.document.structured_data == {"nom": "Toto"}
-    assert step.job.document.updated_at > last_updated_at
+    assert step.job.document.analyzed_at == frozen_time
+    assert step.job.document.updated_at == frozen_time
 
 
 @pytest.mark.django_db
@@ -41,14 +48,18 @@ def test_do_process_based_on_classification():
         job__batch__target_classifications=["kbis"],
         job__document__classification="kbis",
     )
-    with patch_analyze_content():
-        task_analyze_content(step.id)
+    frozen_time = datetime(2023, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+
+    with freezegun.freeze_time(frozen_time):
+        with patch_analyze_content():
+            task_analyze_content(step.id)
 
     step.refresh_from_db()
     assert step.status == ProcessingStatus.SUCCESS
     assert step.error == ""
     assert step.job.document.llm_response == {"nom": "Toto  ."}
     assert step.job.document.structured_data == {"nom": "Toto"}
+    assert step.job.document.analyzed_at == frozen_time
 
 
 @pytest.mark.django_db
@@ -66,3 +77,29 @@ def test_skip_based_on_classification():
     assert step.error == ""
     assert step.job.document.llm_response is None
     assert step.job.document.structured_data is None
+    assert step.job.document.analyzed_at is None
+
+
+@pytest.mark.django_db
+def test_skip_do_not_override_previous_results():
+    step = ProcessDocumentStepFactory(
+        step_type=ProcessDocumentStepType.CONTENT_ANALYSIS,
+        job__batch__target_classifications=["kbis"],
+        job__document__classification="devis",
+    )
+    analyzed_at = datetime(2023, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+    llm_response = {"hello": "world"}
+    structured_data = {"data": "hello world"}
+    step.job.document.llm_response = llm_response
+    step.job.document.structured_data = structured_data
+    step.job.document.analyzed_at = analyzed_at
+    step.job.document.save()
+    with patch_analyze_content():
+        task_analyze_content(step.id)
+
+    step.refresh_from_db()
+    assert step.status == ProcessingStatus.SKIPPED
+    assert step.error == ""
+    assert step.job.document.llm_response == llm_response
+    assert step.job.document.structured_data == structured_data
+    assert step.job.document.analyzed_at == analyzed_at

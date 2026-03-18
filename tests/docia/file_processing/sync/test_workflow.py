@@ -1,11 +1,10 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import freezegun
 import pytest
 
-from docia.file_processing.sync.tasks import (
-    _default_start_datetime,
+from docia.file_processing.sync.workflow import (
     download_documents,
     sync_documents,
     sync_engagements,
@@ -13,7 +12,6 @@ from docia.file_processing.sync.tasks import (
 from tests.factories.data import DataEngagementFactory
 from tests.factories.file_processing import (
     ExternalDocumentMetadataFactory,
-    ExternalLinkDocumentOrderFactory,
 )
 
 
@@ -24,26 +22,17 @@ def mock_file_sync_scopes(settings):
 
 
 @pytest.mark.django_db
-def test_default_start_datetime():
-    """Test that _default_start_datetime returns a datetime 7 days ago from now"""
-    with freezegun.freeze_time("2024-03-15 12:00:00", tz_offset=0):
-        result = _default_start_datetime()
-        expected = datetime(2024, 3, 8, 12, 0, 0, tzinfo=timezone.utc)
-        assert result == expected
-
-
-@pytest.mark.django_db
 def test_sync_engagements():
     """Test that sync_engagements calls EngagementsSync.sync with correct parameters"""
 
     now = datetime(2024, 3, 15, 12, 0, 0, tzinfo=timezone.utc)
     with freezegun.freeze_time(now):
-        with patch("docia.file_processing.sync.tasks.EngagementsSync") as MockEngagementsSync:
+        with patch("docia.file_processing.sync.workflow.EngagementsSync") as MockEngagementsSync:
             # Create a mock instance
             mock_instance = MockEngagementsSync.return_value
             mock_instance.sync = MagicMock(autospec=True)
 
-            sync_engagements()
+            sync_engagements(now - timedelta(days=7))
 
             # Verify EngagementsSync was instantiated and sync was called
             expected_start = datetime(2024, 3, 8, 12, 0, 0, tzinfo=timezone.utc)
@@ -53,7 +42,6 @@ def test_sync_engagements():
 @pytest.mark.django_db
 def test_sync_documents():
     """Test that sync_documents fetches engagements and calls DocumentMetadataSync.sync"""
-    start = datetime(2024, 3, 1, tzinfo=timezone.utc)
 
     # Create test engagements
     ej1 = DataEngagementFactory(external_updated_at=datetime(2024, 3, 2, tzinfo=timezone.utc))
@@ -61,12 +49,12 @@ def test_sync_documents():
     # This engagement should not be included (updated before start date)
     DataEngagementFactory(external_updated_at=datetime(2024, 2, 28, tzinfo=timezone.utc))
 
-    with patch("docia.file_processing.sync.tasks.DocumentMetadataSync") as MockDocumentMetadataSync:
+    with patch("docia.file_processing.sync.workflow.DocumentMetadataSync") as MockDocumentMetadataSync:
         # Create a mock instance
         mock_instance = MockDocumentMetadataSync.return_value
         mock_instance.sync = MagicMock(autospec=True)
 
-        sync_documents(start=start)
+        sync_documents([ej1.num_ej, ej2.num_ej])
 
         # Verify DocumentMetadataSync was instantiated and sync was called
         MockDocumentMetadataSync.assert_called_once()
@@ -80,29 +68,22 @@ def test_sync_documents():
 @pytest.mark.django_db
 def test_download_documents():
     """Test that download_documents fetches documents and downloads them"""
-    start = datetime(2024, 3, 1, tzinfo=timezone.utc)
-
-    # Create test engagements
-    ej1 = DataEngagementFactory(external_updated_at=datetime(2024, 3, 2, tzinfo=timezone.utc))
-    ej2 = DataEngagementFactory(external_updated_at=datetime(2024, 3, 3, tzinfo=timezone.utc))
 
     # Create test documents
-    doc1 = ExternalDocumentMetadataFactory(name="document1.pdf")
-    doc2 = ExternalDocumentMetadataFactory(name="document2.pdf")
+    doc1 = ExternalDocumentMetadataFactory(name="document1.pdf", size=35 * 1000 * 1000)  # No retry
+    doc2 = ExternalDocumentMetadataFactory(name="document2.pdf", size=1000)  # Retry activated
 
-    # Link documents to engagements
-    ExternalLinkDocumentOrderFactory(external_document=doc1, order_id=ej1.num_ej)
-    ExternalLinkDocumentOrderFactory(external_document=doc2, order_id=ej2.num_ej)
+    with patch(
+        "docia.file_processing.sync.workflow.DocumentDownloader.download_document", autospec=True
+    ) as m_download_document:
+        download_documents([doc1.external_id, doc2.external_id])
 
-    with patch("docia.file_processing.sync.tasks.DocumentDownloader") as MockDocumentDownloader:
-        # Create a mock instance
-        mock_instance = MockDocumentDownloader.return_value
-        mock_instance.download_document = MagicMock(autospec=True)
-
-        download_documents(start=start)
-
-        # Verify DocumentDownloader was instantiated and download_document was called
-        MockDocumentDownloader.assert_called_once()
-        assert mock_instance.download_document.call_count == 2
-        mock_instance.download_document.assert_any_call(doc1.external_id, doc1.name)
-        mock_instance.download_document.assert_any_call(doc2.external_id, doc2.name)
+        # Verify download_document was called
+        assert m_download_document.call_count == 2
+        calls = [(c.args[1:], c.kwargs) for c in m_download_document.call_args_list]
+        assert sorted(calls) == sorted(
+            [
+                ((doc1.external_id, doc1.name), dict(max_retries=0)),
+                ((doc2.external_id, doc2.name), dict(max_retries=2)),
+            ]
+        )

@@ -6,14 +6,17 @@ classification, and information extraction using Celery tasks.
 
 import logging
 import uuid
+from datetime import datetime
 
 from django.db import models
+from django.db.models import Q
 from django.db.transaction import atomic
 from django.utils import timezone
 
 from celery import chain, group, shared_task
 from celery.result import GroupResult
 
+from docia.documents.models import DataEngagement
 from docia.file_processing.models import (
     BATCH_STUCK_TIMEOUT,
     ProcessDocumentBatch,
@@ -24,8 +27,12 @@ from docia.file_processing.models import (
 )
 from docia.file_processing.pipeline.steps.classification import task_classify_document
 from docia.file_processing.pipeline.steps.content_analysis import SUPPORTED_DOCUMENT_TYPES, task_analyze_content
-from docia.file_processing.pipeline.steps.init_documents import init_documents_in_folder
+from docia.file_processing.pipeline.steps.init_documents import (
+    init_documents_from_external_filter_by_num_ejs,
+    init_documents_in_folder,
+)
 from docia.file_processing.pipeline.steps.text_extraction import task_extract_text
+from docia.file_processing.sync.workflow import sync_all, sync_documents_and_download_files
 from docia.models import Document
 
 logger = logging.getLogger(__name__)
@@ -221,3 +228,70 @@ def init_documents_and_launch_batch(folder: str, batch_grist: str, target_classi
         ),
     )
     return batch_id, gr
+
+
+def sync_and_analyze(start: datetime, end: datetime = None, force_analyze: bool = False) -> str | None:
+    """
+    Synchronize documents within a date range and analyze them.
+
+    Args:
+        start: Start datetime for synchronization
+        end: Optional end datetime for synchronization (defaults to now)
+        force_analyze: If True, re-analyze already processed documents
+
+    Returns:
+        str: Batch ID of the launched processing batch, None if no documents to process
+    """
+    logger.info("Start sync and analyze (by date)")
+    logger.info("Start sync")
+    sync_result = sync_all(start, end)
+    logger.info("Sync success:")
+    for k, v in sync_result.items():
+        v_str = str(v) if len(v) <= 10 else str(len(v))
+        logger.info(f"{k}: {v_str}")
+    num_ejs = sync_result["num_ejs"]
+    return _init_and_launch_batch(num_ejs, force_analyze=force_analyze)
+
+
+def sync_and_analyze_ej_list(num_ejs: list[str], force_analyze: bool = False) -> str | None:
+    """
+    Synchronize and analyze documents for a specific list of engagement numbers.
+
+    Args:
+        num_ejs: List of engagement numbers to process
+        force_analyze: If True, re-analyze already processed documents
+
+    Returns:
+        str: Batch ID of the launched processing batch, None if no documents to process
+    """
+    logger.info("Start sync and analyze (by ej list)")
+    logger.info("Create or update all EJs")
+    n = DataEngagement.objects.bulk_create(
+        (DataEngagement(num_ej=num_ej) for num_ej in num_ejs),
+        ignore_conflicts=True,
+    )
+    logger.info("Successfully updated EJs (%s)", n)
+    sync_documents_and_download_files(num_ejs)
+    return _init_and_launch_batch(num_ejs, force_analyze=force_analyze)
+
+
+def _init_and_launch_batch(num_ejs: list[str], force_analyze: bool = False) -> str | None:
+    logger.info("Init documents...")
+    batch_name = f"auto-{timezone.now().isoformat()}"
+    init_documents_from_external_filter_by_num_ejs(num_ejs, batch_name)
+
+    logger.info("Launch batch...")
+    qs_docs = Document.objects.filter(engagements__num_ej__in=num_ejs).distinct()
+
+    if not force_analyze:
+        # Ignore already processed
+        qs_docs = qs_docs.filter(structured_data__isnull=True)
+        # Ignore unsupported document types
+        qs_docs = qs_docs.filter(Q(classification__isnull=True) | Q(classification__in=SUPPORTED_DOCUMENT_TYPES))
+
+    if not qs_docs.exists():
+        logger.info("No documents to process")
+        return None
+
+    batch, r = launch_batch(qs_documents=qs_docs)
+    return batch.id

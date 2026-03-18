@@ -77,6 +77,9 @@ def get_corrected_extension(filename: str, file: str | bytes) -> str:
     """
     # Extension du nom de fichier
     name_ext = os.path.splitext(filename)[1].strip(".").lower()
+    # Si extension de plus de 10 caractères, probablement pas une extension
+    if len(name_ext) > 10:
+        name_ext = ""
 
     # Extension détectée par le contenu
     content_ext = detect_file_extension_from_content(file)
@@ -86,7 +89,7 @@ def get_corrected_extension(filename: str, file: str | bytes) -> str:
         return name_ext
 
     # Si l'extension du nom est vide ou inconnue, utiliser celle du contenu
-    if not name_ext or name_ext == "":
+    if not name_ext:
         return content_ext
 
     # Si l'extension du contenu est inconnue, utiliser celle du nom

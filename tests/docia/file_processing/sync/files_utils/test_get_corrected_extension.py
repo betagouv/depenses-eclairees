@@ -29,3 +29,10 @@ def test_get_corrected_extension_content_and_name_missmatch():
         m.return_value = "pdf"
         ext = get_corrected_extension("toto.docx", "toto.docx")
         assert ext == "pdf"
+
+
+def test_get_corrected_extension_unknown_content_and_invalid_name():
+    with mock.patch("docia.file_processing.sync.files_utils.detect_file_extension_from_content", autospec=True) as m:
+        m.return_value = "unknown"
+        ext = get_corrected_extension("toto.xlsx_11122233", "toto.docx")
+        assert ext == "unknown"

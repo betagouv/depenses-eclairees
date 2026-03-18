@@ -49,7 +49,15 @@ def test_list_documents_for_ej_success(client):
     # Mock the document listing response
     mock_response = {
         "d": {
-            "results": [{"id_pj": "doc123", "nom_pj": "test_document.pdf", "num_ej": "EJ2023-001", "size_pj": "1024"}]
+            "results": [
+                {
+                    "id_pj": "doc123",
+                    "nom_pj": "test_document.pdf",
+                    "num_ej": "EJ2023-001",
+                    "size_pj": "1024",
+                    "date_pj": "/Date(1774001460000)/",  # 2026-03-20 10:11:00 UTC
+                }
+            ],
         }
     }
     responses.add(
@@ -69,6 +77,7 @@ def test_list_documents_for_ej_success(client):
             name="test_document.pdf",
             num_ej="EJ2023-001",
             size=1024,
+            date=datetime(2026, 3, 20, 10, 11, tzinfo=timezone.utc),
         )
     ]
 
@@ -83,7 +92,7 @@ def test_list_documents_for_ej_validation_error(client, caplog):
             "results": [
                 {
                     "id_pj": "doc123",
-                    # Missing nom_pj, num_ej, size_pj
+                    # Missing nom_pj, num_ej, size_pj, date_pj
                 }
             ]
         }
@@ -116,6 +125,7 @@ def test_list_documents_for_ej_invalid_size(client, caplog):
                     "nom_pj": "test_document.pdf",
                     "num_ej": "EJ2023-001",
                     "size_pj": "invalid_size",  # Not a valid integer
+                    "date_pj": "/Date(1774001460000)/",  # 2026-03-20 10:11:00 UTC
                 }
             ]
         }
@@ -151,18 +161,21 @@ def test_list_documents_for_ej_deduplication(client):
                     "nom_pj": "test_document.pdf",
                     "num_ej": "EJ2023-001",
                     "size_pj": "1024",
+                    "date_pj": "/Date(1774001460000)/",  # Same date
                 },
                 {
                     "id_pj": "doc123",  # Same ID - should be deduplicated
                     "nom_pj": "test_document.pdf",  # Same name
                     "num_ej": "EJ2023-001",
                     "size_pj": "1024",  # Same size
+                    "date_pj": "/Date(1774001460000)/",  # Same date
                 },
                 {
                     "id_pj": "doc456",
                     "nom_pj": "another_document.pdf",
                     "num_ej": "EJ2023-001",
                     "size_pj": "2048",
+                    "date_pj": "/Date(1774001460000)/",
                 },
             ]
         }
@@ -184,37 +197,46 @@ def test_list_documents_for_ej_deduplication(client):
             name="test_document.pdf",
             num_ej="EJ2023-001",
             size=1024,
+            date=datetime(2026, 3, 20, 10, 11, tzinfo=timezone.utc),
         ),
         ApiDocumentMetadata(
             id="doc456",
             name="another_document.pdf",
             num_ej="EJ2023-001",
             size=2048,
+            date=datetime(2026, 3, 20, 10, 11, tzinfo=timezone.utc),
         ),
     ]
     assert documents == expected
 
 
+@pytest.mark.parametrize(
+    "dict_overwrite",
+    [
+        {"nom_pj": "different_name.pdf"},
+        {"size_pj": "1111"},
+        {"num_ej": "EJ2023-002"},
+        {"date_pj": "/Date(1774001410000)/"},
+    ],
+)
 @responses.activate
-def test_list_documents_for_ej_invalid_duplicate(client):
+def test_list_documents_for_ej_invalid_duplicate(client, dict_overwrite):
     """Test that invalid duplicates (different metadata) raise an error"""
 
     # Mock response with invalid duplicate (same ID but different metadata)
+    doc_data = {
+        "id_pj": "doc123",
+        "nom_pj": "test_document.pdf",
+        "num_ej": "EJ2023-001",
+        "size_pj": "1024",
+        "date_pj": "/Date(1774001460000)/",
+    }
+    invalid_dup_doc = {**doc_data, **dict_overwrite}
     mock_response = {
         "d": {
             "results": [
-                {
-                    "id_pj": "doc123",
-                    "nom_pj": "test_document.pdf",
-                    "num_ej": "EJ2023-001",
-                    "size_pj": "1024",
-                },
-                {
-                    "id_pj": "doc123",  # Same ID but different name and size
-                    "nom_pj": "different_document.pdf",  # Different name
-                    "num_ej": "EJ2023-001",
-                    "size_pj": "2048",  # Different size
-                },
+                doc_data,
+                invalid_dup_doc,
             ]
         }
     }

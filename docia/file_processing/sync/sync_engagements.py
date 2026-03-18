@@ -13,9 +13,9 @@ class EngagementsSync:
     def __init__(self):
         self.client = SyncClient.from_settings()
 
-    def sync(self, scopes: list[tuple[str, str]], start: datetime, end: datetime | None = None):
+    def sync(self, scopes: list[tuple[str, str]], start: datetime, end: datetime | None = None) -> list[str]:
         """
-        Update Engagement data from external system.
+        Update Engagement data from external system. Returns the inserted/updated engagements.
 
         scopes: List of tuples (purchase_organization, purchase_group)
         """
@@ -63,6 +63,8 @@ class EngagementsSync:
             total_synced += len(engagements)
             logger.info("Sync scope %s: Success. %s engagements synced", t_scope, len(engagements))
         logger.info("Success: %s engagements synced", total_synced)
+        num_ejs = [ej.num_ej for ej in engagements]
+        return num_ejs
 
     def _remove_duplicate(self, activities: list[ApiEngagementActivity]) -> list[ApiEngagementActivity]:
         """

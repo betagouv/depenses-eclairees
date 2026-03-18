@@ -70,6 +70,7 @@ class ExternalDocumentMetadataFactory(factory.django.DjangoModelFactory):
     external_id = factory.lazy_attribute(lambda i: random_external_id())
     name = factory.Sequence(lambda n: f"file_{n:0>3}.pdf")
     size = factory.fuzzy.FuzzyInteger(100, 10 * 1000 * 1000)
+    date = factory.fuzzy.FuzzyDateTime(start_dt=datetime.datetime(2025, 1, 1, tzinfo=timezone.get_current_timezone()))
 
 
 class ExternalDocumentMetadataFactoryWithOrder(ExternalDocumentMetadataFactory):

@@ -1,3 +1,4 @@
+import datetime
 from unittest.mock import patch
 
 import pytest
@@ -15,6 +16,10 @@ def syncer():
     yield syncer
 
 
+def dt(year, month, day):
+    return datetime.datetime(year, month, day, tzinfo=datetime.timezone.utc)
+
+
 @pytest.mark.django_db
 def test_sync(syncer):
     """Test that documents and their links are correctly created in the database during sync."""
@@ -22,9 +27,9 @@ def test_sync(syncer):
     order_id = "1234567890"
     order_id_2 = "2234567890"
     api_docs = [
-        ApiDocumentMetadata(id="0001", name="doc1.pdf", num_ej=order_id, size=100),
-        ApiDocumentMetadata(id="0002", name="doc2.pdf", num_ej=order_id, size=100),
-        ApiDocumentMetadata(id="0003", name="doc3.pdf", num_ej=order_id_2, size=100),
+        ApiDocumentMetadata(id="0001", name="doc1.pdf", num_ej=order_id, size=100, date=dt(2026, 3, 15)),
+        ApiDocumentMetadata(id="0002", name="doc2.pdf", num_ej=order_id, size=100, date=dt(2026, 3, 15)),
+        ApiDocumentMetadata(id="0003", name="doc3.pdf", num_ej=order_id_2, size=100, date=dt(2026, 3, 15)),
     ]
 
     # Function call
@@ -33,8 +38,10 @@ def test_sync(syncer):
         syncer.sync([order_id])
 
     # Asserts
-    inserted_docs = list(ExternalDocumentMetadata.objects.order_by("name").values("external_id", "name", "size"))
-    expected_docs = [{"external_id": doc.id, "name": doc.name, "size": doc.size} for doc in api_docs]
+    inserted_docs = list(
+        ExternalDocumentMetadata.objects.order_by("name").values("external_id", "name", "size", "date")
+    )
+    expected_docs = [{"external_id": doc.id, "name": doc.name, "size": doc.size, "date": doc.date} for doc in api_docs]
     assert inserted_docs == expected_docs
 
     inserted_links = list(
@@ -54,7 +61,11 @@ def test_sync_update(syncer):
     existing_doc = ExternalDocumentMetadataFactoryWithOrder(link__order_id=existing_order_id)
     # Api return same doc but with different order link
     api_doc = ApiDocumentMetadata(
-        id=existing_doc.external_id, name=existing_doc.name, num_ej=order_id, size=existing_doc.size
+        id=existing_doc.external_id,
+        name=existing_doc.name,
+        num_ej=order_id,
+        size=existing_doc.size,
+        date=dt(2026, 3, 15),
     )
 
     # Function call
@@ -63,8 +74,8 @@ def test_sync_update(syncer):
         syncer.sync([order_id])
 
     # Asserts
-    db_docs = list(ExternalDocumentMetadata.objects.values("external_id", "name", "size"))
-    expected_docs = [{"external_id": api_doc.id, "name": api_doc.name, "size": api_doc.size}]
+    db_docs = list(ExternalDocumentMetadata.objects.values("external_id", "name", "size", "date"))
+    expected_docs = [{"external_id": api_doc.id, "name": api_doc.name, "size": api_doc.size, "date": api_doc.date}]
     assert db_docs == expected_docs
 
     db_links = list(ExternalLinkDocumentOrder.objects.order_by("created_at").values("external_document_id", "order_id"))

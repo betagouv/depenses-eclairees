@@ -1,18 +1,23 @@
 from contextlib import contextmanager
+from datetime import datetime
 from unittest import mock
 from unittest.mock import patch
 
 import pytest
 
+from docia.documents.models import DataEngagement
 from docia.file_processing.models import ProcessDocumentStep, ProcessDocumentStepType, ProcessingStatus
 from docia.file_processing.pipeline.pipeline import (
+    _init_and_launch_batch,
     cancel_batch,
     close_and_retry_stuck_batches,
     launch_batch,
     retry_batch_failures,
+    sync_and_analyze,
+    sync_and_analyze_ej_list,
 )
 from docia.models import Document
-from tests.factories.data import DocumentFactory
+from tests.factories.data import DataEngagementFactory, DocumentFactory
 from tests.factories.file_processing import (
     ProcessDocumentBatchFactory,
     ProcessDocumentJobFactory,
@@ -248,3 +253,111 @@ def test_close_and_retry_stuck_batches():
         m_retry.assert_called_once_with(batch.id, retry_cancelled=True)
 
         assert r == [(batch.id, new_batch.id)]
+
+
+@pytest.mark.django_db
+def test_sync_and_analyze():
+    """Test sync_and_analyze function with mocked _init_and_launch_batch."""
+    start = datetime(2024, 1, 1)
+    end = datetime(2024, 1, 31)
+
+    with (
+        patch("docia.file_processing.pipeline.pipeline.sync_all", autospec=True) as mock_sync_all,
+        patch("docia.file_processing.pipeline.pipeline._init_and_launch_batch", autospec=True) as mock_init_launch,
+    ):
+        # Setup mock return values
+        mock_sync_all.return_value = {"num_ejs": ["ej1", "ej2"]}
+        mock_init_launch.return_value = "test_batch_id"
+
+        # Call the function
+        result = sync_and_analyze(start, end, force_analyze=True)
+
+        # Assertions
+        mock_sync_all.assert_called_once_with(start, end)
+        mock_init_launch.assert_called_once_with(["ej1", "ej2"], force_analyze=True)
+        assert result == "test_batch_id"
+
+
+@pytest.mark.django_db
+def test_sync_and_analyze_ej_list():
+    """Test sync_and_analyze_ej_list function with mocked _init_and_launch_batch."""
+    num_ejs = ["ej1", "ej2", "ej3"]
+
+    with (
+        patch(
+            "docia.file_processing.pipeline.pipeline.sync_documents_and_download_files", autospec=True
+        ) as mock_sync_docs,
+        patch("docia.file_processing.pipeline.pipeline._init_and_launch_batch", autospec=True) as mock_init_launch,
+    ):
+        # Setup mock return values
+        mock_init_launch.return_value = "test_batch_id"
+
+        # Call the function
+        result = sync_and_analyze_ej_list(num_ejs, force_analyze=True)
+
+        # Assertions
+        inserted_ejs = list(
+            DataEngagement.objects.filter(num_ej__in=num_ejs).order_by("num_ej").values_list("num_ej", flat=True)
+        )
+        assert inserted_ejs == num_ejs
+        mock_sync_docs.assert_called_once_with(num_ejs)
+        mock_init_launch.assert_called_once_with(num_ejs, force_analyze=True)
+        assert result == "test_batch_id"
+
+
+@pytest.mark.django_db
+def test_init_and_launch_batch():
+    """Test _init_and_launch_batch function with mocked launch_batch."""
+    num_ejs = ["ej1", "ej2"]
+
+    # Create DataEngagement objects and documents
+    ej1 = DataEngagementFactory(num_ej="ej1")
+    ej2 = DataEngagementFactory(num_ej="ej2")
+    doc1 = DocumentFactory()
+    doc1.engagements.add(ej1)
+    doc2 = DocumentFactory()
+    doc2.engagements.add(ej2)
+    # Doc already analyzed (should not be analyzed again)
+    doc_already_analyzed = DocumentFactory(structured_data={"struct": "hello"})
+    doc_already_analyzed.engagements.add(ej2)
+    # Doc already classified and unsupported classification (should not be analyzed again)
+    doc_already_classified = DocumentFactory(classification="toto")
+    doc_already_classified.engagements.add(ej2)
+
+    with (
+        patch(
+            "docia.file_processing.pipeline.pipeline.init_documents_from_external_filter_by_num_ejs", autospec=True
+        ) as mock_init_docs,
+        patch("docia.file_processing.pipeline.pipeline.launch_batch", autospec=True) as mock_launch_batch,
+    ):
+        # Setup mock return values
+        mock_init_docs.return_value = None
+        mock_launch_batch.return_value = (mock.Mock(id="test_batch_id"), mock.Mock())
+
+        # Call the function
+        result = _init_and_launch_batch(num_ejs, force_analyze=False)
+
+        # Assertions
+        mock_init_docs.assert_called_once_with(num_ejs, mock.ANY)
+        assert result == "test_batch_id"
+        # Verify that launch_batch was called with the correct queryset
+        calls = mock_launch_batch.call_args_list
+        assert len(calls) == 1
+        call_kwargs = calls[0].kwargs
+        call_qs_docs = call_kwargs["qs_documents"]
+        call_ids = list(call_qs_docs.values_list("id", flat=True))
+        assert sorted(call_ids) == sorted([doc1.id, doc2.id])
+
+        # ========================================
+        # force_analyze=True
+        _init_and_launch_batch(num_ejs, force_analyze=True)
+
+        # Verify that launch_batch was called with the correct queryset
+        calls = mock_launch_batch.call_args_list
+        assert len(calls) == 2
+        call_kwargs = calls[1].kwargs
+        call_qs_docs = call_kwargs["qs_documents"]
+        call_ids = list(call_qs_docs.values_list("filename", flat=True))
+        assert sorted(call_ids) == sorted(
+            [doc1.filename, doc2.filename, doc_already_analyzed.filename, doc_already_classified.filename]
+        )
