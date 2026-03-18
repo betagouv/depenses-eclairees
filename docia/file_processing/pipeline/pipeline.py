@@ -9,6 +9,7 @@ import uuid
 from datetime import datetime
 
 from django.db import models
+from django.db.models import Q
 from django.db.transaction import atomic
 from django.utils import timezone
 
@@ -285,6 +286,8 @@ def _init_and_launch_batch(num_ejs: list[str], force_analyze: bool = False) -> s
     if not force_analyze:
         # Ignore already processed
         qs_docs = qs_docs.filter(structured_data__isnull=True)
+        # Ignore unsupported document types
+        qs_docs = qs_docs.filter(Q(classification__isnull=True) | Q(classification__in=SUPPORTED_DOCUMENT_TYPES))
 
     if not qs_docs.exists():
         logger.info("No documents to process")

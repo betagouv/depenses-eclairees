@@ -317,6 +317,12 @@ def test_init_and_launch_batch():
     doc1.engagements.add(ej1)
     doc2 = DocumentFactory()
     doc2.engagements.add(ej2)
+    # Doc already analyzed (should not be analyzed again)
+    doc_already_analyzed = DocumentFactory(structured_data={"struct": "hello"})
+    doc_already_analyzed.engagements.add(ej2)
+    # Doc already classified and unsupported classification (should not be analyzed again)
+    doc_already_classified = DocumentFactory(classification="toto")
+    doc_already_classified.engagements.add(ej2)
 
     with (
         patch(
@@ -333,38 +339,25 @@ def test_init_and_launch_batch():
 
         # Assertions
         mock_init_docs.assert_called_once_with(num_ejs, mock.ANY)
+        assert result == "test_batch_id"
         # Verify that launch_batch was called with the correct queryset
-        mock_launch_batch.assert_called_once()
-        assert result == "test_batch_id"
+        calls = mock_launch_batch.call_args_list
+        assert len(calls) == 1
+        call_kwargs = calls[0].kwargs
+        call_qs_docs = call_kwargs["qs_documents"]
+        call_ids = list(call_qs_docs.values_list("id", flat=True))
+        assert sorted(call_ids) == sorted([doc1.id, doc2.id])
 
+        # ========================================
+        # force_analyze=True
+        _init_and_launch_batch(num_ejs, force_analyze=True)
 
-@pytest.mark.django_db
-def test_init_and_launch_batch_force_analyze():
-    """Test _init_and_launch_batch function with force_analyze=True."""
-    num_ejs = ["ej1", "ej2"]
-
-    # Create DataEngagement objects and documents
-    ej1 = DataEngagementFactory(num_ej="ej1")
-    ej2 = DataEngagementFactory(num_ej="ej2")
-    doc1 = DocumentFactory()
-    doc1.engagements.add(ej1)
-    doc2 = DocumentFactory()
-    doc2.engagements.add(ej2)
-
-    with (
-        patch(
-            "docia.file_processing.pipeline.pipeline.init_documents_from_external_filter_by_num_ejs", autospec=True
-        ) as mock_init_docs,
-        patch("docia.file_processing.pipeline.pipeline.launch_batch", autospec=True) as mock_launch_batch,
-    ):
-        # Setup mock return values
-        mock_init_docs.return_value = None
-        mock_launch_batch.return_value = (mock.Mock(id="test_batch_id"), mock.Mock())
-
-        # Call the function with force_analyze=True
-        result = _init_and_launch_batch(num_ejs, force_analyze=True)
-
-        # Assertions
-        mock_init_docs.assert_called_once_with(num_ejs, mock.ANY)
-        mock_launch_batch.assert_called_once()
-        assert result == "test_batch_id"
+        # Verify that launch_batch was called with the correct queryset
+        calls = mock_launch_batch.call_args_list
+        assert len(calls) == 2
+        call_kwargs = calls[1].kwargs
+        call_qs_docs = call_kwargs["qs_documents"]
+        call_ids = list(call_qs_docs.values_list("filename", flat=True))
+        assert sorted(call_ids) == sorted(
+            [doc1.filename, doc2.filename, doc_already_analyzed.filename, doc_already_classified.filename]
+        )
