@@ -22,7 +22,7 @@ class DocumentDownloader:
     def __init__(self):
         self.client = SyncClient.from_settings()
 
-    def download_document(self, external_id: str, name: str):
+    def download_document(self, external_id: str, name: str, *, max_retries=0):
         """Download a document from the API and store it in S3 + database (metadata)."""
 
         assert not name.startswith("."), f"File name invalid {name!r}"
@@ -36,7 +36,7 @@ class DocumentDownloader:
             return
 
         # Download the document
-        file_content = self.client.download_document(external_id)
+        file_content = self.client.download_document(external_id, max_retries=max_retries)
 
         self._store_file(external_id, name, file_content=file_content, folder=f"docs/{external_id}")
 

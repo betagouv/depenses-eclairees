@@ -1,6 +1,8 @@
 import enum
 import logging
+import random
 import re
+import time
 import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -10,6 +12,7 @@ from django.conf import settings
 
 import pydantic
 import requests
+from requests import HTTPError
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +24,7 @@ class ApiRawDocumentMetadata(pydantic.BaseModel):
     nom_pj: str = pydantic.Field(..., description="Document name")
     num_ej: str = pydantic.Field(..., description="Engagement number")
     size_pj: str = pydantic.Field(..., description="Document size")
+    date_pj: str = pydantic.Field(..., description="Document date")
 
 
 @dataclass
@@ -31,6 +35,7 @@ class ApiDocumentMetadata:
     name: str
     num_ej: str
     size: int
+    date: datetime
 
     @classmethod
     def from_raw_doc(cls, doc: ApiRawDocumentMetadata):
@@ -41,11 +46,13 @@ class ApiDocumentMetadata:
             size = -1
         # Normalize name
         name_nfc = unicodedata.normalize("NFC", doc.nom_pj)
+        date = parse_api_datetime(doc.date_pj)
         return cls(
             id=doc.id_pj,
             name=name_nfc,
             num_ej=doc.num_ej,
             size=size,
+            date=date,
         )
 
 
@@ -102,6 +109,26 @@ def datetime_to_api(value: datetime) -> str:
     return f"datetime'{s}'"
 
 
+class SyncApiError(Exception):
+    message: str
+    code: str
+    details: any
+
+    def __init__(self, message: str, *, code: str, details: any):
+        super().__init__(message)
+        self.message = message
+        self.code = code
+        self.details = details
+
+    @classmethod
+    def from_httperror(cls, err: HTTPError):
+        return cls(
+            message=str(err),
+            code=f"HTTP_{err.response.status_code}",
+            details=err.response.text,
+        )
+
+
 class SyncClient:
     def __init__(
         self,
@@ -155,10 +182,11 @@ class SyncClient:
         )
         self.is_authenticated = True
 
-    def list_documents_for_ej(self, num_ej: str, return_raw: bool = False) -> list[ApiDocumentMetadata]:
+    def list_documents_for_ej(
+        self, num_ej: str, object_type: str = "BUS2201", return_raw: bool = False
+    ) -> list[ApiDocumentMetadata]:
         """Get list of documents associated with an engagement number"""
         endpoint = "export_pj_ej/pieces_jointes_metadata"
-        object_type = "BUS2201"
         params = {"$filter": f"num_ej eq '{num_ej}' and object_type eq '{object_type}'"}
 
         response = self.session.get(
@@ -235,11 +263,41 @@ class SyncClient:
                 raise
         return result
 
-    def download_document(self, doc_id: str) -> bytes:
+    def download_document(self, doc_id: str, *, max_retries: int = 0, retry_delay: float = 0) -> bytes:
         """Download document content by ID"""
         endpoint = f"export_pj_ej/pieces_jointes_data('{doc_id.strip()}')/$value"
-        response = self.session.get(
-            self.base_url + endpoint,
-        )
-        response.raise_for_status()
-        return response.content
+
+        def _do_call():
+            response = self.session.get(
+                self.base_url + endpoint,
+            )
+            response.raise_for_status()
+            return response.content
+
+        return self._retry_call(_do_call, max_retries=max_retries, retry_delay=retry_delay)
+
+    def _retry_call(
+            self,
+            func_api,
+            *,
+            max_retries: int,
+            retry_delay: float,
+    ):
+        """Appelle func_api() en boucle avec retry. func_api doit lever SyncApiError en cas d'erreur."""
+        for attempt in range(max_retries + 1):
+            try:
+                return func_api()
+            except HTTPError as err:
+                # 429 / 5xx / erreurs réseau → retry. 4xx (ex. 400) = faute client → pas de retry.
+                if err.response.code == 429:
+                    effective_delay = retry_delay
+                elif 500 <= err.response.status_code < 600:
+                    effective_delay = retry_delay
+                else:
+                    raise  # 4xx : on relève tout de suite
+                if attempt < max_retries:
+                    wait_time = effective_delay * (1 + 0.1 * random.random()) * (attempt + 1)
+                    logger.warning("%s, wait %.1fs before retry (%d/%d)", err.code, wait_time, attempt + 1, max_retries)
+                    time.sleep(wait_time)
+                    continue
+                raise SyncApiError.from_httperror(err)
