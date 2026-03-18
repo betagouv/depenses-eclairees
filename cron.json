@@ -4,7 +4,7 @@
       "command": "0 4 * * * python manage.py launch_pipeline --timedelta 7d --force-analyze"
     },
     {
-      "command": "0 8,12,16 * * * python manage.py launch_pipeline --timedelta 24h"
+      "command": "0 8,12,16 * * * python manage.py launch_pipeline --timedelta 7d"
     }
   ]
 }
