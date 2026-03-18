@@ -1,6 +1,7 @@
 import logging
 
 from celery import shared_task
+from django.utils import timezone
 
 from docia.file_processing.models import ProcessDocumentStep
 from docia.file_processing.pipeline.steps.base import AbstractStepRunner, SkipStepException
@@ -39,7 +40,8 @@ class AnalyzeContentStepRunner(AbstractStepRunner):
         )
         document.llm_response = result["llm_response"]
         document.structured_data = result["structured_data"]
-        document.save(update_fields=["llm_response", "structured_data"])
+        document.analyzed_at = timezone.now()
+        document.save(update_fields=["llm_response", "structured_data", "analyzed_at"])
 
 
 @shared_task(name="docia.analyse_content")

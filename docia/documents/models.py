@@ -57,6 +57,7 @@ class Document(BaseModel):
     hash = models.CharField(unique=True)
     classification = models.CharField(max_length=255, null=True, blank=True)  # noqa: DJ001
     classification_type = models.CharField(max_length=255, null=True, blank=True)  # noqa: DJ001
+    analyzed_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.file.name
