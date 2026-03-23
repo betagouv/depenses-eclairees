@@ -491,11 +491,10 @@ def post_processing_object_ccap(data: dict) -> dict:
     """
     if not data:
         return data
-
-    titles = data.pop("lots", [])
-    contract_forms = data.pop("forme_marche_lots", [])
-    durations = data.pop("duree_lots", [])
-    amounts = data.pop("montant_ht_lots", [])
+    titles = data.pop("lots", []) or []
+    contract_forms = data.pop("forme_marche_lots", []) or []
+    durations = data.pop("duree_lots", []) or []
+    amounts = data.pop("montant_ht_lots", []) or []
 
     data["lots"] = create_lots(titles, contract_forms, durations, amounts)
 
