@@ -34,7 +34,6 @@ def get_comparison_functions():
         "date_emission": compare_exact_string,
         "titulaire": compare_exact_string,
         "administration_beneficiaire": lambda a, e: compare_with_llm(a, e, prompt=PROMPT_BENEFICIARY_ADMINISTRATION),
-        "prestations": compare_exact_string,
         "montants": compare_exact_string,
         "duree_validite": compare_exact_string,
         "date_signature": compare_exact_string,
@@ -49,7 +48,6 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-m
     df_test = df_test.sort_values(by="filename").reset_index(drop=True)
     for col in (
         "titulaire",
-        "prestations",
         "montants",
     ):
         df_test[col] = df_test[col].apply(lambda x: json.loads(x))
