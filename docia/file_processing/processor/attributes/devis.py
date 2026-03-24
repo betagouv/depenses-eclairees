@@ -110,35 +110,18 @@ DEVIS_ATTRIBUTES = {
     },
     "prestations": {
         "consigne": """PRESTATIONS
-   Définition : Liste détaillée des lignes de prestations du devis.
+   Définition : Résumé synthétique du contenu des prestations du devis (pas une liste ligne à ligne).
    Indices :
-   - Extraire les lignes de tableau / poste avec code, description, prix unitaire (si présent), quantité (si présente) et montant total.
-   - Les champs attendus par ligne sont :
-     * "code" : code de ligne (ex: UO 2) ou null si absent
-     * "description" : description de la prestation ou null si absente
-     * "prix_unitaire" : prix unitaire en nombre décimal ; à remplir uniquement si la ligne a un prix unitaire (ligne en unitaire). Sinon renvoyer null (ex: ligne forfaitaire).
-     * "quantite" : quantité en nombre décimal ; à remplir uniquement si elle est indiquée pour la ligne. Sinon renvoyer null.
-     * "montant_total" : montant total de la ligne en nombre décimal ; à remplir dans tous les cas pour chaque ligne.
-   - Ne pas ajouter de ligne vide.
-   - Si aucune ligne exploitable n'est trouvée, renvoyer [].
-   Format : tableau JSON d'objets homogènes.
+   - S'appuyer sur le tableau des lignes, les postes, les intitulés et montants globaux pour dégager le périmètre réel de l'offre.
+   - Décrire en quelques phrases : nature des services ou fournitures, thèmes principaux, éventuellement regroupements logiques (lots, familles de postes).
+   - Ne pas recopier exhaustivement chaque ligne ni chaque code article ; viser un texte lisible par un tiers qui n'a pas le document.
+   - Ne pas inclure de détail chiffré ligne par ligne (les montants agrégés restent dans le champ montants).
+   - Si aucune prestation n'est identifiable, renvoyer null.
+   Format : paragraphe court en français, ou null.
 """,
         "search": "",
         "output_field": "prestations",
-        "schema": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "code": {"type": ["string", "null"]},
-                    "description": {"type": ["string", "null"]},
-                    "prix_unitaire": {"type": ["number", "null"]},
-                    "quantite": {"type": ["number", "null"]},
-                    "montant_total": {"type": ["number"]},
-                },
-                "required": ["code", "description", "prix_unitaire", "quantite", "montant_total"],
-            },
-        },
+        "schema": {"type": ["string", "null"]},
     },
     "montants": {
         "consigne": """MONTANTS
