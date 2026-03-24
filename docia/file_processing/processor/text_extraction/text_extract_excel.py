@@ -269,9 +269,14 @@ def extract_text_from_xls(file_content: bytes, file_path: str = "", sep: str = "
         (texte markdown, False)
     """
     try:
-        wb = xlrd.open_workbook(file_contents=file_content, formatting_info=True)
-    except (xlrd.XLRDError, NotImplementedError):
-        wb = xlrd.open_workbook(file_contents=file_content, formatting_info=False)
+        try:
+            wb = xlrd.open_workbook(file_contents=file_content, formatting_info=True)
+        except (xlrd.XLRDError, NotImplementedError):
+            wb = xlrd.open_workbook(file_contents=file_content, formatting_info=False)
+    except AssertionError as ex:
+        # xlrd raise an assertion error on some invalid excels
+        # We want to re-raise a cleaner exception
+        raise ValueError("XLS read failure") from ex
 
     sheet_names = wb.sheet_names()
     parts = [MERGE_LEGEND]
