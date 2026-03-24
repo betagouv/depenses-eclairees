@@ -61,7 +61,7 @@ CCAP_ATTRIBUTES = {
         "search": "",
         "output_field": "lots",
         "schema": {
-            "type": ["array", "null"],
+            "type": "array",
             "items": {
                 "type": "object",
                 "properties": {"numero_lot": {"type": "integer"}, "titre_lot": {"type": "string"}},
@@ -154,7 +154,7 @@ CCAP_ATTRIBUTES = {
         "search": "",
         "output_field": "forme_marche_lots",
         "schema": {
-            "type": ["array", "null"],
+            "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
@@ -217,7 +217,7 @@ CCAP_ATTRIBUTES = {
         "search": "",
         "output_field": "duree_lots",
         "schema": {
-            "type": ["array", "null"],
+            "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
@@ -285,7 +285,7 @@ CCAP_ATTRIBUTES = {
         "search": "",
         "output_field": "montant_ht_lots",
         "schema": {
-            "type": ["array", "null"],
+            "type": "array",
             "items": {
                 "type": "object",
                 "properties": {
