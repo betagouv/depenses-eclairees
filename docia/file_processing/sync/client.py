@@ -1,3 +1,4 @@
+import dataclasses
 import enum
 import logging
 import random
@@ -214,7 +215,15 @@ class SyncClient:
                     # Make sure it's a true duplicate (same filename and size)
                     duplicate = doc_by_id[doc.id]
                     if duplicate != doc:
-                        raise ValueError(f"Invalid duplicate: {duplicate!r} != {doc!r}")
+                        # If only the date differs, keep the last one
+                        if dataclasses.replace(doc, date=duplicate.date) == duplicate:
+                            if doc.date > duplicate.date:
+                                doc_by_id[doc.id] = doc
+                                result.remove(duplicate)
+                                result.append(doc)
+                        else:
+                            # It's not a true duplicate, raise an exception for later investigation
+                            raise ValueError(f"Invalid duplicate: {duplicate!r} != {doc!r}")
 
             except pydantic.ValidationError as e:
                 logger.warning(f"Validation error for document data={data!r} error={e}")

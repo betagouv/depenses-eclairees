@@ -152,24 +152,23 @@ def test_list_documents_for_ej_invalid_size(client, caplog):
 def test_list_documents_for_ej_deduplication(client):
     """Test that duplicate documents are properly removed"""
 
+    doc_data = {
+        "id_pj": "doc123",
+        "nom_pj": "test_document.pdf",
+        "num_ej": "EJ2023-001",
+        "size_pj": "1024",
+        "date_pj": "/Date(1774001460000)/",
+    }
+
     # Mock response with duplicate documents (same id_pj)
     mock_response = {
         "d": {
             "results": [
-                {
-                    "id_pj": "doc123",
-                    "nom_pj": "test_document.pdf",
-                    "num_ej": "EJ2023-001",
-                    "size_pj": "1024",
-                    "date_pj": "/Date(1774001460000)/",  # Same date
-                },
-                {
-                    "id_pj": "doc123",  # Same ID - should be deduplicated
-                    "nom_pj": "test_document.pdf",  # Same name
-                    "num_ej": "EJ2023-001",
-                    "size_pj": "1024",  # Same size
-                    "date_pj": "/Date(1774001460000)/",  # Same date
-                },
+                {**doc_data, "date_pj": "/Date(1774001450000)/"},  # Different date but earlier
+                doc_data,
+                {**doc_data},  # Strictly same, should be deduplicated
+                # Different date but earlier (make sure deduplication is date based)
+                {**doc_data, "date_pj": "/Date(1774001450000)/"},
                 {
                     "id_pj": "doc456",
                     "nom_pj": "another_document.pdf",
@@ -216,7 +215,6 @@ def test_list_documents_for_ej_deduplication(client):
         {"nom_pj": "different_name.pdf"},
         {"size_pj": "1111"},
         {"num_ej": "EJ2023-002"},
-        {"date_pj": "/Date(1774001410000)/"},
     ],
 )
 @responses.activate
