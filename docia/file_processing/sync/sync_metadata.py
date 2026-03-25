@@ -61,5 +61,5 @@ class DocumentMetadataSync:
             )
             ExternalLinkDocumentOrder.objects.bulk_create(links, batch_size=1000, ignore_conflicts=True)
         logger.info("Success: %s documents data inserted", len(docs_metadata))
-        list_doc_ids = [doc.external_id for doc in docs_metadata]
+        list_doc_ids = sorted(set([doc.external_id for doc in docs_metadata]))
         return list_doc_ids

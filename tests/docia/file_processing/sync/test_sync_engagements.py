@@ -7,6 +7,7 @@ from docia.documents.models import DataEngagement
 from docia.file_processing.sync.sync_engagements import EngagementsSync
 from tests.factories.data import DataEngagementFactory, EngagementScopeFactory
 from tests.factories.file_processing import ApiEngagementActivityFactory
+from tests.utils import bind_arguments
 
 
 @pytest.fixture
@@ -18,7 +19,7 @@ def syncer():
 
 @pytest.mark.django_db
 def test_sync(syncer):
-    """Test that syncing creates new engagements with their scopes.
+    """Test that syncing handles correctly multiple scopes sync
 
     This test verifies that:
     1. New engagements are created from API activities
@@ -26,43 +27,61 @@ def test_sync(syncer):
     3. The external_updated_at field is set to the received_at timestamp from the API
     """
 
-    # Setup
-    num_ej1 = "1234567890"
-    num_ej2 = "2234567890"
-    num_ej3 = "3234567890"
-
-    def activity_factory(num_ej):
-        return ApiEngagementActivityFactory(num_ej=num_ej, purchase_organization="oa", purchase_group="ga")
-
     api_activities = [
-        activity_factory(num_ej=num_ej1),
-        activity_factory(num_ej=num_ej2),
-        activity_factory(num_ej=num_ej3),
+        ApiEngagementActivityFactory(purchase_organization="oa1", purchase_group="ga1"),
+        ApiEngagementActivityFactory(purchase_organization="oa1", purchase_group="ga1"),
+        ApiEngagementActivityFactory(purchase_organization="oa1", purchase_group="ga2"),
+        ApiEngagementActivityFactory(purchase_organization="oa1", purchase_group="ga2"),
+        ApiEngagementActivityFactory(purchase_organization="oa2", purchase_group="ga3"),
+        ApiEngagementActivityFactory(purchase_organization="oa2", purchase_group="ga3"),
     ]
+
+    # Mock
+    def m_list_ej_place(
+        *args,
+        **kwargs,
+    ):
+        bound_args = bind_arguments(syncer.client.list_ej_place, *args, **kwargs)
+        purchase_organization = bound_args["purchase_organization"]
+        purchase_group = bound_args["purchase_group"]
+        return [
+            activity
+            for activity in api_activities
+            if activity.purchase_organization == purchase_organization and activity.purchase_group == purchase_group
+        ]
 
     # Function call
-    with patch.object(syncer.client, "list_ej_place", autospec=True) as m_list:
-        m_list.return_value = api_activities
-        syncer.sync([("oa", "ga")], start=datetime(2026, 3, 5))
+    with patch.object(syncer.client, "list_ej_place", autospec=True, side_effect=m_list_ej_place):
+        synced_num_ejs = syncer.sync([("oa1", "ga1"), ("oa1", "ga2"), ("oa2", "ga3")], start=datetime(2026, 3, 5))
+
+    # Assert all num ejs are returned
+    expected_synced_num_ejs = [activity.num_ej for activity in api_activities]
+    assert sorted(synced_num_ejs) == sorted(expected_synced_num_ejs)
 
     # Asserts the EJ and scope are inserted
-    inserted = list(
-        DataEngagement.objects.order_by("num_ej").values(
-            "num_ej",
-            "external_updated_at",
-            "scopes__purchase_organization",
-            "scopes__purchase_group",
-        )
+    inserted = sorted(
+        list(
+            DataEngagement.objects.order_by("num_ej").values(
+                "num_ej",
+                "external_updated_at",
+                "scopes__purchase_organization",
+                "scopes__purchase_group",
+            )
+        ),
+        key=lambda x: x["num_ej"],
     )
-    expected = [
-        {
-            "external_updated_at": activity.received_at,
-            "num_ej": activity.num_ej,
-            "scopes__purchase_organization": "oa",
-            "scopes__purchase_group": "ga",
-        }
-        for activity in api_activities
-    ]
+    expected = sorted(
+        [
+            {
+                "external_updated_at": activity.received_at,
+                "num_ej": activity.num_ej,
+                "scopes__purchase_organization": activity.purchase_organization,
+                "scopes__purchase_group": activity.purchase_group,
+            }
+            for activity in api_activities
+        ],
+        key=lambda x: x["num_ej"],
+    )
     assert inserted == expected
 
 
@@ -95,7 +114,11 @@ def test_sync_update_ej(syncer):
     # Function call
     with patch.object(syncer.client, "list_ej_place", autospec=True) as m_list:
         m_list.return_value = api_activities
-        syncer.sync([("oa", "ga")], start=datetime(2026, 3, 5))
+        synced_num_ejs = syncer.sync([("oa", "ga")], start=datetime(2026, 3, 5))
+
+    # Assert all num ejs are returned
+    expected_synced_num_ejs = [activity.num_ej for activity in api_activities]
+    assert sorted(synced_num_ejs) == sorted(expected_synced_num_ejs)
 
     # Asserts :
     #   - the EJ is not duplicated
