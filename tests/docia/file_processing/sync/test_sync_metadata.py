@@ -7,6 +7,7 @@ from docia.file_processing.models import ExternalDocumentMetadata, ExternalLinkD
 from docia.file_processing.sync.client import ApiDocumentMetadata
 from docia.file_processing.sync.sync_metadata import DocumentMetadataSync
 from tests.factories.file_processing import ExternalDocumentMetadataFactoryWithOrder
+from tests.utils import bind_arguments
 
 
 @pytest.fixture
@@ -32,12 +33,19 @@ def test_sync(syncer):
         ApiDocumentMetadata(id="0003", name="doc3.pdf", num_ej=order_id_2, size=100, date=dt(2026, 3, 15)),
     ]
 
+    # Mock
+    def m_list_documents_for_ej(*args, **kwargs):
+        bound_args = bind_arguments(syncer.client.list_documents_for_ej, *args, **kwargs)
+        num_ej = bound_args["num_ej"]
+        return [doc for doc in api_docs if doc.num_ej == num_ej]
+
     # Function call
-    with patch.object(syncer.client, "list_documents_for_ej", autospec=True) as m_list:
-        m_list.return_value = api_docs
-        syncer.sync([order_id])
+    with patch.object(syncer.client, "list_documents_for_ej", autospec=True, side_effect=m_list_documents_for_ej):
+        synced_doc_ids = syncer.sync([order_id, order_id_2])
 
     # Asserts
+    assert synced_doc_ids == sorted([api_doc.id for api_doc in api_docs])
+
     inserted_docs = list(
         ExternalDocumentMetadata.objects.order_by("name").values("external_id", "name", "size", "date")
     )
@@ -71,9 +79,11 @@ def test_sync_update(syncer):
     # Function call
     with patch.object(syncer.client, "list_documents_for_ej", autospec=True) as m_list:
         m_list.return_value = [api_doc]
-        syncer.sync([order_id])
+        synced_doc_ids = syncer.sync([order_id])
 
     # Asserts
+    assert synced_doc_ids == [api_doc.id]
+
     db_docs = list(ExternalDocumentMetadata.objects.values("external_id", "name", "size", "date"))
     expected_docs = [{"external_id": api_doc.id, "name": api_doc.name, "size": api_doc.size, "date": api_doc.date}]
     assert db_docs == expected_docs

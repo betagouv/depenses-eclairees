@@ -1,3 +1,5 @@
+import inspect
+
 from django.db.models import Manager
 from django.test import TestCase
 
@@ -13,3 +15,10 @@ def assert_queryset_equal(qs, values, transform=None, ordered=False, msg=None):
         ordered=ordered,
         msg=msg,
     )
+
+
+def bind_arguments(original_function, *args, **kwargs) -> dict:
+    """Ensure the given args and kwargs match the function's signature."""
+    sig = inspect.signature(original_function)
+    bound_args = sig.bind(*args, **kwargs)
+    return bound_args.arguments

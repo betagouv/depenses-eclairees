@@ -27,6 +27,7 @@ class EngagementsSync:
             end = datetime.now()
 
         total_synced = 0
+        num_ejs_synced = set()
         logger.info("Fetch engagements activity...")
         for i, t_scope in enumerate(scopes):
             purchase_organization, purchase_group = t_scope
@@ -61,10 +62,10 @@ class EngagementsSync:
                 )
                 scope.engagements.add(*db_ids)
             total_synced += len(engagements)
+            num_ejs_synced.update(ej.num_ej for ej in engagements)
             logger.info("Sync scope %s: Success. %s engagements synced", t_scope, len(engagements))
         logger.info("Success: %s engagements synced", total_synced)
-        num_ejs = [ej.num_ej for ej in engagements]
-        return num_ejs
+        return num_ejs_synced
 
     def _remove_duplicate(self, activities: list[ApiEngagementActivity]) -> list[ApiEngagementActivity]:
         """
