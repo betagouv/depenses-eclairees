@@ -99,10 +99,11 @@ def test_sync_update_ej(syncer):
     # Existing EJ with existing scope
     num_ej = "1234567890"
     ej = DataEngagementFactory(num_ej=num_ej, external_updated_at=datetime(2026, 1, 7))
+    ej_initial_updated_at = ej.updated_at
     scope = EngagementScopeFactory()
     ej.scopes.add(scope)
 
-    # Same EJ, different scope
+    # Same EJ, different scope, received_at later
     api_activity = ApiEngagementActivityFactory(
         num_ej=num_ej,
         purchase_organization="oa",
@@ -150,3 +151,56 @@ def test_sync_update_ej(syncer):
         },
     ]
     assert inserted == expected
+
+    # Assert updated_at is updated
+    ej.refresh_from_db()
+    assert ej.updated_at > ej_initial_updated_at
+
+
+@pytest.mark.django_db
+def test_sync_preserve_newer_external_updated_at(syncer):
+    """Test that syncing preserves the newer external_updated_at when API has older data.
+
+    This test verifies that:
+    1. When an existing engagement has a newer external_updated_at than the API activity
+    2. The newer date is preserved (not overwritten by the older API date)
+    3. The engagement still gets the new scope added
+    """
+
+    # Existing EJ with newer external_updated_at
+    num_ej = "1234567890"
+    newer_date = datetime(2026, 4, 1, tzinfo=timezone.utc)
+    ej = DataEngagementFactory(num_ej=num_ej, external_updated_at=newer_date)
+    ej_initial_updated_at = ej.updated_at
+    scope = EngagementScopeFactory()
+    ej.scopes.add(scope)
+
+    # Same EJ, but with older date from API
+    older_date = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    api_activity = ApiEngagementActivityFactory(
+        num_ej=num_ej,
+        purchase_organization="oa",
+        purchase_group="ga",
+        received_at=older_date,
+    )
+    api_activities = [api_activity]
+
+    # Function call
+    with patch.object(syncer.client, "list_ej_place", autospec=True) as m_list:
+        m_list.return_value = api_activities
+        synced_num_ejs = syncer.sync([("oa", "ga")], start=datetime(2026, 3, 5))
+
+    # Assert all num ejs are returned
+    expected_synced_num_ejs = [activity.num_ej for activity in api_activities]
+    assert sorted(synced_num_ejs) == sorted(expected_synced_num_ejs)
+
+    # Assert that the newer external_updated_at is preserved
+    updated_ej = DataEngagement.objects.get(num_ej=num_ej)
+    assert updated_ej.external_updated_at == newer_date
+
+    # Assert that the new scope was still added
+    assert updated_ej.scopes.count() == 2
+    assert updated_ej.scopes.filter(purchase_organization="oa", purchase_group="ga").exists()
+
+    # Assert updated_at is preserved (no update has been performed since date is older)
+    assert updated_ej.updated_at == ej_initial_updated_at
