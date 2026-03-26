@@ -508,6 +508,7 @@ CLEAN_FUNCTIONS = {
             "rib_mandataire": post_processing_bank_account,
             "montant_ttc": post_processing_amount,
             "montant_ht": post_processing_amount,
+            "montant_tva": post_processing_percentage,
             "cotraitants": post_processing_co_contractors,
             "sous_traitants": post_processing_subcontractors,
             "siret_mandataire": post_processing_siret,
