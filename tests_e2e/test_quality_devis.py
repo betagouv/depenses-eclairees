@@ -65,7 +65,7 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-m
 
 if __name__ == "__main__":
     df_test, df_result, df_merged = create_batch_test(
-        multi_line_coef=1, max_workers=30, debug_mode=True, llm_model="openweight-small"
+        multi_line_coef=1, max_workers=30, debug_mode=True, llm_model="mistral-medium-2508"
     )
 
     EXCLUDED_COLUMNS = ["objet"]
