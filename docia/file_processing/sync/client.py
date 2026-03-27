@@ -202,32 +202,15 @@ class SyncClient:
             return data
 
         result = []
-        doc_by_id = {}  # Save already processed docs to remove duplicates
         for doc_data in data["d"]["results"]:
             try:
                 raw_doc = ApiRawDocumentMetadata(**doc_data)
                 doc = ApiDocumentMetadata.from_raw_doc(raw_doc)
-                # Remove duplicates on the fly
-                if doc.id not in doc_by_id:
-                    result.append(doc)
-                    doc_by_id[doc.id] = doc
-                else:
-                    # Make sure it's a true duplicate (same filename and size)
-                    duplicate = doc_by_id[doc.id]
-                    if duplicate != doc:
-                        # If only the date differs, keep the last one
-                        if dataclasses.replace(doc, date=duplicate.date) == duplicate:
-                            if doc.date > duplicate.date:
-                                doc_by_id[doc.id] = doc
-                                result.remove(duplicate)
-                                result.append(doc)
-                        else:
-                            # It's not a true duplicate, raise an exception for later investigation
-                            raise ValueError(f"Invalid duplicate: {duplicate!r} != {doc!r}")
-
+                result.append(doc)
             except pydantic.ValidationError as e:
                 logger.warning(f"Validation error for document data={data!r} error={e}")
                 raise
+        result = self.remove_duplicates(result)
         return result
 
     def list_ej_place(
@@ -284,6 +267,29 @@ class SyncClient:
             return response.content
 
         return self._retry_call(_do_call, max_retries=max_retries, retry_delay=retry_delay)
+
+    def remove_duplicates(self, docs: list[ApiDocumentMetadata]) -> list[ApiDocumentMetadata]:
+        """Remove duplicate documents, keep older one in case of duplicate."""
+        result = []
+        doc_by_id = {}  # Save already processed docs to remove duplicates
+        for doc in docs:
+            if doc.id not in doc_by_id:
+                result.append(doc)
+                doc_by_id[doc.id] = doc
+            else:
+                # Make sure it's a true duplicate (same filename and size)
+                duplicate = doc_by_id[doc.id]
+                if duplicate != doc:
+                    # If only the date differs, keep the earlier one
+                    if dataclasses.replace(doc, date=duplicate.date) == duplicate:
+                        if doc.date < duplicate.date:
+                            doc_by_id[doc.id] = doc
+                            result.remove(duplicate)
+                            result.append(doc)
+                    else:
+                        # It's not a true duplicate, raise an exception for later investigation
+                        raise ValueError(f"Invalid duplicate: {duplicate!r} != {doc!r}")
+        return result
 
     def _retry_call(
         self,

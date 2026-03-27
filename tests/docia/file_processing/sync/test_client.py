@@ -164,11 +164,10 @@ def test_list_documents_for_ej_deduplication(client):
     mock_response = {
         "d": {
             "results": [
-                {**doc_data, "date_pj": "/Date(1774001450000)/"},  # Different date but earlier
+                {**doc_data, "date_pj": "/Date(1774001470000)/"},  # Different date but later
                 doc_data,
                 {**doc_data},  # Strictly same, should be deduplicated
-                # Different date but earlier (make sure deduplication is date based)
-                {**doc_data, "date_pj": "/Date(1774001450000)/"},
+                {**doc_data, "date_pj": "/Date(1774001470000)/"},  # Different date but later
                 {
                     "id_pj": "doc456",
                     "nom_pj": "another_document.pdf",

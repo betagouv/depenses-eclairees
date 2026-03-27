@@ -204,3 +204,75 @@ def test_sync_preserve_newer_external_updated_at(syncer):
 
     # Assert updated_at is preserved (no update has been performed since date is older)
     assert updated_ej.updated_at == ej_initial_updated_at
+
+
+@pytest.mark.django_db
+def test_sync_handles_duplicate_engagements(syncer):
+    """Test that sync handles correctly duplicate engagements from the API.
+
+    This test verifies that:
+    1. When the API returns duplicate engagements (same num_ej) with different scopes
+    2. Only one engagement is created in the database (with the newest timestamp)
+    3. The engagement is linked to both scopes
+    4. Older activities with the same num_ej are ignored
+    """
+
+    num_ej = "1234567890"
+
+    # Create API activities with duplicate num_ej, different timestamps and scopes
+    # Pattern: older, newer, older, older
+    older_activity = ApiEngagementActivityFactory(
+        num_ej=num_ej,
+        purchase_organization="oa1",
+        purchase_group="ga1",
+        received_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+    )
+    newer_activity = ApiEngagementActivityFactory(
+        num_ej=num_ej,
+        purchase_organization="oa1",
+        purchase_group="ga1",
+        received_at=datetime(2026, 3, 1, tzinfo=timezone.utc),
+    )
+    newer_activity_different_scope = ApiEngagementActivityFactory(
+        num_ej=num_ej,
+        purchase_organization="oa2",
+        purchase_group="ga2",
+        received_at=datetime(2026, 3, 1, tzinfo=timezone.utc),
+    )
+    api_activities = [
+        older_activity,
+        newer_activity,
+        older_activity,
+        newer_activity_different_scope,
+        older_activity,
+    ]
+
+    # Mock the API to return different activities for different scopes
+    def m_list_ej_place(*args, **kwargs):
+        bound_args = bind_arguments(syncer.client.list_ej_place, *args, **kwargs)
+        purchase_organization = bound_args["purchase_organization"]
+        purchase_group = bound_args["purchase_group"]
+
+        return [
+            activity
+            for activity in api_activities
+            if activity.purchase_organization == purchase_organization and activity.purchase_group == purchase_group
+        ]
+
+    # Function call - sync both scopes
+    with patch.object(syncer.client, "list_ej_place", autospec=True, side_effect=m_list_ej_place):
+        synced_num_ejs = syncer.sync([("oa1", "ga1"), ("oa2", "ga2")], start=datetime(2026, 1, 1))
+
+    # Assert only one num_ej is returned (no duplicates)
+    expected_synced_num_ejs = [num_ej]
+    assert synced_num_ejs == expected_synced_num_ejs
+
+    # Assert the engagement has the newest timestamp
+    created = list(DataEngagement.objects.values_list("num_ej", "external_updated_at"))
+    assert created == [(num_ej, newer_activity.received_at)]
+
+    # Assert the engagement is linked to all scopes (both oa1/ga2 and oa2/ga2)
+    created_ej = DataEngagement.objects.get()
+    created_scopes = sorted(list(created_ej.scopes.values_list("purchase_organization", "purchase_group")))
+    expected_scopes = [("oa1", "ga1"), ("oa2", "ga2")]
+    assert created_scopes == expected_scopes
