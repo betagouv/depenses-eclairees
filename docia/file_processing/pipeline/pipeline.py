@@ -266,11 +266,11 @@ def sync_and_analyze_ej_list(num_ejs: list[str], force_analyze: bool = False) ->
     """
     logger.info("Start sync and analyze (by ej list)")
     logger.info("Create or update all EJs")
-    n = DataEngagement.objects.bulk_create(
-        (DataEngagement(num_ej=num_ej) for num_ej in num_ejs),
+    ejs = DataEngagement.objects.bulk_create(
+        (DataEngagement(num_ej=num_ej) for num_ej in set(num_ejs)),
         ignore_conflicts=True,
     )
-    logger.info("Successfully updated EJs (%s)", n)
+    logger.info("Successfully updated EJs (%s)", len(ejs))
     sync_documents_and_download_files(num_ejs)
     return _init_and_launch_batch(num_ejs, force_analyze=force_analyze)
 

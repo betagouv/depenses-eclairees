@@ -4,7 +4,7 @@ from django.db.transaction import atomic
 
 from docia.file_processing.models import ExternalDocumentMetadata, ExternalLinkDocumentOrder
 
-from .client import SyncClient
+from .client import ApiDocumentMetadata, SyncClient
 
 logger = logging.getLogger(__name__)
 
@@ -30,26 +30,12 @@ class DocumentMetadataSync:
             if len(list_num_ej) > 50 and i % 50 == 0:
                 logger.info("ej=%s/%s (%s documents)", i, len(list_num_ej), len(docs_metadata))
             documents_data = self.client.list_documents_for_ej(num_ej)
-            docs_metadata.extend(
-                [
-                    ExternalDocumentMetadata(
-                        external_id=doc.id,
-                        name=doc.name,
-                        size=doc.size,
-                        date=doc.date,
-                    )
-                    for doc in documents_data
-                ]
-            )
-            links.extend(
-                [
-                    ExternalLinkDocumentOrder(
-                        external_document_id=doc.id,
-                        order_id=doc.num_ej,
-                    )
-                    for doc in documents_data
-                ]
-            )
+            db_docs = [self.convert_api_doc_to_db_doc(data) for data in documents_data]
+            db_links = [self.convert_api_doc_to_db_link(data) for data in documents_data]
+            docs_metadata.extend(db_docs)
+            links.extend(db_links)
+        docs_metadata = self.remove_duplicate_docs(docs_metadata)
+        links = self.remove_duplicate_links(links)
         logger.info("Fetched %s documents data, now inserting...", len(docs_metadata))
         with atomic():
             ExternalDocumentMetadata.objects.bulk_create(
@@ -63,3 +49,30 @@ class DocumentMetadataSync:
         logger.info("Success: %s documents data inserted", len(docs_metadata))
         list_doc_ids = sorted(set([doc.external_id for doc in docs_metadata]))
         return list_doc_ids
+
+    def convert_api_doc_to_db_doc(self, api_doc: ApiDocumentMetadata) -> ExternalDocumentMetadata:
+        db_doc = ExternalDocumentMetadata(
+            external_id=api_doc.id,
+            name=api_doc.name,
+            size=api_doc.size,
+            date=api_doc.date,
+        )
+        return db_doc
+
+    def convert_api_doc_to_db_link(self, api_doc: ApiDocumentMetadata) -> ExternalLinkDocumentOrder:
+        db_link = ExternalLinkDocumentOrder(
+            external_document_id=api_doc.id,
+            order_id=api_doc.num_ej,
+        )
+        return db_link
+
+    def remove_duplicate_docs(self, docs: list[ExternalDocumentMetadata]) -> list[ExternalDocumentMetadata]:
+        """Deduplicate documents using external_id, keep older one in case of duplicate."""
+        docs = sorted(docs, key=lambda doc: doc.date, reverse=True)
+        unique_dict = {doc.external_id: doc for doc in docs}
+        return list(unique_dict.values())
+
+    def remove_duplicate_links(self, links: list[ExternalLinkDocumentOrder]) -> list[ExternalLinkDocumentOrder]:
+        """Deduplicate links using (external_document_id, order_id)."""
+        unique_dict = {(link.external_document_id, link.order_id): link for link in links}
+        return list(unique_dict.values())
