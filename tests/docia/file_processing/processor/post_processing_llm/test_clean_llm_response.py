@@ -38,6 +38,7 @@ def test_clean_llm_response_acte_engagement():
                 "rib": {"banque": "Banque test", "iban": _iban_espaces_quatre(_IBAN_AUTRE)},
             }
         ],
+        "societe_principale": "Société test (SARL)",
     }
     original_payload = copy.deepcopy(llm_response)
 
@@ -63,5 +64,6 @@ def test_clean_llm_response_acte_engagement():
                 "rib": {"banque": "Banque test", "iban": _IBAN_AUTRE},
             }
         ],
+        "societe_principale": "test",
     }
     assert llm_response == original_payload

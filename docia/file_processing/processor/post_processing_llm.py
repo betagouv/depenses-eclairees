@@ -1,6 +1,7 @@
 import copy
 import logging
 import re
+from typing import Any
 
 from schwifty import IBAN
 from schwifty.exceptions import SchwiftyException
@@ -242,6 +243,69 @@ def post_processing_duration(duration: dict[str, int]) -> dict[str, int]:
         return None
 
     return duration
+
+
+# Préfixes de forme juridique en tête de raison sociale (ordre : plus long d’abord).
+# On ne retire pas les déterminants « la / l’ » (ex. « La Poste », « L’Auxiliaire »).
+_SOCIETE_PREFIX_STRIP = re.compile(
+    r"(?i)^(?:"
+    r"société\s+|societe\s+|"
+    r"s\.?\s*a\.?\s*s\.?\s*u\.?\s+|sasu\s+|"
+    r"selarl\s+|"
+    r"s\.?\s*a\.?\s*r\.?\s*l\.?\s+|sarl\s+|"
+    r"s\.?\s*a\.?\s*s\.?\s+|sas\s+|"
+    r"eurl\s+|sci\s+|snc\s+|scs\s+|sem\s+|"
+    r"s\.?\s*a\.?\s+"
+    r")+"
+)
+
+_SOCIETE_SUFFIX_STRIP = re.compile(
+    r"(?i)[\s,.-]+("
+    r"SASU|SARL|SAS\b|"
+    r"S\.?\s*A\.?\s*S\.?\s*U\.?|S\.?\s*A\.?\s*S\.?|S\.?\s*A\.?\b|"
+    r"SCI|EURL|SCS|SELARL|SEM|SNC|"
+    r"SA\s+à\s+directoire|SA\s+a\s+directoire"
+    r")\s*$"
+)
+
+
+def _strip_parentheses_segments(s: str) -> str:
+    """Retire toutes les sous-chaînes ``(... )`` équilibrées (y compris imbriquées), puis normalise les espaces."""
+    if not s:
+        return s
+    prev = None
+    while prev != s:
+        prev = s
+        s = re.sub(r"\([^()]*\)", "", s)
+    return re.sub(r"\s+", " ", s).strip(" ,.-")
+
+
+def post_processing_societe_principale(name: Any) -> str | None:
+    """
+    Retire les parenthèses et leur contenu, puis préfixes et suffixes juridiques
+    (SAS, SARL, SA, SASU, Société, etc.) — sans enlever le déterminant « la » / « l’ » en tête.
+    """
+    if name is None:
+        return None
+    if not isinstance(name, str):
+        name = str(name)
+    s = name.strip()
+    if not s:
+        return None
+    s = _strip_parentheses_segments(s)
+    if not s:
+        return None
+    for _ in range(6):
+        prev = s
+        s = _SOCIETE_PREFIX_STRIP.sub("", s).strip(" ,.-")
+        if s == prev:
+            break
+    for _ in range(4):
+        prev = s
+        s = _SOCIETE_SUFFIX_STRIP.sub("", s).strip(" ,.-")
+        if s == prev:
+            break
+    return s or None
 
 
 def post_processing_siret(siret: str) -> str:
@@ -514,6 +578,7 @@ CLEAN_FUNCTIONS = {
             "siret_mandataire": post_processing_siret,
             "duree": post_processing_duration,
             "rib_autres": post_processing_other_bank_accounts,
+            "societe_principale": post_processing_societe_principale,
         },
     },
     # RIB
@@ -545,6 +610,8 @@ CLEAN_FUNCTIONS = {
             "montant_sous_traitance_ht": post_processing_amount,
             "rib_sous_traitant": post_processing_bank_account,
             "duree_sous_traitance": post_processing_duration,
+            "societe_principale": post_processing_societe_principale,
+            "societe_sous_traitant": post_processing_societe_principale,
         },
     },
 }
