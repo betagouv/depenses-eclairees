@@ -64,7 +64,7 @@ def download_documents(doc_ids: list[str]):
 
     def _task_download(doc: ExternalDocumentMetadata):
         logger.info("Start download %s %s %sMo", doc.external_id, doc.name, doc.size_mo)
-        max_retries = 2 if doc.size_mo < 30 else 0
+        max_retries = 2 if doc.size_mo < 21 else 0
         try:
             downloader.download_document(doc.external_id, doc.name, max_retries=max_retries)
         except Exception as exc:
