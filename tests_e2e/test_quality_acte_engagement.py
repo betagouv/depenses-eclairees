@@ -235,7 +235,7 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-m
     """Test de qualité des informations extraites par le LLM."""
 
     # Lecture du fichier CSV
-    df_test = get_data_from_grist(table="Acte_engagement_gt")
+    df_test = get_data_from_grist(table="Acte_engagement_gt").query("commentaire == 'traité'")
     df_test["montant_ht"] = df_test["montant_ht"].apply(lambda x: f"{float(x):.2f}" if x else "")
     df_test["montant_ttc"] = df_test["montant_ttc"].apply(lambda x: f"{float(x):.2f}" if x else "")
     df_test["montant_tva"] = df_test["montant_tva"].apply(lambda x: f"{float(x):.2f}" if x else "")
@@ -259,9 +259,9 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-m
 
 
 if __name__ == "__main__":
-    df_test, df_result, df_merged = create_batch_test(llm_model="openweight-medium", debug_mode=True, max_workers=30)
+    df_test, df_result, df_merged = create_batch_test(llm_model="mistral-medium-2508", debug_mode=True, max_workers=30)
 
-    EXCLUDED_COLUMNS = ["objet_marche", "administration_beneficiaire"]
+    EXCLUDED_COLUMNS = ["objet_marche", "administration_beneficiaire", "societe_principale"]
 
     comparison_functions = get_comparison_functions()
 

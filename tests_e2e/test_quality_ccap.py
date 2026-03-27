@@ -208,7 +208,7 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-m
 
 if __name__ == "__main__":
     df_test, df_result, df_merged = create_batch_test(
-        multi_line_coef=1, max_workers=30, llm_model="openweight-medium", debug_mode=True
+        multi_line_coef=1, max_workers=30, llm_model="mistral-medium-2508", debug_mode=True
     )
 
     EXCLUDED_COLUMNS = ["objet_marche"]

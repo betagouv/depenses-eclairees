@@ -78,7 +78,7 @@ def create_response_format(df_attributes, classification):
     return response_format
 
 
-def analyze_file_text(text: str, document_type: str, llm_model: str = "openweight-medium", temperature: float = 0.0):
+def analyze_file_text(text: str, document_type: str, llm_model: str = "mistral-medium-2508", temperature: float = 0.0):
     """
     Analyse le texte pour extraire des informations.
 
@@ -101,7 +101,7 @@ def analyze_file_text(text: str, document_type: str, llm_model: str = "openweigh
 
 
 def analyze_file_text_llm(
-    text: str, document_type: str, llm_model: str = "openweight-medium", temperature: float = 0.0
+    text: str, document_type: str, llm_model: str = "mistral-medium-2508", temperature: float = 0.0
 ):
     llm_env = LLMClient()
 
