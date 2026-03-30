@@ -34,7 +34,7 @@ def detect_file_extension_from_content(file: str | bytes) -> str:
     if ext:
         return ext.strip(".")
     else:
-        log_file = "binary:{file[:10]!r}" if isinstance(file, bytes) else file
+        log_file = f"binary:{file[:10]!r}" if isinstance(file, bytes) else file
         logger.warning("Could not guess extension for mime %r (file=%s)", mime, log_file)
         return "unknown"
 
