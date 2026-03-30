@@ -94,3 +94,45 @@ def test_sync_update(syncer):
         {"external_document_id": api_doc.id, "order_id": api_doc.num_ej},
     ]
     assert db_links == expected_links
+
+
+@pytest.mark.django_db
+def test_sync_handle_duplicates(syncer):
+    # Setup
+    order_id = "1234567890"
+    order_id_2 = "2234567890"
+    api_doc_to_keep = ApiDocumentMetadata(id="0001", name="doc1.pdf", num_ej=order_id, size=100, date=dt(2026, 3, 15))
+    api_docs = [
+        # Should be dumped (older)
+        ApiDocumentMetadata(id="0001", name="doc1.pdf", num_ej=order_id, size=100, date=dt(2026, 3, 16)),
+        # Should be kept (earlier)
+        api_doc_to_keep,
+        # Should be dumped (older), but link should be kept
+        ApiDocumentMetadata(id="0001", name="doc1.pdf", num_ej=order_id_2, size=100, date=dt(2026, 3, 16)),
+    ]
+
+    # Mock
+    def m_list_documents_for_ej(*args, **kwargs):
+        bound_args = bind_arguments(syncer.client.list_documents_for_ej, *args, **kwargs)
+        num_ej = bound_args["num_ej"]
+        return [doc for doc in api_docs if doc.num_ej == num_ej]
+
+    # Function call
+    with patch.object(syncer.client, "list_documents_for_ej", autospec=True, side_effect=m_list_documents_for_ej):
+        synced_doc_ids = syncer.sync([order_id, order_id_2])
+
+    # Asserts
+    assert synced_doc_ids == sorted(["0001"])
+
+    inserted_docs = list(ExternalDocumentMetadata.objects.order_by("name").values("external_id", "date"))
+    expected_docs = [{"external_id": api_doc_to_keep.id, "date": api_doc_to_keep.date}]
+    assert inserted_docs == expected_docs
+
+    inserted_links = list(
+        ExternalLinkDocumentOrder.objects.order_by("external_document_id").values("external_document_id", "order_id")
+    )
+    expected_links = [
+        {"external_document_id": "0001", "order_id": order_id},
+        {"external_document_id": "0001", "order_id": order_id_2},
+    ]
+    assert inserted_links == expected_links
