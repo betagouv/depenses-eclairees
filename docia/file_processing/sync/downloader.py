@@ -89,6 +89,7 @@ class DocumentDownloader:
 
         file_info = FileInfo(
             external_id=external_id,
+            root_external_id=parent.root_external_id if parent else external_id,
             parent=parent,
             file=filepath,
             filename=filename,

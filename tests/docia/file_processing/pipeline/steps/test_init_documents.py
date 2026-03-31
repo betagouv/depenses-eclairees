@@ -18,7 +18,7 @@ from docia.file_processing.pipeline.steps.init_documents import (
 )
 from docia.models import DataBatch, DataEngagement, Document
 from tests.factories.data import DataBatchFactory, DataEngagementFactory, DocumentFactory
-from tests.factories.file_processing import ExternalLinkDocumentOrderFactory, FileInfoFactory
+from tests.factories.file_processing import ExternalLinkDocumentOrderFactory, FileInfoFactory, SubFileInfoFactory
 
 
 @pytest.mark.django_db
@@ -227,6 +227,7 @@ def test_init_documents_in_folder_handle_duplicate_document():
 @pytest.mark.django_db
 def test_init_documents_from_external():
     file_info_1, file_info_2 = FileInfoFactory.create_batch(2)
+    sub_file = SubFileInfoFactory(parent=file_info_1)
     num_ej1 = "1234567890"
     num_ej2 = "2234567890"
     ExternalLinkDocumentOrderFactory(external_document__external_id=file_info_1.external_id, order_id=num_ej1)
@@ -245,19 +246,17 @@ def test_init_documents_from_external():
     )
     assert documents == [
         {
-            "file": file_info_1.file.name,
+            "file": fi.file.name,
             "extension": "pdf",
-            "hash": file_info_1.hash,
-            "taille": file_info_1.size,
-            "engagements__num_ej": num_ej1,
-        },
-        {
-            "file": file_info_2.file.name,
-            "extension": "pdf",
-            "hash": file_info_2.hash,
-            "taille": file_info_2.size,
-            "engagements__num_ej": num_ej2,
-        },
+            "hash": fi.hash,
+            "taille": fi.size,
+            "engagements__num_ej": num_ej,
+        }
+        for (fi, num_ej) in [
+            (file_info_1, num_ej1),
+            (file_info_2, num_ej2),
+            (sub_file, num_ej1),
+        ]
     ]
 
 
@@ -552,6 +551,7 @@ def test_bulk_create_links_doc_engagement_using_filenames_ignores_duplicates():
 def test_bulk_create_links_doc_engagement_using_external():
     """Test that links between Documents and Engagements are created correctly (using external data)."""
     files_info = FileInfoFactory.create_batch(3)
+    sub_file_info = SubFileInfoFactory(parent=files_info[0])
     expected_links = []
     for fi in files_info:
         ej = DataEngagementFactory()
@@ -561,9 +561,11 @@ def test_bulk_create_links_doc_engagement_using_external():
         )
         DocumentFactory(hash=fi.hash, file=fi.file)
         expected_links.append((fi.hash, ej.num_ej))
+    DocumentFactory(hash=sub_file_info.hash, file=sub_file_info.file)
+    expected_links.append((sub_file_info.hash, expected_links[0][1]))
 
     # Call the function to create links between Documents and Engagements using external data
-    bulk_create_links_document_engagement_using_external_data(files_info)
+    bulk_create_links_document_engagement_using_external_data(files_info + [sub_file_info])
 
     # Verify that the links were created correctly
     RelModel = Document.engagements.through

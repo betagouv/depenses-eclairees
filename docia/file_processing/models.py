@@ -103,6 +103,7 @@ class ProcessDocumentStep(BaseModel):
 
 class FileInfo(BaseModel):
     external_id = models.CharField(null=True, blank=True, unique=True)
+    root_external_id = models.CharField(null=True, blank=True)  # noqa: DJ001
     parent = models.ForeignKey("self", null=True, blank=True, on_delete=models.PROTECT)
     file = models.FileField(null=True, blank=True, max_length=1000, unique=True)
     filename = models.CharField(max_length=1000)

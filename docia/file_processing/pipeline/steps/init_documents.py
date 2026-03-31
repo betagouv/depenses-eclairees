@@ -121,7 +121,7 @@ def bulk_create_links_document_engagement_using_external_data(file_infos: list[F
     SELECT doc.id, ej.id
     FROM docia_document doc
     INNER JOIN docia_fileinfo fi ON fi.hash = doc.hash
-    INNER JOIN docia_externallinkdocumentorder link ON link.external_document_id = fi.external_id
+    INNER JOIN docia_externallinkdocumentorder link ON link.external_document_id = fi.root_external_id
     INNER JOIN engagements ej ON ej.num_ej = link.order_id
     WHERE doc.hash = ANY(%s)
     """
@@ -179,7 +179,7 @@ def init_documents_from_external_filter_by_num_ejs(num_ejs: list[str], batch_nam
     qs_links = ExternalLinkDocumentOrder.objects.filter(order_id__in=num_ejs).values_list(
         "external_document_id", flat=True
     )
-    fileinfos = list(FileInfo.objects.filter(external_id__in=qs_links))
+    fileinfos = list(FileInfo.objects.filter(root_external_id__in=qs_links))
     num_ejs = sorted(num_ejs)
     with atomic():
         bulk_create_engagements(num_ejs)
