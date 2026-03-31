@@ -167,7 +167,7 @@ DIC_CLASS_FILE_BY_NAME = {
     "ae_annexe": {
         "nom_complet": "Annexe à l'acte d'engagement",
         "short_name": "Annexe Act. Eng.",
-        "description": "Annexe à un acte d'engagement (autre que dgpf, bpu ou annexe financière).",
+        "description": "Annexe à un acte d'engagement ou à la candidature (autre que dgpf, bpu ou annexe financière).",
     },
     "application_revision_prix": {
         "nom_complet": "Application de révision du prix",
@@ -176,6 +176,11 @@ DIC_CLASS_FILE_BY_NAME = {
             "Application de révision du prix prévue par le cahier des charges du marché "
             "souvent un document annexe au cahier des charges."
         ),
+    },
+    "att_echanges": {
+        "nom_complet": "Attestation des échanges",
+        "short_name": "Att. Echanges",
+        "description": "Attestation des échanges entre différents services de l'administration (ou de l'acheteur).",
     },
     "att_etrangers": {
         "nom_complet": "Attestation travailleurs étrangers",
@@ -233,6 +238,11 @@ DIC_CLASS_FILE_BY_NAME = {
         "short_name": "Avis BOAMP",
         "description": "Avis de publicité publié au Bulletin Officiel des Annonces de Marchés Publics (BOAMP).",
     },
+    "avis_rma": {
+        "nom_complet": "Avis RMA",
+        "short_name": "Avis RMA",
+        "description": "Avis du responsable de la mission achat en lien avec le logiciel APPACH",
+    },
     "bon_de_commande": {
         "nom_complet": "Bon de commande",
         "short_name": "Bon de commande",
@@ -246,8 +256,10 @@ DIC_CLASS_FILE_BY_NAME = {
         "nom_complet": "Bordereau de prix unitaire",
         "short_name": "BPU",
         "description": (
-            "Document récapitulatif des prix unitaires proposés dans le cadre du marché, "
-            "aussi annexe financière du marché."
+            "Annexe financière du marché ou du dossier de consultation : tableau de prix unitaires "
+            "(désignation, unité, prix, lots, lien avec CCTP ou pièces du marché). "
+            "À distinguer d’un devis commercial isolé ou d’une simple proposition commerciale."
+            "Peut aussi être un catalogue de prix à distinguer d'un devis par la longueur du document."
         ),
     },
     "ca_chgt_denomination": {
@@ -362,20 +374,29 @@ DIC_CLASS_FILE_BY_NAME = {
         "short_name": "CGA",
         "description": "Conditions générales d'achats spécifiant les conditions générales d'achats du marché.",
     },
+    "cge": {
+        "nom_complet": "CGE (Conditions générales d'execution)",
+        "short_name": "CGE",
+        "description": "Conditions générales d'engagement spécifiant les conditions générales d'execution du marché."
+        "Souvent CGE dans le titre du document",
+    },
     "commentaire": {
         "nom_complet": "Commentaire",
         "short_name": "Commentaire",
-        "description": "Document spécifique à Chorus coeur, format txt.",
+        "description": "Document spécifique à Chorus coeur, format txt."
+        "Contient très souvent Comment_CSP dans le nom du document",
     },
     "conv_financement": {
         "nom_complet": "Convention de financement",
         "short_name": "Conv. financement",
-        "description": "Convention définissant les modalités de financement d'un marché ou d'un projet.",
+        "description": "Convention définissant les modalités de financement d'un marché ou d'un projet."
+        "Souvent Convention dans le titre du document et ENTRE XXX et XXX dans le contenu du document."
+        "Ne pas confondre avec un acte d'engagement ou un cahier des charges."
     },
     "cv": {
         "nom_complet": "Curriculum vitae",
         "short_name": "CV",
-        "description": "Curriculum vitae d'un candidat à un marché public.",
+        "description": "Curriculum vitae d'un candidat à un marché public. Souvent CV dans le titre du document.",
     },
     "reconduction": {
         "nom_complet": "Reconduction",
@@ -407,9 +428,9 @@ DIC_CLASS_FILE_BY_NAME = {
         "nom_complet": "Devis",
         "short_name": "Devis",
         "description": (
-            "Devis en amont de la commande. Ressemble parfois à une facture, "
-            "mais prévisionnelle ou à payer une fois le service réalisé. Les "
-            "propositions ou offres commerciales sont également des devis."
+            "Proposition ou offre commerciale du prestataire en amont de la commande (prévisionnelle, "
+            "à valider). Les propositions commerciales relèvent du devis et le précédent. "
+            "Ce n’est pas le bordereau de prix unitaire (BPU) annexe au marché."
         ),
     },
     "ej_complexe": {
@@ -433,6 +454,7 @@ DIC_CLASS_FILE_BY_NAME = {
             "Fiche d'achat ou de marché servant à préparer la rédaction d'un "
             "marché ou l'émission d'un bon de commande. Les demandes d'achat "
             "sont considérées comme des fiches d'achat."
+            "Parfois peut contenir Fiche Navette dans le titre du document. mais PAS dans le contenu du document."
         ),
     },
     "fiche_communication": {
@@ -466,7 +488,7 @@ DIC_CLASS_FILE_BY_NAME = {
         "description": (
             "Fiche dite navette entre PLACE et Chorus permettant la transmission "
             "d'informations entre les logiciels. Contient la mention explicite de "
-            "'Fiche navette PLACE-CHORUS' au début du document."
+            "'Fiche navette PLACE-CHORUS' au début du document obligatoirement."
         ),
     },
     "kbis": {
@@ -564,7 +586,12 @@ DIC_CLASS_FILE_BY_NAME = {
     "rapport_signature": {
         "nom_complet": "Rapport de signature",
         "short_name": "Rapport signature",
-        "description": "Document portant uniquement sur le fait qu'un autre document a été signé.",
+        "description": (
+            "Document centré sur l’attestation que tel autre document a été signé ou visé. "
+            "RVS ou Rapport verification de vérification de signatures sont présentes dans le titre ou au début du document."
+            "Il ne doit pas être confondu avec un autre type de document mentionnant le RVS ou le Rapport verification."
+            "Par exemple un document commençant par 'RVS DC4' n'est pas une sous-traitance, mais un rapport de signature."
+        ),
     },
     "reglement_consultation": {
         "nom_complet": "Règlement de consultation",
@@ -586,6 +613,19 @@ DIC_CLASS_FILE_BY_NAME = {
     "sous_traitance": {
         "nom_complet": "Sous-traitance",
         "short_name": "Sous-traitance",
-        "description": ("Formulaire de déclaration de sous-traitance d'un marché public. Souvent formulaire 'DC4'"),
+        "description": (
+            "Déclaration de sous-traitance de marché public"
+            "le document commence systématiquement par la mention 'Déclaration de sous-traitance'"
+            "souvent formulaire DC4 ou équivalent mais pas exclusif"
+            "titulaires, sous-traitants, montants ou périmètres, paiement direct, engagements, ... "
+            "Ne pas confondre avec un autre type de document mentionnant le DC4"
+            "Pas une attestation des échanges ou un mail"
+        ),
+    },
+    "suivi_messages": {
+        "nom_complet": "Suivi messages",
+        "short_name": "Suivi messages",
+        "description": "Suivi des messages entre les services de l'administration (ou de l'acheteur)."
+        "Souvent 'Suivi messages' dans le titre du document. et Registres_Suivi_des_messages au début du document."
     },
 }

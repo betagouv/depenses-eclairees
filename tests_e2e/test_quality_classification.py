@@ -25,8 +25,12 @@ def create_batch_test(true_classification: list[str] = None, multi_line_coef=1):
 
     df_test = df_test.query("traitement != 'Alexandre'")
 
-    for idx, row in df_test.iterrows():
-        df_test.at[idx, "classification"] = json.loads(row["classification"])
+    def _parse_classification(val):
+        if pd.isna(val):
+            return val
+        return json.loads(val) if isinstance(val, str) else val
+
+    df_test["classification"] = df_test["classification"].apply(_parse_classification)
     df_test.dropna(subset=["classification"], inplace=True)
 
     if true_classification:
@@ -226,3 +230,6 @@ df_comparison = compare_classification(df_result, errors_only=True)
 
 display_results(df_comparison)
 df_comparison.query("is_correct == 0")[["filename", "true_class_first", "pred_class_first"]]
+
+for classif in df_result.sort_values(by="filename")["classification"]:
+    print(classif)
