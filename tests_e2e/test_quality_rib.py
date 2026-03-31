@@ -47,7 +47,7 @@ def get_comparison_functions():
 def create_batch_test(multi_line_coef=1):
     """Test de qualité des informations extraites par le LLM."""
 
-    df_test = get_data_from_grist(table="Rib_gt").query("commentaire == 'traité'")
+    df_test = get_data_from_grist(table="Rib_gt").query("commentaire == 'test'")
     df_test.fillna("", inplace=True)
     df_test["adresse_postale_titulaire"] = df_test["adresse_postale_titulaire"].apply(lambda x: json.loads(x))
 
