@@ -391,7 +391,7 @@ DIC_CLASS_FILE_BY_NAME = {
         "short_name": "Conv. financement",
         "description": "Convention définissant les modalités de financement d'un marché ou d'un projet."
         "Souvent Convention dans le titre du document et ENTRE XXX et XXX dans le contenu du document."
-        "Ne pas confondre avec un acte d'engagement ou un cahier des charges."
+        "Ne pas confondre avec un acte d'engagement ou un cahier des charges.",
     },
     "cv": {
         "nom_complet": "Curriculum vitae",
@@ -588,9 +588,12 @@ DIC_CLASS_FILE_BY_NAME = {
         "short_name": "Rapport signature",
         "description": (
             "Document centré sur l’attestation que tel autre document a été signé ou visé. "
-            "RVS ou Rapport verification de vérification de signatures sont présentes dans le titre ou au début du document."
-            "Il ne doit pas être confondu avec un autre type de document mentionnant le RVS ou le Rapport verification."
-            "Par exemple un document commençant par 'RVS DC4' n'est pas une sous-traitance, mais un rapport de signature."
+            "RVS ou Rapport verification de vérification de signatures sont présentes "
+            "dans le titre ou au début du document. "
+            "Il ne doit pas être confondu avec un autre type de document mentionnant"
+            "le RVS ou le Rapport verification. "
+            "Par exemple un document commençant par 'RVS DC4' n'est pas une sous-traitance, "
+            " mais un rapport de signature."
         ),
     },
     "reglement_consultation": {
@@ -626,6 +629,6 @@ DIC_CLASS_FILE_BY_NAME = {
         "nom_complet": "Suivi messages",
         "short_name": "Suivi messages",
         "description": "Suivi des messages entre les services de l'administration (ou de l'acheteur)."
-        "Souvent 'Suivi messages' dans le titre du document. et Registres_Suivi_des_messages au début du document."
+        "Souvent 'Suivi messages' dans le titre du document. et Registres_Suivi_des_messages au début du document.",
     },
 }
