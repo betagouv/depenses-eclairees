@@ -15,6 +15,61 @@ RIB_ATTRIBUTES = {
         "search": "",
         "output_field": "iban",
     },
+    "code_pays": {
+        "consigne": """CODE_PAYS
+     Définition : Code pays de l'IBAN.
+     Indices : 
+     - Rechercher le code pays de l'IBAN.
+     - Ne rien renvoyer si aucun code pays trouvé.
+     Format : le code pays de 2 caractères (souvent FR pour la France mais peut être d'autres codes).
+""",
+        "search": "",
+        "output_field": "code_pays",
+    },
+    "code_banque": {
+        "consigne": """CODE_BANQUE
+     Définition : Code de la banque de l'IBAN.
+     Indices : 
+     - Rechercher le code de la banque de l'IBAN.
+     - Ne rien renvoyer si aucun code de banque trouvé.
+     Format : le code de la banque de 5 caractères.
+""",
+        "search": "",
+        "output_field": "code_banque",
+    },
+    "code_guichet": {
+        "consigne": """CODE_GUICHE
+     Définition : Code du guichet de l'IBAN.
+     Indices : 
+     - Rechercher le code du guichet de l'IBAN.
+     - Ne rien renvoyer si aucun code de guichet trouvé.
+     Format : le code du guichet de 5 caractères.
+""",
+        "search": "",
+        "output_field": "code_guichet",
+    },
+    "numero_compte": {
+        "consigne": """NUMERO_COMPTE
+     Définition : Numéro de compte de l'IBAN.
+     Indices : 
+     - Rechercher le numéro de compte de l'IBAN.
+     - Ne rien renvoyer si aucun numéro de compte trouvé.
+     Format : le numéro de compte de 11 caractères.
+""",
+        "search": "",
+        "output_field": "numero_compte",
+    },
+    "cle_rib": {
+        "consigne": """CLE_RIB
+     Définition : Clé du RIB de l'IBAN.
+     Indices : 
+     - Rechercher la clé du RIB de l'IBAN.
+     - Ne rien renvoyer si aucune clé trouvée.
+     Format : la clé du RIB de 2 caractères.
+""",
+        "search": "",
+        "output_field": "cle_rib",
+    },
     "bic": {
         "consigne": """BIC
      Définition : Code d'identification bancaire (BIC), généralement composé de 8 ou 11 caractères alphanumériques.
@@ -42,7 +97,7 @@ RIB_ATTRIBUTES = {
     },
     "adresse_postale_titulaire": {
         "consigne": """ADRESSE_POSTALE_TITULAIRE  
-     Définition : Adresse postale  de la société titulaire principale du marché (json).
+     Définition : Adresse postale de la société titulaire principale du marché (json).
      Indices : 
      - Rechercher l'adresse postale indiquée sur ce RIB. 
      - Attention, on cherche l'adresse du titulaire du compte, pas celle de la banque.

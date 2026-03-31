@@ -67,3 +67,34 @@ def test_clean_llm_response_acte_engagement():
         "societe_principale": "test",
     }
     assert llm_response == original_payload
+
+
+def test_clean_llm_response_rib_rebuilds_iban_from_rib_fields():
+    """Vérifie qu'un document RIB reconstruit l'IBAN depuis les champs RIB si besoin."""
+    llm_response = {
+        "iban": None,
+        "code_pays": "FR",
+        "code_banque": "30001",
+        "code_guichet": "00794",
+        "numero_compte": "12345678901",
+        "cle_rib": "85",
+        "bic": "AGRIFRPP",
+        "titulaire_compte": "Entreprise Test",
+        "adresse_postale_titulaire": {
+            "numero_voie": "1",
+            "nom_voie": "Rue de la Paix",
+            "complement_adresse": "",
+            "code_postal": "75001",
+            "ville": "PARIS",
+            "pays": "France",
+        },
+        "domiciliation": "Agence Paris",
+        "banque": "Banque de France",
+    }
+
+    result = clean_llm_response("rib", llm_response)
+
+    assert result["iban"].startswith("FR76")
+    assert len(result["iban"]) == 27
+    assert result["bic"] == "AGRIFRPP"
+    assert result["banque"] == "Banque de France"
