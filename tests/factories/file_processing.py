@@ -54,6 +54,7 @@ class FileInfoFactory(factory.django.DjangoModelFactory):
         model = FileInfo
 
     external_id = factory.lazy_attribute(lambda i: random_external_id())
+    root_external_id = factory.lazy_attribute(lambda i: i.external_id)
     file = factory.lazy_attribute(lambda i: f"{i.folder}/{i.filename}")
     filename = factory.Sequence(lambda n: f"file_{n:0>3}.pdf")
     folder = factory.Sequence(lambda n: f"raw/folder{n // 5:0>3}")
@@ -61,6 +62,12 @@ class FileInfoFactory(factory.django.DjangoModelFactory):
     size = 1042
     hash = factory.lazy_attribute(lambda i: hashlib.md5(i.file.encode()).hexdigest())
     created_date = factory.fuzzy.FuzzyDate(start_date=datetime.date(2025, 1, 1))
+
+
+class SubFileInfoFactory(FileInfoFactory):
+    external_id = None
+    root_external_id = factory.lazy_attribute(lambda i: i.parent.external_id)
+    parent = factory.SubFactory(FileInfoFactory)
 
 
 class ExternalDocumentMetadataFactory(factory.django.DjangoModelFactory):
