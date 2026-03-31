@@ -91,7 +91,7 @@ def home(request):
                             "id": db_doc.id,
                             "classification": db_doc.classification,
                             "short_classification": short_classification,
-                            "filename": db_doc.filename[11:],
+                            "filename": db_doc.filename,
                             "data_as_list": sorted([[key, value] for key, value in document_data_raw.items()]),
                             "data": document_data,
                             "url": db_doc.file.url if db_doc.file else "",
