@@ -262,8 +262,13 @@ DIC_CLASS_FILE_BY_NAME = {
             "Peut aussi être un catalogue de prix à distinguer d'un devis par la longueur du document."
         ),
     },
+    "ca_chgt_autre": {
+        "nom_complet": "Certificat administratif de changement autre",
+        "short_name": "Cert. adm. chgt. Autre",
+        "description": "Certificat administratif de changement autre. non listé dans les autres catégories.",
+    },
     "ca_chgt_denomination": {
-        "nom_complet": "CA de changement de dénomination",
+        "nom_complet": "Certificat administratif de changement de dénomination",
         "short_name": "CA chgt. Nom",
         "description": (
             "Document administratif émis par l'administration (ou l'acheteur) "
@@ -271,7 +276,7 @@ DIC_CLASS_FILE_BY_NAME = {
         ),
     },
     "ca_chgt_ej": {
-        "nom_complet": "CA de changement d'EJ",
+        "nom_complet": "Certificat administratif de changement d'EJ",
         "short_name": "CA chgt. EJ",
         "description": (
             "Document administratif émis par l'administration (ou l'acheteur) pour "
@@ -280,7 +285,7 @@ DIC_CLASS_FILE_BY_NAME = {
         ),
     },
     "ca_chgt_siret": {
-        "nom_complet": "CA de changement de SIRET",
+        "nom_complet": "Certificat administratif de changement de SIRET",
         "short_name": "CA chgt. SIREN / SIRET",
         "description": (
             "Document administratif émis par l'administration (ou l'acheteur) "
@@ -289,7 +294,7 @@ DIC_CLASS_FILE_BY_NAME = {
         ),
     },
     "ca_chgt_revision_prix": {
-        "nom_complet": "CA de changement de révision du prix",
+        "nom_complet": "Certificat administratif de changement de révision du prix",
         "short_name": "CA chgt. Rev. prix",
         "description": (
             "Document administratif émis par l'administration (ou l'acheteur) "
@@ -298,7 +303,7 @@ DIC_CLASS_FILE_BY_NAME = {
         ),
     },
     "ca_chgt_rib": {
-        "nom_complet": "CA de changement de rib",
+        "nom_complet": "Certificat administratif de changement de rib",
         "short_name": "CA chgt. RIB",
         "description": (
             "Document administratif émis par l'administration (ou l'acheteur) "
