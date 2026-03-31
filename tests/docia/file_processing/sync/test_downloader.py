@@ -52,6 +52,7 @@ def test_generic_file_handling(downloader):
 
         # Check all FileInfo attributes (except created_at and updated_at as requested)
         assert file_info.external_id == external_id
+        assert file_info.root_external_id == external_id
         assert file_info.parent is None
         assert file_info.filename == "simple_file.txt"
         assert file_info.folder == f"docs/{external_id}"
@@ -65,6 +66,46 @@ def test_generic_file_handling(downloader):
         expected_filepath = f"docs/{external_id}/simple_file.txt"
         assert file_info.file is not None
         assert file_info.file.name == expected_filepath
+
+
+@pytest.mark.django_db
+def test_empty_file_handling(downloader):
+    """Test that empty files are handled correctly (no S3 storage, but DB metadata)"""
+
+    with (
+        patch.object(downloader.client, "download_document", autospec=True) as m_client_download,
+    ):
+        # Create empty content
+        empty_content = b""
+        m_client_download.return_value = empty_content
+
+        # Test data
+        external_id = "test_external_id_empty"
+        name = "empty_file.txt"
+
+        # Call the download method
+        downloader.download_document(external_id, name)
+
+        # Check that the metadata was stored in database
+        file_infos = FileInfo.objects.filter(external_id=external_id)
+        assert len(file_infos) == 1
+
+        file_info = file_infos[0]
+
+        # Check that file was stored in S3
+        assert default_storage.exists(file_info.file.name)
+
+        # Check FileInfo attributes
+        assert file_info.external_id == external_id
+        assert file_info.root_external_id == external_id
+        assert file_info.parent is None
+        assert file_info.filename == "empty_file.txt"
+        assert file_info.folder == f"docs/{external_id}"
+        assert file_info.extension == "txt"
+        assert file_info.size == 0
+        sha256_empty_string = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        assert file_info.hash == sha256_empty_string
+        assert file_info.original_filename == name
 
 
 @pytest.mark.django_db
@@ -193,6 +234,10 @@ def test_zip_file_with_nested_structure(downloader):
         assert read_file(f"{prefix}archive.zip_/subarchive.zip_/toto1.txt") == b"Content of toto1"
         assert read_file(f"{prefix}archive.zip_/subarchive.zip_/toto2.txt") == b"Content of toto2"
         assert read_file(f"{prefix}archive.zip_/subarchive.zip_/zzz/sub/toto3.txt") == b"Content of toto3"
+
+        # Check that all files have the correct root_external_id
+        for file_info in files_info:
+            assert file_info.root_external_id == external_id
 
 
 def test_clean_filename_basic(downloader):

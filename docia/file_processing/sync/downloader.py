@@ -74,15 +74,14 @@ class DocumentDownloader:
             filename = name
         else:
             extension = get_corrected_extension(name, file_content)
-            # If extension mismatch, correct file extension
+            # If the extension mismatches, correct the file extension
             if name.lower().endswith(extension):
                 filename = name
             else:
                 filename = name + "." + extension
 
         filepath = f"{folder}/{filename}"
-        with default_storage.open(filepath, "wb") as f:
-            f.write(file_content)
+        default_storage.save(filepath, io.BytesIO(file_content))
 
         hash = self._compute_hash(file_content)
 
