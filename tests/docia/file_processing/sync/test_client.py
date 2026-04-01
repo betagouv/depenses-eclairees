@@ -1,12 +1,16 @@
 from datetime import datetime, timezone
+from unittest import mock
+from unittest.mock import patch
 
 import pydantic
 import pytest
+import requests
 import responses
 
 from docia.file_processing.sync.client import (
     ApiDocumentMetadata,
     ApiEngagementActivity,
+    SyncApiError,
     SyncClient,
     parse_api_datetime,
 )
@@ -23,7 +27,6 @@ def client():
     return SyncClient.from_settings()
 
 
-@responses.activate
 def test_authenticate_success(client):
     """Test successful authentication"""
     # Mock successful authentication
@@ -42,7 +45,6 @@ def test_authenticate_success(client):
     assert client.session.headers["Authorization"] == "Bearer test_token_123"
 
 
-@responses.activate
 def test_list_documents_for_ej_success(client):
     """Test successful document listing"""
 
@@ -82,7 +84,6 @@ def test_list_documents_for_ej_success(client):
     ]
 
 
-@responses.activate
 def test_list_documents_for_ej_validation_error(client, caplog):
     """Test validation error handling"""
 
@@ -112,7 +113,6 @@ def test_list_documents_for_ej_validation_error(client, caplog):
     assert "Validation error for document" in caplog.text
 
 
-@responses.activate
 def test_list_documents_for_ej_invalid_size(client, caplog):
     """Test handling of invalid size_pj values"""
 
@@ -148,7 +148,6 @@ def test_list_documents_for_ej_invalid_size(client, caplog):
     assert "defaulting to -1" in caplog.text
 
 
-@responses.activate
 def test_list_documents_for_ej_deduplication(client):
     """Test that duplicate documents are properly removed"""
 
@@ -216,7 +215,6 @@ def test_list_documents_for_ej_deduplication(client):
         {"num_ej": "EJ2023-002"},
     ],
 )
-@responses.activate
 def test_list_documents_for_ej_invalid_duplicate(client, dict_overwrite):
     """Test that invalid duplicates (different metadata) raise an error"""
 
@@ -252,7 +250,6 @@ def test_list_documents_for_ej_invalid_duplicate(client, dict_overwrite):
     assert "Invalid duplicate" in str(exc_info.value)
 
 
-@responses.activate
 def test_download_document_success(client):
     """Test successful document download"""
 
@@ -272,7 +269,6 @@ def test_download_document_success(client):
     assert content == test_content
 
 
-@responses.activate
 def test_list_ej_place_success(client):
     """Test successful listing of engagement activities"""
 
@@ -331,7 +327,6 @@ def test_list_ej_place_success(client):
     assert activities[1].received_at == datetime(2023, 1, 2, tzinfo=timezone.utc)
 
 
-@responses.activate
 def test_list_ej_place_validation_error(client, caplog):
     """Test validation error handling for engagement activities"""
 
@@ -363,6 +358,136 @@ def test_list_ej_place_validation_error(client, caplog):
 
     # Verify that a warning was logged
     assert "Validation error for object" in caplog.text
+
+
+def test_token_expired(client, caplog):
+    """Test that token expiration (401) triggers re-authentication and retry in _retry_call"""
+
+    with (
+        patch.object(client, "authenticate", autospec=True) as m_authenticate,
+        patch("time.sleep", autospec=True) as m_sleep,
+    ):
+        # Track call count
+        call_count = 0
+
+        def api_call():
+            nonlocal call_count
+            call_count += 1
+            # First call, authenticate should not have been called yet
+            if call_count == 1:
+                assert m_authenticate.call_count == 0
+            # Return failure if not authenticated, else success
+            if m_authenticate.call_count < 1:
+                raise requests.HTTPError(
+                    "401 Unauthorized",
+                    response=type("MockResponse", (), {"status_code": 401, "text": "Token expired"})(),
+                )
+            else:
+                return "success_result"
+
+        # Call _retry_call
+        result = client._retry_call(api_call, max_retries=0, retry_delay=0)
+
+    # Verify authenticate and sleep have been called
+    assert m_authenticate.call_count == 1
+    assert m_sleep.call_count == 1
+
+    # Verify the call succeeded after re-authentication
+    assert result == "success_result"
+    assert call_count == 2  # Should have been called twice
+
+    # Verify warning was logged about 401
+    assert "401, wait " in caplog.text
+    assert " before retry (1/1)" in caplog.text
+
+
+def test_download_document_api_error(client, caplog):
+    """Test that download_document handles API errors and implements retry logic"""
+
+    # Track call count to return different responses
+    call_count = 0
+
+    def request_callback(request):
+        nonlocal call_count
+        call_count += 1
+        if call_count <= 2:
+            # First two calls return 429 (rate limited)
+            return (429, {}, "Rate limited")
+        else:
+            # Third call succeeds
+            return (200, {}, b"test document content")
+
+    # Add response with callback that handles multiple calls
+    responses.add_callback(
+        responses.GET,
+        "https://filesync.api.testing.beta.gouv.fr/export_pj_ej/pieces_jointes_data('doc123')/$value",
+        callback=request_callback,
+    )
+
+    # Call download_document with retries
+    with (
+        patch("time.sleep", autospec=True) as m_sleep,
+        patch("random.random", autospec=True, return_value=0.5),
+    ):
+        content = client.download_document("doc123", max_retries=3, retry_delay=20)
+
+    # Verify the call succeeded after retries
+    assert content == b"test document content"
+
+    # Verify sleep was called exactly twice with correct values (exponential backoff with jitter)
+    m_sleep.assert_has_calls(
+        [
+            mock.call(20 * 1.05 * 1),  # First retry: retry_delay * 1.05 * (attempt + 1)
+            mock.call(20 * 1.05 * 2),  # Second retry: retry_delay * 1.05 * (attempt + 1)
+        ],
+        any_order=False,
+    )  # Ensure calls were made in this exact order
+    assert m_sleep.call_count == 2  # Ensure no extra calls were made
+
+    # Verify warning was logged about 429
+    assert "429, wait " in caplog.text
+    assert " before retry" in caplog.text
+
+
+def test_download_document_api_error_exhausted_retries(client, caplog):
+    """Test that download_document raises exception after exhausting all retries"""
+
+    # Mock API calls that always return 429 (rate limited)
+    # responses will use these in order: first for initial call, then for retries
+    url = "https://filesync.api.testing.beta.gouv.fr/export_pj_ej/pieces_jointes_data('doc123')/$value"
+    responses.add(
+        responses.GET,
+        url,
+        status=429,
+    )
+
+    # Call download_document with limited retries and expect exception
+    with (
+        patch("time.sleep", autospec=True) as m_sleep,
+        patch("random.random", autospec=True, return_value=0.5),
+        pytest.raises(SyncApiError) as exc_info,
+    ):
+        client.download_document("doc123", max_retries=2, retry_delay=20)
+
+    # Verify the exception was raised and wrapped correctly
+    assert exc_info.value.code == "HTTP_429"
+    assert "429" in exc_info.value.message
+
+    # Verify sleep was called exactly 2 times (max_retries=2 means 2 retry attempts)
+    assert m_sleep.call_count == 2
+    m_sleep.assert_has_calls(
+        [
+            mock.call(20 * 1.05 * 1),  # First retry: retry_delay * 1.05 * (attempt + 1)
+            mock.call(20 * 1.05 * 2),  # Second retry: retry_delay * 1.05 * (attempt + 1)
+        ],
+        any_order=False,
+    )
+
+    # Verify total calls: 1 initial + 2 retries = 3 total calls
+    assert [call.request.url for call in responses.calls] == [url] * 3
+
+    # Verify warning was logged about 429 for each retry
+    assert caplog.text.count("429, wait ") == 2
 
 
 # --- parse_api_datetime tests ---
