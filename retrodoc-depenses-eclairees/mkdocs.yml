@@ -1,0 +1,86 @@
+site_name: "Dépenses Éclairées — Rétro-documentation"
+site_description: "Documentation technique du projet Dépenses Éclairées"
+site_author: "Prestataire AIFE"
+site_url: !ENV [SITE_URL, "https://betagouv.github.io/depenses-eclairees/"]
+
+theme:
+  name: material
+  language: fr
+  palette:
+    - scheme: default
+      primary: blue
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Mode sombre
+    - scheme: slate
+      primary: blue
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Mode clair
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - toc.follow
+    - search.highlight
+    - content.code.copy
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+  - attr_list
+  - md_in_html
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+
+nav:
+  - Accueil: index.md
+  - Architecture:
+    - Vue d'ensemble: architecture/vue-ensemble.md
+    - Flux de données: architecture/flux-donnees.md
+    - Composants: architecture/composants.md
+    - Déploiement: architecture/deploiement.md
+  - Pipeline:
+    - Ingestion: pipeline/ingestion.md
+    - OCR & Extraction texte: pipeline/ocr-extraction.md
+    - Appel LLM (Albert): pipeline/appel-llm.md
+    - Prompts: pipeline/prompts.md
+    - Parsing réponse: pipeline/parsing-reponse.md
+    - Stockage: pipeline/stockage.md
+  - Modèle de données:
+    - Schéma base: modele-donnees/schema-base.md
+    - Contrat d'interface JSON: modele-donnees/contrat-interface-json.md
+    - Champ "objet de la dépense": modele-donnees/champ-objet-depense.md
+    - Tailles réelles: modele-donnees/tailles-reelles.md
+  - Qualité:
+    - Métriques existantes: qualite/metriques-existantes.md
+    - Matrice qualité: qualite/matrice-qualite.md
+    - Scores de confiance: qualite/scores-confiance.md
+    - Cas d'échec: qualite/cas-echec.md
+  - Ateliers:
+    - "Atelier 1 — Connexion LLM": ateliers/atelier-1-connexion-llm.md
+    - "Atelier 2 — Extraction & Qualité": ateliers/atelier-2-extraction-qualite.md
+    - "Atelier 3 — Sizing": ateliers/atelier-3-sizing.md
+  - Hors-scope:
+    - Formats non gérés: hors-scope/formats-non-geres.md
+    - Dette technique: hors-scope/dette-technique.md
+    - Backlog post-juin: hors-scope/backlog-post-juin.md
+  - Glossaire: glossaire.md
