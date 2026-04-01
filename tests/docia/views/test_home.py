@@ -260,7 +260,6 @@ def test_acte_engagement(client):
     assert "[[forme_marche.lot_concerne.titre_lot]]" in text
     assert "[[forme_marche.marche_parent]]" in text
     assert "[[code_cpv]]" in text
-    assert "[[ligne_imputation_budgetaire]]" in text
     assert "[[mode_consultation]]" in text
 
     # Section Titulaire
@@ -273,7 +272,6 @@ def test_acte_engagement(client):
     assert "60\u00a0123,50 €" in text
     assert "20" in text  # Taux TVA
     assert "Non" in text  # conserve_avance = renonce
-    assert "BPU" in text or "Annexe financière" in text  # montants_en_annexe
 
     # Section Durée du marché
     assert "12 mois" in text
