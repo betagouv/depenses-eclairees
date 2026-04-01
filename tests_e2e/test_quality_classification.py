@@ -23,14 +23,8 @@ def create_batch_test(true_classification: list[str] = None, multi_line_coef=1):
     columns_to_keep = ["filename", "num_ej", "classification", "is_ocr", "commentaire", "traitement", "text"]
     df_test = get_data_from_grist(table="Classif_gt")[columns_to_keep]
 
-    df_test = df_test.query("traitement != 'Alexandre'")
-
-    def _parse_classification(val):
-        if pd.isna(val):
-            return val
-        return json.loads(val) if isinstance(val, str) else val
-
-    df_test["classification"] = df_test["classification"].apply(_parse_classification)
+    df_test = df_test.query("traitement != 'non traité'")
+    df_test["classification"] = df_test["classification"].apply(lambda x: json.loads(x))
     df_test.dropna(subset=["classification"], inplace=True)
 
     if true_classification:
