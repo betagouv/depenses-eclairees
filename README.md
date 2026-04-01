@@ -49,3 +49,18 @@ pytest --cov=docia --cov-report html --no-migrations tests
 ## Run linter / formatter
 
 ruff format; ruff check --fix
+
+
+## Documentation
+
+Edit files in `documentation/docs/`. Build and serve locally:
+
+```bash
+poetry install --with dev
+cd documentation
+poetry run mkdocs serve
+```
+
+`llms.txt` and `llms-prompts.txt` are generated automatically during the build process.
+
+Publish: `git push origin docs` → https://betagouv.github.io/depenses-eclairees/

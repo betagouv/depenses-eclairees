@@ -4,7 +4,7 @@ on:
   push:
     branches: ["docs"]
     paths:
-      - "retrodoc-depenses-eclairees/**"
+      - "documentation/**"
       - ".github/workflows/mkdocs-pages.yml"
   workflow_dispatch:
 
@@ -51,7 +51,7 @@ jobs:
         run: poetry install --with dev
 
       - name: Build documentation
-        working-directory: retrodoc-depenses-eclairees
+        working-directory: documentation
         env:
           REPO_OWNER: ${{ github.repository_owner }}
           REPO_NAME: ${{ github.event.repository.name }}
@@ -64,7 +64,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: retrodoc-depenses-eclairees/site
+          path: documentation/site
 
   deploy:
     runs-on: ubuntu-latest

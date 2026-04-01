@@ -150,7 +150,7 @@ Ces données sensibles transitent nécessairement dans les prompts car **elles s
 **État de l'art** : Un registre clair des traitements IA doit documenter : quels modèles sont utilisés, sur quelles données, pour quel objectif, avec quelles mesures de sécurité.
 
 **Constat dans le code** :
-[NON IMPLÉMENTÉ] — Pas de registre des traitements IA dans le repo. La rétro-documentation (`retrodoc-depenses-eclairees/`) décrit l'architecture technique mais ne constitue pas un registre de conformité.
+[NON IMPLÉMENTÉ] — Pas de registre des traitements IA dans le repo. La rétro-documentation (`documentation/`) décrit l'architecture technique mais ne constitue pas un registre de conformité.
 
 **Verdict** : 🔴 **Non conforme** — Absence de registre des traitements IA.
 
