@@ -157,8 +157,7 @@
   </div>
 {% endif %}
 
-{% if not data.lots %}
-  {# Marché non alloti : sections Montants et Durée au niveau marché #}
+{# Durée du marché #}
   {% with duree=data.duree_marche %}
     {% if duree and duree.duree_initiale %}
       <section class="fr-accordion" data-fr-js-accordion="true">
@@ -197,6 +196,8 @@
     {% endif %}
   {% endwith %}
 
+{% if not data.lots %}
+  {# Marché non alloti : sections Montants et Durée au niveau marché #}
   {# Montants #}
   {% with mht=data.montant_ht %}
     {% if mht and mht.montant_ht_maximum %}
@@ -233,6 +234,7 @@
   {% endwith %}
 
 {% else %}
+  {# Marché alloti : section Durée du marché (pour les lots "identique à la durée du marché") puis accordéon par lot #}
   {% with duree=data.duree_marche %}
     {% if duree and duree.duree_initiale %}
       <section class="fr-accordion" data-fr-js-accordion="true">
