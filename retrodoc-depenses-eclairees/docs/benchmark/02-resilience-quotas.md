@@ -55,6 +55,40 @@ Le mécanisme `close_and_retry_stuck_batches()` (source : `docia/file_processing
 
 ---
 
+### Fallback modèle Mistral Small → Medium
+
+**État de l'art** : Pour les documents complexes qui échouent sur un modèle léger (boucle infinie, timeout, réponse incohérente), un fallback automatique vers un modèle plus puissant est une bonne pratique de résilience. Ce mécanisme doit être documenté, coûté et observable.
+
+**Constat dans le code** :
+L'équipe a décrit l'existence d'un fallback automatique Small → Medium pour ~3–4% des documents complexes. **Cette affirmation n'est pas confirmée par le code.**
+
+L'analyse du pipeline montre deux routages statiques par type de tâche :
+
+- **Classification** → `openweight-medium` (alias Albert pour `mistral-small`, source : `classifier.py:45`)
+- **Extraction** → `mistral-medium-2508` (défaut, source : `analyze_content.py:81,104`)
+
+Le step d'analyse (`content_analysis.py:38-41`) appelle `processor.analyze_file_text(document.relevant_content or document.text, document.classification)` **sans passer de paramètre `llm_model`** — il utilise donc toujours `mistral-medium-2508`, sans aucun switch conditionnel.
+
+```python
+# content_analysis.py:38-41 — aucun paramètre llm_model passé
+result = processor.analyze_file_text(
+    document.relevant_content or document.text,
+    document.classification,
+)
+```
+
+Il n'existe **aucune logique de switch** dans `client.py`, `content_analysis.py` ou ailleurs permettant de détecter un comportement anormal (boucle infinie, timeout) sur un premier modèle et de relancer sur un second modèle. Les scripts `tests_e2e/` (ex : `test_quality_acte_engagement.py:262`) qui utilisent `mistral-medium-2508` sont des **benchmarks manuels**, pas de la logique de production.
+
+!!! danger "Fallback automatique non confirmé dans le code — hypothèse : déjà corrigé en amont"
+    L'équipe a décrit un scénario où ~3-4% des documents provoquaient une boucle infinie sur `mistral-small` (`openweight-medium`), résolue par un switch vers `mistral-medium-2508`. **Aucune logique de switch conditionnel n'existe dans le code actuel.** L'hypothèse la plus probable : la solution a été de fixer `mistral-medium-2508` comme modèle **par défaut permanent** pour l'extraction (`analyze_content.py:81`), abandonnant l'usage de Small pour cette étape. Ce qui reste vrai : il n'existe aucun filet de sécurité si le modèle par défaut lui-même échoue.
+
+**Verdict** : 🔴 **Non conforme** — Aucun fallback automatique implémenté. L'affirmation de l'équipe n'est pas reflétée dans le code source.
+
+**Recommandation** : Si un fallback est souhaité, implémenter une détection d'échec (timeout > N s, `FAILURE` sur 3 retries) suivie d'un deuxième appel avec `llm_model="mistral-medium-2508"`. Ajouter un champ `llm_fallback_used` dans `ProcessDocumentStep` pour la traçabilité.
+**Priorité** : P2 | **Effort** : M
+
+---
+
 ### Gestion des cas d'erreur API
 
 **État de l'art** : Chaque type d'erreur API doit être géré explicitement : timeout, 429, 500, réponse vide, JSON malformé. Les erreurs doivent être journalisées avec contexte (document_id, tentative, code HTTP).
@@ -146,6 +180,7 @@ Cependant, si un document est en cours de traitement quand le batch est relancé
 |---------|---------|----------|--------|
 | Retry avec Backoff + Jitter | 🟡 Partiel | P2 | S |
 | Circuit Breaker | 🔴 Non conforme | P1 | M |
+| Fallback modèle Small → Medium | 🔴 Non conforme | P2 | M |
 | Gestion des cas d'erreur API | 🟡 Partiel | P1 | S |
 | Remontée d'alertes | 🔴 Non conforme | P1 | M |
 | Architecture async | 🟢 Conforme | — | — |

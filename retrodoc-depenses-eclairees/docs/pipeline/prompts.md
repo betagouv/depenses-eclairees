@@ -74,7 +74,23 @@ Format : répondez par une liste de catégories possibles (sans autre texte ni p
 
 ### Modèle utilisé
 
-`openweight-medium`, température `0.0`
+`openweight-medium` (alias Albert pour `mistral-small`), température `0.0`
+
+### Comportement multi-catégories
+
+Le LLM retourne une **liste ordonnée** de catégories (JSON Schema `array`). La fonction `classify_file_with_llm()` ne conserve que **la première entrée** : `result_classif_keys[0]` (`classifier.py:89`). Les catégories suivantes sont silencieusement ignorées.
+
+**Cas des documents mixtes** — certains documents couvrent plusieurs natures juridiques simultanément :
+
+| Exemple | Nature réelle |
+|---|---|
+| CCP valant AE | CCAP + CCTP + Acte d'engagement |
+| Avenant avec nouveau RIB | Avenant + demande de changement de RIB |
+
+Pour ces documents, le LLM génère bien une liste ordonnée reflétant les multiples natures, mais seule la première catégorie déclenche l'extraction structurée. L'équipe identifie ce comportement comme une **limitation connue** : la question de traiter ces documents sous plusieurs angles (double analyse, questions spécifiques par nature) **n'est pas encore résolue**.
+
+!!! warning "Documents multi-nature : extraction partielle"
+    Pour un CCP valant AE classé en `ccp_vae`, seul le schéma `ccp_vae` est extrait. Les attributs spécifiques à l'acte d'engagement (IBAN, SIRET, montants) ne seront pas extraits si `acte_engagement` n'est pas la première catégorie retenue.
 
 ---
 

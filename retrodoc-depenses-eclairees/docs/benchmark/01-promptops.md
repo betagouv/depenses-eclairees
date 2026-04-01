@@ -62,6 +62,28 @@ Aucune directive système n'interdit au modèle d'exécuter des instructions con
 
 ---
 
+### Classification multi-catégories et documents hybrides
+
+**État de l'art** : Un document peut appartenir à plusieurs catégories simultanément (ex: un CCP valant à la fois CCAP et CCTP). Le pipeline doit exposer le classement complet et laisser la logique métier décider du traitement, plutôt que de prendre aveuglément le premier résultat.
+
+**Constat dans le code** :
+L'équipe confirme que le classifieur produit bien une liste ordonnée de catégories (`result_classif_keys`), mais le pipeline ne retient que `result_classif_keys[0]`. Vérifié dans le code à la ligne `classifier.py:89` :
+
+```python
+return result_classif_keys[0] if len(result_classif_keys) > 0 else "Non classifié"
+```
+
+Les catégories suivantes qui pourraient correspondre à un document multi-type sont ignorées. Une catégorie `ccp_vae` (CCP valant acte d'engagement) existe dans le dictionnaire (`classifier.py:339-347`) comme workaround pour le cas le plus courant, mais le pipeline ne retourne toujours qu'une seule catégorie.
+
+Les documents hybrides de type "CCP valant CCAP et CCTP" ne bénéficient d'aucun traitement différencié. Aucune stratégie "ask-twice" (double appel pour confirmer la classification) ni seuil différentiel n'est implémentée.
+
+**Verdict** : 🔴 **Non conforme** — Le classement multi-catégories est calculé mais non exploité. Les documents hybrides (CCP) sont un cas ouvert identifié par l'équipe.
+
+**Recommandation** : (1) Exposer les N premières catégories et leurs scores dans `Document.classifications`. (2) Implémenter une logique métier pour les types hybrides connus (CCP = CCAP + CCTP → lancer deux extractions parallèles). (3) Si le score de la 2e catégorie dépasse 80% du score de la 1re, déclencher un traitement multi-catégorie.
+**Priorité** : P1 | **Effort** : M
+
+---
+
 ### Traçabilité prompt → output → SAP
 
 **État de l'art** : Pour chaque extraction envoyée à SAP, il doit être possible de retrouver la version exacte du prompt, le modèle utilisé, les paramètres (temperature, etc.) et la réponse brute du LLM. C'est une exigence fondamentale d'auditabilité pour un système connecté à un ERP financier.
@@ -69,7 +91,7 @@ Aucune directive système n'interdit au modèle d'exécuter des instructions con
 **Constat dans le code** :
 - La réponse brute du LLM est stockée dans `Document.llm_response` et les données post-traitées dans `Document.structured_data` (source : `docia/file_processing/pipeline/steps/content_analysis.py:42-44`).
 - Cependant, **aucun identifiant de version de prompt** n'est stocké. Le prompt est reconstruit dynamiquement à chaque appel depuis le code Python.
-- Le modèle utilisé (`mistral-medium-2508`, `openweight-medium`) est codé en dur dans les paramètres par défaut des fonctions mais **n'est pas journalisé dans la base**.
+- Le modèle utilisé (`mistral-medium-2508`, `openweight-medium` — alias Albert pour `mistral-small`) est codé en dur dans les paramètres par défaut des fonctions mais **n'est pas journalisé dans la base**.
 - Le `ProcessDocumentStep` enregistre `started_at`, `finished_at`, `duration`, `error`, `traceback` mais **pas le prompt envoyé, ni le modèle, ni les paramètres**.
 - Il est impossible de reconstituer a posteriori quel prompt exact a produit quelle extraction.
 
@@ -114,6 +136,7 @@ Les prompts étant en dur dans le code Python (`classifier.py`, `analyze_content
 |---------|---------|----------|--------|
 | Stockage des prompts | 🔴 Non conforme | P1 | M |
 | Séparation System/User | 🟡 Partiel | P0 | S |
+| Classification multi-catégories | 🔴 Non conforme | P1 | M |
 | Traçabilité prompt → output → SAP | 🔴 Non conforme | P0 | M |
 | Versionnement Git des prompts | 🔴 Non conforme | P2 | S |
 | Few-shot examples | 🔴 Non conforme | P1 | M |

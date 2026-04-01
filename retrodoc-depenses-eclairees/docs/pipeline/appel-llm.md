@@ -30,9 +30,12 @@ self.client = OpenAI(
 
 | Modèle | Usage | Température | Rate limit |
 |---|---|---|---|
-| `openweight-medium` | Classification des documents | 0.0 | 98 req/min |
+| `openweight-medium` (alias Albert : `mistral-small`) | Classification des documents | 0.0 | 98 req/min |
 | `mistral-medium-2508` | Extraction d'informations structurées | 0.0 | 98 req/min |
 | `mistral-ocr-2512` | OCR de PDF scannés | — | 98 req/min |
+
+!!! note "Pourquoi Medium pour l'extraction ?"
+    L'équipe a constaté qu'environ **3-4 % des documents longs ou complexes** provoquaient une boucle infinie sur `mistral-small` (`openweight-medium`). La solution retenue a été de fixer `mistral-medium-2508` comme modèle d'extraction par défaut. Il n'existe pas de mécanisme de basculement dynamique Small → Medium dans le code : tous les documents passent directement par Medium pour l'extraction. Ce surcoût a été intégré dans la simulation financière du projet.
 
 ## Deux méthodes d'appel
 

@@ -62,6 +62,6 @@ Ce ratio est affiché sous forme de **pourcentage** dans l'interface 360° : il 
 
 !!! warning "Tests e2e non exécutés en CI"
 
-    Le workflow GitHub (`django.yml`) n'exécute que `pytest tests/`, pas `tests_e2e/`. Ces tests semblent être exécutés **manuellement**.
+    Le workflow GitHub (`django.yml`) n'exécute que `pytest tests/`, pas `tests_e2e/`. Ces tests sont exécutés **manuellement** par l'équipe. L'équipe confirme effectuer des re-tests périodiques du pipeline complet avec des documents types pour détecter les régressions — notamment les performances de Mistral OCR sur des textes spécifiques — sans protocole d'évaluation formel.
 
 **Source** : `docia/views.py`, `docia/logging.py`, `tests_e2e/`, `app/grist/grist_api.py`

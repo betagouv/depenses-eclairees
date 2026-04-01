@@ -85,24 +85,30 @@ L'utilisation de `"strict": True` dans le schéma de classification est une bonn
 **Constat dans le code** :
 Le post-traitement (`docia/file_processing/processor/post_processing_llm.py`) implémente :
 
-| Contrôle | Implémenté | Source |
+| Contrôle | Implémenté | Preuve code |
 |---|---|---|
-| SIRET 14 chiffres | 🟢 Oui | `post_processing_siret` (L311-330) |
-| IBAN valide (ISO 13616) | 🟢 Oui | `check_consistency_iban` via schwifty (L13-25) |
-| Correction IBAN 1 caractère | 🟢 Oui | `try_correct_false_iban` (L28-53) |
-| BIC 8 ou 11 caractères | 🟢 Oui | `post_processing_bic` (L375-382) |
-| Code postal 5 chiffres | 🟢 Oui | `post_processing_postal_address` (L443-449) |
-| Montants : extraction numérique | 🟢 Oui | `post_processing_amount` (L125-150) |
+| SIRET 14 chiffres | 🟢 Oui | `post_processing_siret:327` — `if siret.isdigit() and len(siret) == 14: return siret` |
+| IBAN valide (ISO 13616) | 🟢 Oui | `check_consistency_iban:22` — `IBAN(iban, validate_bban=True)` via schwifty, tous pays |
+| Correction IBAN 1 caractère OCR | 🟡 Limité | `try_correct_false_iban:34` — `if len(iban) != 27: return None` : **restreint aux IBAN français (27 car.)** |
+| BIC 8 ou 11 caractères | 🟢 Oui | `post_processing_bic:380` — `if len(clean_bic) != 8 and len(clean_bic) != 11: return None` |
+| Code postal 5 chiffres | 🟢 Oui | `post_processing_postal_address:446` — `if len(code_postal_clean) == 5 and code_postal_clean.isdigit()` |
+| Montants : extraction numérique | 🟢 Oui | `post_processing_amount:144` — regex `r"(\d+(?:[.,]\d+)?)"` + `f"{float(num):.2f}"` |
 | HT + TVA = TTC | 🔴 Non | — |
 | Date facturation < date échéance | 🔴 Non | — |
 | Montants dans fourchettes plausibles | 🔴 Non | — |
-| SIREN = 9 premiers chiffres du SIRET | 🔴 Non | — |
+| SIREN (9 chiffres) validé séparément | 🔴 Non | `post_processing_siret` valide uniquement le **SIRET complet (14 chiffres)**. Il n'existe aucune fonction de validation SIREN autonome dans le codebase. |
+| Taux de remplissage (fill-rate) | 🟢 Oui | `views.py:152` — `compute_ratio_data_extraction()` : ratio champs non-null / total champs |
+| Signal "non disponible dans le document" | ⚠️ Affichage UI | Le LLM retourne `null` pour les champs absents (consigne `attributes/ccap.py:629` : "renvoyer null"). "Non disponible dans le document." est une **string d'affichage Django** générée côté vue — confirmé par `tests/docia/views/test_home_ccap.py:90-94`. |
 
-Les validations existantes sont solides et bien testées (17 fichiers de tests dans `tests/docia/file_processing/processor/post_processing_llm/`). Mais les contrôles croisés (cohérence inter-champs) sont absents.
+!!! warning "Deux affirmations de l'équipe non confirmées dans le code"
+    - **SIREN** : la fonction `post_processing_siret` (`L311-330`) valide uniquement la longueur **14 chiffres** du SIRET. Il n'y a pas de check SIREN (9 chiffres) indépendant — un SIREN retourné seul par le LLM serait écarté (`return None` à la ligne 330).
+    - **"Non disponible dans le document"** : cette phrase n'est **pas** un signal retourné par le LLM ni un marqueur du post-traitement. C'est une string de présentation générée par les templates Django quand la valeur est `null`. Les prompts demandent `null` pour les champs absents (voir `attributes/ccap.py:629`), pas cette phrase littérale.
 
-**Verdict** : 🟡 **Partiel** — Excellente validation unitaire par champ (IBAN, SIRET, montants, adresses). Absence de contrôles de cohérence croisés.
+Les validations existantes sont solides et bien testées (17 fichiers de tests dans `tests/docia/file_processing/processor/post_processing_llm/`). Le taux de remplissage (`compute_ratio_data_extraction`) est bien implémenté. Les contrôles croisés de cohérence comptable restent absents.
 
-**Recommandation** : Ajouter des validations croisées : (1) vérifier HT × (1 + TVA) ≈ TTC avec une tolérance de 1%, (2) vérifier SIREN cohérent avec SIRET, (3) ajouter des fourchettes de montants plausibles (> 0, < 1 milliard €).
+**Verdict** : 🟡 **Partiel** — Bonne validation unitaire par champ (IBAN, SIRET, montants, adresses) avec taux de remplissage. La correction IBAN est limitée aux IBAN français. Absence de check SIREN autonome et de contrôles de cohérence croisés (HT+TVA=TTC, date, fourchettes).
+
+**Recommandation** : Ajouter des validations croisées : (1) vérifier HT × (1 + TVA) ≈ TTC avec une tolérance de 1%, (2) ajouter des fourchettes de montants plausibles (> 0, < 1 milliard €).
 **Priorité** : P1 | **Effort** : M
 
 ---

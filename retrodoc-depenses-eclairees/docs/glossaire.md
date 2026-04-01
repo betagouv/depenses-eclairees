@@ -30,7 +30,7 @@
 | **IBAN** | International Bank Account Number — identifiant de compte bancaire (27 caractères pour la France, commence par FR). |
 | **JSON Schema** | Standard de description de structure JSON. Utilisé comme `response_format` pour contraindre les réponses du LLM. |
 | **LLM** | Large Language Model — modèle de langage. Ici, Mistral via l'API Albert. |
-| **Mistral** | Éditeur des modèles d'IA utilisés par Albert (`openweight-medium`, `mistral-medium-2508`, `mistral-ocr-2512`). |
+| **Mistral** | Éditeur des modèles d'IA utilisés par Albert (`openweight-medium` (alias Albert pour `mistral-small`), `mistral-medium-2508`, `mistral-ocr-2512`). |
 | **OCR** | Optical Character Recognition — reconnaissance de caractères dans les images/scans. |
 | **ORM** | Object-Relational Mapping — couche d'abstraction Django pour la base de données. |
 | **PJ** | Pièce Jointe — document rattaché à un engagement juridique. |

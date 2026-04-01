@@ -47,7 +47,7 @@ Les éléments ci-dessous ne sont **pas dans le périmètre actuel** de la migra
 
 | # | Question |
 |---|---|
-| Q1 | Quelle est la taille de la fenêtre de contexte des modèles Albert (`openweight-medium`, `mistral-medium-2508`) ? |
+| Q1 | Quelle est la taille de la fenêtre de contexte des modèles Albert (`openweight-medium` = `mistral-small`, `mistral-medium-2508`) ? |
 | Q2 | Le rate limiting distribué (`ALBERT_USE_RATE_LIMITER`) est-il activé en production ? |
 | Q3 | Quel est le volume réel de données en production (nombre d'EJ, de documents, taille base) ? |
 | Q4 | Les champs `DataEngagement.designation`, `descriptif_prestations` sont-ils peuplés ? Par quel processus ? |

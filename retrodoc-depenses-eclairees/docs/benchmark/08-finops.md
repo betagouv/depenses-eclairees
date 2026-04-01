@@ -52,16 +52,21 @@ Le `ProcessDocumentStep` enregistre `duration` mais pas la consommation de token
 **État de l'art** : Utiliser un modèle léger et rapide pour les tâches simples (classification, documents standards) et réserver un modèle plus puissant pour les cas complexes (documents atypiques, extractions difficiles). Cela réduit les coûts et la latence.
 
 **Constat dans le code** :
-Le pipeline utilise déjà **deux modèles différents** :
+Le pipeline utilise déjà **deux modèles différents**, routés statiquement par type de tâche :
 
-- `openweight-medium` pour la classification (source : `classifier.py:45`)
-- `mistral-medium-2508` pour l'extraction (source : `analyze_content.py:81`)
+- `openweight-medium` (**alias Albert pour `mistral-small`**) pour la classification (source : `classifier.py:45`)
+- `mistral-medium-2508` pour l'extraction — modèle **par défaut et unique** (source : `analyze_content.py:81` ; step pipeline `content_analysis.py:38-41` sans override de modèle)
 
-Cependant, il n'y a pas de routage conditionnel : tous les documents passent par le même modèle d'extraction, quel que soit leur complexité ou type.
+Ce routage est **statique** (basé sur le type de tâche) et non dynamique (pas de décision à l'exécution selon la complexité du document).
 
-**Verdict** : 🟡 **Partiel** — Bonne pratique de séparer classification et extraction sur des modèles différents. Pas de routage conditionnel par complexité.
+!!! warning "Fallback Small → Medium non confirmé comme mécanisme dynamique"
+    L'équipe évoquait un fallback automatique `mistral-small` (`openweight-medium`) → `mistral-medium-2508` pour ~3-4% des documents complexes. Ce mécanisme n'existe pas dans le code actuel : l'extraction utilise `mistral-medium-2508` comme défaut permanent (`analyze_content.py:81`). Hypothèse la plus probable : le problème de "boucle infinie sur Small" a été corrigé en fixant Medium comme modèle d'extraction par défaut. Voir Thème 2 pour l'analyse complète.
 
-**Recommandation** : À terme, envisager un modèle plus léger pour les types de documents simples (RIB, attestation SIRENE) et réserver `mistral-medium` pour les documents complexes (actes d'engagement, CCAP). Mesurer d'abord la consommation de tokens pour identifier les optimisations à plus fort impact.
+Il n'y a pas de routage conditionnel proactif : tous les documents passent par le même modèle d'extraction (`mistral-medium-2508`), qu'ils soient simples ou complexes.
+
+**Verdict** : 🟡 **Partiel** — Bonne pratique de séparer classification (modèle léger) et extraction (modèle plus capable) sur des modèles dédiés. Absence de routage proactif basé sur la complexité ou la taille du document.
+
+**Recommandation** : Envisager un routage proactif basé sur la taille du texte (> 8 000 tokens → `mistral-medium-2508`, ≤ 8 000 tokens → `openweight-medium` (`mistral-small`) pour l'extraction simple). Cela pourrait réduire les coûts de ~30-40% sur des documents courts, dont les RIB et fiches navette.
 **Priorité** : P2 | **Effort** : M
 
 ---

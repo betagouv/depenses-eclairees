@@ -7,8 +7,8 @@
 
 | # | Thème | Nb critères | 🟢 | 🟡 | 🔴 | ⚪ | Priorité max | Effort total estimé |
 |---|-------|-------------|-----|-----|-----|-----|-------------|-------------------|
-| 1 | [PromptOps & Versionnement](01-promptops.md) | 5 | 0 | 1 | 4 | 0 | P0 | M |
-| 2 | [Résilience & Quotas](02-resilience-quotas.md) | 6 | 1 | 3 | 2 | 0 | P1 | M |
+| 1 | [PromptOps & Versionnement](01-promptops.md) | 6 | 0 | 1 | 5 | 0 | P0 | M |
+| 2 | [Résilience & Quotas](02-resilience-quotas.md) | 7 | 1 | 3 | 3 | 0 | P1 | M |
 | 3 | [Confiance & Logprobs](03-confiance-logprobs.md) | 5 | 0 | 0 | 5 | 0 | P0 | L |
 | 4 | [Hallucinations & Validation](04-hallucinations-validation.md) | 5 | 2 | 2 | 1 | 0 | P1 | L |
 | 5 | [Observabilité & Télémétrie](05-observabilite.md) | 6 | 0 | 3 | 3 | 0 | P1 | L |
@@ -17,11 +17,11 @@
 | 8 | [FinOps & Coûts](08-finops.md) | 5 | 0 | 2 | 3 | 0 | P1 | M |
 | 9 | [Audit OCR](09-audit-ocr.md) | 8 | 2 | 2 | 3 | 1 | P1 | L |
 | 10 | [Contexte & Chunking](10-contexte-chunking.md) | 6 | 0 | 0 | 6 | 0 | P0 | L |
-| | **TOTAL** | **61** | **5** | **18** | **35** | **3** | | |
+| | **TOTAL** | **63** | **5** | **18** | **37** | **3** | | |
 
 ## Résumé exécutif
 
-Le projet Dépenses Éclairées présente une **architecture technique solide** (Django + Celery, double moteur OCR, séparation des modèles LLM par tâche, post-traitement déterministe des IBAN/SIRET/montants) mais accuse un **déficit critique en matière de LLMOps, d'observabilité et de conformité réglementaire**. Sur 61 critères audités, **35 sont non conformes (57%)**, 18 partiels (30%), et seulement 5 conformes (8%).
+Le projet Dépenses Éclairées présente une **architecture technique solide** (Django + Celery, double moteur OCR, séparation des modèles LLM par tâche, post-traitement déterministe des IBAN/SIRET/montants) mais accuse un **déficit critique en matière de LLMOps, d'observabilité et de conformité réglementaire**. Sur 63 critères audités, **37 sont non conformes (59%)**, 18 partiels (29%), et seulement 5 conformes (8%).
 
 **Top 3 des risques** :
 
@@ -54,7 +54,7 @@ Malgré le nombre élevé de non-conformités, le projet présente des bases sol
 - Architecture Celery/Redis bien conçue pour le traitement batch distribué
 - Double moteur OCR (Tesseract local + Mistral OCR souverain) avec bascule automatique
 - Utilisation de `response_format` JSON Schema pour contraindre les sorties LLM
-- Post-traitement déterministe robuste et bien testé (IBAN via schwifty, SIRET, montants, adresses)
-- Séparation classification/extraction sur des modèles différents
+- Post-traitement déterministe robuste et bien testé (IBAN via schwifty avec correction 1 caractère OCR, SIRET 14 chiffres, montants, adresses) avec taux de remplissage (`compute_ratio_data_extraction`)
+- Séparation classification (`openweight-medium` = `mistral-small`) / extraction (`mistral-medium-2508`) : routage statique par type de tâche, approche économe pour la classification
 - Rate limiter distribué via PostgreSQL (RateGate)
 - Bonne distinction PDF natif/scanné avec seuil paramétrable

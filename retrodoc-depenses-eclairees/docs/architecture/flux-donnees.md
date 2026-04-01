@@ -46,7 +46,7 @@ sequenceDiagram
         CELERY->>PG: Document.text, is_ocr, nb_mot
         
         Note over CELERY: Étape 2 : classification
-        CELERY->>ALBERT: ask_llm (openweight-medium)<br/>filename + text[:2000]
+        CELERY->>ALBERT: ask_llm (openweight-medium = mistral-small)<br/>filename + text[:2000]
         ALBERT-->>CELERY: JSON array de catégories
         CELERY->>PG: Document.classification
         

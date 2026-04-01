@@ -58,7 +58,7 @@ C4Container
 | Base de données | PostgreSQL | 16 (CI) | `ci.env` |
 | OCR local | Tesseract (tesserocr) | ≥2.9.1 | `pyproject.toml`, `Aptfile` |
 | OCR distant | Mistral OCR via Albert API | mistral-ocr-2512 | `docia/file_processing/llm/client.py` |
-| LLM | OpenAI SDK → Albert (Mistral) | openweight-medium, mistral-medium-2508 | `docia/file_processing/llm/client.py` |
+| LLM | OpenAI SDK → Albert (Mistral) | openweight-medium (alias: mistral-small), mistral-medium-2508 | `docia/file_processing/llm/client.py` |
 | PDF | PyMuPDF (pymupdf) | — | `pyproject.toml` |
 | Auth | mozilla-django-oidc + django-lasuite | — | `pyproject.toml` |
 | Stockage fichiers | django-storages (S3) ou FileSystem | — | `pyproject.toml`, `docia/settings.py` |

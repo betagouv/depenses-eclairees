@@ -61,8 +61,8 @@ Ce ratio mesure la complétude (combien de champs sont non-vides), pas la confia
 **Priorité** : P1 | **Effort** : L
 
 ---
-Seuil de confiance et human-in-the-loop
-### 
+
+### Seuil de confiance et human-in-the-loop
 
 **État de l'art** : Un seuil de confiance paramétrable doit router les extractions sous le seuil vers une file de revue humaine (Human-in-the-Loop). C'est une exigence critique pour un système financier automatisé.
 

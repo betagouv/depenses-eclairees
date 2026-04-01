@@ -15,7 +15,7 @@
 | `administration_beneficiaire` | string | ✅ | [À MESURER] | [À MESURER] | Comparaison LLM |
 | `societe_principale` | string | ✅ | [À MESURER] | [À MESURER] | Post-processing strip nom |
 | `siret_mandataire` | string | ✅ | [À MESURER] | [À MESURER] | Validation 14 chiffres |
-| `siren_mandataire` | string | ✅ | [À MESURER] | [À MESURER] | Validation 9 chiffres |
+| `siren_mandataire` | string | ✅ | [À MESURER] | [À MESURER] | Aucun post-traitement — champ passé brut (absent de CLEAN_FUNCTIONS) |
 | `rib_mandataire` | object | ✅ | [À MESURER] | [À MESURER] | Validation IBAN schwifty |
 | `cotraitants` | array | ⚠️ | [À MESURER] | [À MESURER] | |
 | `sous_traitants` | array | ⚠️ | [À MESURER] | [À MESURER] | |

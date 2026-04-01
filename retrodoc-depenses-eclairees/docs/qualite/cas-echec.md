@@ -96,5 +96,18 @@ Le batch global ne passe en `FAILURE` que si **tous** ses jobs échouent.
 | Document multi-langue | Pas de détection de langue, prompts en français uniquement |
 | PDF chiffré/protégé | Erreur d'extraction (PyMuPDF) → texte vide → `FAILURE` |
 | Fichier corrompu (hash OK mais contenu cassé) | Erreur variable selon le format |
+| Contradictions inter-documents | Non détectées — si deux pièces jointes du même EJ contiennent des SIRET différents, c'est à l'utilisateur de trancher |
+| Blocage LLM sur document long/complexe | L'équipe décrit un basculement automatique `openweight-medium` → `mistral-medium-2508` pour ~3-4 % des documents provoquant une boucle infinie sur Small. **Ce mécanisme n'est pas confirmé dans le code actuel** (`analyze_content.py` utilise `mistral-medium-2508` comme défaut permanent). Hypothèse : le problème a été résolu en fixant Medium comme modèle d'extraction. |
+
+## Gestion des anomalies et support utilisateur
+
+Le pipeline ne dispose pas de mécanisme d'alerte automatique ou de circuit de validation humaine. Les anomalies remontent par les canaux suivants :
+
+| Canal | Description |
+|---|---|
+| **Score de remplissage** | Proxy de qualité affiché dans la vue 360° (`compute_ratio_data_extraction`) — un score faible indique une extraction lacunaire, par exemple sur un PDF de mauvaise qualité |
+| **Affichage "non disponible dans le document"** | Texte de présentation généré par les templates Django quand un champ est `null` — ce n'est pas un signal retourné par le LLM, mais une mise en forme côté vue |
+| **Salon de messagerie dédié** | Les utilisateurs signalent les erreurs d'extraction via un canal de messagerie. Une équipe de support (actuellement Alexandre, Thomas et un intervenant) traite ces remontées |
+| **Tests qualité informels** | L'équipe re-teste périodiquement l'ensemble du pipeline avec des documents types pour détecter les régressions. Ces tests ne sont **pas intégrés en CI** (`django.yml` n'exécute que `pytest tests/`, pas `tests_e2e/`) |
 
 **Source** : `docia/file_processing/pipeline/steps/base.py`, `docia/file_processing/llm/client.py`, `docia/file_processing/processor/post_processing_llm.py`, `docia/file_processing/pipeline/pipeline.py`

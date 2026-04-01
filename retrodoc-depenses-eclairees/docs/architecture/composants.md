@@ -65,7 +65,7 @@ app/                                # Code legacy (pré-Django)
 | **RateGate** | `docia/file_processing/llm/rategate/` | Espacement des requêtes LLM entre workers | PostgreSQL (`clock_timestamp()`) |
 | **Pipeline Orchestrator** | `docia/file_processing/pipeline/pipeline.py` | Orchestration sync + batch Celery | Celery, Redis |
 | **TextExtractStepRunner** | `docia/file_processing/pipeline/steps/text_extraction.py` | Extraction texte multi-format | PyMuPDF, Tesseract, LibreOffice, Mistral OCR |
-| **ClassifyStepRunner** | `docia/file_processing/pipeline/steps/classification.py` | Classification du document (~50 catégories) | API Albert (openweight-medium) |
+| **ClassifyStepRunner** | `docia/file_processing/pipeline/steps/classification.py` | Classification du document (~50 catégories) | API Albert (openweight-medium = mistral-small) |
 | **AnalyzeContentStepRunner** | `docia/file_processing/pipeline/steps/content_analysis.py` | Extraction structurée par type | API Albert (mistral-medium-2508) |
 | **PostProcessing** | `docia/file_processing/processor/post_processing_llm.py` | Nettoyage IBAN, SIRET, montants, adresses | schwifty (IBAN) |
 | **SyncClient** | `docia/file_processing/sync/client.py` | Client API Chorus/SAP (OData, OAuth2) | requests (`requests.Session`) |
