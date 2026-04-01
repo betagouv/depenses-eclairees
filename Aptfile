@@ -4,3 +4,5 @@ libtesseract-dev
 libreoffice-core-nogui
 libreoffice-writer-nogui
 libreoffice-java-common
+libreoffice-math-nogui
+libpaper-utils
