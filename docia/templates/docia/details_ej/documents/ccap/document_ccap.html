@@ -157,30 +157,6 @@
   </div>
 {% endif %}
 
-{# Révision des prix (active si prix révisables et formule non vide) #}
-{% if data.revision_prix == "révisables" and data.formule_revision_prix and data.formule_revision_prix.formule_brute %}
-  <section class="fr-accordion" data-fr-js-accordion="true">
-    <h3 class="fr-accordion__title">
-      <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_ccap_revision_prix" data-fr-js-collapse-button="true">
-        Révision des prix
-      </button>
-    </h3>
-    <div class="fr-collapse" id="{{ doc.id }}_ccap_revision_prix" data-fr-js-collapse="true" style="--collapse: -48px;">
-      <p class="fr-text--sm fr-mb-2v">{{ data.formule_revision_prix.formule_brute }}</p>
-      {% if data.formule_revision_prix.termes_variables %}
-        <p class="fr-text--sm fr-text--mention fr-mb-1v">Termes variables :</p>
-        <ul class="fr-list">
-          {% for t in data.formule_revision_prix.termes_variables %}
-            <li class="fr-list__item fr-text--sm">
-              {{ t.symbole_indice_reference|default:"" }} / {{ t.symbole_indice_nouveau|default:"" }} : {{ t.nom_indice|default:"" }} ({{ t.source_indice|default:"" }}) pris entre <strong>{{ t.regle_temporelle_indice_reference|default:"" }}</strong> (date de départ) et <strong>{{ t.regle_temporelle_indice_nouveau|default:"" }}</strong> (date d'arrivée).
-            </li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-    </div>
-  </section>
-{% endif %}
-
 {# Durée du marché #}
   {% with duree=data.duree_marche %}
     {% if duree and duree.duree_initiale %}
@@ -219,33 +195,6 @@
       </div>
     {% endif %}
   {% endwith %}
-  {# Pénalités : liste d’attributs "Pénalité pour [condition]" avec montant et unité #}
-  {% if data.penalites %}
-    <section class="fr-accordion" data-fr-js-accordion="true">
-      <h3 class="fr-accordion__title">
-        <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_ccap_penalites" data-fr-js-collapse-button="true">
-          Pénalités
-        </button>
-      </h3>
-      <div class="fr-collapse" id="{{ doc.id }}_ccap_penalites" data-fr-js-collapse="true" style="--collapse: -48px;">
-        <ul class="fr-list">
-          {% for p in data.penalites %}
-            {% with cond=p.condition|default:"" %}
-              {% with titre_penalite="Pénalité pour "|add:cond valeur_penalite=p.montant|default:"" suffix_penalite=" "|add:p.unite|default:"" %}
-                {% with value=valeur_penalite copy_value=p.montant suffix=suffix_penalite %}
-                  {% include "docia/details_ej/blocks/attribute.html" with title=titre_penalite id=id_prefix|add:"penalite_"|add:forloop.counter %}
-                {% endwith %}
-              {% endwith %}
-            {% endwith %}
-          {% endfor %}
-        </ul>
-      </div>
-    </section>
-  {% else %}
-    <div class="document-section--disabled">
-      <span class="document-section--disabled__title">Pénalités – Non disponibles dans le document.</span>
-    </div>
-  {% endif %}
 
 {% if not data.lots %}
   {# Marché non alloti : sections Montants et Durée au niveau marché #}

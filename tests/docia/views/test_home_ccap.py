@@ -37,7 +37,7 @@ def _login_and_get_ccap(client, ej, doc):
 
 @pytest.mark.django_db
 def test_ccap_sans_lots_complet(client):
-    """CCAP sans lots : objet, infos générales, montants, durée, avance, révision des prix, pénalités."""
+    """CCAP sans lots : objet, infos générales, montants, durée et avance."""
     ej, doc = create_ej_and_document()
     doc.classification = "ccap"
     doc.structured_data = _ccap_base_data(
@@ -71,15 +71,15 @@ def test_ccap_sans_lots_complet(client):
         and "forfaitaires" in text
     )
     assert "Montants" in text and "101234" in text and "€ Total" in text
-    assert "Durée" in text and "12 mois" in text and "reconductible" in text and "6" in text
     assert "Avance" in text and "30" in text and "Assiette de l'avance" in text and "Activée" in text
-    assert "Révision des prix" in text and "P = P0" in text
-    assert "Pénalités" in text and "Pénalité pour retard" in text and "500" in text
+    assert "Durée" in text and "12 mois" in text and "reconductible" in text and "6" in text
+    assert "Révision des prix" not in text
+    assert "Pénalités" not in text
 
 
 @pytest.mark.django_db
 def test_ccap_sections_grisees(client):
-    """CCAP avec données minimales : sections grisées (infos générales, avance, durée, pénalités, montants)."""
+    """CCAP avec données minimales : sections grisées restantes (infos générales, avance, durée, montants)."""
     ej, doc = create_ej_and_document()
     doc.classification = "ccap"
     doc.structured_data = _ccap_base_data(objet_marche="Objet minimal")
@@ -90,7 +90,6 @@ def test_ccap_sections_grisees(client):
     assert "Informations générales – Non disponibles dans le document." in text
     assert "Avance – Non disponible dans le document." in text
     assert "Durée – Information non disponible dans le document." in text
-    assert "Pénalités – Non disponibles dans le document." in text
     assert "Montants – Information non disponible dans le document." in text
 
 

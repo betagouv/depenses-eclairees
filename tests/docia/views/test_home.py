@@ -260,7 +260,6 @@ def test_acte_engagement(client):
     assert "[[forme_marche.lot_concerne.titre_lot]]" in text
     assert "[[forme_marche.marche_parent]]" in text
     assert "[[code_cpv]]" in text
-    assert "[[ligne_imputation_budgetaire]]" in text
     assert "[[mode_consultation]]" in text
 
     # Section Titulaire

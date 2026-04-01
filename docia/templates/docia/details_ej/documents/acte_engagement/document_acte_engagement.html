@@ -21,8 +21,8 @@
 
 {# Sous-sections déroulantes (rapprochées, sans saut de ligne) #}
 <div class="document-sections fr-mt-2v">
-{# Informations générales : forme du marché, code CPV, ligne d'imputation, mode de consultation #}
-  {% if data.forme_marche or data.code_cpv or data.ligne_imputation_budgetaire or data.mode_consultation %}
+{# Informations générales : forme du marché, code CPV, mode de consultation #}
+  {% if data.forme_marche or data.code_cpv or data.mode_consultation %}
   <section class="fr-accordion" data-fr-js-accordion="true">
     <h3 class="fr-accordion__title">
       <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_infos_generales" data-fr-js-collapse-button="true">
@@ -60,9 +60,6 @@
         {% endif %}
         {% with value=data.code_cpv copy_value=data.code_cpv %}
           {% include "docia/details_ej/blocks/attribute.html" with title="Code CPV" id=id_prefix|add:"code_cpv" %}
-        {% endwith %}
-        {% with value=data.ligne_imputation_budgetaire copy_value=data.ligne_imputation_budgetaire %}
-          {% include "docia/details_ej/blocks/attribute.html" with title="Ligne d'imputation budgétaire" id=id_prefix|add:"ligne_imputation_budgetaire" %}
         {% endwith %}
         <li class="fr-list__item">
           <span class="fr-text--sm fr-text--mention">Mode de consultation&nbsp;</span>
