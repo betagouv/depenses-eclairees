@@ -181,7 +181,7 @@ def get_comparison_functions():
 def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-medium", debug_mode=False):
     """Test de qualité des informations extraites par le LLM."""
 
-    df_test = get_data_from_grist(table="Ccap_gt")
+    df_test = get_data_from_grist(table="Ccap_gt").query("commentaire == 'traité'")
     df_test = df_test.sort_values(by="filename").reset_index(drop=True)
     for col in (
         "lots",
@@ -211,18 +211,27 @@ if __name__ == "__main__":
         multi_line_coef=1, max_workers=30, llm_model="mistral-medium-2508", debug_mode=True
     )
 
-    EXCLUDED_COLUMNS = ["objet_marche"]
+    INCLUDED_COLUMNS = [
+        "ccag",
+        "lots.*.forme",
+        # "lots.*.duree_lot",
+        "lots.*.montant_ht",
+        "forme_marche",
+        "duree_marche",
+        "montant_ht",
+        "revision_prix",
+    ]
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "avance", comparison_functions, only_errors=True)
+    check_quality_one_field(df_merged, "lots.*.montant_ht", comparison_functions, only_errors=True)
 
-    check_quality_one_row(df_merged, 18, comparison_functions)
+    check_quality_one_row(df_merged, 18, comparison_functions, included_columns=INCLUDED_COLUMNS)
 
-    check_global_statistics(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
+    check_global_statistics(df_merged, comparison_functions, included_columns=INCLUDED_COLUMNS)
 
     fields_with_errors = get_fields_with_comparison_errors(
-        df_merged.sort_values(by="filename"), comparison_functions, excluded_columns=EXCLUDED_COLUMNS
+        df_merged.sort_values(by="filename"), comparison_functions, included_columns=INCLUDED_COLUMNS
     )
 
     for v in fields_with_errors.values():

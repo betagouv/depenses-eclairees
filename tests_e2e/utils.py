@@ -554,11 +554,41 @@ def check_quality_one_field(df_merged, col_to_test, comparison_functions, only_e
             print()
 
 
-def check_quality_one_row(df_merged, row_idx_to_test, comparison_functions, excluded_columns=None, only_errors=False):
+def _get_columns_to_compare(comparison_functions, excluded_columns=None, included_columns=None):
+    """Construit la liste des colonnes a comparer.
+
+    Par defaut, toutes les colonnes definies dans comparison_functions sont comparees.
+    Si included_columns est fourni, seules ces colonnes sont conservees.
+    excluded_columns est applique en dernier.
+    """
+    excluded_columns = set(excluded_columns or [])
+    available_columns = list(comparison_functions.keys())
+
+    if included_columns is None:
+        selected_columns = available_columns
+    else:
+        included_columns = set(included_columns)
+        selected_columns = [col for col in available_columns if col in included_columns]
+
+    return [col for col in selected_columns if col not in excluded_columns]
+
+
+def check_quality_one_row(
+    df_merged,
+    row_idx_to_test,
+    comparison_functions,
+    excluded_columns=None,
+    included_columns=None,
+    only_errors=False,
+):
     # ============================================================================
     # COMPARAISON POUR UNE LIGNE SPÉCIFIQUE
     # ============================================================================
-    excluded_columns = excluded_columns or []
+    columns_to_compare = _get_columns_to_compare(
+        comparison_functions,
+        excluded_columns=excluded_columns,
+        included_columns=included_columns,
+    )
 
     if row_idx_to_test >= len(df_merged):
         print(f"\n❌ Index {row_idx_to_test} invalide. Le DataFrame contient {len(df_merged)} lignes.\n")
@@ -572,10 +602,9 @@ def check_quality_one_row(df_merged, row_idx_to_test, comparison_functions, excl
 
         llm_data = row.get("structured_data", None)
 
-        # Comparer toutes les colonnes (sauf exclues)
-        for col, comparison_func in comparison_functions.items():
-            if col in excluded_columns:
-                continue
+        # Comparer les colonnes selectionnees
+        for col in columns_to_compare:
+            comparison_func = comparison_functions[col]
 
             # Extraire les valeurs
             ref_val = _get_value_by_dotted_key(row, col)
@@ -599,7 +628,12 @@ def check_quality_one_row(df_merged, row_idx_to_test, comparison_functions, excl
                 print()
 
 
-def get_fields_with_comparison_errors(df_merged, comparison_functions, excluded_columns=None):
+def get_fields_with_comparison_errors(
+    df_merged,
+    comparison_functions,
+    excluded_columns=None,
+    included_columns=None,
+):
     """
     Pour chaque fichier (ligne) de df_merged, retourne la liste des champs pour lesquels
     la comparaison entre la valeur LLM et la valeur par défaut (référence) échoue.
@@ -608,12 +642,17 @@ def get_fields_with_comparison_errors(df_merged, comparison_functions, excluded_
         df_merged: DataFrame fusionné (résultats LLM + valeurs de référence).
         comparison_functions: Dictionnaire colonne -> fonction de comparaison.
         excluded_columns: Liste de colonnes à exclure de la vérification.
+        included_columns: Liste de colonnes a inclure dans la verification.
 
     Returns:
         dict: {filename: [champ1, champ2, ...]} pour chaque fichier. Les clés sont les
         noms de fichiers, les valeurs sont les listes de champs en erreur de comparaison.
     """
-    excluded_columns = excluded_columns or []
+    columns_to_compare = _get_columns_to_compare(
+        comparison_functions,
+        excluded_columns=excluded_columns,
+        included_columns=included_columns,
+    )
 
     result = {}
     for idx, row in df_merged.iterrows():
@@ -621,9 +660,8 @@ def get_fields_with_comparison_errors(df_merged, comparison_functions, excluded_
         llm_data = row.get("structured_data", None)
         errors = []
 
-        for col, comparison_func in comparison_functions.items():
-            if col in excluded_columns:
-                continue
+        for col in columns_to_compare:
+            comparison_func = comparison_functions[col]
 
             ref_val = _get_value_by_dotted_key(row, col)
             llm_val = _get_value_by_dotted_key(llm_data, col) if llm_data is not None else None
@@ -663,11 +701,15 @@ def _parse_best_test_errors(row):
     return []
 
 
-def check_global_statistics(df_merged, comparison_functions, excluded_columns=None):
+def check_global_statistics(df_merged, comparison_functions, excluded_columns=None, included_columns=None):
     # ============================================================================
     # STATISTIQUES GLOBALES DE COMPARAISON
     # ============================================================================
-    excluded_columns = excluded_columns or []
+    columns_to_compare = _get_columns_to_compare(
+        comparison_functions,
+        excluded_columns=excluded_columns,
+        included_columns=included_columns,
+    )
     use_best_ref = "best_test_comparison_errors" in df_merged.columns
 
     print(f"\n{'=' * 80}")
@@ -676,11 +718,9 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
 
     results = {}
 
-    # Comparaison pour chaque colonne (sauf exclues)
-    for col, comparison_func in comparison_functions.items():
-        # Ignorer les colonnes exclues
-        if col in excluded_columns:
-            continue
+    # Comparaison pour chaque colonne selectionnee
+    for col in columns_to_compare:
+        comparison_func = comparison_functions[col]
 
         matches = []
         errors = []
