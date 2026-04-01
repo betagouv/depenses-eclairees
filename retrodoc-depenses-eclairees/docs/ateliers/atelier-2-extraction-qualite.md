@@ -23,7 +23,7 @@
     - [Contrat d'interface JSON](../modele-donnees/contrat-interface-json.md) — Structure JSON par type
     - [Matrice qualité](../qualite/matrice-qualite.md) — Template à remplir en atelier
     - [Champ objet de la dépense](../modele-donnees/champ-objet-depense.md) — Nommage variable
-    - [Scores de confiance](../qualite/scores-confiance.md) — État des lieux et recommandations
+    - [Scores de confiance](../qualite/taux-remplissage.md) — État des lieux et recommandations
     - [Cas d'échec](../qualite/cas-echec.md) — Taxonomie des échecs
 
 ## Agenda
@@ -36,7 +36,7 @@
 | 10 min | *Pause* | |
 | 30 min | **Remplissage matrice qualité** — Résultats tests e2e, précision/rappel par attribut | [Matrice qualité](../qualite/matrice-qualite.md) |
 | 20 min | **Cas d'échec** — Taxonomie, propagation, perte de données post-traitement | [Cas d'échec](../qualite/cas-echec.md) |
-| 20 min | **Score de confiance** — État des lieux, recommandations pour SAP | [Scores confiance](../qualite/scores-confiance.md) |
+| 20 min | **Score de confiance** — État des lieux, recommandations pour SAP | [Scores confiance](../qualite/taux-remplissage.md) |
 | 15 min | **Discussion** — Seuils d'acceptation, workflow de vérification humaine | — |
 | 15 min | **Conclusions & actions** | — |
 

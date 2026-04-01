@@ -39,54 +39,54 @@ API Chorus (EJ + PJ) → Cron 4×/jour → Django → Celery Workers → Albert 
 ## Documentation structurée
 
 ### Pour comprendre le système
-- **[Vue d'ensemble](retrodoc-depenses-eclairees/docs/architecture/vue-ensemble.md)** — Architecture et composants
-- **[Flux de données](retrodoc-depenses-eclairees/docs/architecture/flux-donnees.md)** — Circulation des données
-- **[Composants](retrodoc-depenses-eclairees/docs/architecture/composants.md)** — Détail de chaque service
-- **[Déploiement](retrodoc-depenses-eclairees/docs/architecture/deploiement.md)** — Infrastructure Scalingo
+- **[Vue d'ensemble](architecture/vue-ensemble)** — Architecture et composants
+- **[Flux de données](architecture/flux-donnees)** — Circulation des données
+- **[Composants](architecture/composants)** — Détail de chaque service
+- **[Déploiement](architecture/deploiement)** — Infrastructure Scalingo
 
 ### Pour travailler sur le pipeline
-- **[Ingestion](retrodoc-depenses-eclairees/docs/pipeline/ingestion.md)** — Synchronisation Chorus/SAP
-- **[OCR & Extraction texte](retrodoc-depenses-eclairees/docs/pipeline/ocr-extraction.md)** — Étape 1 du pipeline
-- **[Appel LLM](retrodoc-depenses-eclairees/docs/pipeline/appel-llm.md)** — Requêtes à l'API Albert + RateGate
-- **[Prompts](retrodoc-depenses-eclairees/docs/pipeline/prompts.md)** — Spécifications des prompts LLM
-- **[Parsing réponse](retrodoc-depenses-eclairees/docs/pipeline/parsing-reponse.md)** — Validation JSON Schema
-- **[Stockage](retrodoc-depenses-eclairees/docs/pipeline/stockage.md)** — Persistance des résultats
+- **[Ingestion](pipeline/ingestion)** — Synchronisation Chorus/SAP
+- **[OCR & Extraction texte](pipeline/ocr-extraction)** — Étape 1 du pipeline
+- **[Appel LLM](pipeline/appel-llm)** — Requêtes à l'API Albert + RateGate
+- **[Prompts](pipeline/prompts)** — Spécifications des prompts LLM
+- **[Parsing réponse](pipeline/parsing-reponse)** — Validation JSON Schema
+- **[Stockage](pipeline/stockage)** — Persistance des résultats
 
 ### Modèle de données
-- **[Schéma base](retrodoc-depenses-eclairees/docs/modele-donnees/schema-base.md)** — Diagramme ER
-- **[Contrat d'interface JSON](retrodoc-depenses-eclairees/docs/modele-donnees/contrat-interface-json.md)** — Structure des données extraites
-- **[Champ "objet de la dépense"](retrodoc-depenses-eclairees/docs/modele-donnees/champ-objet-depense.md)** — Spécifications métier
-- **[Tailles réelles](retrodoc-depenses-eclairees/docs/modele-donnees/tailles-reelles.md)** — Distributions et volumétrie
+- **[Schéma base](modele-donnees/schema-base)** — Diagramme ER
+- **[Contrat d'interface JSON](modele-donnees/contrat-interface-json)** — Structure des données extraites
+- **[Champ "objet de la dépense"](modele-donnees/champ-objet-depense)** — Spécifications métier
+- **[Tailles réelles](modele-donnees/tailles-reelles)** — Distributions et volumétrie
 
 ### Qualité et robustesse
-- **[Métriques existantes](retrodoc-depenses-eclairees/docs/qualite/metriques-existantes.md)** — Suivi de la qualité
-- **[Matrice qualité](retrodoc-depenses-eclairees/docs/qualite/matrice-qualite.md)** — Critères d'acceptation
-- **[Scores de confiance](retrodoc-depenses-eclairees/docs/qualite/scores-confiance.md)** — Confiance associée aux extractions
-- **[Cas d'échec](retrodoc-depenses-eclairees/docs/qualite/cas-echec.md)** — Scénarios problématiques
+- **[Métriques existantes](qualite/metriques-existantes)** — Suivi de la qualité
+- **[Matrice qualité](qualite/matrice-qualite)** — Critères d'acceptation
+- **[Scores de confiance](qualite/taux-remplissage)** — Confiance associée aux extractions
+- **[Cas d'échec](qualite/cas-echec)** — Scénarios problématiques
 
 ### Benchmark LLMOps (10 domaines)
-- **[PromptOps & Versionnement](retrodoc-depenses-eclairees/docs/benchmark/01-promptops.md)**
-- **[Résilience & Quotas](retrodoc-depenses-eclairees/docs/benchmark/02-resilience-quotas.md)**
-- **[Confiance & Logprobs](retrodoc-depenses-eclairees/docs/benchmark/03-confiance-logprobs.md)**
-- **[Hallucinations & Validation](retrodoc-depenses-eclairees/docs/benchmark/04-hallucinations-validation.md)**
-- **[Observabilité & Télémétrie](retrodoc-depenses-eclairees/docs/benchmark/05-observabilite.md)**
-- **[Évaluation Continue](retrodoc-depenses-eclairees/docs/benchmark/06-evaluation-continue.md)**
-- **[Sécurité & Conformité](retrodoc-depenses-eclairees/docs/benchmark/07-securite-conformite.md)**
-- **[FinOps & Coûts](retrodoc-depenses-eclairees/docs/benchmark/08-finops.md)**
-- **[Audit OCR](retrodoc-depenses-eclairees/docs/benchmark/09-audit-ocr.md)**
-- **[Contexte & Chunking](retrodoc-depenses-eclairees/docs/benchmark/10-contexte-chunking.md)**
+- **[PromptOps & Versionnement](benchmark/01-promptops)**
+- **[Résilience & Quotas](benchmark/02-resilience-quotas)**
+- **[Confiance & Logprobs](benchmark/03-confiance-logprobs)**
+- **[Hallucinations & Validation](benchmark/04-hallucinations-validation)**
+- **[Observabilité & Télémétrie](benchmark/05-observabilite)**
+- **[Évaluation Continue](benchmark/06-evaluation-continue)**
+- **[Sécurité & Conformité](benchmark/07-securite-conformite)**
+- **[FinOps & Coûts](benchmark/08-finops)**
+- **[Audit OCR](benchmark/09-audit-ocr)**
+- **[Contexte & Chunking](benchmark/10-contexte-chunking)**
 
 ### Ateliers sectoriels
-- **[Atelier 1 — Connexion LLM](retrodoc-depenses-eclairees/docs/ateliers/atelier-1-connexion-llm.md)** → Pour équipe SAP/Prestataire
-- **[Atelier 2 — Extraction & Qualité](retrodoc-depenses-eclairees/docs/ateliers/atelier-2-extraction-qualite.md)** → Pour AIFE + Prestataire
-- **[Atelier 3 — Sizing](retrodoc-depenses-eclairees/docs/ateliers/atelier-3-sizing.md)** → Pour architectes SAP
+- **[Atelier 1 — Connexion LLM](ateliers/atelier-1-connexion-llm)** → Pour équipe SAP/Prestataire
+- **[Atelier 2 — Extraction & Qualité](ateliers/atelier-2-extraction-qualite)** → Pour AIFE + Prestataire
+- **[Atelier 3 — Sizing](ateliers/atelier-3-sizing)** → Pour architectes SAP
 
 ### Hors-scope et dette technique
-- **[Formats non gérés](retrodoc-depenses-eclairees/docs/hors-scope/formats-non-geres.md)** — Limitations actuelles
-- **[Dette technique](retrodoc-depenses-eclairees/docs/hors-scope/dette-technique.md)** — Code legacy (app/)
-- **[Backlog post-juin](retrodoc-depenses-eclairees/docs/hors-scope/backlog-post-juin.md)** — Améliorations futures
+- **[Formats non gérés](hors-scope/formats-non-geres)** — Limitations actuelles
+- **[Dette technique](hors-scope/dette-technique)** — Code legacy (app/)
+- **[Backlog post-juin](hors-scope/backlog-post-juin)** — Améliorations futures
 
-### [Glossaire](retrodoc-depenses-eclairees/docs/glossaire.md) — Termes métier et techniques
+### [Glossaire](glossaire) — Termes métier et techniques
 
 ---
 
@@ -111,24 +111,24 @@ API Chorus (EJ + PJ) → Cron 4×/jour → Django → Celery Workers → Albert 
 - `confidence_score` (en cours de déploiement)
 - Catégories : ~50 (marché, RIB, RIB, facture, etc.)
 
-**Contrat JSON** : Voir [Contrat d'interface JSON](retrodoc-depenses-eclairees/docs/modele-donnees/contrat-interface-json.md)
+**Contrat JSON** : Voir [Contrat d'interface JSON](modele-donnees/contrat-interface-json)
 
 ### 4. Prompts et extraction
 - **Classification** : Catégoriser parmi ~50 catégories avec score de confiance
 - **Content analysis** : Extraction structurée selon le type de document
 - **Validation** : JSON Schema strict (paramètre `response_format` Albert)
-- Voir [Prompts](retrodoc-depenses-eclairees/docs/pipeline/prompts.md)
+- Voir [Prompts](pipeline/prompts)
 
 ### 5. Qualité et métriques
 - **Métrique principale** : Taux de confiance + exactitude des champs critiques
 - **Tests** : Grist pour vérité terrain, e2e non automatisés
-- Voir [Matrice qualité](retrodoc-depenses-eclairees/docs/qualite/matrice-qualite.md)
+- Voir [Matrice qualité](qualite/matrice-qualite)
 
 ### 6. Orchestration distribuée
 - **Celery** : Workers parallèles (2 + 1 heavy_cpu)
 - **RateGate** : Rate limiting distribué (espacer appels LLM)
 - **Redis** : Broker de messages
-- Voir [Appel LLM](retrodoc-depenses-eclairees/docs/pipeline/appel-llm.md)
+- Voir [Appel LLM](pipeline/appel-llm)
 
 ---
 
@@ -164,16 +164,16 @@ ruff format && ruff check --fix
 ## Où contribuer ?
 
 ### Pour agents IA souhaitant **utiliser** la solution
-1. Lire [Vue d'ensemble](retrodoc-depenses-eclairees/docs/architecture/vue-ensemble.md)
-2. Consulter [Modèle de données](retrodoc-depenses-eclairees/docs/modele-donnees/)
+1. Lire [Vue d'ensemble](architecture/vue-ensemble)
+2. Consulter [Modèle de données](modele-donnees/)
 3. Tester via API REST Django (endpoints non documentés ici, voir code)
 
 ### Pour agents IA souhaitant **contribuer** au projet
-1. **Bug fix** : Voir [Cas d'échec](retrodoc-depenses-eclairees/docs/qualite/cas-echec.md)
-2. **Amélioration extraction** : Consulter [Prompts](retrodoc-depenses-eclairees/docs/pipeline/prompts.md) + [Matrice qualité](retrodoc-depenses-eclairees/docs/qualite/matrice-qualite.md)
-3. **Optimisation LLM** : Voir [Benchmark LLMOps](retrodoc-depenses-eclairees/docs/benchmark/)
-4. **Intégration SAP** : Consulter [Déploiement](retrodoc-depenses-eclairees/docs/architecture/deploiement.md) + [Atelier 3](retrodoc-depenses-eclairees/docs/ateliers/atelier-3-sizing.md)
-5. **Code legacy** : Voir [Dette technique](retrodoc-depenses-eclairees/docs/hors-scope/dette-technique.md)
+1. **Bug fix** : Voir [Cas d'échec](qualite/cas-echec)
+2. **Amélioration extraction** : Consulter [Prompts](pipeline/prompts) + [Matrice qualité](qualite/matrice-qualite)
+3. **Optimisation LLM** : Voir [Benchmark LLMOps](benchmark/)
+4. **Intégration SAP** : Consulter [Déploiement](architecture/deploiement) + [Atelier 3](ateliers/atelier-3-sizing)
+5. **Code legacy** : Voir [Dette technique](hors-scope/dette-technique)
 
 ---
 
@@ -208,10 +208,10 @@ ruff format && ruff check --fix
 ## Aide pour agents IA
 
 Si vous contribuez à ce projet :
-- Lire le [Glossaire](retrodoc-depenses-eclairees/docs/glossaire.md) pour la terminologie métier
-- Consulter la [Matrice qualité](retrodoc-depenses-eclairees/docs/qualite/matrice-qualite.md) pour les critères d'acceptation
-- Vérifier les [Cas d'échec](retrodoc-depenses-eclairees/docs/qualite/cas-echec.md) pour les pièges connus
-- Prendre en compte les [5 risques identifiés](retrodoc-depenses-eclairees/docs/index.md) dans vos décisions
+- Lire le [Glossaire](glossaire) pour la terminologie métier
+- Consulter la [Matrice qualité](qualite/matrice-qualite) pour les critères d'acceptation
+- Vérifier les [Cas d'échec](qualite/cas-echec) pour les pièges connus
+- Prendre en compte les [5 risques identifiés](index) dans vos décisions
 
 ---
 

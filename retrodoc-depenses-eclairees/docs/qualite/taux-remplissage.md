@@ -1,4 +1,4 @@
-# Scores de confiance
+# Taux de remplissage
 
 ## État actuel
 
@@ -25,7 +25,7 @@
 
 ## Recommandations pour SAP Chorus
 
-!!! tip "Pistes d'amélioration — à discuter en atelier 2"
+!!! tip "Pistes d'amélioration"
 
     1. **Activer `logprobs`** dans l'appel API Albert (si supporté) pour obtenir les log-probabilités token par token
     2. **Double extraction** : appeler le LLM 2 fois avec des températures légèrement différentes et comparer les résultats

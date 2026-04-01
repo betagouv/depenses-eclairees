@@ -55,7 +55,7 @@ flowchart LR
 !!! danger "Risques identifiés lors de l'audit"
 
     1. **Dépendance monopoint sur Albert** — L'intégralité du pipeline dépend d'une seule API LLM sans fallback.
-    2. **Absence de score de confiance** — Aucun mécanisme de score n'est associé aux données extraites.
+    2. **Absence de score de confiance** — Le seul score de complétude ne permet pas de qualifier la fiabilité des extractions.
     3. **Pas de contrôle de la taille du contexte LLM** — Le texte intégral est envoyé sans vérification du nombre de tokens.
     4. **Code legacy non migré** — Le dossier `app/` contient du code pré-Django encore importé.
     5. **Tests de qualité non automatisés** — Les tests e2e ne sont pas exécutés en CI.

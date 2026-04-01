@@ -77,7 +77,7 @@ nav:
   - Qualité:
     - Métriques existantes: qualite/metriques-existantes.md
     - Matrice qualité: qualite/matrice-qualite.md
-    - Scores de confiance: qualite/scores-confiance.md
+    - Scores de confiance: qualite/taux-remplissage.md
     - Cas d'échec: qualite/cas-echec.md
   - Ateliers:
     - "Atelier 1 — Connexion LLM": ateliers/atelier-1-connexion-llm.md
