@@ -3,6 +3,7 @@ import enum
 import logging
 import random
 import re
+import threading
 import time
 import unicodedata
 from dataclasses import dataclass
@@ -151,6 +152,7 @@ class SyncClient:
         self.session = requests.Session()
         self.env = env
         self.is_authenticated = False
+        self._lock_auth = threading.Lock()
 
     @classmethod
     def from_settings(cls):
@@ -163,40 +165,52 @@ class SyncClient:
         )
 
     def authenticate(self):
-        data = {
-            "grant_type": "client_credentials",
-            "client_id": self.client_id,
-            "client_secret": self.client_secret,
-            "scope": "openid",
-        }
-        response = self.session.post(
-            self.auth_base_url + "oauth/token",
-            data=data,
-        )
-        data = response.json()
-        self.token = data["access_token"]
-        self.session.headers.update(
-            {
-                "Authorization": f"Bearer {self.token}",
-                "Accept": "application/json",
+        self._lock_auth.acquire(timeout=120)
+        try:
+            data = {
+                "grant_type": "client_credentials",
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
+                "scope": "openid",
             }
-        )
-        self.is_authenticated = True
+            response = self.session.post(
+                self.auth_base_url + "oauth/token",
+                data=data,
+            )
+            data = response.json()
+            self.token = data["access_token"]
+            self.session.headers.update(
+                {
+                    "Authorization": f"Bearer {self.token}",
+                    "Accept": "application/json",
+                }
+            )
+            self.is_authenticated = True
+        finally:
+            self._lock_auth.release()
 
     def list_documents_for_ej(
-        self, num_ej: str, object_type: str = "BUS2201", return_raw: bool = False
+        self,
+        num_ej: str,
+        object_type: str = "BUS2201",
+        return_raw: bool = False,
+        *,
+        max_retries: int = 0,
+        retry_delay: float = 20,
     ) -> list[ApiDocumentMetadata]:
         """Get list of documents associated with an engagement number"""
         endpoint = "export_pj_ej/pieces_jointes_metadata"
         params = {"$filter": f"num_ej eq '{num_ej}' and object_type eq '{object_type}'"}
 
-        response = self.session.get(
-            self.base_url + endpoint,
-            params=params,
-        )
-        response.raise_for_status()
+        def _do_call():
+            response = self.session.get(
+                self.base_url + endpoint,
+                params=params,
+            )
+            response.raise_for_status()
+            return response.json()
 
-        data = response.json()
+        data = self._retry_call(_do_call, max_retries=max_retries, retry_delay=retry_delay)
 
         if return_raw:
             return data
@@ -220,6 +234,9 @@ class SyncClient:
         purchase_organization: str,
         purchase_group: str,
         return_raw: bool = False,
+        *,
+        max_retries: int = 0,
+        retry_delay: float = 20,
     ) -> list[ApiEngagementActivity]:
         """
         Liste les EJ (actes d'engagement) dans le périmètre défini.
@@ -234,12 +251,16 @@ class SyncClient:
             f"date_reception le {end_api} and "
             f"pur_org eq '{purchase_organization}' and pur_group eq '{purchase_group}'"
         )
-        response = self.session.get(
-            self.base_url + endpoint,
-            params={"$filter": filter_str},
-        )
-        response.raise_for_status()
-        data = response.json()
+
+        def _do_call():
+            response = self.session.get(
+                self.base_url + endpoint,
+                params={"$filter": filter_str},
+            )
+            response.raise_for_status()
+            return response.json()
+
+        data = self._retry_call(_do_call, max_retries=max_retries, retry_delay=retry_delay)
 
         if return_raw:
             return data
@@ -299,14 +320,25 @@ class SyncClient:
         retry_delay: float,
     ):
         """Appelle func_api() en boucle avec retry. func_api doit lever SyncApiError en cas d'erreur."""
-        for attempt in range(max_retries + 1):
+        assert max_retries >= 0, "max_retries should be >= 0"
+        assert retry_delay >= 0, "retry_delay should be >= 0"
+        attempt = -1
+        while attempt < max_retries + 1:
+            attempt += 1
             try:
                 return func_api()
             except HTTPError as err:
-                # 429 / 5xx / erreurs réseau → retry. 4xx (ex. 400) = faute client → pas de retry.
-                if err.response.status_code == 429:
+                status_code = err.response.status_code
+                # 401 = token expiré -> re-auth et retry
+                # 429 / 5xx / erreurs réseau -> retry
+                # 4xx (ex. 400) = faute client -> pas de retry
+                if status_code == 401:
+                    self.authenticate()
+                    max_retries += 1  # Does not count as a true retry
+                    effective_delay = 1
+                elif status_code == 429:
                     effective_delay = retry_delay
-                elif 500 <= err.response.status_code < 600:
+                elif 500 <= status_code < 600:
                     effective_delay = retry_delay
                 else:
                     raise  # 4xx : on relève tout de suite
@@ -314,7 +346,7 @@ class SyncClient:
                     wait_time = effective_delay * (1 + 0.1 * random.random()) * (attempt + 1)
                     logger.warning(
                         "%s, wait %.1fs before retry (%d/%d)",
-                        err.response.status_code,
+                        status_code,
                         wait_time,
                         attempt + 1,
                         max_retries,
@@ -322,3 +354,4 @@ class SyncClient:
                     time.sleep(wait_time)
                     continue
                 raise SyncApiError.from_httperror(err)
+        raise RuntimeError("Should not reach here")
