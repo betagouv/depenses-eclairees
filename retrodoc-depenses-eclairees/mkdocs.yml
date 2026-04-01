@@ -79,6 +79,18 @@ nav:
     - "Atelier 1 — Connexion LLM": ateliers/atelier-1-connexion-llm.md
     - "Atelier 2 — Extraction & Qualité": ateliers/atelier-2-extraction-qualite.md
     - "Atelier 3 — Sizing": ateliers/atelier-3-sizing.md
+  - "Benchmark LLMOps":
+    - "Synthèse de l'audit": benchmark/index.md
+    - "PromptOps & Versionnement": benchmark/01-promptops.md
+    - "Résilience & Quotas": benchmark/02-resilience-quotas.md
+    - "Confiance & Logprobs": benchmark/03-confiance-logprobs.md
+    - "Hallucinations & Validation": benchmark/04-hallucinations-validation.md
+    - "Observabilité & Télémétrie": benchmark/05-observabilite.md
+    - "Évaluation Continue": benchmark/06-evaluation-continue.md
+    - "Sécurité & Conformité": benchmark/07-securite-conformite.md
+    - "FinOps & Coûts": benchmark/08-finops.md
+    - "Audit OCR": benchmark/09-audit-ocr.md
+    - "Contexte & Chunking": benchmark/10-contexte-chunking.md
   - Hors-scope:
     - Formats non gérés: hors-scope/formats-non-geres.md
     - Dette technique: hors-scope/dette-technique.md

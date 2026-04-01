@@ -9,6 +9,7 @@ last_extract
 .cache
 .pdf_cache
 .ipynb_checkpoints
+.venv
 /notes.txt
 /celerybeat*
 /dump.rdb

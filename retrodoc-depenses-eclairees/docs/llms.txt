@@ -1,0 +1,218 @@
+# Dépenses Éclairées — Documentation pour Agents IA
+
+## Vue d'ensemble du projet
+
+**Dépenses Éclairées** est une application gouvernementale qui automatise l'extraction et l'analyse de documents de dépenses publiques françaises (engagements juridiques, marchés publics, pièces administratives).
+
+**État du projet**: Produit BetaGouv en cours de reprise par l'AIFE pour intégration à SAP.
+
+**Repositoire**: https://github.com/betagouv/depenses-eclairees
+
+---
+
+## Architecture technique synthétique
+
+### Stack
+- **Backend**: Django 5.2 (Python) + Celery (file de tâches distribuées)
+- **Frontend**: Vue 360° (interface consultation DSFR)
+- **LLM**: API Albert (souveraine, Mistral via DINUM)
+- **OCR**: Tesseract (local) + Mistral OCR
+- **Données**: PostgreSQL 16 + S3 (Scalingo)
+- **Broker**: Redis
+- **Intégration**: Chorus/SAP (OData OAuth2) + Grist (métriques e2e)
+
+### Pipeline principal (3 étapes LLM)
+1. **Text extraction** → Récupération du texte brut (OCR pour images, Tesseract fallback)
+2. **Classification** → Attribution d'une catégorie parmi ~50
+3. **Content analysis** → Extraction structurée en JSON selon le schéma du domaine
+
+### Flux de données
+```
+API Chorus (EJ + PJ) → Cron 4×/jour → Django → Celery Workers → Albert API
+                                                                ├─→ Tesseract (OCR local)
+                                                                ├─→ PostgreSQL (résultats)
+                                                                └─→ S3 (stockage fichiers)
+```
+
+---
+
+## Documentation structurée
+
+### Pour comprendre le système
+- **[Vue d'ensemble](retrodoc-depenses-eclairees/docs/architecture/vue-ensemble.md)** — Architecture et composants
+- **[Flux de données](retrodoc-depenses-eclairees/docs/architecture/flux-donnees.md)** — Circulation des données
+- **[Composants](retrodoc-depenses-eclairees/docs/architecture/composants.md)** — Détail de chaque service
+- **[Déploiement](retrodoc-depenses-eclairees/docs/architecture/deploiement.md)** — Infrastructure Scalingo
+
+### Pour travailler sur le pipeline
+- **[Ingestion](retrodoc-depenses-eclairees/docs/pipeline/ingestion.md)** — Synchronisation Chorus/SAP
+- **[OCR & Extraction texte](retrodoc-depenses-eclairees/docs/pipeline/ocr-extraction.md)** — Étape 1 du pipeline
+- **[Appel LLM](retrodoc-depenses-eclairees/docs/pipeline/appel-llm.md)** — Requêtes à l'API Albert + RateGate
+- **[Prompts](retrodoc-depenses-eclairees/docs/pipeline/prompts.md)** — Spécifications des prompts LLM
+- **[Parsing réponse](retrodoc-depenses-eclairees/docs/pipeline/parsing-reponse.md)** — Validation JSON Schema
+- **[Stockage](retrodoc-depenses-eclairees/docs/pipeline/stockage.md)** — Persistance des résultats
+
+### Modèle de données
+- **[Schéma base](retrodoc-depenses-eclairees/docs/modele-donnees/schema-base.md)** — Diagramme ER
+- **[Contrat d'interface JSON](retrodoc-depenses-eclairees/docs/modele-donnees/contrat-interface-json.md)** — Structure des données extraites
+- **[Champ "objet de la dépense"](retrodoc-depenses-eclairees/docs/modele-donnees/champ-objet-depense.md)** — Spécifications métier
+- **[Tailles réelles](retrodoc-depenses-eclairees/docs/modele-donnees/tailles-reelles.md)** — Distributions et volumétrie
+
+### Qualité et robustesse
+- **[Métriques existantes](retrodoc-depenses-eclairees/docs/qualite/metriques-existantes.md)** — Suivi de la qualité
+- **[Matrice qualité](retrodoc-depenses-eclairees/docs/qualite/matrice-qualite.md)** — Critères d'acceptation
+- **[Scores de confiance](retrodoc-depenses-eclairees/docs/qualite/scores-confiance.md)** — Confiance associée aux extractions
+- **[Cas d'échec](retrodoc-depenses-eclairees/docs/qualite/cas-echec.md)** — Scénarios problématiques
+
+### Benchmark LLMOps (10 domaines)
+- **[PromptOps & Versionnement](retrodoc-depenses-eclairees/docs/benchmark/01-promptops.md)**
+- **[Résilience & Quotas](retrodoc-depenses-eclairees/docs/benchmark/02-resilience-quotas.md)**
+- **[Confiance & Logprobs](retrodoc-depenses-eclairees/docs/benchmark/03-confiance-logprobs.md)**
+- **[Hallucinations & Validation](retrodoc-depenses-eclairees/docs/benchmark/04-hallucinations-validation.md)**
+- **[Observabilité & Télémétrie](retrodoc-depenses-eclairees/docs/benchmark/05-observabilite.md)**
+- **[Évaluation Continue](retrodoc-depenses-eclairees/docs/benchmark/06-evaluation-continue.md)**
+- **[Sécurité & Conformité](retrodoc-depenses-eclairees/docs/benchmark/07-securite-conformite.md)**
+- **[FinOps & Coûts](retrodoc-depenses-eclairees/docs/benchmark/08-finops.md)**
+- **[Audit OCR](retrodoc-depenses-eclairees/docs/benchmark/09-audit-ocr.md)**
+- **[Contexte & Chunking](retrodoc-depenses-eclairees/docs/benchmark/10-contexte-chunking.md)**
+
+### Ateliers sectoriels
+- **[Atelier 1 — Connexion LLM](retrodoc-depenses-eclairees/docs/ateliers/atelier-1-connexion-llm.md)** → Pour équipe SAP/Prestataire
+- **[Atelier 2 — Extraction & Qualité](retrodoc-depenses-eclairees/docs/ateliers/atelier-2-extraction-qualite.md)** → Pour AIFE + Prestataire
+- **[Atelier 3 — Sizing](retrodoc-depenses-eclairees/docs/ateliers/atelier-3-sizing.md)** → Pour architectes SAP
+
+### Hors-scope et dette technique
+- **[Formats non gérés](retrodoc-depenses-eclairees/docs/hors-scope/formats-non-geres.md)** — Limitations actuelles
+- **[Dette technique](retrodoc-depenses-eclairees/docs/hors-scope/dette-technique.md)** — Code legacy (app/)
+- **[Backlog post-juin](retrodoc-depenses-eclairees/docs/hors-scope/backlog-post-juin.md)** — Améliorations futures
+
+### [Glossaire](retrodoc-depenses-eclairees/docs/glossaire.md) — Termes métier et techniques
+
+---
+
+## Points clés pour les contributeurs
+
+### 1. Dépendances critiques
+- **Albert API** (monopoint) : l'intégralité du pipeline dépend de cette API LLM
+- **Chorus/SAP** : source des données et orchestration
+- **PostgreSQL + Redis** : données et orchestration distribuée
+
+### 2. Risques identifiés (audit)
+1. Pas de fallback sur l'API Albert
+2. Absence de score de confiance systématique
+3. Pas de contrôle de la taille du contexte LLM
+4. Code legacy non migré (dossier `app/`)
+5. Tests e2e non automatisés en CI
+
+### 3. Modèle de données clé
+**Entité Document** :
+- `num_ej` (Engagement Juridique) + `num_pj` (Pièce Jointe)
+- `raw_text` → `extracted_text` → `structured_data` (JSON)
+- `confidence_score` (en cours de déploiement)
+- Catégories : ~50 (marché, RIB, RIB, facture, etc.)
+
+**Contrat JSON** : Voir [Contrat d'interface JSON](retrodoc-depenses-eclairees/docs/modele-donnees/contrat-interface-json.md)
+
+### 4. Prompts et extraction
+- **Classification** : Catégoriser parmi ~50 catégories avec score de confiance
+- **Content analysis** : Extraction structurée selon le type de document
+- **Validation** : JSON Schema strict (paramètre `response_format` Albert)
+- Voir [Prompts](retrodoc-depenses-eclairees/docs/pipeline/prompts.md)
+
+### 5. Qualité et métriques
+- **Métrique principale** : Taux de confiance + exactitude des champs critiques
+- **Tests** : Grist pour vérité terrain, e2e non automatisés
+- Voir [Matrice qualité](retrodoc-depenses-eclairees/docs/qualite/matrice-qualite.md)
+
+### 6. Orchestration distribuée
+- **Celery** : Workers parallèles (2 + 1 heavy_cpu)
+- **RateGate** : Rate limiting distribué (espacer appels LLM)
+- **Redis** : Broker de messages
+- Voir [Appel LLM](retrodoc-depenses-eclairees/docs/pipeline/appel-llm.md)
+
+---
+
+## Installation développement
+
+```bash
+# Python
+poetry install
+
+# Dépendances système (macOS)
+brew install libmagic tesseract tesseract-lang
+
+# Tests
+pytest --no-migrations tests
+
+# Linter/formatter
+ruff format && ruff check --fix
+```
+
+---
+
+## Intégrations externes
+
+| Service | Rôle | Authentification |
+|---------|------|------------------|
+| **API Albert** | LLM classification + extraction | Bearer token DINUM |
+| **Chorus/SAP (OData)** | Source EJ + PJ | OAuth2 SAP |
+| **Grist** | Données e2e + métriques | API key |
+| **Scalingo** | Infrastructure PaaS | Variable d'env |
+
+---
+
+## Où contribuer ?
+
+### Pour agents IA souhaitant **utiliser** la solution
+1. Lire [Vue d'ensemble](retrodoc-depenses-eclairees/docs/architecture/vue-ensemble.md)
+2. Consulter [Modèle de données](retrodoc-depenses-eclairees/docs/modele-donnees/)
+3. Tester via API REST Django (endpoints non documentés ici, voir code)
+
+### Pour agents IA souhaitant **contribuer** au projet
+1. **Bug fix** : Voir [Cas d'échec](retrodoc-depenses-eclairees/docs/qualite/cas-echec.md)
+2. **Amélioration extraction** : Consulter [Prompts](retrodoc-depenses-eclairees/docs/pipeline/prompts.md) + [Matrice qualité](retrodoc-depenses-eclairees/docs/qualite/matrice-qualite.md)
+3. **Optimisation LLM** : Voir [Benchmark LLMOps](retrodoc-depenses-eclairees/docs/benchmark/)
+4. **Intégration SAP** : Consulter [Déploiement](retrodoc-depenses-eclairees/docs/architecture/deploiement.md) + [Atelier 3](retrodoc-depenses-eclairees/docs/ateliers/atelier-3-sizing.md)
+5. **Code legacy** : Voir [Dette technique](retrodoc-depenses-eclairees/docs/hors-scope/dette-technique.md)
+
+---
+
+## Conventions du code
+
+- **Language** : Python (Django + Celery)
+- **Format** : Ruff (check + format)
+- **Tests** : pytest, pas de migrations (`--no-migrations`)
+- **ORM** : Django ORM
+- **Async** : Celery tasks (workers distribués)
+
+---
+
+## Statut du projet (2026-04-01)
+
+- **Commit de référence** : `278138d` (branch `main`)
+- **Étape** : Audit technique complété, reprise par l'AIFE pour intégration SAP
+- **Prochaines étapes** : Automatisation e2e, intégration SAP BTP, amélioration scores de confiance
+- **Interlocuteurs** : AIFE (maîtrise d'ouvrage), Prestataire AIFE (développement)
+
+---
+
+## Ressources supplémentaires
+
+- **Repositoire** : https://github.com/betagouv/depenses-eclairees
+- **Site de doc** : https://betagouv.github.io/depenses-eclairees/
+- **Code legacy** : `docia/app/` (pré-Django, à migrer)
+- **Modèles** : `docia/models.py` (source de vérité)
+
+---
+
+## Aide pour agents IA
+
+Si vous contribuez à ce projet :
+- Lire le [Glossaire](retrodoc-depenses-eclairees/docs/glossaire.md) pour la terminologie métier
+- Consulter la [Matrice qualité](retrodoc-depenses-eclairees/docs/qualite/matrice-qualite.md) pour les critères d'acceptation
+- Vérifier les [Cas d'échec](retrodoc-depenses-eclairees/docs/qualite/cas-echec.md) pour les pièges connus
+- Prendre en compte les [5 risques identifiés](retrodoc-depenses-eclairees/docs/index.md) dans vos décisions
+
+---
+
+*Generated for AI agents by Dépenses Éclairées team. Last updated: 2026-04-01*
