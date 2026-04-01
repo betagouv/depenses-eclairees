@@ -148,6 +148,18 @@
               {% endif %}
             </span>
           </li>
+          <li class="fr-list__item">
+            <span class="fr-text--sm fr-text--mention">Annexe(s) financière(s) citée(s)&nbsp;</span>
+            <span class="fr-text--sm">
+              {% if annexe_financiere is None %}
+                <span class="fr-text--mention">Non mentionnée</span>
+              {% elif annexe_classification %}
+                {{ annexe_classification|join:", " }}
+              {% else %}
+                <span class="fr-text--mention">Non mentionnée</span>
+              {% endif %}
+            </span>
+          </li>
           {% endwith %}
         </ul>
       </div>
