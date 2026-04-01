@@ -6,6 +6,7 @@ site_url: !ENV [SITE_URL, "https://betagouv.github.io/depenses-eclairees/"]
 theme:
   name: material
   language: fr
+  font: false
   palette:
     - scheme: default
       primary: blue
@@ -27,6 +28,9 @@ theme:
     - toc.follow
     - search.highlight
     - content.code.copy
+
+extra_css:
+  - assets/extra.css
 
 plugins:
   - search
