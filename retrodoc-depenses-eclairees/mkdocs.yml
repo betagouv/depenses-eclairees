@@ -34,6 +34,54 @@ extra_css:
 
 plugins:
   - search
+  - llmstxt:
+      markdown_description: "Documentation technique du projet Dépenses Éclairées — Pipeline d'extraction de documents de dépenses publiques. Dépenses Éclairées automatise l'extraction et l'analyse structurée de documents gouvernementaux français via LLM (Albert/Mistral) et OCR. Stack: Django 5.2 + Celery + PostgreSQL 16 + Albert API + Tesseract."
+      sections:
+        Architecture:
+          - architecture/vue-ensemble.md: "Vue d'ensemble et composants"
+          - architecture/flux-donnees.md: "Flux de données"
+          - architecture/composants.md: "Détail des composants"
+          - architecture/deploiement.md: "Infrastructure Scalingo"
+        Pipeline:
+          - pipeline/ingestion.md: "Synchronisation Chorus/SAP"
+          - pipeline/ocr-extraction.md: "OCR et extraction texte"
+          - pipeline/appel-llm.md: "Appel API Albert"
+          - pipeline/prompts.md: "Spécifications des prompts"
+          - pipeline/parsing-reponse.md: "Validation JSON Schema"
+          - pipeline/stockage.md: "Persistance des résultats"
+        "Modèle de données":
+          - modele-donnees/schema-base.md: "Diagramme ER"
+          - modele-donnees/contrat-interface-json.md: "Structure JSON"
+          - modele-donnees/champ-objet-depense.md: "Spécifications métier"
+          - modele-donnees/tailles-reelles.md: "Volumétrie et distributions"
+        Qualité:
+          - qualite/metriques-existantes.md: "Métriques de suivi"
+          - qualite/matrice-qualite.md: "Critères d'acceptation"
+          - qualite/taux-remplissage.md: "Scores de confiance"
+          - qualite/cas-echec.md: "Scénarios problématiques"
+        Ateliers:
+          - ateliers/atelier-1-connexion-llm.md: "Connexion LLM"
+          - ateliers/atelier-2-extraction-qualite.md: "Extraction & Qualité"
+          - ateliers/atelier-3-sizing.md: "Sizing architectes"
+        "Benchmark LLMOps":
+          - benchmark/index.md: "Synthèse de l'audit"
+          - benchmark/01-promptops.md: "PromptOps & Versionnement"
+          - benchmark/02-resilience-quotas.md: "Résilience & Quotas"
+          - benchmark/03-confiance-logprobs.md: "Confiance & Logprobs"
+          - benchmark/04-hallucinations-validation.md: "Hallucinations & Validation"
+          - benchmark/05-observabilite.md: "Observabilité & Télémétrie"
+          - benchmark/06-evaluation-continue.md: "Évaluation Continue"
+          - benchmark/07-securite-conformite.md: "Sécurité & Conformité"
+          - benchmark/08-finops.md: "FinOps & Coûts"
+          - benchmark/09-audit-ocr.md: "Audit OCR"
+          - benchmark/10-contexte-chunking.md: "Contexte & Chunking"
+        "Hors-scope":
+          - hors-scope/formats-non-geres.md: "Limitations actuelles"
+          - hors-scope/dette-technique.md: "Code legacy"
+          - hors-scope/backlog-post-juin.md: "Améliorations futures"
+        Référence:
+          - glossaire.md: "Glossaire métier et technique"
+      full_output: llms-full.txt
 
 markdown_extensions:
   - admonition

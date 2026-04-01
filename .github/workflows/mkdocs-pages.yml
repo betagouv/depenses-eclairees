@@ -31,12 +31,24 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version-file: "pyproject.toml"
 
-      - name: Install MkDocs dependencies
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Setup local virtual environment
         run: |
-          python -m pip install --upgrade pip
-          pip install mkdocs-material pymdown-extensions
+          poetry config virtualenvs.create true --local
+          poetry config virtualenvs.in-project true --local
+
+      - name: Cache virtualenv
+        uses: actions/cache@v4
+        with:
+          path: ./.venv
+          key: venv-${{ runner.os }}-${{ runner.python-version }}-${{ hashFiles('poetry.lock') }}
+
+      - name: Install Python dependencies
+        run: poetry install --with dev
 
       - name: Build documentation
         working-directory: retrodoc-depenses-eclairees
@@ -46,7 +58,7 @@ jobs:
         run: |
           export SITE_URL="https://$REPO_OWNER.github.io/$REPO_NAME/"
           echo "Using SITE_URL=$SITE_URL"
-          mkdocs build \
+          poetry run mkdocs build \
             --strict
 
       - name: Upload Pages artifact
