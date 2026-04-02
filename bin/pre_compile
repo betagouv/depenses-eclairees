@@ -1,0 +1,1 @@
+find /app/.apt/usr/lib/libreoffice/ -name "*.so" -exec ln -sf {} /app/.apt/lib/ \;
