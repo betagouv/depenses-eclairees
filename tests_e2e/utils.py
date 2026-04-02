@@ -345,7 +345,7 @@ def analyze_content_quality_test(
     multi_line_coef=1,
     use_cache=False,
     max_workers=10,
-    llm_model="openweight-medium",
+    llm_model="mistral-medium-2508",
     debug_mode=False,
 ):
     """Test de qualité des informations extraites par le LLM.

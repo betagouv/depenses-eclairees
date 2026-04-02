@@ -15,6 +15,7 @@ sys.path.append(".")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
 django.setup()
 
+from app.grist import get_data_from_grist  # noqa: E402
 from docia.file_processing.llm.client import LLMClient  # noqa: E402
 from tests_e2e.test_quality_acte_engagement import get_comparison_functions  # noqa: E402
 from tests_e2e.utils import (  # noqa: E402
@@ -72,36 +73,21 @@ def create_batch_test_ocr(multi_line_coef=1):
     pour chaque fichier dans data/test/assets, puis lance le test de qualité
     comme test_quality_acte_engagement.
     """
-    csv_path = CSV_DIR_PATH / "test_ocr.csv"
-
-    if not csv_path.exists():
-        raise FileNotFoundError(f"Fichier de test absent: {csv_path}. Déposez test_ocr.csv dans le dossier data/test.")
-
-    df_test = pd.read_csv(csv_path)
-    df_test.fillna("", inplace=True)
-
-    # Colonne pbm_ocr : liste de colonnes avec problème OCR (optionnelle dans le CSV)
-    if "pbm_ocr" not in df_test.columns:
-        df_test["pbm_ocr"] = [[] for _ in range(len(df_test))]
-    else:
-        df_test["pbm_ocr"] = df_test["pbm_ocr"].apply(
-            lambda x: json.loads(x) if isinstance(x, str) and str(x).strip() else []
-        )
-
-    # Étape d'extraction de texte via l'API OCR (absent dans test_quality_acte_engagement)
-    logger.info("Extraction du texte via OCR pour %d document(s)...", len(df_test))
-    df_test["text"] = extract_texts_via_ocr(df_test, max_workers=10)
-
-    # Même prétraitement que test_quality_acte_engagement
+    df_test = get_data_from_grist(table="Acte_engagement_gt").query("commentaire == 'traité'")
+    df_test["montant_ht"] = df_test["montant_ht"].apply(lambda x: f"{float(x):.2f}" if x else "")
+    df_test["montant_ttc"] = df_test["montant_ttc"].apply(lambda x: f"{float(x):.2f}" if x else "")
+    df_test["montant_tva"] = df_test["montant_tva"].apply(lambda x: f"{float(x):.2f}" if x else "")
     df_test["rib_mandataire"] = df_test["rib_mandataire"].apply(lambda x: json.loads(x))
     df_test["cotraitants"] = df_test["cotraitants"].apply(lambda x: json.loads(x))
     df_test["sous_traitants"] = df_test["sous_traitants"].apply(lambda x: json.loads(x))
     df_test["duree"] = df_test["duree"].apply(lambda x: json.loads(x))
     df_test["rib_autres"] = df_test["rib_autres"].apply(lambda x: json.loads(x))
-    df_test["siret_mandataire"] = df_test["siret_mandataire"].astype(str).apply(lambda x: x.split(".")[0])
-    df_test["siren_mandataire"] = df_test["siren_mandataire"].astype(str).apply(lambda x: x.split(".")[0])
-    df_test["montant_ht"] = df_test["montant_ht"].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "")
-    df_test["montant_ttc"] = df_test["montant_ttc"].apply(lambda x: f"{x:.2f}" if isinstance(x, (int, float)) else "")
+    df_test["montants_en_annexe"] = df_test["montants_en_annexe"].apply(lambda x: json.loads(x))
+    df_test["forme_marche"] = df_test["forme_marche"].apply(lambda x: json.loads(x))
+
+    # Étape d'extraction de texte via l'API OCR (absent dans test_quality_acte_engagement)
+    logger.info("Extraction du texte via OCR pour %d document(s)...", len(df_test))
+    df_test["text"] = extract_texts_via_ocr(df_test)
 
     return analyze_content_quality_test(df_test, "acte_engagement", multi_line_coef=multi_line_coef)
 
@@ -116,3 +102,7 @@ def test_ocr_quality_global_accuracy():
     comparison_functions = get_comparison_functions()
     global_accuracy = check_global_statistics(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
     assert global_accuracy > MIN_GLOBAL_ACCURACY, f"Accuracy globale {global_accuracy:.2%} <= {MIN_GLOBAL_ACCURACY:.0%}"
+
+
+if __name__ == "__main__":
+    test_ocr_quality_global_accuracy()

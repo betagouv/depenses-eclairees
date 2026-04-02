@@ -41,7 +41,7 @@ def get_comparison_functions():
     }
 
 
-def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-medium", debug_mode=False):
+def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="mistral-medium-2508", debug_mode=False):
     """Test de qualité des informations extraites par le LLM."""
 
     df_test = get_data_from_grist(table="Devis_gt").query("commentaire == 'traité'")

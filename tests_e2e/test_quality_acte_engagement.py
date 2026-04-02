@@ -231,7 +231,7 @@ def get_comparison_functions():
     }
 
 
-def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-medium", debug_mode=False):
+def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="mistral-medium-2508", debug_mode=False):
     """Test de qualité des informations extraites par le LLM."""
 
     # Lecture du fichier CSV
@@ -259,7 +259,7 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-m
 
 
 if __name__ == "__main__":
-    df_test, df_result, df_merged = create_batch_test(llm_model="mistral-medium-2508", debug_mode=True, max_workers=30)
+    df_test, df_result, df_merged = create_batch_test(llm_model="mistral-medium-2508")
 
     EXCLUDED_COLUMNS = ["objet_marche", "administration_beneficiaire"]
 
