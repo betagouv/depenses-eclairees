@@ -157,7 +157,7 @@
   </div>
 {% endif %}
 
-{# Durée du marché #}
+{# Durée du marché : accordéon « Durée », affiché une fois (alloti ou non) #}
   {% with duree=data.duree_marche %}
     {% if duree and duree.duree_initiale %}
       <section class="fr-accordion" data-fr-js-accordion="true">
@@ -234,45 +234,7 @@
   {% endwith %}
 
 {% else %}
-  {# Marché alloti : section Durée du marché (pour les lots "identique à la durée du marché") puis accordéon par lot #}
-  {% with duree=data.duree_marche %}
-    {% if duree and duree.duree_initiale %}
-      <section class="fr-accordion" data-fr-js-accordion="true">
-        <h3 class="fr-accordion__title">
-          <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_ccap_duree_marche" data-fr-js-collapse-button="true">
-            Durée du marché
-          </button>
-        </h3>
-        <div class="fr-collapse" id="{{ doc.id }}_ccap_duree_marche" data-fr-js-collapse="true" style="--collapse: -48px;">
-          <p class="fr-mb-2v">
-            Durée d'exécution du marché : <strong>{{ duree.duree_initiale }} mois</strong>
-            {% if duree.nb_reconductions %}
-              (reconductible)
-            {% else %}
-              (non reconductible)
-            {% endif %}
-          </p>
-          {% if duree.nb_reconductions %}
-            <ul class="fr-list">
-              {% with value=duree.nb_reconductions %}
-                {% include "docia/details_ej/blocks/attribute.html" with title="Nombre de reconductions" id=id_prefix|add:"duree_marche_nb_reconductions" %}
-              {% endwith %}
-              {% if duree.duree_reconduction %}
-                {% with value=duree.duree_reconduction suffix=" mois" %}
-                  {% include "docia/details_ej/blocks/attribute.html" with title="Durée d'une reconduction" id=id_prefix|add:"duree_marche_duree_reconduction" %}
-                {% endwith %}
-              {% endif %}
-            </ul>
-          {% endif %}
-        </div>
-      </section>
-    {% else %}
-      <div class="document-section--disabled">
-        <span class="document-section--disabled__title">Durée du marché – Information non disponible dans le document.</span>
-      </div>
-    {% endif %}
-  {% endwith %}
-
+  {# Marché alloti : accordéon par lot (durée globale du marché : section « Durée » ci-dessus) #}
   {% for lot in data.lots %}
     <section class="fr-accordion" data-fr-js-accordion="true">
       <h3 class="fr-accordion__title">
