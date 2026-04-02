@@ -60,12 +60,4 @@ flowchart LR
     4. **Code legacy non migré** — Le dossier `app/` contient du code pré-Django encore importé.
     5. **Tests de qualité non automatisés** — Les tests e2e ne sont pas exécutés en CI.
 
-## Navigation par atelier
-
-| Atelier | Public | Pages clés |
-|---|---|---|
-| [Atelier 1 — Connexion LLM](ateliers/atelier-1-connexion-llm.md) | Équipe SAP / Prestataire | [Appel LLM](pipeline/appel-llm.md), [Prompts](pipeline/prompts.md) |
-| [Atelier 2 — Extraction & Qualité](ateliers/atelier-2-extraction-qualite.md) | AIFE + Prestataire | [Contrat JSON](modele-donnees/contrat-interface-json.md), [Matrice qualité](qualite/matrice-qualite.md) |
-| [Atelier 3 — Sizing](ateliers/atelier-3-sizing.md) | Architectes SAP | [Déploiement](architecture/deploiement.md), [Tailles réelles](modele-donnees/tailles-reelles.md) |
-
 ---

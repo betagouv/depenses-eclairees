@@ -59,10 +59,6 @@ plugins:
           - qualite/matrice-qualite.md: "Critères d'acceptation"
           - qualite/taux-remplissage.md: "Scores de confiance"
           - qualite/cas-echec.md: "Scénarios problématiques"
-        Ateliers:
-          - ateliers/atelier-1-connexion-llm.md: "Connexion LLM"
-          - ateliers/atelier-2-extraction-qualite.md: "Extraction & Qualité"
-          - ateliers/atelier-3-sizing.md: "Sizing architectes"
         "Benchmark LLMOps":
           - benchmark/index.md: "Synthèse de l'audit"
           - benchmark/01-promptops.md: "PromptOps & Versionnement"
@@ -127,10 +123,6 @@ nav:
     - Matrice qualité: qualite/matrice-qualite.md
     - Scores de confiance: qualite/taux-remplissage.md
     - Cas d'échec: qualite/cas-echec.md
-  - Ateliers:
-    - "Atelier 1 — Connexion LLM": ateliers/atelier-1-connexion-llm.md
-    - "Atelier 2 — Extraction & Qualité": ateliers/atelier-2-extraction-qualite.md
-    - "Atelier 3 — Sizing": ateliers/atelier-3-sizing.md
   - "Benchmark LLMOps":
     - "Synthèse de l'audit": benchmark/index.md
     - "PromptOps & Versionnement": benchmark/01-promptops.md
