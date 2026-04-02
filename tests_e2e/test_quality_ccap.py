@@ -178,7 +178,7 @@ def get_comparison_functions():
     }
 
 
-def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-medium", debug_mode=False):
+def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="mistral-medium-2508", debug_mode=False):
     """Test de qualité des informations extraites par le LLM."""
 
     df_test = get_data_from_grist(table="Ccap_gt").query("commentaire == 'traité'")
@@ -208,7 +208,7 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-m
 
 if __name__ == "__main__":
     df_test, df_result, df_merged = create_batch_test(
-        multi_line_coef=1, max_workers=30, llm_model="mistral-medium-2508", debug_mode=True
+        llm_model="mistral-medium-2508",
     )
 
     INCLUDED_COLUMNS = [

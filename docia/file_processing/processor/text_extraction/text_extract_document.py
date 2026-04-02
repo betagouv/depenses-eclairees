@@ -16,9 +16,7 @@ import pymupdf
 import tesserocr
 from PIL import Image
 
-from app.utils import count_words
 from docia.file_processing.llm.client import LLMClient
-from docia.file_processing.processor.pdf_drawings import add_drawings_to_pdf
 
 logger = logging.getLogger("docia." + __name__)
 
@@ -36,34 +34,20 @@ def extract_text_from_pdf(file_content: bytes, word_threshold=50, ocr_tool: str 
     Returns:
         tuple: (texte extrait, booléen indiquant si l'OCR a été utilisé)
     """
-    doc = pymupdf.Document(stream=file_content)
+    is_ocr_used = True
 
-    # Essayer d'extraire directement le texte dans l'ordre vertical
-    text = "\n".join([page.get_text(sort=True) for page in doc]).strip()
-    is_ocr_used = False
-
-    # Compter les mots dans le texte extrait
-    word_count = count_words(text)
-
-    # Si suffisamment de mots, c'est un pdf natif
-    if word_count >= word_threshold:
-        doc_with_drawings = add_drawings_to_pdf(doc)
-        text = "\n".join([page.get_text(sort=True) for page in doc_with_drawings]).strip()
-
-    # Si peu de mots sont extraits, c'est peut-être une image scannée → OCR
+    if ocr_tool == "tesseract":
+        # OCR local : PDF → pixmap (pymupdf) → image → tesserocr
+        doc = pymupdf.Document(stream=file_content)
+        parts = []
+        for i in range(len(doc)):
+            pix = doc.load_page(i).get_pixmap(matrix=pymupdf.Matrix(2, 2))
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            parts.append(tesserocr.image_to_text(img, lang="fra").strip())
+        text = "\n\n".join(parts).strip()
     else:
-        is_ocr_used = True
-        if ocr_tool == "tesseract":
-            # OCR local : PDF → pixmap (pymupdf) → image → tesserocr
-            parts = []
-            for i in range(len(doc)):
-                pix = doc.load_page(i).get_pixmap(matrix=pymupdf.Matrix(2, 2))
-                img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-                parts.append(tesserocr.image_to_text(img, lang="fra").strip())
-            text = "\n\n".join(parts).strip()
-        else:
-            llm_client = LLMClient()
-            text = llm_client.ocr_pdf(file_content)
+        llm_client = LLMClient()
+        text = llm_client.ocr_pdf(file_content)
 
     return text, is_ocr_used
 
