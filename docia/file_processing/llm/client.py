@@ -25,15 +25,22 @@ def _build_pdf_document_payload(pdf_content: bytes) -> dict:
     return {"type": "document_url", "document_url": data_uri}
 
 
-def _extract_markdown_from_ocr_response(response_data: dict) -> str:
+def _extract_markdown_from_ocr_response(
+    response_data: dict, offset_pages: int | None = None, total_pages: int | None = None
+) -> tuple[str, int]:
     """Extrait le texte markdown de la réponse OCR (toutes les pages)."""
+    assert not (offset_pages is None) ^ (total_pages is None), "offset_pages and total_pages must be provided together"
+    if offset_pages is None:
+        offset_pages = 0
     pages = response_data.get("pages", [])
-    total = len(pages)
+    count_pages = len(pages)
+    page_total = count_pages if total_pages is None else total_pages
     parts = []
     for i, page in enumerate(pages, start=1):
         content = (page.get("markdown") or "").strip()
-        parts.append(f"[[PAGE {i} / {total}]]\n{content}\n[[FIN PAGE {i} / {total}]]")
-    return "\n\n".join(parts).strip()
+        page_n = offset_pages + i
+        parts.append(f"[[PAGE {page_n} / {page_total}]]\n{content}\n[[FIN PAGE {page_n} / {page_total}]]")
+    return "\n\n".join(parts).strip(), count_pages
 
 
 class LLMApiError(Exception):
@@ -82,7 +89,7 @@ class LLMClient:
         http_client: httpx.Client | None = None,
         ocr_http_client: httpx.Client | None = None,
         use_rate_limiter: bool | None = None,
-        timeout: float = 180.0,
+        timeout: float = 120.0,
     ):
         if use_rate_limiter is None:
             use_rate_limiter = settings.ALBERT_USE_RATE_LIMITER
@@ -127,6 +134,9 @@ class LLMClient:
         retry_short_delay: float,
         limiter: RateGate | None = None,
     ) -> T:
+        assert max_retries >= 0, "max_retries must be >= 0"
+        assert retry_delay >= 0, "retry_delay must be >= 0"
+        assert retry_short_delay >= 0, "retry_short_delay must be >= 0"
         """Appelle func_api() en boucle avec retry. func_api doit lever LLMApiError en cas d'erreur."""
         for attempt in range(max_retries + 1):
             if limiter:
@@ -213,15 +223,19 @@ class LLMClient:
         max_retries: int = 3,
         retry_delay: float = 60,
         retry_short_delay: float = 10,
-    ) -> str:
+        offset_pages: int | None = None,
+        total_pages: int | None = None,
+    ) -> tuple[str, int]:
         """
-        Envoie le contenu d'un PDF à l'API OCR et retourne le texte extrait (markdown).
+        Envoie le contenu d'un PDF à l'API OCR et retourne le texte extrait (markdown) et nombre de pages.
 
         Retry : 429 (retry_delay), 5XX et erreurs de connexion (retry_short_delay).
-        À utiliser dans extract_text_from_pdf (processor) quand le PDF est un scan / peu de texte.
-        rate_per_minute: Override optionnel pour la limite (sinon depuis settings par modèle, défaut 100).
+        rate_per_minute: Override optionnel pour la limite (sinon depuis settings par modèle).
+
+        Return [text, nb_pages]
         """
-        max_retries = max(0, max_retries)
+        assert offset_pages is None or offset_pages >= 0, "offset_pages must be >= 0"
+        assert total_pages is None or total_pages >= 0, "total_pages must be >= 0"
         url = urljoin(self.base_url.rstrip("/") + "/", "/ocr".lstrip("/"))
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
         payload = {
@@ -230,7 +244,7 @@ class LLMClient:
             "include_image_base64": False,
         }
 
-        def _do_call() -> str:
+        def _do_call() -> tuple[str, int]:
             post = self._ocr_http_client.post if self._ocr_http_client else httpx.post
             try:
                 response = post(url, headers=headers, json=payload, timeout=self.timeout)
@@ -241,7 +255,9 @@ class LLMClient:
                     details=str(e),
                 ) from e
             if response.is_success:
-                return _extract_markdown_from_ocr_response(response.json())
+                return _extract_markdown_from_ocr_response(
+                    response.json(), offset_pages=offset_pages, total_pages=total_pages
+                )
             raise LLMApiError(
                 f"OCR API error: {response.status_code}",
                 code=f"HTTP_{response.status_code}",

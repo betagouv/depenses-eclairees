@@ -3,6 +3,7 @@ Extraction de texte depuis les documents : PDF, images, doc, docx, odt, txt.
 """
 
 import io
+import itertools
 import logging
 import os
 import re
@@ -32,13 +33,14 @@ def extract_text_from_pdf(file_content: bytes, word_threshold=50, ocr_tool: str 
         ocr_tool (str): "mistral-ocr" (défaut) pour l'API Albert/OpenGateLLM, "tesseract" pour OCR local Tesseract
 
     Returns:
-        tuple: (texte extrait, booléen indiquant si l'OCR a été utilisé)
+        tuple: (text, is_ocr, nb_pages)
     """
     is_ocr_used = True
+    doc = pymupdf.Document(stream=file_content)
+    nb_pages = doc.page_count
 
     if ocr_tool == "tesseract":
         # OCR local : PDF → pixmap (pymupdf) → image → tesserocr
-        doc = pymupdf.Document(stream=file_content)
         parts = []
         for i in range(len(doc)):
             pix = doc.load_page(i).get_pixmap(matrix=pymupdf.Matrix(2, 2))
@@ -47,9 +49,30 @@ def extract_text_from_pdf(file_content: bytes, word_threshold=50, ocr_tool: str 
         text = "\n\n".join(parts).strip()
     else:
         llm_client = LLMClient()
-        text = llm_client.ocr_pdf(file_content)
+        # If it's a small pdf, send everything at once
+        # Else, send page by page
+        size_limit = 5 * 1000 * 1000  # 5Mo
+        page_limit = 15
+        if len(file_content) < size_limit and doc.page_count < page_limit:
+            text, nb_pages = llm_client.ocr_pdf(file_content)
+        else:
+            logger.info("Document is too big, chunking the processing")
+            text_pages = []
+            batch_size = 3
+            for batch in itertools.batched(range(1, nb_pages + 1), batch_size):
+                from_page = batch[0]
+                to_page = batch[-1]
+                logger.info("Process pages from %s to %s (total=%s)", from_page, to_page, nb_pages)
+                doc_page = pymupdf.Document()
+                doc_page.insert_pdf(doc, from_page=from_page, to_page=to_page)
+                buff = io.BytesIO()
+                doc_page.save(buff)
+                one_page_content = buff.getvalue()
+                text_page, _ = llm_client.ocr_pdf(one_page_content, offset_pages=from_page - 1, total_pages=nb_pages)
+                text_pages.append(text_page)
+            text = "\n\n".join(text_pages)
 
-    return text, is_ocr_used
+    return text, is_ocr_used, nb_pages
 
 
 def extract_text_from_docx(file_content: bytes, file_path: str):

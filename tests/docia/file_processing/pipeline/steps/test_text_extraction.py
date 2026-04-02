@@ -12,7 +12,7 @@ from tests.factories.file_processing import ProcessDocumentStepFactory
 @contextmanager
 def patch_extract_text():
     with patch("docia.file_processing.processor.text_extraction.process_file", autospec=True) as m:
-        m.return_value = ("Hello World", False, 2)
+        m.return_value = ("Hello World", False, 2, 1)
         yield m
 
 
@@ -28,6 +28,7 @@ def test_task_extract_info():
     assert step.job.document.text == "Hello World"
     assert not step.job.document.is_ocr
     assert step.job.document.nb_mot == 2
+    assert step.job.document.nb_pages == 1
     assert step.job.document.updated_at > last_updated_at
 
 
@@ -47,6 +48,7 @@ def test_skip_unsuported_file_type():
     assert step.job.document.text is None
     assert step.job.document.is_ocr is None
     assert step.job.document.nb_mot is None
+    assert step.job.document.nb_pages is None
 
     # next step should be marked as skipped aswell
     step2.refresh_from_db()
@@ -61,7 +63,7 @@ def test_empty_text_extracted():
         job=step.job,
     )
     with patch_extract_text() as m:
-        m.return_value = ("", False, 0)
+        m.return_value = ("", False, 0, 0)
         task_extract_text(step.id)
     step.refresh_from_db()
     assert step.status == ProcessingStatus.FAILURE
@@ -69,6 +71,7 @@ def test_empty_text_extracted():
     assert step.job.document.text is None
     assert step.job.document.is_ocr is None
     assert step.job.document.nb_mot is None
+    assert step.job.document.nb_pages is None
 
     # next step should be marked as skipped
     step2.refresh_from_db()
