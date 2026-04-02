@@ -74,7 +74,10 @@ class EngagementsSync:
                 existing_engagement = existing_engagements_dict.get(activity.num_ej)
                 if existing_engagement:
                     # Only update if the new date is newer
-                    if activity.received_at > existing_engagement.external_updated_at:
+                    if (
+                        not existing_engagement.external_updated_at
+                        or activity.received_at > existing_engagement.external_updated_at
+                    ):
                         existing_engagement.external_updated_at = activity.received_at
                         existing_engagement.updated_at = timezone.now()
                         engagements_to_update.append(existing_engagement)
