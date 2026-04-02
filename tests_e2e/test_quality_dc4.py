@@ -22,6 +22,7 @@ from tests_e2e.utils import (  # noqa: E402
     compare_mandatee_bank_account,
     compare_normalized_string,
     compare_with_llm,
+    get_fields_with_comparison_errors,
 )
 
 logger = logging.getLogger("docia." + __name__)
@@ -87,3 +88,10 @@ if __name__ == "__main__":
     check_quality_one_row(df_merged, 0, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
 
     check_global_statistics(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
+
+    fields_with_errors = get_fields_with_comparison_errors(
+        df_merged.sort_values(by="filename"), comparison_functions, excluded_columns=EXCLUDED_COLUMNS
+    )
+
+    for v in fields_with_errors.values():
+        print(json.dumps(v))

@@ -261,11 +261,11 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="openweight-m
 if __name__ == "__main__":
     df_test, df_result, df_merged = create_batch_test(llm_model="mistral-medium-2508", debug_mode=True, max_workers=30)
 
-    EXCLUDED_COLUMNS = ["objet_marche", "administration_beneficiaire", "societe_principale"]
+    EXCLUDED_COLUMNS = ["objet_marche", "administration_beneficiaire"]
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "mode_reconduction", comparison_functions, only_errors=True)
+    check_quality_one_field(df_merged, "societe_principale", comparison_functions, only_errors=True)
 
     check_quality_one_row(df_merged, 26, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
 

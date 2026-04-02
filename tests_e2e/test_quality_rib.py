@@ -18,6 +18,7 @@ from tests_e2e.utils import (  # noqa: E402
     check_quality_one_row,
     compare_address,
     compare_normalized_string,
+    get_fields_with_comparison_errors,
 )
 
 logger = logging.getLogger("docia." + __name__)
@@ -46,7 +47,7 @@ def get_comparison_functions():
 def create_batch_test(multi_line_coef=1):
     """Test de qualité des informations extraites par le LLM."""
 
-    df_test = get_data_from_grist(table="Rib_gt")
+    df_test = get_data_from_grist(table="Rib_gt").query("commentaire == 'traité'")
     df_test.fillna("", inplace=True)
     df_test["adresse_postale_titulaire"] = df_test["adresse_postale_titulaire"].apply(lambda x: json.loads(x))
 
@@ -66,3 +67,10 @@ if __name__ == "__main__":
     check_quality_one_row(df_merged, 26, comparison_functions)
 
     check_global_statistics(df_merged, comparison_functions, excluded_columns=["domiciliation", "banque"])
+
+    fields_with_errors = get_fields_with_comparison_errors(
+        df_merged.sort_values(by="filename"), comparison_functions, excluded_columns=["domiciliation", "banque"]
+    )
+
+    for v in fields_with_errors.values():
+        print(json.dumps(v))
