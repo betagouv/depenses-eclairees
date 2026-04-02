@@ -197,7 +197,8 @@ def test_ccap_avec_lots(client):
     text = _login_and_get_ccap(client, ej, doc)
 
     assert "Forme du marché" in text and "plusieurs lots" in text
-    assert "Durée du marché" in text and "36 mois" in text
+    assert "Durée" in text and "36 mois" in text
+    assert "Durée du marché" not in text
 
     assert "Lot 1" in text and "Prestations de nettoyage" in text
     assert (
