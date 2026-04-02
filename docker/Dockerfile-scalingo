@@ -15,7 +15,7 @@ ENV PATH="/root/.local/bin:$PATH"
 COPY Aptfile .
 RUN apt update
 RUN mkdir -p /usr/share/man/man1/
-RUN apt install -y --no-install-recommends default-jre
+RUN apt install -y --no-install-recommends openjdk-25-jre-headless
 RUN apt install -y --no-install-recommends $(cat Aptfile)
 
 # Install Python deps
