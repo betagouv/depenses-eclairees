@@ -192,7 +192,7 @@ def test_acte_engagement(client):
         "objet_marche": "[[objet_marche]]",
         "administration_beneficiaire": "[[administration_beneficiaire]]",
         "societe_principale": "[[societe_principale]]",
-        "siret_mandataire": "12345678901234",
+        "siret_mandataire": "73282932000074",
         "siren_mandataire": "123456789",
         "rib_mandataire": {"iban": "[[rib_mandataire.iban]]", "banque": "[[rib_mandataire.banque]]"},
         "cotraitants": [
@@ -264,7 +264,7 @@ def test_acte_engagement(client):
 
     # Section Titulaire
     assert "123 456 789" in text
-    assert "123 456 789 012 34" in text
+    assert "732 829 320 000 74" in text
     assert "Oui" in text  # En groupement
 
     # Section Prix
@@ -443,9 +443,9 @@ def test_sous_traitance(client):
             "ville": "Paris",
             "pays": "France",
         },
-        "siret_titulaire": "12345678901234",
+        "siret_titulaire": "73282932000074",
         "societe_sous_traitant": "[[societe_sous_traitant]]",
-        "siret_sous_traitant": "98765432109876",
+        "siret_sous_traitant": "44306184100047",
         "montant_sous_traitance_ht": "10000.00",
         "montant_sous_traitance_ttc": "12000.00",
         "montant_tva": "0.20",
@@ -470,8 +470,8 @@ def test_sous_traitance(client):
     # Titulaire / Sous-traitant : libellé et SIRET (une ligne chacun)
     assert "Titulaire – [[societe_principale]] – SIRET" in response.text
     assert "Sous-traitant – [[societe_sous_traitant]] – SIRET" in response.text
-    assert "123 456 789 012 34" in response.text
-    assert "987 654 321 098 76" in response.text
+    assert "732 829 320 000 74" in response.text
+    assert "443 061 841 000 47" in response.text
 
     # Lignes sous le sous-traitant : paiement direct, avance, prestations, signé le, durée
     # (style acte_engagement : icône check/close + Oui/Non)

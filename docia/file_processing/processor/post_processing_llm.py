@@ -53,6 +53,55 @@ def try_correct_false_iban(iban: str) -> str | None:
     return None
 
 
+def _luhn_valid(digits: str) -> bool:
+    """Contrôle Luhn sur une chaîne de chiffres (algorithme identique au check digit INSEE / SIRET)."""
+    total = 0
+    for i, ch in enumerate(reversed(digits)):
+        n = ord(ch) - 48
+        if i % 2 == 1:
+            n *= 2
+            if n > 9:
+                n -= 9
+        total += n
+    return total % 10 == 0
+
+
+def check_consistency_siret(siret: str) -> bool:
+    """
+    Vérifie la validité d'un SIRET (14 chiffres, clé Luhn).
+    Chaîne vide ou None : considéré comme cohérent (pas de rejet sur ce critère seul).
+    """
+    if not siret:
+        return True
+    if len(siret) != 14 or not siret.isdigit():
+        return False
+    return _luhn_valid(siret)
+
+
+def try_correct_false_siret(siret: str) -> str | None:
+    """
+    Tente de corriger un SIRET invalide (Luhn) en supposant une erreur d'un seul caractère
+    (ex. lecture OCR). Même logique que try_correct_false_iban : une seule correction
+    candidate possible est renvoyée, sinon None.
+    """
+    if not siret or len(siret) != 14 or not siret.isdigit():
+        return None
+
+    valid_candidates: set[str] = set()
+
+    for i in range(14):
+        for char in "0123456789":
+            if char == siret[i]:
+                continue
+            candidate = siret[:i] + char + siret[i + 1 :]
+            if check_consistency_siret(candidate):
+                valid_candidates.add(candidate)
+
+    if len(valid_candidates) == 1:
+        return valid_candidates.pop()
+    return None
+
+
 ################################################################################
 ## Acte d'engagement : post-traitement des informations
 
@@ -310,7 +359,8 @@ def post_processing_societe_principale(name: Any) -> str | None:
 
 def post_processing_siret(siret: str) -> str:
     """
-    Post-traitement du SIRET pour le nettoyer.
+    Post-traitement du SIRET : nettoyage, validation de la clé Luhn, correction OCR
+    éventuelle (une erreur par numéro, si la correction est unique).
     """
 
     if not siret:
@@ -323,11 +373,13 @@ def post_processing_siret(siret: str) -> str:
     if re.fullmatch(r"\d{14}\.0+", siret):
         siret = siret.split(".")[0]
 
-    # Si il reste seulement des chiffres et longueur 14, c'est ok
-    if siret.isdigit() and len(siret) == 14:
-        return siret
-    else:
+    if not (siret.isdigit() and len(siret) == 14):
         return None
+
+    if check_consistency_siret(siret):
+        return siret
+
+    return try_correct_false_siret(siret)
 
 
 def post_processing_other_bank_accounts(

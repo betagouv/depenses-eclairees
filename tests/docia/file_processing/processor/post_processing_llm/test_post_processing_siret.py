@@ -1,31 +1,46 @@
-from docia.file_processing.processor.post_processing_llm import post_processing_siret
+from docia.file_processing.processor.post_processing_llm import (
+    post_processing_siret,
+    try_correct_false_siret,
+)
+
+# SIRET fictifs avec clé Luhn valide (INSEE).
+_SIRET_LUHN_OK = "73282932000074"
 
 
 def test_post_processing_siret_valid():
-    """Test avec un SIRET valide."""
-    siret = "12345678901234"
-    assert post_processing_siret(siret) == "12345678901234"
+    """Test avec un SIRET valide (Luhn)."""
+    assert post_processing_siret(_SIRET_LUHN_OK) == _SIRET_LUHN_OK
 
 
 def test_post_processing_siret_with_spaces():
     """Test avec un SIRET contenant des espaces."""
-    siret = "1234 5678 9012 34"
-    assert post_processing_siret(siret) == "12345678901234"
+    siret = "7328 2932 0000 74"
+    assert post_processing_siret(siret) == _SIRET_LUHN_OK
 
 
 def test_post_processing_siret_with_non_breaking_spaces():
     """Test avec des espaces insécables."""
-    siret = "1234\xa05678\u202f901234"
-    assert post_processing_siret(siret) == "12345678901234"
+    siret = "7328\xa02932\u202f000074"
+    assert post_processing_siret(siret) == _SIRET_LUHN_OK
 
 
 def test_post_processing_siret_float_format():
-    """Test avec un SIRET au format float (ex: "12345678901234.0")."""
-    siret = "12345678901234.0"
-    assert post_processing_siret(siret) == "12345678901234"
+    """Test avec un SIRET au format float (ex: "...0")."""
+    siret = f"{_SIRET_LUHN_OK}.0"
+    assert post_processing_siret(siret) == _SIRET_LUHN_OK
 
-    siret = "12345678901234.00"
-    assert post_processing_siret(siret) == "12345678901234"
+    siret = f"{_SIRET_LUHN_OK}.00"
+    assert post_processing_siret(siret) == _SIRET_LUHN_OK
+
+
+def test_post_processing_siret_invalid_luhn():
+    """14 chiffres mais clé Luhn incorrecte : rejeté (pas de correction unique)."""
+    assert post_processing_siret("12345678901234") is None
+
+
+def test_try_correct_false_siret_ambiguous_returns_none():
+    """Plusieurs corrections Luhn possibles à distance 1 : None (comme IBAN ambigu)."""
+    assert try_correct_false_siret("73282932000075") is None
 
 
 def test_post_processing_siret_empty():
