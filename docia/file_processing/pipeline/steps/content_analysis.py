@@ -13,15 +13,19 @@ logger = logging.getLogger(__name__)
 
 SUPPORTED_DOCUMENT_TYPES = [
     "devis",
+    "facture",
     "fiche_navette",
     "acte_engagement",
+    "ccp_vae",
     "bon_de_commande",
     "avenant",
+    "conv_financement",
     "sous_traitance",
     "rib",
     "att_sirene",
     "kbis",
     "ccap",
+    "ccp_simple",
 ]
 
 

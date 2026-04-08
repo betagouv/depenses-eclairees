@@ -16,14 +16,19 @@ from .attributes import (
 )
 
 # Mapping entre le type de document et son dictionnaire d'attributs
+# Types additionnels réutilisent les prompts d'un type « canonique » (même dict d'attributs).
 DOC_TYPE_ATTRIBUTES_MAPPING = {
     "acte_engagement": ACTE_ENGAGEMENT_ATTRIBUTES,
     "avenant": AVENANT_ATTRIBUTES,
     "att_sirene": ATT_SIRENE_ATTRIBUTES,
     "bon_de_commande": BON_DE_COMMANDE_ATTRIBUTES,
     "ccap": CCAP_ATTRIBUTES,
+    "ccp_simple": CCAP_ATTRIBUTES,
+    "ccp_vae": ACTE_ENGAGEMENT_ATTRIBUTES,
+    "conv_financement": AVENANT_ATTRIBUTES,
     "cctp": CCTP_ATTRIBUTES,
     "devis": DEVIS_ATTRIBUTES,
+    "facture": DEVIS_ATTRIBUTES,
     "fiche_navette": FICHE_NAVETTE_ATTRIBUTES,
     "kbis": KBIS_ATTRIBUTES,
     "rib": RIB_ATTRIBUTES,
