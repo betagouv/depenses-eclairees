@@ -1,35 +1,30 @@
-#!/usr/bin/env python3
-"""Lance synthesis sur ``data/test/ej_db_2025.csv`` (Django déjà configuré)."""
-
+import logging
 import os
 import sys
-from pathlib import Path
+
+import django
+from django.conf import settings
 
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
+sys.path.append(".")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
-
-import django
-
 django.setup()
 
-from django.conf import settings
-
-from docia.file_processing.processor.synthesis import (
+from docia.file_processing.processor.synthesis import (  # noqa: E402
     SYNTHESIS_OUTPUT_COLUMNS,
     apply_synthesis_fields,
     build_merged_documents_table,
 )
 
+logger = logging.getLogger("docia." + __name__)
+
 PROJECT_PATH = settings.BASE_DIR
 CSV_DIR_PATH = (PROJECT_PATH / ".." / "data" / "test").resolve()
 EJ_DB = CSV_DIR_PATH / "ej_db_2025.csv"
+EJ_DB_ANALYSE = CSV_DIR_PATH / "ej_db_2025_analyse.csv"
 
-_CHAMPS_SYNTHESE = tuple(
-    c for c in SYNTHESIS_OUTPUT_COLUMNS if c not in ("num_ej", "contrat", "source_et_conflits")
-)
+_CHAMPS_SYNTHESE = tuple(c for c in SYNTHESIS_OUTPUT_COLUMNS if c not in ("num_ej", "contrat", "source_et_conflits"))
 
 
 def _cellule_remplie(x) -> bool:
@@ -93,13 +88,12 @@ def afficher_resume_resultats(df: pd.DataFrame) -> None:
 
 if __name__ == "__main__":
     if not EJ_DB.is_file():
-        print(f"Fichier introuvable: {EJ_DB}", file=sys.stderr)
+        logger.error(f"Fichier introuvable: {EJ_DB}")
         sys.exit(1)
 
     df = apply_synthesis_fields(build_merged_documents_table(str(EJ_DB)))
+    EJ_DB_ANALYSE.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(EJ_DB_ANALYSE, sep=";", encoding="utf-8", index=False)
+    logger.info(f"Export CSV : {EJ_DB_ANALYSE}")
+
     afficher_resume_resultats(df)
-    print()
-    print(f"{len(df)} lignes, {len(df.columns)} colonnes")
-    preview = [c for c in ("num_ej", "objet", "date", "siret") if c in df.columns]
-    if preview:
-        print(df[preview].head(10).to_string())

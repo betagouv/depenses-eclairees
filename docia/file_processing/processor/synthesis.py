@@ -8,20 +8,19 @@ Requiert Django configuré (django.setup() ou exécution via manage.py).
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
-import pandas as pd
-from django.db import connection
 from django.db.models import F, Func, IntegerField, Window
 from django.db.models.functions import RowNumber
+
+import pandas as pd
 
 from docia.models import DataEngagement, Document
 
 
 class _JsonFilledKeyCount(Func):
     """
-    Compte les clés de premier niveau dont la valeur n'est ni null JSON ni chaîne vide (comme ``_count_filled_keys``).
+    Compte les clés de premier niveau dont la valeur n'est ni null JSON ni chaîne vide.
     PostgreSQL / jsonb uniquement.
     """
 
@@ -53,6 +52,7 @@ def _queryset_best_pj_per_engagement_postgresql(base_qs):
         .filter(row_number=1)
     )
 
+
 __all__ = [
     "SYNTHESIS_OUTPUT_COLUMNS",
     "SYNTHESIS_TO_ENGAGEMENT_FIELDS",
@@ -67,7 +67,6 @@ __all__ = [
     "ADMINISTRATION_BENEFICIAIRE_SOURCES",
     "get_documents_from_engagements",
     "get_documents_for_synthesis",
-    "get_pj_with_max_structured_data",
     "merge_documents_and_engagements",
     "build_merged_documents_table",
     "get_field_with_sources",
@@ -98,9 +97,7 @@ _EMPTY_DF_COLUMNS = [c.replace("engagements__num_ej", "engagements") for c in _D
 
 def _normalize_num_ej_list(engagements_list: list[Any]) -> list[str]:
     return [
-        str(x).strip().replace("\xa0", "")
-        for x in engagements_list
-        if x is not None and pd.notna(x) and str(x).strip()
+        str(x).strip().replace("\xa0", "") for x in engagements_list if x is not None and pd.notna(x) and str(x).strip()
     ]
 
 
@@ -119,12 +116,6 @@ def _parse_structured_data(value: Any) -> dict | None:
         except json.JSONDecodeError:
             return None
     return None
-
-
-def _count_filled_keys(structured_data: dict | None) -> int:
-    if not structured_data:
-        return 0
-    return sum(1 for _k, v in structured_data.items() if v is not None and v != "")
 
 
 def get_documents_from_engagements(num_ej_list: list[Any]) -> pd.DataFrame:
@@ -154,19 +145,19 @@ def get_documents_from_engagements(num_ej_list: list[Any]) -> pd.DataFrame:
     return df
 
 
-def get_documents_for_synthesis(ej_db_path: str = "../data/test/ej_db_2025.csv") -> tuple[pd.DataFrame, pd.DataFrame]:
+def get_documents_for_synthesis(ej_path: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Lit le CSV de lien EJ/contrats et charge les PJ correspondantes depuis la base.
+    Lit le CSV de lien EJ/contrats ``ej_path`` et charge les PJ correspondantes depuis la base.
     """
-    df_link = pd.read_csv(
-        ej_db_path,
+    df_ej = pd.read_csv(
+        ej_path,
         sep=";",
         encoding="utf-8",
         dtype={"num_ej": str, "contrat": str},
     )
-    keys = df_link["num_ej"].tolist() + df_link.loc[~pd.isna(df_link["contrat"]), "contrat"].tolist()
+    keys = df_ej["num_ej"].tolist() + df_ej.loc[~pd.isna(df_ej["contrat"]), "contrat"].tolist()
     df_pj = get_documents_from_engagements(keys)
-    return df_link, df_pj
+    return df_ej, df_pj
 
 
 # (classification, colonne de jointure dans df_engagements, suffixe data, suffixe filename)
@@ -202,9 +193,7 @@ def merge_documents_and_engagements(df_engagements: pd.DataFrame, df_pj: pd.Data
     df_out["num_ej"] = df_out["num_ej"].astype(str)
 
     for classification, left_on, data_suffix, filename_suffix in MERGE_CONFIG:
-        sub = df_pj[df_pj["classification"] == classification][
-            ["engagements", "structured_data", "filename"]
-        ].copy()
+        sub = df_pj[df_pj["classification"] == classification][["engagements", "structured_data", "filename"]].copy()
         data_col = "structured_data" if data_suffix == "" else "structured_data" + data_suffix
         filename_col = "filename" + filename_suffix
         sub = sub.rename(columns={"structured_data": data_col, "filename": filename_col})
@@ -214,7 +203,7 @@ def merge_documents_and_engagements(df_engagements: pd.DataFrame, df_pj: pd.Data
     return df_out.reset_index(drop=True)
 
 
-def build_merged_documents_table(ej_db_path: str = "../data/test/ej_db_2025.csv") -> pd.DataFrame:
+def build_merged_documents_table(ej_db_path: str) -> pd.DataFrame:
     """Charge ``ej_db_path`` et retourne la table large fusionnée (une ligne par EJ du CSV)."""
     df_engagements, df_pj = get_documents_for_synthesis(ej_db_path)
     return merge_documents_and_engagements(df_engagements, df_pj)
