@@ -78,30 +78,6 @@ def check_consistency_siret(siret: str) -> bool:
     return _luhn_valid(siret)
 
 
-def try_correct_false_siret(siret: str) -> str | None:
-    """
-    Tente de corriger un SIRET invalide (Luhn) en supposant une erreur d'un seul caractère
-    (ex. lecture OCR). Même logique que try_correct_false_iban : une seule correction
-    candidate possible est renvoyée, sinon None.
-    """
-    if not siret or len(siret) != 14 or not siret.isdigit():
-        return None
-
-    valid_candidates: set[str] = set()
-
-    for i in range(14):
-        for char in "0123456789":
-            if char == siret[i]:
-                continue
-            candidate = siret[:i] + char + siret[i + 1 :]
-            if check_consistency_siret(candidate):
-                valid_candidates.add(candidate)
-
-    if len(valid_candidates) == 1:
-        return valid_candidates.pop()
-    return None
-
-
 ################################################################################
 ## Acte d'engagement : post-traitement des informations
 
@@ -359,8 +335,7 @@ def post_processing_societe_principale(name: Any) -> str | None:
 
 def post_processing_siret(siret: str) -> str:
     """
-    Post-traitement du SIRET : nettoyage, validation de la clé Luhn, correction OCR
-    éventuelle (une erreur par numéro, si la correction est unique).
+    Post-traitement du SIRET : nettoyage et validation de la clé Luhn.
     """
 
     if not siret:
@@ -379,7 +354,7 @@ def post_processing_siret(siret: str) -> str:
     if check_consistency_siret(siret):
         return siret
 
-    return try_correct_false_siret(siret)
+    return None
 
 
 def post_processing_other_bank_accounts(
