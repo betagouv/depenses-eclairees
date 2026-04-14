@@ -105,3 +105,34 @@ def test_clean_llm_response_rib_rebuilds_iban_from_rib_fields():
 
     assert result["bic"] == "AGRIFRPP"
     assert result["banque"] == "Banque de France"
+
+
+def test_clean_llm_response_rib_missing_iban_key_rebuilds():
+    """Clé iban absente du JSON LLM : même comportement que iban null (reconstruction)."""
+    llm_response = {
+        "code_banque": "30001",
+        "code_guichet": "00794",
+        "numero_compte": "12345678901",
+        "cle_rib": "85",
+        "bic": "AGRIFRPP",
+        "titulaire_compte": "Entreprise Test",
+        "banque": "Banque de France",
+    }
+
+    result = clean_llm_response("rib", llm_response)
+
+    assert result["iban"] is not None
+    assert result["iban"].startswith("FR76")
+    assert len(result["iban"]) == 27
+
+
+def test_clean_llm_response_rib_no_iban_and_incomplete_rib_sets_iban_none():
+    """Reconstruction impossible et post_processing_bank_account renvoie None : pas de plantage."""
+    llm_response = {
+        "bic": "AGRIFRPP",
+        "titulaire_compte": "Entreprise Test",
+    }
+
+    result = clean_llm_response("rib", llm_response)
+
+    assert result["iban"] is None

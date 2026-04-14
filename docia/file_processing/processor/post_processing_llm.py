@@ -433,9 +433,10 @@ def post_processing_rib_document(data: dict[str, Any]) -> dict[str, Any]:
         "numero_compte": _normalize_bank_account_component(data.get("numero_compte")),
         "cle_rib": _normalize_bank_account_component(data.get("cle_rib")),
     }
-    if data["iban"] is None:
+    iban = data.get("iban")
+    if iban is None:
         processed_bank_account = post_processing_bank_account(bank_account_input)
-        data["iban"] = processed_bank_account.get("iban")
+        data["iban"] = processed_bank_account.get("iban") if processed_bank_account else None
     return data
 
 
