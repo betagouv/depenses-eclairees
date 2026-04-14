@@ -53,6 +53,31 @@ def try_correct_false_iban(iban: str) -> str | None:
     return None
 
 
+def _luhn_valid(digits: str) -> bool:
+    """Contrôle Luhn sur une chaîne de chiffres (algorithme identique au check digit INSEE / SIRET)."""
+    total = 0
+    for i, ch in enumerate(reversed(digits)):
+        n = ord(ch) - 48
+        if i % 2 == 1:
+            n *= 2
+            if n > 9:
+                n -= 9
+        total += n
+    return total % 10 == 0
+
+
+def check_consistency_siret(siret: str) -> bool:
+    """
+    Vérifie la validité d'un SIRET (14 chiffres, clé Luhn).
+    Chaîne vide ou None : considéré comme cohérent (pas de rejet sur ce critère seul).
+    """
+    if not siret:
+        return True
+    if len(siret) != 14 or not siret.isdigit():
+        return False
+    return _luhn_valid(siret)
+
+
 ################################################################################
 ## Acte d'engagement : post-traitement des informations
 
@@ -310,7 +335,7 @@ def post_processing_societe_principale(name: Any) -> str | None:
 
 def post_processing_siret(siret: str) -> str:
     """
-    Post-traitement du SIRET pour le nettoyer.
+    Post-traitement du SIRET : nettoyage et validation de la clé Luhn.
     """
 
     if not siret:
@@ -323,11 +348,13 @@ def post_processing_siret(siret: str) -> str:
     if re.fullmatch(r"\d{14}\.0+", siret):
         siret = siret.split(".")[0]
 
-    # Si il reste seulement des chiffres et longueur 14, c'est ok
-    if siret.isdigit() and len(siret) == 14:
-        return siret
-    else:
+    if not (siret.isdigit() and len(siret) == 14):
         return None
+
+    if check_consistency_siret(siret):
+        return siret
+
+    return None
 
 
 def post_processing_other_bank_accounts(
