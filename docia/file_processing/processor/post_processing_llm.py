@@ -392,6 +392,8 @@ def post_processing_iban(iban: str) -> str:
     """
     Post-traitement de l'IBAN pour extraire les informations bancaires.
     """
+    if not iban:
+        return None
     clean_iban = re.sub(r"\s+", "", iban).upper()
     if not check_consistency_iban(clean_iban):
         corrected = try_correct_false_iban(clean_iban)
@@ -403,10 +405,38 @@ def post_processing_bic(bic: str) -> str:
     """
     Post-traitement du BIC pour extraire les informations bancaires.
     """
+    if not bic:
+        return None
     clean_bic = re.sub(r"\s+", "", bic).upper()
     if len(clean_bic) != 8 and len(clean_bic) != 11:
         return None
     return clean_bic if clean_bic else None
+
+
+def _normalize_bank_account_component(value: str | None) -> str | None:
+    """Supprime les espaces et retourne None si la valeur est vide."""
+    if not value:
+        return None
+    clean_value = re.sub(r"\s+", "", str(value)).upper()
+    return clean_value or None
+
+
+def post_processing_rib_document(data: dict[str, Any]) -> dict[str, Any]:
+    """
+    Harmonise le traitement d'un document RIB avec la logique de rib_mandataire :
+    priorité à l'IBAN explicite, sinon reconstruction depuis les champs RIB.
+    """
+    bank_account_input = {
+        "banque": data.get("banque"),
+        "code_banque": _normalize_bank_account_component(data.get("code_banque")),
+        "code_guichet": _normalize_bank_account_component(data.get("code_guichet")),
+        "numero_compte": _normalize_bank_account_component(data.get("numero_compte")),
+        "cle_rib": _normalize_bank_account_component(data.get("cle_rib")),
+    }
+    if data["iban"] is None:
+        processed_bank_account = post_processing_bank_account(bank_account_input)
+        data["iban"] = processed_bank_account.get("iban")
+    return data
 
 
 def normalize_text(text: str) -> str:
@@ -623,6 +653,7 @@ CLEAN_FUNCTIONS = {
             "bic": post_processing_bic,
             "adresse_postale_titulaire": post_processing_postal_address,
         },
+        "object": post_processing_rib_document,
     },
     # CCAP
     "ccap": {

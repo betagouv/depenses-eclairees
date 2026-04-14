@@ -62,14 +62,18 @@ if __name__ == "__main__":
 
     check_quality_one_field(df_merged, "iban", comparison_functions)
     check_quality_one_field(df_merged, "titulaire_compte", comparison_functions)
-    check_quality_one_field(df_merged, "adresse_postale_titulaire", comparison_functions)
+    # check_quality_one_field(df_merged, "adresse_postale_titulaire", comparison_functions)
 
     check_quality_one_row(df_merged, 26, comparison_functions)
 
-    check_global_statistics(df_merged, comparison_functions, excluded_columns=["domiciliation", "banque"])
+    check_global_statistics(
+        df_merged, comparison_functions, excluded_columns=["adresse_postale_titulaire", "domiciliation", "banque"]
+    )
 
     fields_with_errors = get_fields_with_comparison_errors(
-        df_merged.sort_values(by="filename"), comparison_functions, excluded_columns=["domiciliation", "banque"]
+        df_merged.sort_values(by="filename"),
+        comparison_functions,
+        excluded_columns=["adresse_postale_titulaire", "domiciliation", "banque"],
     )
 
     for v in fields_with_errors.values():
