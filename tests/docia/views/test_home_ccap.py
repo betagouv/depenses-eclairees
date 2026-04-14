@@ -248,3 +248,16 @@ def test_ccap_lot_sections_grisees(client):
     assert "Lot 1" in text and "Lot sans montant ni durée" in text
     assert "Montants – Information non disponible dans le document." in text
     assert "Durée – Information non disponible dans le document." in text
+
+
+@pytest.mark.django_db
+def test_ccp_simple_uses_ccap_template(client):
+    """ccp_simple : même gabarit d'affichage que le CCAP (document_ccap)."""
+    ej, doc = create_ej_and_document()
+    doc.classification = "ccp_simple"
+    doc.structured_data = _ccap_base_data(objet_marche="Objet CCP simple")
+    doc.save()
+    text = _login_and_get_ccap(client, ej, doc)
+
+    assert "Objet du contrat" in text and "Objet CCP simple" in text
+    assert "Informations générales – Non disponibles dans le document." in text

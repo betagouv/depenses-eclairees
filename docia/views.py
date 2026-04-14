@@ -11,10 +11,28 @@ from .ratelimit.services import check_rate_limit_for_user
 logger = logging.getLogger(__name__)
 
 # Classifications traitées mais non affichées dans la catégorie analysée (pas encore prêtes)
-CLASSIFICATIONS_AFFICHEES = frozenset({"acte_engagement", "ccap", "rib", "fiche_navette", "sous_traitance"})
+CLASSIFICATIONS_AFFICHEES = frozenset(
+    {
+        "acte_engagement",
+        "ccp_vae",
+        "ccap",
+        "ccp_simple",
+        "rib",
+        "fiche_navette",
+        "sous_traitance",
+    }
+)
 
 # Ordre d'affichage des catégories (chaque catégorie triée par taux de remplissage décroissant)
-ORDER_CLASSIFICATIONS = ("acte_engagement", "ccap", "sous_traitance", "rib", "fiche_navette")
+ORDER_CLASSIFICATIONS = (
+    "acte_engagement",
+    "ccp_vae",
+    "ccap",
+    "ccp_simple",
+    "sous_traitance",
+    "rib",
+    "fiche_navette",
+)
 
 
 def sort_by_order_and_field(
@@ -83,7 +101,7 @@ def home(request):
                         document_data_raw = db_doc.structured_data or {}
                         ratio_extracted = compute_ratio_data_extraction(document_data_raw)
                         short_classification = get_short_classification(db_doc.classification)
-                        if db_doc.classification == "acte_engagement":
+                        if db_doc.classification in ("acte_engagement", "ccp_vae"):
                             document_data = enrich_acte_engagement_display(document_data_raw)
                         else:
                             document_data = document_data_raw
