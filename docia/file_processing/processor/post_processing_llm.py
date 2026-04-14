@@ -565,6 +565,14 @@ def post_processing_object_ccap(data: dict) -> dict:
     return data
 
 
+# Types classifiés qui réutilisent le post-traitement d'un autre type (aligné sur attributes_query).
+DOCUMENT_TYPE_CLEAN_ALIASES = {
+    "ccp_simple": "ccap",
+    "ccp_vae": "acte_engagement",
+    "conv_financement": "avenant",
+    "facture": "devis",
+}
+
 CLEAN_FUNCTIONS = {
     # Acte d'engagement
     "acte_engagement": {
@@ -619,7 +627,8 @@ CLEAN_FUNCTIONS = {
 
 def clean_llm_response(document_type: str, llm_response: dict) -> dict:
     cleaned_data = copy.deepcopy(llm_response)
-    clean_config = CLEAN_FUNCTIONS.get(document_type, None)
+    canonical_type = DOCUMENT_TYPE_CLEAN_ALIASES.get(document_type, document_type)
+    clean_config = CLEAN_FUNCTIONS.get(canonical_type, None)
     if clean_config:
         clean_fields_functions = clean_config.get("fields", {})
         if clean_fields_functions:
