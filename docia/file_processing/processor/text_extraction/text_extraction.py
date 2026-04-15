@@ -48,26 +48,27 @@ def extract_text(
     Délègue à text_extract_document (PDF, doc, docx, odt, txt, images) ou text_extract_excel (xlsx, xls, ods).
 
     Returns:
-        tuple: (texte extrait, booléen indiquant si l'OCR a été utilisé, nb pages)
+        tuple: (text, is_ocr, nb pages)
     """
+
     if not file_content:
-        return "", False
+        return "", False, None
 
     if file_type == "unknown":
         logger.warning(f"Unknown file type for {file_path} (type={file_type!r})")
-        return "", False
+        return "", False, None
+
+    nb_pages = None
 
     # Excel
     if file_type == "xlsx":
-        return excel.extract_text_from_xlsx(file_content, file_path)
-    if file_type == "xls":
-        return excel.extract_text_from_xls(file_content, file_path)
-    if file_type == "ods":
-        return excel.extract_text_from_ods(file_content, file_path)
-
+        text, is_ocr = excel.extract_text_from_xlsx(file_content, file_path)
+    elif file_type == "xls":
+        text, is_ocr = excel.extract_text_from_xls(file_content, file_path)
+    elif file_type == "ods":
+        text, is_ocr = excel.extract_text_from_ods(file_content, file_path)
     # Documents (PDF, doc, docx, odt, txt, images)
-    nb_pages = None
-    if file_type == "pdf":
+    elif file_type == "pdf":
         text, is_ocr, nb_pages = document.extract_text_from_pdf(file_content, word_threshold, ocr_tool=ocr_tool)
     elif file_type == "docx":
         text, is_ocr = document.extract_text_from_docx(file_content, file_path)
