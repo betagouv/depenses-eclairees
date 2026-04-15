@@ -39,7 +39,7 @@ def _ocr_one(idx_filename: tuple[int, str]) -> str:
         return ""
     try:
         pdf_content = file_path.read_bytes()
-        text = client.ocr_pdf(pdf_content)
+        text, nb_pages = client.ocr_pdf(pdf_content)
         return text or ""
     except Exception as e:
         logger.exception("Erreur OCR pour %s: %s", filename, e)

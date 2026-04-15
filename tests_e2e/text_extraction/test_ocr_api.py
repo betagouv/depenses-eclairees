@@ -33,10 +33,11 @@ def test_ocr_api_extracts_text_from_lettre_ocr():
     """L'API OCR doit extraire du texte de bonne qualité du document lettre-ocr.pdf."""
     pdf_content = LETTRE_OCR_PATH.read_bytes()
     client = LLMClient()
-    text = client.ocr_pdf(pdf_content)
+    text, nb_pages = client.ocr_pdf(pdf_content)
 
     assert text, "L'OCR doit renvoyer du texte non vide"
     assert len(text.strip()) >= 100, "Le texte extrait doit contenir au moins 100 caractères"
+    assert nb_pages == 1
 
     # Normalisation pour comparaison (minuscules, espaces multiples réduits)
     text_norm = " ".join(text.lower().split())

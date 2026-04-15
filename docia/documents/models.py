@@ -47,6 +47,7 @@ class Document(BaseModel):
     text = models.TextField(null=True, blank=True)  # noqa: DJ001
     is_ocr = models.BooleanField(null=True, blank=True)
     nb_mot = models.IntegerField(null=True, blank=True)
+    nb_pages = models.IntegerField(null=True, blank=True)
     relevant_content = models.TextField(null=True, blank=True)  # noqa: DJ001
     is_embedded = models.BooleanField(null=True, blank=True)
     llm_response = models.JSONField(null=True, blank=True)

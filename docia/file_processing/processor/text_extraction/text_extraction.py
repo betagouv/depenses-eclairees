@@ -48,7 +48,7 @@ def extract_text(
     Délègue à text_extract_document (PDF, doc, docx, odt, txt, images) ou text_extract_excel (xlsx, xls, ods).
 
     Returns:
-        tuple: (texte extrait, booléen indiquant si l'OCR a été utilisé)
+        tuple: (texte extrait, booléen indiquant si l'OCR a été utilisé, nb pages)
     """
     if not file_content:
         return "", False
@@ -66,8 +66,9 @@ def extract_text(
         return excel.extract_text_from_ods(file_content, file_path)
 
     # Documents (PDF, doc, docx, odt, txt, images)
+    nb_pages = None
     if file_type == "pdf":
-        text, is_ocr = document.extract_text_from_pdf(file_content, word_threshold, ocr_tool=ocr_tool)
+        text, is_ocr, nb_pages = document.extract_text_from_pdf(file_content, word_threshold, ocr_tool=ocr_tool)
     elif file_type == "docx":
         text, is_ocr = document.extract_text_from_docx(file_content, file_path)
     elif file_type == "odt":
@@ -82,7 +83,7 @@ def extract_text(
         raise ValueError(f"Invalid file type for {file_path} (type={file_type!r})")
 
     text = clean_nul_bytes(text)
-    return text, is_ocr
+    return text, is_ocr, nb_pages
 
 
 def process_file(
@@ -95,7 +96,7 @@ def process_file(
     Extrait le texte d'un fichier (chemin + extension).
 
     Returns:
-        tuple: (texte, is_ocr, nb_mots)
+        tuple: (texte, is_ocr, nb_mots, nb_pages)
 
     Raises:
         UnsupportedFileType: si l'extension n'est pas supportée.
@@ -108,7 +109,7 @@ def process_file(
         file_content = f.read()
 
     with log_execution_time(f"extract_text({file_path})"):
-        text, is_ocr = extract_text(file_content, file_path, extension, word_threshold, ocr_tool=ocr_tool)
+        text, is_ocr, nb_pages = extract_text(file_content, file_path, extension, word_threshold, ocr_tool=ocr_tool)
 
     nb_words = count_words(text)
-    return text, is_ocr, nb_words
+    return text, is_ocr, nb_words, nb_pages

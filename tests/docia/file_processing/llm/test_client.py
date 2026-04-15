@@ -36,34 +36,57 @@ def test_build_pdf_document_payload_content():
 
 def test_extract_markdown_from_ocr_response_empty():
     """Réponse sans pages ou pages vides -> chaîne vide."""
-    assert _extract_markdown_from_ocr_response({}) == ""
-    assert _extract_markdown_from_ocr_response({"pages": []}) == ""
+    assert _extract_markdown_from_ocr_response({}) == ("", 0)
+    assert _extract_markdown_from_ocr_response({"pages": []}) == ("", 0)
 
 
 def test_extract_markdown_from_ocr_response_one_page():
     """Une page : marqueurs [[PAGE 1 / 1]] ... [[FIN PAGE 1 / 1]] et contenu."""
-    out = _extract_markdown_from_ocr_response({"pages": [{"markdown": "Hello"}]})
+    out, nb_pages = _extract_markdown_from_ocr_response({"pages": [{"markdown": "Hello"}]})
     assert out == "[[PAGE 1 / 1]]\nHello\n[[FIN PAGE 1 / 1]]"
+    assert nb_pages == 1
 
 
 def test_extract_markdown_from_ocr_response_multiple_pages():
     """Plusieurs pages : marqueurs avec numéro de page et total."""
-    out = _extract_markdown_from_ocr_response(
+    out, nb_pages = _extract_markdown_from_ocr_response(
         {
             "pages": [{"markdown": "A"}, {"markdown": "B"}, {"markdown": "C"}],
         }
     )
-    assert "[[PAGE 1 / 3]]\nA\n[[FIN PAGE 1 / 3]]" in out
-    assert "[[PAGE 2 / 3]]\nB\n[[FIN PAGE 2 / 3]]" in out
-    assert "[[PAGE 3 / 3]]\nC\n[[FIN PAGE 3 / 3]]" in out
-    assert out.count("\n\n") == 2
+    expected = (
+        "[[PAGE 1 / 3]]\nA\n[[FIN PAGE 1 / 3]]\n\n"
+        "[[PAGE 2 / 3]]\nB\n[[FIN PAGE 2 / 3]]\n\n"
+        "[[PAGE 3 / 3]]\nC\n[[FIN PAGE 3 / 3]]"
+    )
+    assert out == expected
+    assert nb_pages == 3
+
+
+def test_extract_markdown_from_ocr_response_offset():
+    """Plusieurs pages : marqueurs avec numéro de page et total."""
+    out, nb_pages = _extract_markdown_from_ocr_response(
+        {
+            "pages": [{"markdown": "A"}, {"markdown": "B"}, {"markdown": "C"}],
+        },
+        offset_pages=5,
+        total_pages=10,
+    )
+    expected = (
+        "[[PAGE 6 / 10]]\nA\n[[FIN PAGE 6 / 10]]\n\n"
+        "[[PAGE 7 / 10]]\nB\n[[FIN PAGE 7 / 10]]\n\n"
+        "[[PAGE 8 / 10]]\nC\n[[FIN PAGE 8 / 10]]"
+    )
+    assert out == expected
+    assert nb_pages == 3
 
 
 def test_extract_markdown_from_ocr_response_missing_markdown():
     """Page sans clé markdown -> contenu vide pour cette page."""
-    out = _extract_markdown_from_ocr_response({"pages": [{"markdown": "Ok"}, {}]})
-    assert "[[PAGE 1 / 2]]\nOk\n[[FIN PAGE 1 / 2]]" in out
-    assert "[[PAGE 2 / 2]]\n\n[[FIN PAGE 2 / 2]]" in out
+    out, nb_pages = _extract_markdown_from_ocr_response({"pages": [{"markdown": "Ok"}, {}]})
+    expected = "[[PAGE 1 / 2]]\nOk\n[[FIN PAGE 1 / 2]]\n\n[[PAGE 2 / 2]]\n\n[[FIN PAGE 2 / 2]]"
+    assert out == expected
+    assert nb_pages == 2
 
 
 # --- _api_call (retry / erreurs) ---
@@ -360,7 +383,8 @@ def test_ocr_pdf_success():
     )
     ocr_client = httpx.Client(transport=httpx.MockTransport(handler=mock_handler))
     client = LLMClient(use_rate_limiter=False, ocr_http_client=ocr_client)
-    result = client.ocr_pdf(PDF_CONTENT)
+    result, nb_pages = client.ocr_pdf(PDF_CONTENT)
     expected = "[[PAGE 1 / 2]]\nPage one\n[[FIN PAGE 1 / 2]]\n\n[[PAGE 2 / 2]]\nPage two\n[[FIN PAGE 2 / 2]]"
     assert result == expected
+    assert nb_pages == 2
     assert mock_handler.call_count == 1

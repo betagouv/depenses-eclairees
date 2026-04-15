@@ -20,7 +20,7 @@ def test_extract_text():
     with mock.patch(
         "docia.file_processing.processor.text_extraction.text_extract_document.extract_text_from_pdf", autospec=True
     ) as m:
-        m.return_value = ("hello", True)
+        m.return_value = ("hello", True, 1)
         extract_text(file_content, "file.pdf", "pdf")
         m.assert_called_once_with(file_content, 50, ocr_tool="mistral-ocr")
 

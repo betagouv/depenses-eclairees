@@ -16,7 +16,7 @@ class ExtractTextStepRunner(AbstractStepRunner):
         document = step.job.document
         file_path = document.file.name
         try:
-            text, is_ocr, nb_words = processor.process_file(file_path, document.extension)
+            text, is_ocr, nb_words, nb_pages = processor.process_file(file_path, document.extension)
         except UnsupportedFileType as e:
             raise SkipStepException(str(e))
 
@@ -26,7 +26,8 @@ class ExtractTextStepRunner(AbstractStepRunner):
         document.text = text
         document.is_ocr = is_ocr
         document.nb_mot = nb_words
-        document.save(update_fields=["text", "is_ocr", "nb_mot"])
+        document.nb_pages = nb_pages
+        document.save(update_fields=["text", "is_ocr", "nb_mot", "nb_pages"])
 
 
 @shared_task(name="docia.extract_text")
