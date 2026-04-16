@@ -311,6 +311,30 @@ def test_acte_engagement(client):
 
 
 @pytest.mark.django_db
+def test_ccp_vae_uses_acte_engagement_template(client):
+    """ccp_vae : même gabarit que l'acte d'engagement (enrichissement + document_acte_engagement)."""
+    ej, doc = create_ej_and_document()
+    doc.classification = "ccp_vae"
+    doc.structured_data = {
+        "objet_marche": "[[objet_marche]]",
+        "administration_beneficiaire": "[[administration_beneficiaire]]",
+        "societe_principale": "[[societe_principale]]",
+        "montant_ht": "40123.50",
+        "montant_ttc": "60123.50",
+        "montant_tva": "0.20",
+    }
+    doc.save()
+    user = UserFactory(is_superuser=True)
+    client.force_login(user)
+    response = client.get(f"/?num_ej={ej.num_ej}")
+    assert response.status_code == 200
+    text = response.text
+    assert "[[objet_marche]]" in text
+    assert "40\u00a0123,50 €" in text
+    assert "60\u00a0123,50 €" in text
+
+
+@pytest.mark.django_db
 def test_rib(client):
     """Vérifie l'affichage correct d'un document RIB (titulaire, adresse, banque, IBAN, etc.)."""
     ej, doc = create_ej_and_document()
