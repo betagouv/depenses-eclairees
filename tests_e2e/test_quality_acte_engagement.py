@@ -294,7 +294,7 @@ if __name__ == "__main__":
     check_global_statistics(df_merged, comparison_functions, included_columns=INCLUDED_COLUMNS)
 
     fields_with_errors = get_fields_with_comparison_errors(
-        df_merged, comparison_functions, included_columns=INCLUDED_COLUMNS
+        df_merged.sort_values(by="filename"), comparison_functions, included_columns=INCLUDED_COLUMNS
     )
 
     for v in fields_with_errors.values():
