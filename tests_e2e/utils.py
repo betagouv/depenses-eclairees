@@ -555,20 +555,19 @@ def check_quality_one_field(df_merged, col_to_test, comparison_functions, only_e
 
 
 def _get_columns_to_compare(comparison_functions, excluded_columns=None, included_columns=None):
-    """Construit la liste des colonnes a comparer.
+    """Construit la liste ordonnée des colonnes a comparer.
 
     Par defaut, toutes les colonnes definies dans comparison_functions sont comparees.
-    Si included_columns est fourni, seules ces colonnes sont conservees.
+    Si included_columns est fourni, seules ces colonnes sont conservees dans cet ordre.
     excluded_columns est applique en dernier.
     """
     excluded_columns = set(excluded_columns or [])
-    available_columns = list(comparison_functions.keys())
+    available_columns = comparison_functions.keys()
 
     if included_columns is None:
-        selected_columns = available_columns
+        selected_columns = list(available_columns)
     else:
-        included_columns = set(included_columns)
-        selected_columns = [col for col in available_columns if col in included_columns]
+        selected_columns = [col for col in included_columns if col in comparison_functions]
 
     return [col for col in selected_columns if col not in excluded_columns]
 
@@ -602,10 +601,9 @@ def check_quality_one_row(
 
         llm_data = row.get("structured_data", None)
 
-        # Comparer les colonnes selectionnees
+        # Comparer les colonnes sélectionnées
         for col in columns_to_compare:
             comparison_func = comparison_functions[col]
-
             # Extraire les valeurs
             ref_val = _get_value_by_dotted_key(row, col)
             llm_val = _get_value_by_dotted_key(llm_data, col)
@@ -701,6 +699,30 @@ def _parse_best_test_errors(row):
     return []
 
 
+def _field_value_is_non_null(val) -> bool:
+    """True si une valeur de champ (référence ou LLM) est considérée renseignée (non vide / non nulle)."""
+    if val is None:
+        return False
+    if isinstance(val, bool):
+        return True
+    if isinstance(val, (dict, list, tuple, set)):
+        return len(val) > 0
+    if isinstance(val, str):
+        return bool(val.strip())
+    try:
+        if pd.isna(val):
+            return False
+    except (ValueError, TypeError):
+        pass
+    return True
+
+
+def _fmt_ratio_pct(num: int, den: int, ratio: float) -> str:
+    if den <= 0:
+        return "n/d"
+    return f"{num}/{den} = {ratio * 100:.1f}%"
+
+
 def check_global_statistics(df_merged, comparison_functions, excluded_columns=None, included_columns=None):
     # ============================================================================
     # STATISTIQUES GLOBALES DE COMPARAISON
@@ -714,32 +736,45 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
 
     print(f"\n{'=' * 80}")
     print("STATISTIQUES GLOBALES DE COMPARAISON")
-    print(f"{'=' * 80}\n")
+    print(f"{'=' * 80}")
+    print(
+        "Rappel : parmi les champs où la référence est renseignée (non nulle), "
+        "proportion correctement retrouvée par le LLM."
+    )
+    print(
+        "Précision : parmi les champs où le LLM propose une valeur non nulle, "
+        "proportion de réponses correctes au regard de la référence."
+    )
+    print()
 
     results = {}
 
-    # Comparaison pour chaque colonne selectionnee
+    # Comparaison pour chaque colonne sélectionnée
     for col in columns_to_compare:
         comparison_func = comparison_functions[col]
-
         matches = []
         errors = []
-        matches_no_ocr = []
+        total_non_null = 0
+        non_null_ok = 0
+        total_llm_non_null = 0
+        llm_non_null_ok = 0
         regressions_vs_best = 0
         improvements_vs_best = 0
 
         # Comparer toutes les lignes pour cette colonne
         for idx, row in df_merged.iterrows():
             filename = row.get("filename", "unknown")
+            ref_val = _get_value_by_dotted_key(row, col)
+            ref_non_null = _field_value_is_non_null(ref_val)
 
             structured_data = row.get("structured_data", None)
             if structured_data is None or pd.isna(structured_data):
                 errors.append(f"{filename}: structured_data is None or NaN")
                 matches.append(False)
+                if ref_non_null:
+                    total_non_null += 1
                 continue
 
-            # Extraire les valeurs
-            ref_val = _get_value_by_dotted_key(row, col)
             llm_val = _get_value_by_dotted_key(structured_data, col)
 
             # Comparer les valeurs
@@ -747,6 +782,14 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
                 match_result = comparison_func(llm_val, ref_val)
                 match_result = bool(match_result) if not isinstance(match_result, bool) else match_result
                 matches.append(match_result)
+                if ref_non_null:
+                    total_non_null += 1
+                    if match_result:
+                        non_null_ok += 1
+                if _field_value_is_non_null(llm_val):
+                    total_llm_non_null += 1
+                    if match_result:
+                        llm_non_null_ok += 1
 
                 # Écart au meilleur test (si colonne optionnelle présente)
                 if use_best_ref:
@@ -760,6 +803,10 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
             except Exception as e:
                 errors.append(f"{filename}: Error in comparison_func: {str(e)}")
                 matches.append(False)
+                if ref_non_null:
+                    total_non_null += 1
+                if _field_value_is_non_null(llm_val):
+                    total_llm_non_null += 1
                 if use_best_ref:
                     best_errors = _parse_best_test_errors(row)
                     best_had_error = col in best_errors
@@ -771,49 +818,54 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
         matches_count = sum(matches)
         errors_count = len(errors)
         accuracy = matches_count / total if total > 0 else 0.0
-
-        # Calculer l'accuracy sans OCR (seulement sur les comparaisons sans problème OCR)
-        total_no_ocr = len(matches_no_ocr)
-        matches_no_ocr_count = sum(matches_no_ocr)
-        accuracy_no_ocr = matches_no_ocr_count / total_no_ocr if total_no_ocr > 0 else 0.0
+        recall_non_null = non_null_ok / total_non_null if total_non_null > 0 else 0.0
+        precision_llm_non_null = llm_non_null_ok / total_llm_non_null if total_llm_non_null > 0 else 0.0
 
         results[col] = {
             "total": total,
             "matches": matches_count,
             "errors": errors_count,
             "accuracy": accuracy,
-            "accuracy_no_ocr": accuracy_no_ocr,
-            "total_no_ocr": total_no_ocr,
-            "matches_no_ocr": matches_no_ocr_count,
+            "total_non_null": total_non_null,
+            "non_null_ok": non_null_ok,
+            "recall_non_null": recall_non_null,
+            "total_llm_non_null": total_llm_non_null,
+            "llm_non_null_ok": llm_non_null_ok,
+            "precision_llm_non_null": precision_llm_non_null,
         }
         if use_best_ref:
             results[col]["delta_vs_best"] = regressions_vs_best - improvements_vs_best
             results[col]["regressions_vs_best"] = regressions_vs_best
             results[col]["improvements_vs_best"] = improvements_vs_best
 
-    # Affichage des statistiques
+    # Affichage des statistiques (matches, rappel, précision condensés en ratios)
+    w_col, w_m, w_r, w_p = 32, 22, 22, 22
     header_parts = [
-        f"{'Colonne':<35}",
-        f"{'Total':<6}",
-        f"{'Matches':<8}",
-        f"{'Erreurs':<8}",
-        f"{'Accuracy':<10}",
-        f"{'Accuracy (no OCR)':<18}",
+        f"{'Colonne':<{w_col}}",
+        f"{'Matches':<{w_m}}",
+        f"{'Rappel':<{w_r}}",
+        f"{'Précision':<{w_p}}",
     ]
     if use_best_ref:
         header_parts.append(f"{'(+)':<5}")
         header_parts.append(f"{'(-)':<5}")
     print(" | ".join(header_parts))
-    print("-" * (160 if use_best_ref else 120))
+    dash_len = w_col + w_m + w_r + w_p + 9 + (14 if use_best_ref else 0)
+    print("-" * dash_len)
 
-    for col, result in results.items():
+    for col in columns_to_compare:
+        result = results[col]
+        m = result["matches"]
+        t = result["total"]
+        nok = result["non_null_ok"]
+        tn = result["total_non_null"]
+        lok = result["llm_non_null_ok"]
+        ltn = result["total_llm_non_null"]
         row_parts = [
-            f"{col:<35}",
-            f"{result['total']:<6}",
-            f"{result['matches']:<8}",
-            f"{result['errors']:<8}",
-            f"{result['accuracy'] * 100:>6.2f}%",
-            f"{result['accuracy_no_ocr'] * 100:>14.2f}%",
+            f"{col:<{w_col}}",
+            f"{_fmt_ratio_pct(m, t, result['accuracy']):<{w_m}}",
+            f"{_fmt_ratio_pct(nok, tn, result['recall_non_null']):<{w_r}}",
+            f"{_fmt_ratio_pct(lok, ltn, result['precision_llm_non_null']):<{w_p}}",
         ]
         if use_best_ref:
             imp = result.get("improvements_vs_best", 0)
@@ -822,27 +874,46 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
             row_parts.append(f"{'-' + str(reg) if reg else '0':<5}")
         print(" | ".join(row_parts))
 
-    print(f"\n{'=' * 120}")
-    print("Résumé global:")
+    print(f"\n{'=' * dash_len}")
+    print("Résumé global")
     total_comparisons = sum(r["total"] for r in results.values())
     total_matches = sum(r["matches"] for r in results.values())
-    total_errors = sum(r["errors"] for r in results.values())
     global_accuracy = total_matches / total_comparisons if total_comparisons > 0 else 0.0
 
-    # Calculer l'accuracy globale sans OCR
-    total_no_ocr = sum(r["total_no_ocr"] for r in results.values())
-    total_matches_no_ocr = sum(r["matches_no_ocr"] for r in results.values())
-    global_accuracy_no_ocr = total_matches_no_ocr / total_no_ocr if total_no_ocr > 0 else 0.0
+    global_total_non_null = sum(r["total_non_null"] for r in results.values())
+    global_non_null_ok = sum(r["non_null_ok"] for r in results.values())
+    global_recall_non_null = global_non_null_ok / global_total_non_null if global_total_non_null > 0 else 0.0
 
-    print(f"Total de comparaisons: {total_comparisons}")
-    print(f"Total de matches: {total_matches}")
-    print(f"Total d'erreurs: {total_errors}")
-    print(f"Accuracy globale: {global_accuracy * 100:.2f}%")
-    print(f"Accuracy globale sans OCR: {global_accuracy_no_ocr * 100:.2f}%")
+    global_total_llm_non_null = sum(r["total_llm_non_null"] for r in results.values())
+    global_llm_non_null_ok = sum(r["llm_non_null_ok"] for r in results.values())
+    global_precision = global_llm_non_null_ok / global_total_llm_non_null if global_total_llm_non_null > 0 else 0.0
+
+    match_failures = total_comparisons - total_matches
+    recall_failures = global_total_non_null - global_non_null_ok
+    precision_failures = global_total_llm_non_null - global_llm_non_null_ok
+
+    print(
+        f"Matches : {total_matches}/{total_comparisons} = {global_accuracy * 100:.1f}%  |  "
+        f"erreurs : {match_failures}  (toutes comparaisons non OK)"
+    )
+    print(
+        "Rappel : "
+        f"{global_non_null_ok}/{global_total_non_null} = {global_recall_non_null * 100:.1f}%  |  "
+        f"erreurs : {recall_failures}  (référence non nulle, comparaison incorrecte)"
+        if global_total_non_null > 0
+        else "Rappel : n/d (aucune référence non nulle)  |  erreurs : 0"
+    )
+    print(
+        "Précision : "
+        f"{global_llm_non_null_ok}/{global_total_llm_non_null} = {global_precision * 100:.1f}%  |  "
+        f"erreurs : {precision_failures}  (LLM non nul, valeur incorrecte vs référence)"
+        if global_total_llm_non_null > 0
+        else "Précision : n/d (aucune proposition LLM non nulle)  |  erreurs : 0"
+    )
     if use_best_ref:
         total_imp = sum(r.get("improvements_vs_best", 0) for r in results.values())
         total_reg = sum(r.get("regressions_vs_best", 0) for r in results.values())
         print(f"Écart au meilleur test: Améliorations +{total_imp}, Régressions -{total_reg}")
-    print(f"{'=' * (160 if use_best_ref else 120)}\n")
+    print(f"{'=' * dash_len}\n")
 
     return global_accuracy

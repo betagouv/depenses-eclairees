@@ -59,7 +59,7 @@ def get_comparison_functions():
     }
 
 
-def create_batch_test(multi_line_coef=1):
+def create_batch_test(multi_line_coef=1, model="mistral-medium-2508"):
     """Test de qualité des informations extraites par le LLM."""
     df_test = get_data_from_grist(table="Dc4_gt").query("commentaire == 'traité'")
 
@@ -73,24 +73,39 @@ def create_batch_test(multi_line_coef=1):
         df_test[col] = df_test[col].apply(lambda x: json.loads(x) if isinstance(x, str) else x)
 
     # Lancement du test
-    return analyze_content_quality_test(df_test, "sous_traitance", multi_line_coef=multi_line_coef)
+    return analyze_content_quality_test(df_test, "sous_traitance", multi_line_coef=multi_line_coef, llm_model=model)
 
 
 if __name__ == "__main__":
-    df_test, df_result, df_merged = create_batch_test()
+    df_test, df_result, df_merged = create_batch_test(model="mistral-medium-2508")
 
     EXCLUDED_COLUMNS = ["objet_marche", "administration_beneficiaire"]
 
+    INCLUDED_COLUMNS = [
+        "societe_principale",
+        "siret_titulaire",
+        "societe_sous_traitant",
+        "siret_sous_traitant",
+        "montant_sous_traitance_ht",
+        "montant_tva",
+        "montant_sous_traitance_ttc",
+        "duree_sous_traitance",
+        "date_signature",
+        "paiement_direct",
+        "rib_sous_traitant",
+        "conserve_avance",
+    ]
+
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "rib_sous_traitant", comparison_functions)
+    check_quality_one_field(df_merged, "conserve_avance", comparison_functions, only_errors=True)
 
-    check_quality_one_row(df_merged, 0, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
+    check_quality_one_row(df_merged, 0, comparison_functions, included_columns=INCLUDED_COLUMNS)
 
-    check_global_statistics(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
+    check_global_statistics(df_merged, comparison_functions, included_columns=INCLUDED_COLUMNS)
 
     fields_with_errors = get_fields_with_comparison_errors(
-        df_merged.sort_values(by="filename"), comparison_functions, excluded_columns=EXCLUDED_COLUMNS
+        df_merged.sort_values(by="filename"), comparison_functions, included_columns=INCLUDED_COLUMNS
     )
 
     for v in fields_with_errors.values():

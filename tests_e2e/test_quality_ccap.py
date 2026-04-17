@@ -27,6 +27,22 @@ from tests_e2e.utils import (  # noqa: E402
 logger = logging.getLogger("docia." + __name__)
 
 
+def _parse_json_cell(x):
+    """Parse une cellule JSON depuis Grist : str JSON, déjà un objet, vide/NaN → None sans lever."""
+    if x is None:
+        return None
+    if isinstance(x, float) and x != x:  # NaN
+        return None
+    if isinstance(x, (dict, list)):
+        return x
+    if not isinstance(x, str):
+        return x
+    s = x.strip()
+    if not s:
+        return None
+    return json.loads(s)
+
+
 def compare_lots_title(llm_val: list[dict[str, str]], ref_val: list[dict[str, str]]):
     """Compare les lots du marché."""
     if not llm_val and not ref_val:
@@ -189,9 +205,9 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="mistral-medi
         "duree_marche",
         "montant_ht",
         "pbm_ocr",
-        "avance",
-        "penalites",
-        "mode_consultation",
+        # "avance",
+        # "penalites",
+        # "mode_consultation",
     ):
         df_test[col] = df_test[col].apply(lambda x: json.loads(x))
 
@@ -224,7 +240,7 @@ if __name__ == "__main__":
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "lots.*.montant_ht", comparison_functions, only_errors=True)
+    check_quality_one_field(df_merged, "montant_ht", comparison_functions, only_errors=True)
 
     check_quality_one_row(df_merged, 18, comparison_functions, included_columns=INCLUDED_COLUMNS)
 
