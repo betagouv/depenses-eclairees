@@ -4,7 +4,7 @@ from django.shortcuts import render
 
 from . import forms
 from .file_processing.processor.classifier import DIC_CLASS_FILE_BY_NAME
-from .models import Document
+from .models import Document, TrackingEvent
 from .permissions.checks import user_can_view_ej
 from .ratelimit.services import check_rate_limit_for_user
 
@@ -97,6 +97,18 @@ def home(request):
                 else:
                     db_docs = Document.objects.filter(engagements__num_ej=form.cleaned_data["num_ej"])
                     db_docs = db_docs.order_by("classification")
+
+                    # Tracking event for search
+                    TrackingEvent.objects.create(
+                        category="search",
+                        action="submit",
+                        name="ej_search_form",
+                        num_ej=num_ej,
+                        user=request.user if request.user.is_authenticated else None,
+                        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+                        page_url=request.build_absolute_uri(),
+                    )
+
                     for db_doc in db_docs:
                         document_data_raw = db_doc.structured_data or {}
                         ratio_extracted = compute_ratio_data_extraction(document_data_raw)

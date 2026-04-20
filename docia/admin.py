@@ -4,14 +4,34 @@ from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.contrib.auth import admin as auth_admin
 from django.contrib.auth import forms as auth_forms
 from django.contrib.auth import models as auth_models
+from django.db.models import F
 
 from . import models
+from .tracking.models import TrackingEvent
 
 
 class AdminUserCreationForm(auth_forms.AdminUserCreationForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["usable_password"].initial = "false"
+
+
+class LastLoginFilter(admin.SimpleListFilter):
+    title = "Dernière connexion"
+    parameter_name = "has_last_login"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("has_last_login", "Non-vide"),
+            ("no_last_login", "Vide"),
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == "has_last_login":
+            return queryset.exclude(last_login__isnull=True)
+        elif self.value() == "no_last_login":
+            return queryset.filter(last_login__isnull=True)
+        return queryset
 
 
 @admin.register(models.User)
@@ -80,24 +100,19 @@ class UserAdmin(auth_admin.UserAdmin):
 
     list_display = (
         "id",
-        "sub",
         "full_name",
-        "admin_email",
         "email",
+        "last_login",
         "is_active",
         "is_staff",
         "is_superuser",
+        "sub",
+        "admin_email",
         "created_at",
         "updated_at",
     )
-    list_filter = ("is_staff", "is_superuser", "is_active", "groups")
-    ordering = (
-        "is_active",
-        "-is_superuser",
-        "-is_staff",
-        "-updated_at",
-        "full_name",
-    )
+    list_filter = (LastLoginFilter, "is_staff", "is_superuser", "is_active", "groups")
+    ordering = [F("last_login").desc(nulls_last=True)]
     readonly_fields = (
         "id",
         "sub",
@@ -168,6 +183,32 @@ class CustomGroupAdmin(auth_admin.GroupAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).prefetch_related("scopes")
+
+
+class ActionFilter(admin.SimpleListFilter):
+    title = "Action"
+    parameter_name = "action"
+
+    def lookups(self, request, model_admin):
+        actions = TrackingEvent.objects.values_list("action", flat=True).distinct()
+        return [(action, action) for action in sorted(actions) if action]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(action=self.value())
+        return queryset
+
+
+@admin.register(TrackingEvent)
+class TrackingEventAdmin(admin.ModelAdmin):
+    list_display = ("id", "category", "action", "name", "user", "num_ej", "page_url", "created_at", "updated_at")
+    list_filter = (ActionFilter, "category", "user")
+    search_fields = ("id", "category", "action", "name", "page_url", "num_ej", "user__email")
+    readonly_fields = ("id", "created_at", "updated_at")
+    ordering = ("-created_at",)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("user")
 
 
 @admin.register(models.EngagementScope)
