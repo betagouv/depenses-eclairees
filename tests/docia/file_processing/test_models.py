@@ -20,13 +20,16 @@ def test_filter_stuck_batches():
     # This one is stuck
     batch_1 = ProcessDocumentBatchFactory(status=ProcessingStatus.STARTED)
     ProcessDocumentStepFactory(job__batch=batch_1, finished_at=time_stuck)
+    ProcessDocumentStepFactory(job__batch=batch_1, finished_at=time_stuck)
 
     # This one is not (not enough time has passed since last step finished)
     batch_2 = ProcessDocumentBatchFactory(status=ProcessingStatus.STARTED)
     ProcessDocumentStepFactory(job__batch=batch_2, finished_at=time_not_stuck)
+    ProcessDocumentStepFactory(job__batch=batch_2, finished_at=time_not_stuck)
 
     # This one is not (status)
     batch_2 = ProcessDocumentBatchFactory(status=ProcessingStatus.SUCCESS)
+    ProcessDocumentStepFactory(job__batch=batch_2, finished_at=time_stuck)
     ProcessDocumentStepFactory(job__batch=batch_2, finished_at=time_stuck)
 
     with freeze_time(now):

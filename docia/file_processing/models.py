@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
-from django.db.models import Max, OuterRef, Subquery
+from django.db.models import F, Max, Window
 from django.utils import timezone
 
 from docia.common.models import BaseModel
@@ -32,19 +32,13 @@ class ProcessDocumentBatchQuerySet(models.QuerySet):
     def filter_stuck_batches(self, timeout_seconds: int = BATCH_STUCK_TIMEOUT):
         """Look for stuck batches which last update was more than timeout_seconds ago."""
 
-        # Get the latest finished_at timestamp from any job step for each batch
-        latest_step = (
-            ProcessDocumentStep.objects.filter(job__batch=OuterRef("pk"))
-            .annotate(latest_finished_at=Max("finished_at"))
-            .values("latest_finished_at")
-        )
-
-        # Filter batches with no recent step updates
-        timeout_threshold = timezone.now() - timedelta(seconds=timeout_seconds)
         stuck_batches = (
             self.filter(status__in=(ProcessingStatus.STARTED, ProcessingStatus.PENDING))
-            .annotate(last_job_step_finished_at=Subquery(latest_step))
-            .filter(last_job_step_finished_at__lt=timeout_threshold)
+            .annotate(
+                last_job_step_finished_at=Window(expression=Max("job__step__finished_at"), partition_by=[F("id")])
+            )
+            .filter(last_job_step_finished_at__lt=timezone.now() - timedelta(seconds=timeout_seconds))
+            .distinct()
         )
 
         return stuck_batches
