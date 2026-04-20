@@ -202,7 +202,7 @@ class ActionFilter(admin.SimpleListFilter):
 @admin.register(TrackingEvent)
 class TrackingEventAdmin(admin.ModelAdmin):
     list_display = ("id", "category", "action", "name", "user", "num_ej", "page_url", "created_at", "updated_at")
-    list_filter = (ActionFilter, "category", "user")
+    list_filter = (ActionFilter, "category", "action")
     search_fields = ("id", "category", "action", "name", "page_url", "num_ej", "user__email")
     readonly_fields = ("id", "created_at", "updated_at")
     ordering = ("-created_at",)
