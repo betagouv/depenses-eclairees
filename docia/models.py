@@ -15,5 +15,6 @@ from .file_processing.models import (  # noqa: F401
     ProcessingStatus,
     RateGateState,
 )
+from .permissions.models import GroupScope  # noqa: F401
 from .ratelimit.models import RateLimitCount  # noqa: F401
 from .tracking.models import TrackingEvent  # noqa: F401

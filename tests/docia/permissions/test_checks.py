@@ -3,6 +3,7 @@ from django.contrib.auth.models import Permission
 import pytest
 
 from docia.permissions.checks import get_user_allowed_ej_qs, user_can_view_ej
+from docia.permissions.models import GroupScope
 from tests.factories.data import DataEngagementFactory, EngagementScopeFactory
 from tests.factories.users import GroupFactory, UserFactory
 from tests.utils import assert_queryset_equal
@@ -28,7 +29,9 @@ class TestGetUserAllowedEj:
 
         scope1 = EngagementScopeFactory(purchase_organization="OA_1", purchase_group="GA_1")
         scope1.engagements.add(ej1, ej2)
-        scope1.groups.add(group)
+
+        # Create GroupScope linking group to scope
+        GroupScope.objects.create(group=group, purchase_organization="OA_1", purchase_group="GA_1")
 
         # scope2 is not linked to the group
         scope2 = EngagementScopeFactory(purchase_organization="OA_2", purchase_group="GA_2")
@@ -36,6 +39,31 @@ class TestGetUserAllowedEj:
 
         result = get_user_allowed_ej_qs(user)
         # Only ej 1 & 2 should be returned, 3 is not in the same scope, and 4 has no scope
+        assert_queryset_equal(result, [ej1, ej2])
+
+    @pytest.mark.django_db
+    def test_with_organization_only_scope(self):
+        """Test that get_user_allowed_ej_qs works with organization-only scopes (wildcard group)."""
+        user = UserFactory()
+        group = GroupFactory()
+        group.user_set.add(user)
+
+        # Create engagements
+        ej1, ej2, ej3 = DataEngagementFactory.create_batch(3)
+
+        # Create scope with wildcard group (organization only)
+        scope1 = EngagementScopeFactory(purchase_organization="OA_1", purchase_group="*")
+        scope1.engagements.add(ej1, ej2)
+
+        # Create GroupScope with wildcard
+        GroupScope.objects.create(group=group, purchase_organization="OA_1", purchase_group="*")
+
+        # Create another scope with specific group
+        scope2 = EngagementScopeFactory(purchase_organization="OA_2", purchase_group="GA_2")
+        scope2.engagements.add(ej3)
+
+        result = get_user_allowed_ej_qs(user)
+        # Should return ej1 and ej2 (from wildcard scope), but not ej3 (different organization)
         assert_queryset_equal(result, [ej1, ej2])
 
     @pytest.mark.django_db
@@ -54,13 +82,48 @@ class TestGetUserAllowedEj:
 
         scope1 = EngagementScopeFactory(purchase_organization="OA_1", purchase_group="GA_1")
         scope1.engagements.add(ej1)
-        scope1.groups.add(group1)
+
+        GroupScope.objects.create(group=group1, purchase_organization="OA_1", purchase_group="GA_1")
 
         scope2 = EngagementScopeFactory(purchase_organization="OA_2", purchase_group="GA_2")
         scope2.engagements.add(ej2, ej3)
-        scope2.groups.add(group2)
+
+        GroupScope.objects.create(group=group2, purchase_organization="OA_2", purchase_group="GA_2")
 
         result = get_user_allowed_ej_qs(user)
+        assert_queryset_equal(result, [ej1, ej2, ej3])
+
+    @pytest.mark.django_db
+    def test_mixed_wildcard_and_specific_groups(self):
+        """Test that get_user_allowed_ej_qs works with both wildcard and specific group scopes."""
+        user = UserFactory()
+        group = GroupFactory()
+        group.user_set.add(user)
+
+        # Create engagements
+        ej1 = DataEngagementFactory(num_ej="EJ001")
+        ej2 = DataEngagementFactory(num_ej="EJ002")
+        ej3 = DataEngagementFactory(num_ej="EJ003")
+        ej4 = DataEngagementFactory(num_ej="EJ004")
+
+        # Create wildcard scope for OA_1
+        scope1 = EngagementScopeFactory(purchase_organization="OA_1", purchase_group="*")
+        scope1.engagements.add(ej1, ej2)
+
+        GroupScope.objects.create(group=group, purchase_organization="OA_1", purchase_group="*")
+
+        # Create specific group scope for OA_1/GA_1
+        scope2 = EngagementScopeFactory(purchase_organization="OA_1", purchase_group="GA_1")
+        scope2.engagements.add(ej3)
+
+        GroupScope.objects.create(group=group, purchase_organization="OA_1", purchase_group="GA_1")
+
+        # Create scope for different organization
+        scope3 = EngagementScopeFactory(purchase_organization="OA_2", purchase_group="GA_2")
+        scope3.engagements.add(ej4)
+
+        result = get_user_allowed_ej_qs(user)
+        # Should return ej1, ej2 (from wildcard), ej3 (from specific group), but not ej4 (different org)
         assert_queryset_equal(result, [ej1, ej2, ej3])
 
     @pytest.mark.django_db
@@ -76,11 +139,13 @@ class TestGetUserAllowedEj:
         # Create two scopes that both include ej1
         scope1 = EngagementScopeFactory(purchase_organization="OA_1", purchase_group="GA_1")
         scope1.engagements.add(ej1, ej2)
-        scope1.groups.add(group)
+
+        GroupScope.objects.create(group=group, purchase_organization="OA_1", purchase_group="GA_1")
 
         scope2 = EngagementScopeFactory(purchase_organization="OA_2", purchase_group="GA_2")
         scope2.engagements.add(ej1)  # ej1 appears in both scopes
-        scope2.groups.add(group)
+
+        GroupScope.objects.create(group=group, purchase_organization="OA_2", purchase_group="GA_2")
 
         result = get_user_allowed_ej_qs(user)
         # Should return 2 distinct EJs, not 3 (even though ej1 appears in 2 scopes)
@@ -99,7 +164,9 @@ class TestUserCanViewEj:
         group.user_set.add(user)
         scope = EngagementScopeFactory()
         scope.engagements.add(ej)
-        scope.groups.add(group)
+        GroupScope.objects.create(
+            group=group, purchase_organization=scope.purchase_organization, purchase_group=scope.purchase_group
+        )
 
     @pytest.mark.django_db
     def test_superuser(self):
@@ -192,4 +259,30 @@ class TestUserCanViewEj:
         self._add_scope(user, ej)
 
         result = user_can_view_ej(user, "NONEXISTENT")
+        assert result is False
+
+    @pytest.mark.django_db
+    def test_with_permission_and_wildcard_scope(self):
+        """Test that user with permission and wildcard scope can view EJ."""
+        user = UserFactory()
+        ej_allowed = DataEngagementFactory(num_ej="EJ001")
+        ej_not_allowed = DataEngagementFactory(num_ej="EJ002")
+
+        # Add permission
+        self._add_permission(user)
+
+        # Create wildcard scope
+        group = GroupFactory()
+        group.user_set.add(user)
+        scope = EngagementScopeFactory(purchase_organization="OA_1", purchase_group="*")
+        scope.engagements.add(ej_allowed)
+
+        GroupScope.objects.create(group=group, purchase_organization="OA_1", purchase_group="*")
+
+        # User should be able to view allowed EJ (wildcard scope)
+        result = user_can_view_ej(user, ej_allowed.num_ej)
+        assert result is True
+
+        # User should not be able to view not allowed EJ (different organization)
+        result = user_can_view_ej(user, ej_not_allowed.num_ej)
         assert result is False
