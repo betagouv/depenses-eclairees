@@ -204,6 +204,54 @@ class TrackingEventAdmin(admin.ModelAdmin):
         return super().get_queryset(request).select_related("user")
 
 
+class EngagementForm(forms.ModelForm):
+    scopes = forms.ModelMultipleChoiceField(
+        queryset=models.EngagementScope.objects.all(),
+        required=False,
+        widget=FilteredSelectMultiple("scopes", is_stacked=False),
+        label="",
+    )
+
+    class Meta:
+        model = models.DataEngagement
+        fields = ("num_ej", "external_updated_at", "scopes")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.fields["scopes"].initial = self.instance.scopes.all()
+
+    def _save_m2m(self):
+        super()._save_m2m()
+        cleaned_data = self.cleaned_data
+        scopes = cleaned_data["scopes"]
+        self.instance.scopes.set(scopes)
+
+
+@admin.register(models.DataEngagement)
+class EngagementAdmin(admin.ModelAdmin):
+    """Admin class for DataEngagement model"""
+
+    form = EngagementForm
+    list_display = ("num_ej", "col_scopes", "external_updated_at", "updated_at")
+    search_fields = ("num_ej", "scopes__purchase_organization", "scopes__purchase_group")
+    list_filter = ("external_updated_at",)
+    readonly_fields = ("id", "external_updated_at", "created_at", "updated_at")
+
+    fieldsets = (
+        (None, {"fields": ("id", "num_ej", "scopes")}),
+        ("Dates", {"fields": ("external_updated_at", "created_at", "updated_at")}),
+    )
+
+    def col_scopes(self, obj):
+        return ", ".join(str(scope) for scope in obj.scopes.all())
+
+    col_scopes.short_description = "Périmètres"
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related("scopes")
+
+
 @admin.register(models.EngagementScope)
 class EngagementScopeAdmin(admin.ModelAdmin):
     """Admin class for EngagementScope model"""
