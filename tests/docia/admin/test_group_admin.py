@@ -1,6 +1,6 @@
 """
 Test cases for the Django admin interface, specifically for Group administration.
-Tests the add/edit functionality of groups with scopes.
+Tests the add/edit functionality of groups with GroupScope inline editing.
 """
 
 from django.contrib.auth.models import Group
@@ -8,89 +8,33 @@ from django.urls import reverse
 
 import pytest
 
-from docia.admin import AdminGroupForm
-from docia.documents.models import EngagementScope
-from tests.utils import assert_queryset_equal
+from docia.permissions.models import GroupScope
 
 
-@pytest.mark.django_db
-def test_group_admin_form_initialization():
-    """Test that the AdminGroupForm initializes correctly"""
-    # Create some test scopes
-    scope1 = EngagementScope.objects.create(purchase_organization="OA 1", purchase_group="GA 1")
-    scope2 = EngagementScope.objects.create(purchase_organization="OA 2", purchase_group="GA 2")
-
-    # Test form initialization with existing group
-    group = Group.objects.create(name="Test Group")
-    group.scopes.add(scope1)
-
-    form = AdminGroupForm(instance=group)
-
-    # Check that scopes field is properly initialized
-    assert "scopes" in form.fields
-    assert scope1 in form.fields["scopes"].initial
-    assert scope2 not in form.fields["scopes"].initial
-
-
-@pytest.mark.django_db
-def test_group_admin_form_save():
-    """Test that the AdminGroupForm saves scopes correctly"""
-    # Create some test scopes
-    scope1 = EngagementScope.objects.create(purchase_organization="OA 1", purchase_group="GA 1")
-    scope2 = EngagementScope.objects.create(purchase_organization="OA 2", purchase_group="GA 2")
-
-    # Create form data
-    form_data = {"name": "Test Group", "permissions": [], "scopes": [scope1.pk, scope2.pk]}
-
-    form = AdminGroupForm(data=form_data)
-    assert form.is_valid()
-
-    # Save the form
-    group = form.save()
-
-    # Check that scopes are saved correctly
-    assert group.scopes.count() == 2
-    assert scope1 in group.scopes.all()
-    assert scope2 in group.scopes.all()
-
-
-@pytest.mark.django_db
-def test_group_admin_form_update():
-    """Test that the AdminGroupForm updates scopes correctly"""
-    # Create some test scopes
-    scope1 = EngagementScope.objects.create(purchase_organization="OA 1", purchase_group="GA 1")
-    scope2 = EngagementScope.objects.create(purchase_organization="OA 2", purchase_group="GA 2")
-    scope3 = EngagementScope.objects.create(purchase_organization="OA 3", purchase_group="GA 3")
-
-    # Create a group with initial scopes
-    group = Group.objects.create(name="Test Group")
-    group.scopes.add(scope1, scope2)
-
-    # Update form data - remove scope1, keep scope2, add scope3
-    form_data = {"name": "Updated Group", "permissions": [], "scopes": [scope2.pk, scope3.pk]}
-
-    form = AdminGroupForm(data=form_data, instance=group)
-    assert form.is_valid()
-
-    # Save the form
-    updated_group = form.save()
-
-    # Check that scopes are updated correctly
-    assert updated_group.scopes.count() == 2
-    assert scope1 not in updated_group.scopes.all()
-    assert scope2 in updated_group.scopes.all()
-    assert scope3 in updated_group.scopes.all()
+def _build_scope_payload(scopes, initials=None):
+    initials = initials or []
+    payload: dict[str, str] = {
+        "scope_set-TOTAL_FORMS": str(len(scopes) + len(initials)),
+        "scope_set-INITIAL_FORMS": str(len(initials)),
+    }
+    offset = 0
+    for i, scope in enumerate(initials, start=offset):
+        payload[f"scope_set-{i}-id"] = str(scope["id"])
+        if scope.get("delete"):
+            payload[f"scope_set-{i}-DELETE"] = "on"
+        else:
+            payload[f"scope_set-{i}-purchase_organization"] = scope["purchase_organization"]
+            payload[f"scope_set-{i}-purchase_group"] = scope["purchase_group"]
+    offset += len(initials)
+    for i, (org, group) in enumerate(scopes, start=offset):
+        payload[f"scope_set-{i}-purchase_organization"] = org
+        payload[f"scope_set-{i}-purchase_group"] = group
+    return payload
 
 
 @pytest.mark.django_db
 def test_group_admin_add_view(admin_client):
-    """Test the add group view in admin"""
-    # Create some test scopes
-    scope1 = EngagementScope.objects.create(purchase_organization="OA 1", purchase_group="GA 1")
-    scope2 = EngagementScope.objects.create(purchase_organization="OA 2", purchase_group="GA 2")
-    # This one should not be added
-    EngagementScope.objects.create(purchase_organization="OA 3", purchase_group="GA 3")
-
+    """Test the add group view in admin with GroupScope inline editing"""
     # Get the add group URL
     add_url = reverse("admin:auth_group_add")
 
@@ -98,30 +42,31 @@ def test_group_admin_add_view(admin_client):
     response = admin_client.get(add_url)
     assert response.status_code == 200
 
-    # Test POST request to create a new group
-    post_data = {"name": "New Test Group", "permissions": [], "scopes": [scope1.pk, scope2.pk], "_save": "Save"}
+    # Test POST request to create a new group with inline GroupScopes
+    scopes = [("OA1", "GA1"), ("OA2", "GA2")]
+    post_data = {
+        "name": "New Test Group",
+        **_build_scope_payload(scopes),
+    }
 
     response = admin_client.post(add_url, post_data)
 
     # Check that group was created and redirected
     assert response.status_code == 302
 
-    # Check that the group exists with correct scopes
+    # Check that the group exists and has correct GroupScopes
     group = Group.objects.get(name="New Test Group")
-    assert_queryset_equal(group.scopes, [scope1, scope2])
+    db_scopes = sorted(group.scope_set.values_list("purchase_organization", "purchase_group"))
+    assert db_scopes == scopes
 
 
 @pytest.mark.django_db
 def test_group_admin_change_view(admin_client):
-    """Test the change group view in admin"""
-    # Create some test scopes
-    scope1 = EngagementScope.objects.create(purchase_organization="OA 1", purchase_group="GA 1")
-    scope2 = EngagementScope.objects.create(purchase_organization="OA 2", purchase_group="GA 2")
-    scope3 = EngagementScope.objects.create(purchase_organization="OA 3", purchase_group="GA 3")
-
+    """Test the change group view in admin with GroupScope inline editing"""
     # Create a group to edit
     group = Group.objects.create(name="Group to Edit")
-    group.scopes.add(scope1)
+    # Create initial GroupScope
+    scope = GroupScope.objects.create(group=group, purchase_organization="OA1", purchase_group="GA1")
 
     # Get the change group URL
     change_url = reverse("admin:auth_group_change", args=[group.pk])
@@ -130,12 +75,12 @@ def test_group_admin_change_view(admin_client):
     response = admin_client.get(change_url)
     assert response.status_code == 200
 
-    # Test POST request to update the group
+    # Test POST request to update the group and its GroupScopes
+    scopes = [("OA2", "GA2"), ("OA3", "GA3")]
+    initials = [{"id": scope.id, "delete": True}]
     post_data = {
         "name": "Updated Group Name",
-        "permissions": [],
-        "scopes": [scope2.pk, scope3.pk],  # Change scopes
-        "_save": "Save",
+        **_build_scope_payload(scopes, initials=initials),
     }
 
     response = admin_client.post(change_url, post_data)
@@ -148,22 +93,20 @@ def test_group_admin_change_view(admin_client):
 
     # Check that the group was updated correctly
     assert group.name == "Updated Group Name"
-    assert_queryset_equal(group.scopes, [scope2, scope3])
+    db_scopes = sorted(group.scope_set.values_list("purchase_organization", "purchase_group"))
+    assert db_scopes == scopes
 
 
 @pytest.mark.django_db
 def test_group_admin_list_view(admin_client):
     """Test the group list view in admin"""
-    # Create some test scopes
-    scope1 = EngagementScope.objects.create(purchase_organization="OA 1", purchase_group="GA 1")
-    scope2 = EngagementScope.objects.create(purchase_organization="OA 2", purchase_group="GA 2")
-
-    # Create some test groups
+    # Create some test groups with GroupScopes
     group1 = Group.objects.create(name="Group 1")
-    group1.scopes.add(scope1)
+    GroupScope.objects.create(group=group1, purchase_organization="OA1", purchase_group="GA1")
 
     group2 = Group.objects.create(name="Group 2")
-    group2.scopes.add(scope1, scope2)
+    GroupScope.objects.create(group=group2, purchase_organization="OA2", purchase_group="GA2")
+    GroupScope.objects.create(group=group2, purchase_organization="OA3", purchase_group="GA3")
 
     # Get the group list URL
     list_url = reverse("admin:auth_group_changelist")
@@ -173,23 +116,22 @@ def test_group_admin_list_view(admin_client):
     assert response.status_code == 200
 
     # Check that both groups are in the response
-    assert "Group 1" in str(response.content)
-    assert "Group 2" in str(response.content)
+    assert "Group 1" in response.text
+    assert "Group 2" in response.text
+    assert "OA1/GA1" in response.text
+    assert "OA2/GA2" in response.text
+    assert "OA3/GA3" in response.text
 
 
 @pytest.mark.django_db
 def test_group_admin_search_functionality(admin_client):
     """Test the search functionality in group admin"""
-    # Create some test scopes
-    scope1 = EngagementScope.objects.create(purchase_organization="OA 1", purchase_group="GA 1")
-    scope2 = EngagementScope.objects.create(purchase_organization="OA 2", purchase_group="GA 2")
-
     # Create test groups
     group1 = Group.objects.create(name="Searchable Group")
-    group1.scopes.add(scope1)
+    GroupScope.objects.create(group=group1, purchase_organization="OA1", purchase_group="GA1")
 
     group2 = Group.objects.create(name="Another Group")
-    group2.scopes.add(scope2)
+    GroupScope.objects.create(group=group2, purchase_organization="OA2", purchase_group="GA2")
 
     # Get the group list URL with search query
     search_url = reverse("admin:auth_group_changelist") + "?q=Searchable"
@@ -199,46 +141,54 @@ def test_group_admin_search_functionality(admin_client):
     assert response.status_code == 200
 
     # Check that only the searched group appears
-    assert "Searchable Group" in str(response.content)
-    assert "Another Group" not in str(response.content)
+    assert "Searchable Group" in response.text
+    assert "Another Group" not in response.text
 
 
 @pytest.mark.django_db
 def test_complete_group_lifecycle(admin_client):
     """Test the complete lifecycle of a group in admin: create, edit, delete"""
-    # Create test scopes
-    scope1 = EngagementScope.objects.create(purchase_organization="OA 1", purchase_group="GA 1")
-    scope2 = EngagementScope.objects.create(purchase_organization="OA 2", purchase_group="GA 2")
-
-    # Step 1: Create a group
+    # Step 1: Create a group with GroupScopes
     add_url = reverse("admin:auth_group_add")
-    post_data = {"name": "Integration Test Group", "permissions": [], "scopes": [scope1.pk], "_save": "Save"}
+    scopes = [("OA1", "GA1"), ("OA1", "GA2")]
+    post_data = {
+        "name": "Integration Test Group",
+        **_build_scope_payload(scopes),
+    }
 
     response = admin_client.post(add_url, post_data)
     assert response.status_code == 302
 
-    # Get the created group
+    # Get the created group and verify GroupScopes
     group = Group.objects.get(name="Integration Test Group")
-    assert group.scopes.count() == 1
-    assert scope1 in group.scopes.all()
+    db_scopes = sorted(group.scope_set.values_list("purchase_organization", "purchase_group"))
+    assert db_scopes == scopes
 
-    # Step 2: Edit the group
+    # Step 2: Edit the group and add more GroupScopes
     change_url = reverse("admin:auth_group_change", args=[group.pk])
+    new_scopes = [("OA2", "GA2")]
+    initials = list(
+        group.scope_set.order_by("purchase_organization", "purchase_group").values(
+            "id", "purchase_organization", "purchase_group"
+        )
+    )
+    initials[1]["delete"] = True
     post_data = {
         "name": "Updated Integration Group",
-        "permissions": [],
-        "scopes": [scope1.pk, scope2.pk],  # Add second scope
-        "_save": "Save",
+        **_build_scope_payload(new_scopes, initials=initials),
     }
 
     response = admin_client.post(change_url, post_data)
+    with open("/tmp/doc.html", "w") as f:
+        f.write(response.text)
     assert response.status_code == 302
 
     # Verify the update
     group.refresh_from_db()
     assert group.name == "Updated Integration Group"
-    assert group.scopes.count() == 2
-    assert scope2 in group.scopes.all()
+    scopes = [("OA1", "GA1"), ("OA2", "GA2")]
+    db_scopes = sorted(group.scope_set.values_list("purchase_organization", "purchase_group"))
+    assert db_scopes == scopes
 
     # Step 3: Delete the group
     delete_url = reverse("admin:auth_group_delete", args=[group.pk])

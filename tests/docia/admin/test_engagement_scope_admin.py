@@ -3,82 +3,16 @@ Test cases for the Django admin interface, specifically for Engagement Scope adm
 Tests mirror the Group admin tests but focus on Engagement Scope functionality.
 """
 
-from django.contrib.auth.models import Group
 from django.urls import reverse
 
 import pytest
 
 from docia.documents.models import EngagementScope
-from tests.utils import assert_queryset_equal
-
-
-@pytest.mark.django_db
-def test_engagement_scope_admin_form_initialization():
-    """Test that the EngagementScope admin form initializes correctly"""
-    # Create some test groups
-    group1 = Group.objects.create(name="Group 1")
-    group2 = Group.objects.create(name="Group 2")
-
-    # Test form initialization with existing engagement scope
-    scope = EngagementScope.objects.create(purchase_organization="OA Test", purchase_group="GA Test")
-    scope.groups.add(group1)
-
-    # Test that groups relationship is properly initialized
-    assert scope.groups.count() == 1
-    assert group1 in scope.groups.all()
-    assert group2 not in scope.groups.all()
-
-
-@pytest.mark.django_db
-def test_engagement_scope_admin_form_save():
-    """Test that the EngagementScope admin form saves groups correctly"""
-    # Create some test groups
-    group1 = Group.objects.create(name="Group 1")
-    group2 = Group.objects.create(name="Group 2")
-
-    # Create engagement scope directly (simpler than dealing with form validation)
-    scope = EngagementScope.objects.create(purchase_organization="OA Test", purchase_group="GA Test")
-    scope.groups.set([group1, group2])
-
-    # Check that groups are saved correctly
-    assert scope.groups.count() == 2
-    assert group1 in scope.groups.all()
-    assert group2 in scope.groups.all()
-
-
-@pytest.mark.django_db
-def test_engagement_scope_admin_form_update():
-    """Test that the EngagementScope admin form updates groups correctly"""
-    # Create some test groups
-    group1 = Group.objects.create(name="Group 1")
-    group2 = Group.objects.create(name="Group 2")
-    group3 = Group.objects.create(name="Group 3")
-
-    # Create an engagement scope with initial groups
-    scope = EngagementScope.objects.create(purchase_organization="OA Test", purchase_group="GA Test")
-    scope.groups.add(group1, group2)
-
-    # Update groups directly - remove group1, keep group2, add group3
-    scope.purchase_group = "Updated GA"
-    scope.groups.set([group2, group3])
-    scope.save()
-
-    # Check that groups are updated correctly
-    assert scope.groups.count() == 2
-    assert group1 not in scope.groups.all()
-    assert group2 in scope.groups.all()
-    assert group3 in scope.groups.all()
 
 
 @pytest.mark.django_db
 def test_engagement_scope_admin_add_view(admin_client):
     """Test the add engagement scope view in admin"""
-    # Create some test groups
-    group1 = Group.objects.create(name="Test Group 1")
-    group2 = Group.objects.create(name="Test Group 2")
-    # This one should not be added
-    Group.objects.create(name="Test Group 3")
-
     # Get the add engagement scope URL
     add_url = reverse("admin:docia_engagementscope_add")
 
@@ -88,9 +22,8 @@ def test_engagement_scope_admin_add_view(admin_client):
 
     # Test POST request to create a new engagement scope
     post_data = {
-        "purchase_organization": "New OA",
-        "purchase_group": "New GA",
-        "groups": [group1.pk, group2.pk],
+        "purchase_organization": "NewOA",
+        "purchase_group": "NewGA",
         "_save": "Save",
     }
 
@@ -99,22 +32,17 @@ def test_engagement_scope_admin_add_view(admin_client):
     # Check that engagement scope was created and redirected
     assert response.status_code == 302
 
-    # Check that the engagement scope exists with correct groups
-    scope = EngagementScope.objects.get(purchase_organization="New OA", purchase_group="New GA")
-    assert_queryset_equal(scope.groups, [group1, group2])
+    # Check that the engagement scope exists with correct fields
+    scope = EngagementScope.objects.get(purchase_organization="NewOA", purchase_group="NewGA")
+    assert scope.purchase_organization == "NewOA"
+    assert scope.purchase_group == "NewGA"
 
 
 @pytest.mark.django_db
 def test_engagement_scope_admin_change_view(admin_client):
     """Test the change engagement scope view in admin"""
-    # Create some test groups
-    group1 = Group.objects.create(name="Test Group 1")
-    group2 = Group.objects.create(name="Test Group 2")
-    group3 = Group.objects.create(name="Test Group 3")
-
     # Create an engagement scope to edit
-    scope = EngagementScope.objects.create(purchase_organization="OA to Edit", purchase_group="GA to Edit")
-    scope.groups.add(group1)
+    scope = EngagementScope.objects.create(purchase_organization="OAtoEdit", purchase_group="GAtoEdit")
 
     # Get the change engagement scope URL
     change_url = reverse("admin:docia_engagementscope_change", args=[scope.pk])
@@ -125,9 +53,8 @@ def test_engagement_scope_admin_change_view(admin_client):
 
     # Test POST request to update the engagement scope
     post_data = {
-        "purchase_organization": "Updated OA",
-        "purchase_group": "Updated GA",
-        "groups": [group2.pk, group3.pk],  # Change groups
+        "purchase_organization": "UpdatedOA",
+        "purchase_group": "UpdatedGA",
         "_save": "Save",
     }
 
@@ -140,24 +67,16 @@ def test_engagement_scope_admin_change_view(admin_client):
     scope.refresh_from_db()
 
     # Check that the engagement scope was updated correctly
-    assert scope.purchase_organization == "Updated OA"
-    assert scope.purchase_group == "Updated GA"
-    assert_queryset_equal(scope.groups, [group2, group3])
+    assert scope.purchase_organization == "UpdatedOA"
+    assert scope.purchase_group == "UpdatedGA"
 
 
 @pytest.mark.django_db
 def test_engagement_scope_admin_list_view(admin_client):
     """Test the engagement scope list view in admin"""
-    # Create some test groups
-    group1 = Group.objects.create(name="Test Group 1")
-    group2 = Group.objects.create(name="Test Group 2")
-
     # Create some test engagement scopes
-    scope1 = EngagementScope.objects.create(purchase_organization="OA 1", purchase_group="GA 1")
-    scope1.groups.add(group1)
-
-    scope2 = EngagementScope.objects.create(purchase_organization="OA 2", purchase_group="GA 2")
-    scope2.groups.add(group1, group2)
+    scope1 = EngagementScope.objects.create(purchase_organization="OA1", purchase_group="GA1")
+    scope2 = EngagementScope.objects.create(purchase_organization="OA2", purchase_group="GA2")
 
     # Get the engagement scope list URL
     list_url = reverse("admin:docia_engagementscope_changelist")
@@ -167,23 +86,16 @@ def test_engagement_scope_admin_list_view(admin_client):
     assert response.status_code == 200
 
     # Check that both engagement scopes are in the response
-    assert "OA 1" in str(response.content)
-    assert "OA 2" in str(response.content)
+    assert scope1.purchase_organization in response.text
+    assert scope2.purchase_organization in response.text
 
 
 @pytest.mark.django_db
 def test_engagement_scope_admin_search_functionality(admin_client):
     """Test the search functionality in engagement scope admin"""
-    # Create some test groups
-    group1 = Group.objects.create(name="Test Group 1")
-    group2 = Group.objects.create(name="Test Group 2")
-
     # Create test engagement scopes
-    scope1 = EngagementScope.objects.create(purchase_organization="Searchable OA", purchase_group="GA 1")
-    scope1.groups.add(group1)
-
-    scope2 = EngagementScope.objects.create(purchase_organization="Another OA", purchase_group="GA 2")
-    scope2.groups.add(group2)
+    searchable = EngagementScope.objects.create(purchase_organization="SearchableOA", purchase_group="GA1")
+    other = EngagementScope.objects.create(purchase_organization="AnotherOA", purchase_group="GA2")
 
     # Get the engagement scope list URL with search query
     search_url = reverse("admin:docia_engagementscope_changelist") + "?q=Searchable"
@@ -193,20 +105,15 @@ def test_engagement_scope_admin_search_functionality(admin_client):
     assert response.status_code == 200
 
     # Check that only the searched engagement scope appears
-    assert "Searchable OA" in str(response.content)
-    assert "Another OA" not in str(response.content)
+    assert searchable.purchase_organization in response.text
+    assert other.purchase_organization not in response.text
 
 
 @pytest.mark.django_db
 def test_engagement_scope_admin_delete_view(admin_client):
     """Test the delete engagement scope view in admin"""
-    # Create some test groups
-    group1 = Group.objects.create(name="Test Group 1")
-    group2 = Group.objects.create(name="Test Group 2")
-
     # Create an engagement scope to delete
-    scope = EngagementScope.objects.create(purchase_organization="OA to Delete", purchase_group="GA to Delete")
-    scope.groups.add(group1, group2)
+    scope = EngagementScope.objects.create(purchase_organization="OAtoDelete", purchase_group="GAtoDelete")
 
     scope_id = scope.pk
 
@@ -230,16 +137,11 @@ def test_engagement_scope_admin_delete_view(admin_client):
 @pytest.mark.django_db
 def test_complete_engagement_scope_lifecycle(admin_client):
     """Test the complete lifecycle of an engagement scope in admin: create, edit, delete"""
-    # Create test groups
-    group1 = Group.objects.create(name="Integration Group 1")
-    group2 = Group.objects.create(name="Integration Group 2")
-
     # Step 1: Create an engagement scope
     add_url = reverse("admin:docia_engagementscope_add")
     post_data = {
-        "purchase_organization": "Integration OA",
-        "purchase_group": "Integration GA",
-        "groups": [group1.pk],
+        "purchase_organization": "IntegrationOA",
+        "purchase_group": "IntegrationGA",
         "_save": "Save",
     }
 
@@ -247,16 +149,15 @@ def test_complete_engagement_scope_lifecycle(admin_client):
     assert response.status_code == 302
 
     # Get the created engagement scope
-    scope = EngagementScope.objects.get(purchase_organization="Integration OA", purchase_group="Integration GA")
-    assert scope.groups.count() == 1
-    assert group1 in scope.groups.all()
+    scope = EngagementScope.objects.get(purchase_organization="IntegrationOA", purchase_group="IntegrationGA")
+    assert scope.purchase_organization == "IntegrationOA"
+    assert scope.purchase_group == "IntegrationGA"
 
     # Step 2: Edit the engagement scope
     change_url = reverse("admin:docia_engagementscope_change", args=[scope.pk])
     post_data = {
-        "purchase_organization": "Updated Integration OA",
-        "purchase_group": "Updated Integration GA",
-        "groups": [group1.pk, group2.pk],  # Add second group
+        "purchase_organization": "UpdatedIntegrationOA",
+        "purchase_group": "UpdatedIntegrationGA",
         "_save": "Save",
     }
 
@@ -265,10 +166,8 @@ def test_complete_engagement_scope_lifecycle(admin_client):
 
     # Verify the update
     scope.refresh_from_db()
-    assert scope.purchase_organization == "Updated Integration OA"
-    assert scope.purchase_group == "Updated Integration GA"
-    assert scope.groups.count() == 2
-    assert group2 in scope.groups.all()
+    assert scope.purchase_organization == "UpdatedIntegrationOA"
+    assert scope.purchase_group == "UpdatedIntegrationGA"
 
     # Step 3: Delete the engagement scope
     delete_url = reverse("admin:docia_engagementscope_delete", args=[scope.pk])

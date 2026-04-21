@@ -1,4 +1,3 @@
-from django.contrib.auth.models import Group
 from django.contrib.postgres.functions import RandomUUID
 from django.db import models
 
@@ -24,6 +23,8 @@ class DataEngagement(BaseModel):
 
     class Meta:
         db_table = "engagements"
+        verbose_name = "Engagement Juridique"
+        verbose_name_plural = "Engagements Juridique"
 
     def __str__(self):
         return f"{self.num_ej}"
@@ -70,16 +71,11 @@ class EngagementScope(BaseModel):
     # GA: Groupe d'achat
     purchase_group = models.CharField(max_length=255)
     engagements = models.ManyToManyField(DataEngagement, related_name="scopes", related_query_name="scopes")
-    groups = models.ManyToManyField(
-        Group,
-        related_name="scopes",
-        related_query_name="scopes",
-        blank=True,
-    )
 
     class Meta:
         unique_together = [("purchase_organization", "purchase_group")]
-        verbose_name = "Périmètre"
+        verbose_name = "Périmètre EJ"
+        verbose_name_plural = "Pérmiètres EJ"
 
     def __str__(self):
         return f"{self.purchase_organization}/{self.purchase_group}"

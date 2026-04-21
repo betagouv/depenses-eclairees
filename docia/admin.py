@@ -4,9 +4,10 @@ from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.contrib.auth import admin as auth_admin
 from django.contrib.auth import forms as auth_forms
 from django.contrib.auth import models as auth_models
-from django.db.models import F
+from django.db.models import Count, F
 
 from . import models
+from .permissions.models import GroupScope
 from .tracking.models import TrackingEvent
 
 
@@ -149,40 +150,32 @@ class DocumentAdmin(admin.ModelAdmin):
 admin.site.unregister(auth_models.Group)
 
 
-class AdminGroupForm(forms.ModelForm):
-    scopes = forms.ModelMultipleChoiceField(
-        queryset=models.EngagementScope.objects.all(),
-        required=False,
-        widget=FilteredSelectMultiple("scopes", is_stacked=False),
-        label="",
-    )
+class GroupScopeInline(admin.TabularInline):
+    """Inline admin for GroupScope within Group admin"""
 
-    class Meta:
-        model = auth_models.Group
-        fields = ("name", "permissions", "scopes")
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.instance.pk:
-            self.fields["scopes"].initial = self.instance.scopes.all()
-
-    def _save_m2m(self):
-        super()._save_m2m()
-        cleaned_data = self.cleaned_data
-        scopes = cleaned_data["scopes"]
-        self.instance.scopes.set(scopes)
+    model = GroupScope
+    extra = 1
+    fields = ("purchase_organization", "purchase_group")
+    verbose_name = "Périmètre"
+    verbose_name_plural = "Périmètres"
 
 
 @admin.register(auth_models.Group)
 class CustomGroupAdmin(auth_admin.GroupAdmin):
-    """Admin class for Group model extended with scopes"""
+    """Admin class for Group model with inline GroupScope editing"""
 
-    search_fields = ("name", "scopes__purchase_group", "scopes__purchase_organization")
-    fields = ("name", "permissions", "scopes")
-    form = AdminGroupForm
+    inlines = [GroupScopeInline]
+    list_display = ("name", "col_group_scopes")
+    search_fields = ("name", "scope__purchase_group", "scope__purchase_organization")
+    fields = ("name", "permissions")
 
     def get_queryset(self, request):
-        return super().get_queryset(request).prefetch_related("scopes")
+        return super().get_queryset(request).prefetch_related("scope_set")
+
+    def col_group_scopes(self, obj):
+        return ", ".join(str(scope) for scope in obj.scope_set.all())
+
+    col_group_scopes.short_description = "Périmètres"
 
 
 class ActionFilter(admin.SimpleListFilter):
@@ -215,17 +208,14 @@ class TrackingEventAdmin(admin.ModelAdmin):
 class EngagementScopeAdmin(admin.ModelAdmin):
     """Admin class for EngagementScope model"""
 
-    list_display = ("purchase_organization", "engagement_count", "group_count")
+    list_display = ("purchase_organization", "purchase_group", "engagement_count")
     search_fields = ("purchase_organization", "purchase_group")
-    filter_horizontal = ("groups",)
-    fields = ("purchase_organization", "purchase_group", "groups")
+    fields = ("purchase_organization", "purchase_group")
 
     def engagement_count(self, obj):
-        return obj.engagements.count()
+        return obj.engagement_count
 
     engagement_count.short_description = "Engagements"
 
-    def group_count(self, obj):
-        return obj.groups.count()
-
-    group_count.short_description = "Groupes"
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(engagement_count=Count("engagements"))
