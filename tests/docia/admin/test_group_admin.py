@@ -179,8 +179,6 @@ def test_complete_group_lifecycle(admin_client):
     }
 
     response = admin_client.post(change_url, post_data)
-    with open("/tmp/doc.html", "w") as f:
-        f.write(response.text)
     assert response.status_code == 302
 
     # Verify the update
