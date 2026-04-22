@@ -2,6 +2,8 @@
 Tests d'extraction Excel (XLSX, XLS, ODS) via le package text_extraction.
 """
 
+import pytest
+
 from docia.file_processing.processor.text_extraction import (
     extract_text_from_ods,
     extract_text_from_xls,
@@ -62,3 +64,15 @@ def test_extract_text_from_ods():
     text, is_ocr = extract_text_from_ods(content, path)
     assert text == EXPECTED_TEXT
     assert not is_ocr
+
+
+def test_extract_text_from_xlsx_size_limit():
+    """Test that extract_text_from_xlsx raises ValueError when file_content exceeds size_limit."""
+    content = b"1" * 200
+    path = "test.xlsx"
+    small_limit = 100  # Small limit for testing
+
+    # Test that ValueError is raised
+    with pytest.raises(ValueError) as ex:
+        extract_text_from_xlsx(content, path, size_limit=small_limit)
+    assert str(ex.value) == "File is too large (200), limit=100"

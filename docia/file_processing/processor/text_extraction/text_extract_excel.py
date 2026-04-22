@@ -8,8 +8,12 @@ import io
 
 import pandas as pd
 
+DEFAULT_SIZE_LIMIT = 3 * 1000 * 1000  # 3M0
 
-def extract_text_from_xlsx(file_content: bytes, file_path: str = "", sep: str = "\n\n") -> tuple[str, bool]:
+
+def extract_text_from_xlsx(
+    file_content: bytes, file_path: str = "", sep: str = "\n\n", size_limit=DEFAULT_SIZE_LIMIT
+) -> tuple[str, bool]:
     """
     Extrait le texte (markdown) d'un fichier XLSX à partir de son contenu binaire.
 
@@ -17,10 +21,13 @@ def extract_text_from_xlsx(file_content: bytes, file_path: str = "", sep: str = 
         file_content: Contenu du fichier .xlsx
         file_path: Chemin ou nom du fichier (pour les logs)
         sep: Séparateur entre les feuilles
+        size_limit: Taille maximale des fichiers pouvant être traités, None pour retirer la limite
 
     Returns:
         (texte markdown, False) — pas d'OCR pour Excel
     """
+    if size_limit is not None and len(file_content) >= size_limit:
+        raise ValueError(f"File is too large ({len(file_content)}), limit={size_limit}")
     sheets = pd.read_excel(io.BytesIO(file_content), dtype=str, header=None, sheet_name=None)
     parts = []
     for sheet_name, df in sheets.items():
