@@ -27,24 +27,8 @@ def _is_empty(v) -> bool:
     return str(v).strip() == ""
 
 
-def _merged_continuation_cells(ws) -> set[tuple[int, int]]:
-    """Cellules fusionnées verticalement (hors cellule d'origine). Coordonnées 1-based (openpyxl)."""
-    continuation: set[tuple[int, int]] = set()
-    for merged_range in ws.merged_cells.ranges:
-        min_row, max_row = merged_range.min_row, merged_range.max_row
-        if max_row <= min_row:
-            continue
-        min_col = merged_range.min_col
-        for row in range(merged_range.min_row, merged_range.max_row + 1):
-            for col in range(merged_range.min_col, merged_range.max_col + 1):
-                if (row, col) != (min_row, min_col):
-                    continuation.add((row, col))
-    return continuation
-
-
 def _sheet_to_rows_with_merge_markers(ws) -> SheetRows:
     """Lit une feuille openpyxl. Cellules fusionnées verticalement : valeur en haut, '#' ailleurs."""
-    continuation = _merged_continuation_cells(ws)
     max_row = ws.max_row or 0
     max_col = ws.max_column or 0
     if max_row == 0 or max_col == 0:
@@ -54,11 +38,8 @@ def _sheet_to_rows_with_merge_markers(ws) -> SheetRows:
     for r in range(1, max_row + 1):
         row_vals = []
         for c in range(1, max_col + 1):
-            if (r, c) in continuation:
-                row_vals.append("#")
-            else:
-                cell = ws.cell(row=r, column=c)
-                row_vals.append(cell.value)
+            cell = ws.cell(row=r, column=c)
+            row_vals.append(cell.value)
         rows.append(row_vals)
     return rows
 
@@ -127,23 +108,8 @@ def _rows_to_markdown(rows: SheetRows) -> str:
     return _rows_to_markdown_pipe(rows)
 
 
-def _xls_merged_continuation_cells(sheet) -> set[tuple[int, int]]:
-    """Cellules fusionnées verticalement (xlrd). Coordonnées 0-based."""
-    continuation: set[tuple[int, int]] = set()
-    if not hasattr(sheet, "merged_cells"):
-        return continuation
-    for rlo, rhi, clo, chi in sheet.merged_cells:
-        if rhi - rlo <= 1:
-            continue
-        for r in range(rlo + 1, rhi):
-            for c in range(clo, chi):
-                continuation.add((r, c))
-    return continuation
-
-
 def _xls_sheet_to_rows(sheet) -> SheetRows:
     """Feuille xlrd → liste de lignes avec marqueurs de fusion."""
-    continuation = _xls_merged_continuation_cells(sheet)
     nrows = sheet.nrows
     ncols = sheet.ncols
     if nrows == 0 or ncols == 0:
@@ -153,10 +119,7 @@ def _xls_sheet_to_rows(sheet) -> SheetRows:
     for r in range(nrows):
         row_vals = []
         for c in range(ncols):
-            if (r, c) in continuation:
-                row_vals.append("#")
-            else:
-                row_vals.append(sheet.cell_value(r, c))
+            row_vals.append(sheet.cell_value(r, c))
         rows.append(row_vals)
     return rows
 
@@ -230,9 +193,9 @@ def extract_text_from_xlsx(file_content: bytes, file_path: str = "", sep: str = 
     Returns:
         (texte markdown, False) — pas d'OCR pour Excel
     """
-    wb = load_workbook(io.BytesIO(file_content), read_only=False, data_only=True)
+    wb = load_workbook(io.BytesIO(file_content), read_only=True, data_only=True)
     sheet_names = wb.sheetnames
-    parts = [MERGE_LEGEND]
+    parts = []
     for name in sheet_names:
         ws = wb[name]
         md = _xlsx_sheet_to_markdown(ws)
@@ -279,7 +242,7 @@ def extract_text_from_xls(file_content: bytes, file_path: str = "", sep: str = "
         raise ValueError("XLS read failure") from ex
 
     sheet_names = wb.sheet_names()
-    parts = [MERGE_LEGEND]
+    parts = []
     for name in sheet_names:
         sheet = wb.sheet_by_name(name)
         md = _xls_sheet_to_markdown(sheet)
