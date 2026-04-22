@@ -25,8 +25,10 @@ dependencies = [
     "tqdm",
     "tesserocr (>=2.9.1,<3.0.0)",
     "unidecode (>=1.4.0,<2.0.0)",
-    "xlrd",
+    "xlrd",  # pandas xls read
     "schwifty (>=2026.1.0,<2027.0.0)",
+    "tabulate (>=0.10.0,<0.11.0)",  # pandas to_markdown
+    "odfpy (>=1.4.1,<2.0.0)",  # pandas ods read
 
     # Django
     "Django~=5.2",

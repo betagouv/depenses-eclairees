@@ -59,7 +59,7 @@ class ProcessDocumentBatch(BaseModel):
     objects = ProcessDocumentBatchManager()
 
     def __str__(self):
-        return f"{self.folder} {self.status}"
+        return f"{self.id} {self.status}"
 
 
 class ProcessDocumentJob(BaseModel):
