@@ -19,7 +19,7 @@ def syncer():
 
 @pytest.mark.django_db
 def test_sync(syncer):
-    """Test that syncing handles correctly multiple scopes sync
+    """Test that syncing correctly handles multiple scopes sync
 
     This test verifies that:
     1. New engagements are created from API activities
@@ -32,6 +32,7 @@ def test_sync(syncer):
         ApiEngagementActivityFactory(purchase_organization="oa1", purchase_group="ga1"),
         ApiEngagementActivityFactory(purchase_organization="oa1", purchase_group="ga2"),
         ApiEngagementActivityFactory(purchase_organization="oa1", purchase_group="ga2"),
+        ApiEngagementActivityFactory(purchase_organization="oa1", purchase_group="ga4"),  # Should not be inserted
         ApiEngagementActivityFactory(purchase_organization="oa2", purchase_group="ga3"),
         ApiEngagementActivityFactory(purchase_organization="oa2", purchase_group="ga3"),
     ]
@@ -43,19 +44,14 @@ def test_sync(syncer):
     ):
         bound_args = bind_arguments(syncer.client.list_ej_place, *args, **kwargs)
         purchase_organization = bound_args["purchase_organization"]
-        purchase_group = bound_args["purchase_group"]
-        return [
-            activity
-            for activity in api_activities
-            if activity.purchase_organization == purchase_organization and activity.purchase_group == purchase_group
-        ]
+        return [activity for activity in api_activities if activity.purchase_organization == purchase_organization]
 
     # Function call
     with patch.object(syncer.client, "list_ej_place", autospec=True, side_effect=m_list_ej_place):
-        synced_num_ejs = syncer.sync([("oa1", "ga1"), ("oa1", "ga2"), ("oa2", "ga3")], start=datetime(2026, 3, 5))
+        synced_num_ejs = syncer.sync([("oa1", "ga1-ga2"), ("oa2", "ga3")], start=datetime(2026, 3, 5))
 
     # Assert all num ejs are returned
-    expected_synced_num_ejs = [activity.num_ej for activity in api_activities]
+    expected_synced_num_ejs = [activity.num_ej for activity in api_activities if activity.purchase_group != "ga4"]
     assert sorted(synced_num_ejs) == sorted(expected_synced_num_ejs)
 
     # Asserts the EJ and scope are inserted
@@ -79,6 +75,7 @@ def test_sync(syncer):
                 "scopes__purchase_group": activity.purchase_group,
             }
             for activity in api_activities
+            if activity.purchase_group != "ga4"
         ],
         key=lambda x: x["num_ej"],
     )
@@ -300,13 +297,8 @@ def test_sync_handles_duplicate_engagements(syncer):
     def m_list_ej_place(*args, **kwargs):
         bound_args = bind_arguments(syncer.client.list_ej_place, *args, **kwargs)
         purchase_organization = bound_args["purchase_organization"]
-        purchase_group = bound_args["purchase_group"]
 
-        return [
-            activity
-            for activity in api_activities
-            if activity.purchase_organization == purchase_organization and activity.purchase_group == purchase_group
-        ]
+        return [activity for activity in api_activities if activity.purchase_organization == purchase_organization]
 
     # Function call - sync both scopes
     with patch.object(syncer.client, "list_ej_place", autospec=True, side_effect=m_list_ej_place):

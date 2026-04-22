@@ -232,7 +232,6 @@ class SyncClient:
         start: datetime,
         end: datetime,
         purchase_organization: str,
-        purchase_group: str,
         return_raw: bool = False,
         *,
         max_retries: int = 0,
@@ -247,9 +246,7 @@ class SyncClient:
 
         endpoint = "export_pj_ej/liste_ej_place"
         filter_str = (
-            f"date_reception ge {start_api} and "
-            f"date_reception le {end_api} and "
-            f"pur_org eq '{purchase_organization}' and pur_group eq '{purchase_group}'"
+            f"date_reception ge {start_api} and date_reception le {end_api} and pur_org eq '{purchase_organization}'"
         )
 
         def _do_call():
