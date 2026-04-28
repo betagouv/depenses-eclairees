@@ -305,9 +305,7 @@ def test_list_ej_place_success(client):
     end_date = datetime(2023, 1, 2, 23, 59, 59, tzinfo=timezone.utc)
 
     # List engagement activities
-    activities = client.list_ej_place(
-        start=start_date, end=end_date, purchase_organization="OA123", purchase_group="GA456"
-    )
+    activities = client.list_ej_place(start=start_date, end=end_date, purchase_organization="OA123")
 
     # Verify the response
     assert len(activities) == 2
@@ -354,7 +352,7 @@ def test_list_ej_place_validation_error(client, caplog):
 
     # List and expect validation error
     with pytest.raises(pydantic.ValidationError):
-        client.list_ej_place(start=start_date, end=end_date, purchase_organization="OA123", purchase_group="GA456")
+        client.list_ej_place(start=start_date, end=end_date, purchase_organization="OA123")
 
     # Verify that a warning was logged
     assert "Validation error for object" in caplog.text
