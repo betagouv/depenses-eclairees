@@ -30,24 +30,44 @@ class EngagementsSync:
         num_ejs_synced = set()
         logger.info("Fetch engagements activity...")
         for i, t_scope in enumerate(scopes):
-            purchase_organization, purchase_group = t_scope
+            purchase_organization, s_purchase_groups = t_scope
             logger.info("Process scope %s (%s/%s)", t_scope, i, len(scopes))
 
             # Get data from external system
-            activities = self.client.list_ej_place(start, end, purchase_organization, purchase_group)
+            activities = self.client.list_ej_place(start, end, purchase_organization)
+            if s_purchase_groups != "*":
+                purchase_groups = s_purchase_groups.split("-")
+                activities = [a for a in activities if a.purchase_group in purchase_groups]
             activities = self._remove_duplicate(activities)
 
-            # Get or Create the scope
-            scope, _created = EngagementScope.objects.get_or_create(
-                purchase_organization=purchase_organization, purchase_group=purchase_group
-            )
-
-            # Create and link the related engagements
-            num_ejs = self._save_engagements(activities, scope)
+            num_ejs = self._save_scopes_and_engagements(activities)
             num_ejs_synced.update(num_ejs)
             logger.info("Sync scope %s: Success. %s engagements synced", t_scope, len(num_ejs))
         logger.info("Success: %s engagements synced", len(num_ejs_synced))
         return sorted(num_ejs_synced)
+
+    def _save_scopes_and_engagements(self, activities: list[ApiEngagementActivity]) -> list[str]:
+        scopes = self._save_scopes(activities)
+        num_ejs = set()
+        for scope in scopes:
+            scope_activities = [
+                a
+                for a in activities
+                if a.purchase_organization == scope.purchase_organization and a.purchase_group == scope.purchase_group
+            ]
+            num_ejs.update(self._save_engagements(scope_activities, scope))
+        return sorted(num_ejs)
+
+    def _save_scopes(self, activities: list[ApiEngagementActivity]) -> list[EngagementScope]:
+        t_scopes = set((a.purchase_organization, a.purchase_group) for a in activities)
+        scopes = []
+        for org, group in t_scopes:
+            scope, _ = EngagementScope.objects.get_or_create(
+                purchase_organization=org,
+                purchase_group=group,
+            )
+            scopes.append(scope)
+        return scopes
 
     def _save_engagements(self, activities: list[ApiEngagementActivity], scope: EngagementScope) -> list[str]:
         """
