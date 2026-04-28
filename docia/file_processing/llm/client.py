@@ -259,7 +259,7 @@ class LLMClient:
                     response.json(), offset_pages=offset_pages, total_pages=total_pages
                 )
             raise LLMApiError(
-                f"OCR API error: {response.status_code}",
+                f"OCR API error: {response.status_code} - {response.text}",
                 code=f"HTTP_{response.status_code}",
                 details=response.text,
             )
