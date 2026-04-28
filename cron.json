@@ -1,7 +1,7 @@
 {
   "jobs": [
     {
-      "command": "0 16 * * * python manage.py launch_pipeline --timedelta 7d --force-analyze"
+      "command": "0 16 * * * python manage.py launch_pipeline --timedelta 7d"
     },
     {
       "command": "0 6 * * * python manage.py launch_pipeline --timedelta 7d"
