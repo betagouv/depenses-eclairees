@@ -8,7 +8,7 @@ import io
 
 import pandas as pd
 
-DEFAULT_SIZE_LIMIT = 3 * 1000 * 1000  # 3M0
+DEFAULT_SIZE_LIMIT = 2 * 1000 * 1000  # 2Mo
 
 
 def extract_text_from_xlsx(
