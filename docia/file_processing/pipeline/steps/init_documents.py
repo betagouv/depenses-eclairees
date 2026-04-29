@@ -7,9 +7,8 @@ from django.db.transaction import atomic
 
 from celery import group, shared_task
 
-from app.file_manager import cleaner as processor
-from app.file_manager import extract_num_EJ
 from docia.file_processing.models import ExternalLinkDocumentOrder, FileInfo
+from docia.file_processing.processor.cleaner import extract_num_EJ, get_file_initial_info
 from docia.models import DataBatch, DataEngagement, Document
 
 logger = logging.getLogger(__name__)
@@ -41,7 +40,7 @@ def get_files_info(folder: str, chunk_number: int = 0, chunk_size: int | None = 
             file_info = existing_info_by_path[file_path]
         else:
             logger.info(f"Get file infos {file_path}")
-            info = processor.get_file_initial_info(filename, folder)
+            info = get_file_initial_info(filename, folder)
             # Rename some fields
             info = dict(**info)
             info["folder"] = info.pop("dossier")

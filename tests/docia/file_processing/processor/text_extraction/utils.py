@@ -2,6 +2,8 @@ import re
 from difflib import SequenceMatcher
 from pathlib import Path
 
+from docia.file_processing.processor.text_extraction.text_extraction import clean_nul_bytes
+
 ASSETS_DIR = Path(__file__).resolve().parent / "assets" / "documents"
 
 
@@ -24,3 +26,9 @@ def assert_similar_text(extracted, threshold):
 
     similarity = similarity_ratio(extracted, expected)
     assert similarity > threshold, f"Similarity {similarity:.2%} below threshold"
+
+
+def test_clean_nul_bytes():
+    text = "\x00Hello \x00World!\x00"
+    cleaned = clean_nul_bytes(text)
+    assert cleaned == "Hello World!"

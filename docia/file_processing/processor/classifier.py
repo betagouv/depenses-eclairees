@@ -5,7 +5,6 @@ import tqdm
 
 import pandas as pd
 
-from app.data.sql.sql import bulk_update_attachments
 from docia.file_processing.llm.client import LLMClient
 
 logger = logging.getLogger("docia." + __name__)
@@ -140,10 +139,6 @@ def classify_files(
     print(f"Nombre de fichiers classifiés : {dfFilesClassified['classification'].value_counts()}")
 
     return dfFilesClassified
-
-
-def save_classify_files_result(df: pd.DataFrame):
-    bulk_update_attachments(df, ["classification", "classification_type"])
 
 
 # Catalogue des catégories de pièces jointes (utilisé par la classification LLM)
