@@ -58,6 +58,8 @@ dev = [
 
     # stubs
     "pandas-stubs",
+    "celery-types (>=0.26.0,<0.27.0)",
+    "django-stubs (>=6.0.3,<7.0.0)",
 ]
 
 
