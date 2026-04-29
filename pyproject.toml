@@ -65,14 +65,6 @@ dev = [
 line-length = 120
 exclude = [
     "**/migrations/*.py",
-    "app/file_manager/__init__.py",
-    "app/file_manager/cleaner.py",
-    "app/file_manager/statistics.py",
-    "app/grist/__init__.py",
-    "app/grist/grist_api.py",
-    "app/processor/select_relevant_content.py",
-    "app/processor/synthesis.py",
-    "scripts/maj_grist_from_scalingo.py",
 ]
 
 [tool.ruff.lint]

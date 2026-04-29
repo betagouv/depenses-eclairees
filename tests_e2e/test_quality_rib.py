@@ -10,7 +10,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
 django.setup()
 
 
-from app.grist.grist_api import get_data_from_grist  # noqa: E402
+from tests_e2e.grist_api import get_data_from_grist  # noqa: E402
 from tests_e2e.utils import (  # noqa: E402
     analyze_content_quality_test,
     check_global_statistics,

@@ -382,9 +382,10 @@ def test_get_files_info():
         assert files_info[1].size == gen_data_infos[1]["taille"]
         assert files_info[1].hash == gen_data_infos[1]["hash"]
 
+    module = "docia.file_processing.pipeline.steps.init_documents"
     with (
-        patch("app.file_manager.cleaner.get_file_initial_info", autospec=True) as m_get_file_info,
-        patch("docia.file_processing.pipeline.steps.init_documents.listdir_chunk", autospec=True) as m_listdir,
+        patch(module + ".get_file_initial_info", autospec=True) as m_get_file_info,
+        patch(module + ".listdir_chunk", autospec=True) as m_listdir,
     ):
         m_get_file_info.side_effect = mock_get_file_initial_info
         m_listdir.return_value = ["0123456789_doc1.pdf", "0987654321_doc2.pdf"]

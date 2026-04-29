@@ -4,10 +4,9 @@ vers text_extract_document ou text_extract_excel.
 """
 
 import logging
+import re
 
 from django.core.files.storage import default_storage
-
-from app.utils import clean_nul_bytes, count_words, log_execution_time
 
 from . import text_extract_document as document
 from . import text_extract_excel as excel
@@ -34,6 +33,22 @@ SUPPORTED_FILES_TYPE = [
     "xls",
     "ods",
 ]
+
+
+def count_words(text):
+    """Compte le nombre de mots dans un texte"""
+    if not text:
+        return 0
+    words = re.findall(r"\w+", text)
+    return len(words)
+
+
+def clean_nul_bytes(text: str) -> str:
+    """
+    Clean NUL bytes (0x00) from text
+    PostgreSQL doesn't allow NUL bytes in text fields.
+    """
+    return text.replace("\x00", "")
 
 
 def extract_text(
@@ -109,8 +124,7 @@ def process_file(
     with default_storage.open(file_path, "rb") as f:
         file_content = f.read()
 
-    with log_execution_time(f"extract_text({file_path})"):
-        text, is_ocr, nb_pages = extract_text(file_content, file_path, extension, word_threshold, ocr_tool=ocr_tool)
+    text, is_ocr, nb_pages = extract_text(file_content, file_path, extension, word_threshold, ocr_tool=ocr_tool)
 
     nb_words = count_words(text)
     return text, is_ocr, nb_words, nb_pages

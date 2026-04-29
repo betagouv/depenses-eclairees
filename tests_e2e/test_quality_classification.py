@@ -12,8 +12,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
 django.setup()
 
 
-from app.grist.grist_api import get_data_from_grist  # noqa: E402
 from docia.file_processing.processor.classifier import DIC_CLASS_FILE_BY_NAME, classify_files  # noqa: E402
+from tests_e2e.grist_api import get_data_from_grist  # noqa: E402
 
 logger = logging.getLogger("docia." + __name__)
 
