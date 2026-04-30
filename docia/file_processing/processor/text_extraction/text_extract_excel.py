@@ -8,6 +8,8 @@ import io
 
 import pandas as pd
 
+from docia.file_processing.processor.text_extraction.exceptions import FileSizeLimitException
+
 DEFAULT_SIZE_LIMIT = 2 * 1000 * 1000  # 2Mo
 
 
@@ -27,7 +29,7 @@ def extract_text_from_xlsx(
         (texte markdown, False) — pas d'OCR pour Excel
     """
     if size_limit is not None and len(file_content) >= size_limit:
-        raise ValueError(f"File is too large ({len(file_content)}), limit={size_limit}")
+        raise FileSizeLimitException(size_limit, len(file_content))
     sheets = pd.read_excel(io.BytesIO(file_content), dtype=str, header=None, sheet_name=None)
     parts = []
     for sheet_name, df in sheets.items():

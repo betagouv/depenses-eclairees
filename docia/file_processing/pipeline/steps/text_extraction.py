@@ -7,6 +7,7 @@ from docia.file_processing.pipeline.steps.base import AbstractStepRunner
 from docia.file_processing.pipeline.steps.exceptions import SkipStepException
 from docia.file_processing.processor import text_extraction as processor
 from docia.file_processing.processor.text_extraction import UnsupportedFileType
+from docia.file_processing.processor.text_extraction.exceptions import FileSizeLimitException
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,8 @@ class ExtractTextStepRunner(AbstractStepRunner):
         try:
             text, is_ocr, nb_words, nb_pages = processor.process_file(file_path, document.extension)
         except UnsupportedFileType as e:
+            raise SkipStepException(str(e))
+        except FileSizeLimitException as e:
             raise SkipStepException(str(e))
 
         if not text:

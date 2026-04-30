@@ -9,6 +9,7 @@ from docia.file_processing.processor.text_extraction import (
     extract_text_from_xls,
     extract_text_from_xlsx,
 )
+from docia.file_processing.processor.text_extraction.exceptions import FileSizeLimitException
 
 from .utils import ASSETS_DIR
 
@@ -73,6 +74,6 @@ def test_extract_text_from_xlsx_size_limit():
     small_limit = 100  # Small limit for testing
 
     # Test that ValueError is raised
-    with pytest.raises(ValueError) as ex:
+    with pytest.raises(FileSizeLimitException) as ex:
         extract_text_from_xlsx(content, path, size_limit=small_limit)
     assert str(ex.value) == "File is too large (200), limit=100"
