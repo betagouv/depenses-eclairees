@@ -3563,6 +3563,18 @@ files = [
 ]
 
 [[package]]
+name = "pyxlsb"
+version = "1.0.10"
+description = "Excel 2007-2010 Binary Workbook (xlsb) parser"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "pyxlsb-1.0.10-py2.py3-none-any.whl", hash = "sha256:87c122a9a622e35ca5e741d2e541201d28af00fb46bec492cfa9586890b120b4"},
+    {file = "pyxlsb-1.0.10.tar.gz", hash = "sha256:8062d1ea8626d3f1980e8b1cfe91a4483747449242ecb61013bc2df85435f685"},
+]
+
+[[package]]
 name = "pyyaml"
 version = "6.0.3"
 description = "YAML parser and emitter for Python"
@@ -4829,4 +4841,4 @@ test = ["pytest", "pytest-cov"]
 [metadata]
 lock-version = "2.1"
 python-versions = "~=3.13"
-content-hash = "6b946f21b8c24c6f8f84fb0219eb797836f8196f715a3840379664d29547947d"
+content-hash = "24e616f6ba136764498ad126ab45926a9c5d212fa0aea651b004b869c5f1da19"

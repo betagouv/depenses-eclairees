@@ -24,6 +24,7 @@ dependencies = [
     "schwifty (>=2026.1.0,<2027.0.0)",
     "tabulate (>=0.10.0,<0.11.0)",  # pandas to_markdown
     "odfpy (>=1.4.1,<2.0.0)",  # pandas ods read
+    "pyxlsb (>=1.0.10,<2.0.0)",  # pandas xlsb read
 
     # Django
     "Django~=5.2",
