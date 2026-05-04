@@ -8,7 +8,6 @@ dependencies = [
     # Doc analyze
     "docx2txt",
     "python-dotenv",
-    "jupyter",
     "olefile",  # File type identification for old Microsoft Office files (.xls, .doc, ...)
     "openai",
     "openpyxl",  # pandas xlsx read
