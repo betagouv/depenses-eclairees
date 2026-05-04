@@ -79,8 +79,6 @@ def create_batch_test(multi_line_coef=1, model="mistral-medium-2508"):
 if __name__ == "__main__":
     df_test, df_result, df_merged = create_batch_test(model="mistral-medium-2508")
 
-    EXCLUDED_COLUMNS = ["objet_marche", "administration_beneficiaire"]
-
     INCLUDED_COLUMNS = [
         "societe_principale",
         "siret_titulaire",

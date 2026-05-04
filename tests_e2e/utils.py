@@ -567,9 +567,12 @@ def _get_columns_to_compare(comparison_functions, excluded_columns=None, include
     if included_columns is None:
         selected_columns = list(available_columns)
     else:
-        selected_columns = [col for col in included_columns if col in comparison_functions]
+        assert set(included_columns).issubset(set(available_columns)), (
+            f"Columns {included_columns} not in {available_columns}"
+        )
+        selected_columns = included_columns
 
-    return [col for col in selected_columns if col not in excluded_columns]
+    return list(set(selected_columns) - excluded_columns)
 
 
 def check_quality_one_row(
@@ -699,7 +702,7 @@ def _parse_best_test_errors(row):
     return []
 
 
-def _field_value_is_non_null(val) -> bool:
+def _field_value_is_non_null_non_empty(val) -> bool:
     """True si une valeur de champ (référence ou LLM) est considérée renseignée (non vide / non nulle)."""
     if val is None:
         return False
@@ -765,7 +768,7 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
         for idx, row in df_merged.iterrows():
             filename = row.get("filename", "unknown")
             ref_val = _get_value_by_dotted_key(row, col)
-            ref_non_null = _field_value_is_non_null(ref_val)
+            ref_non_null = _field_value_is_non_null_non_empty(ref_val)
 
             structured_data = row.get("structured_data", None)
             if structured_data is None or pd.isna(structured_data):
@@ -786,7 +789,7 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
                     total_non_null += 1
                     if match_result:
                         non_null_ok += 1
-                if _field_value_is_non_null(llm_val):
+                if _field_value_is_non_null_non_empty(llm_val):
                     total_llm_non_null += 1
                     if match_result:
                         llm_non_null_ok += 1
@@ -805,7 +808,7 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
                 matches.append(False)
                 if ref_non_null:
                     total_non_null += 1
-                if _field_value_is_non_null(llm_val):
+                if _field_value_is_non_null_non_empty(llm_val):
                     total_llm_non_null += 1
                 if use_best_ref:
                     best_errors = _parse_best_test_errors(row)

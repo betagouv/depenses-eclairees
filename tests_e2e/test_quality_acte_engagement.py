@@ -189,7 +189,7 @@ def compare_contract_form(llm_val, ref_val):
     if not llm_val or not ref_val:
         return False
 
-    if _normalize_lot_concerne(llm_val.get("lot_concerne")) != _normalize_lot_concerne(ref_val.get("lot_concerne")):
+    if _normalize_lot_concerne(llm_val.get("lot_concerne")) != ref_val.get("lot_concerne"):
         return False
     if llm_val.get("marche_subsequent") != ref_val.get("marche_subsequent"):
         return False
@@ -264,8 +264,6 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="mistral-medi
 
 if __name__ == "__main__":
     df_test, df_result, df_merged = create_batch_test(llm_model="mistral-medium-2508")
-
-    EXCLUDED_COLUMNS = ["objet_marche", "administration_beneficiaire"]
 
     INCLUDED_COLUMNS = [
         "forme_marche",

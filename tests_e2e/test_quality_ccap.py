@@ -5,6 +5,8 @@ import sys
 
 import django
 
+import numpy as np
+
 sys.path.append(".")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
 django.setup()
@@ -31,10 +33,8 @@ def _parse_json_cell(x):
     """Parse une cellule JSON depuis Grist : str JSON, déjà un objet, vide/NaN → None sans lever."""
     if x is None:
         return None
-    if isinstance(x, float) and x != x:  # NaN
+    if isinstance(x, float) and np.isnan(x):
         return None
-    if isinstance(x, (dict, list)):
-        return x
     if not isinstance(x, str):
         return x
     s = x.strip()
