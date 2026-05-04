@@ -336,8 +336,10 @@ SHELL_AUTO_IMPORTS = [
     ("django.conf", ("settings",)),
     "time",
     "datetime",
+    ("django.utils", ("timezone",)),
     ("pprint", ("pprint",)),
     ("docia", ("tasks", "models")),
+    ("docia.models", "*"),
     ("docia.file_processing.pipeline.steps.init_documents", ("init_documents_in_folder",)),
     (
         "docia.file_processing.pipeline.pipeline",

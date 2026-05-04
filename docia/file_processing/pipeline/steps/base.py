@@ -5,7 +5,7 @@ from abc import ABC
 
 from django.db.transaction import atomic
 
-from docia.file_processing.models import ProcessDocumentStep, ProcessingStatus
+from docia.file_processing.models import RUNNING_STATUS_SET, ProcessDocumentStep, ProcessingStatus
 from docia.file_processing.pipeline.steps.exceptions import SkipStepException
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ class AbstractStepRunner(ABC):
                 logger.info(f"Job cancelled job={step.job.id} step={step_id} ({file_path})")
                 return step.status
 
-            if step.job.status not in (ProcessingStatus.PENDING, ProcessingStatus.STARTED):
+            if step.job.status not in RUNNING_STATUS_SET:
                 logger.info(
                     f"Job already processed job={step.job.id} step={step_id} ({file_path}) status={step.job.status}"
                 )
@@ -67,16 +67,14 @@ class AbstractStepRunner(ABC):
             step.job.step_set.filter(status=ProcessingStatus.PENDING).update(status=ProcessingStatus.SKIPPED)
 
         # Finish job if needed
-        if not step.job.step_set.filter(status__in=[ProcessingStatus.PENDING, ProcessingStatus.STARTED]).exists():
+        if not step.job.step_set.filter(status__in=RUNNING_STATUS_SET).exists():
             # If job has not already ended
             if step.job.status == ProcessingStatus.STARTED:
                 step.job.status = ProcessingStatus.SUCCESS
                 step.job.save(update_fields=["status"])
 
             # Finish batch if needed
-            if not step.job.batch.job_set.filter(
-                status__in=[ProcessingStatus.PENDING, ProcessingStatus.STARTED]
-            ).exists():
+            if not step.job.batch.job_set.filter(status__in=RUNNING_STATUS_SET).exists():
                 if step.job.batch.job_set.filter(status=ProcessingStatus.FAILURE).exists():
                     step.job.batch.status = ProcessingStatus.FAILURE
                 else:

@@ -19,6 +19,24 @@ class ProcessingStatus(models.TextChoices):
     SKIPPED = "SKIPPED"
 
 
+RUNNING_STATUS_SET: set[ProcessingStatus] = {
+    ProcessingStatus.PENDING,
+    ProcessingStatus.STARTED,
+}
+
+
+FINISHED_STATUS_SET: set[ProcessingStatus] = {
+    ProcessingStatus.SUCCESS,
+    ProcessingStatus.FAILURE,
+}
+
+
+DONE_STATUS_SET: set[ProcessingStatus] = FINISHED_STATUS_SET | {
+    ProcessingStatus.SKIPPED,
+    ProcessingStatus.CANCELLED,
+}
+
+
 class ProcessDocumentStepType(models.TextChoices):
     TEXT_EXTRACTION = "TEXT_EXTRACTION"
     CLASSIFICATION = "CLASSIFICATION"
@@ -28,7 +46,29 @@ class ProcessDocumentStepType(models.TextChoices):
 BATCH_STUCK_TIMEOUT = 30 * 60  # 30min (in seconds)
 
 
-class ProcessDocumentBatchQuerySet(models.QuerySet):
+class StateObjectMixin:
+    status: ProcessingStatus
+
+    def is_finished(self) -> bool:
+        return self.status in FINISHED_STATUS_SET
+
+    def is_done(self) -> bool:
+        return self.status in DONE_STATUS_SET
+
+
+class StateObjectQuerySet(models.QuerySet):
+    def filter_finished(self):
+        return self.filter(status__in=FINISHED_STATUS_SET)
+
+    def filter_done(self):
+        return self.filter(statis__in=DONE_STATUS_SET)
+
+
+class StateObjectManager(models.Manager.from_queryset(StateObjectQuerySet)):
+    pass
+
+
+class ProcessDocumentBatchQuerySet(StateObjectQuerySet):
     def filter_stuck_batches(self, timeout_seconds: int = BATCH_STUCK_TIMEOUT):
         """Look for stuck batches which last update was more than timeout_seconds ago."""
 
@@ -48,7 +88,7 @@ class ProcessDocumentBatchManager(models.Manager.from_queryset(ProcessDocumentBa
     pass
 
 
-class ProcessDocumentBatch(BaseModel):
+class ProcessDocumentBatch(StateObjectMixin, BaseModel):
     folder = models.CharField(max_length=100, null=True, blank=True)  # noqa: DJ001
     target_classifications = ArrayField(models.CharField(max_length=255), null=True, blank=True)
     steps = ArrayField(models.CharField(max_length=255, choices=ProcessDocumentStepType.choices))
@@ -62,7 +102,7 @@ class ProcessDocumentBatch(BaseModel):
         return f"{self.id} {self.status}"
 
 
-class ProcessDocumentJob(BaseModel):
+class ProcessDocumentJob(StateObjectMixin, BaseModel):
     batch = models.ForeignKey(
         ProcessDocumentBatch, on_delete=models.CASCADE, related_name="job_set", related_query_name="job"
     )
@@ -70,11 +110,13 @@ class ProcessDocumentJob(BaseModel):
     status = models.CharField(choices=ProcessingStatus.choices, default=ProcessingStatus.PENDING)
     celery_task_id = models.CharField(max_length=250, blank=True)
 
+    objects = StateObjectManager()
+
     def __str__(self):
         return f"{self.status}"
 
 
-class ProcessDocumentStep(BaseModel):
+class ProcessDocumentStep(StateObjectMixin, BaseModel):
     job = models.ForeignKey(
         ProcessDocumentJob, on_delete=models.CASCADE, related_name="step_set", related_query_name="step"
     )
@@ -90,6 +132,8 @@ class ProcessDocumentStep(BaseModel):
 
     def get_next(self) -> "ProcessDocumentStep | None":
         return self.job.step_set.filter(order__gt=self.order).order_by("order").first()
+
+    objects = StateObjectManager()
 
     def __str__(self):
         return f"{self.step_type} - {self.status}"

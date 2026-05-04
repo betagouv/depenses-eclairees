@@ -9,6 +9,8 @@ from .documents.models import (  # noqa: F401
     EngagementScope,
 )
 from .file_processing.models import (  # noqa: F401
+    DONE_STATUS_SET,
+    FINISHED_STATUS_SET,
     ProcessDocumentBatch,
     ProcessDocumentJob,
     ProcessDocumentStep,
