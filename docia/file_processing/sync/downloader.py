@@ -131,24 +131,31 @@ class DocumentDownloader:
         try:
             with zipfile.ZipFile(io.BytesIO(file_content), "r") as zip_ref:
                 for zip_info in zip_ref.infolist():
-                    if not zip_info.is_dir():  # Skip directories
-                        # Get the file content from the zip
-                        file_content = zip_ref.read(zip_info.filename)
+                    # Skip directories
+                    if zip_info.is_dir():
+                        continue
 
-                        subfolder, filename = posixpath.split(zip_info.filename)
-                        filename = self.clean_filename(filename)
-                        filefolder = posixpath.join(folder, subfolder).rstrip("/")
+                    # Skip MAXOSX directories
+                    if zip_info.filename.lower().startswith("__macosx/") or "/__macosx/" in zip_info.filename.lower():
+                        continue
 
-                        # Store the inner file
-                        sub_files_info = self._store_file(
-                            external_id=None,
-                            name=filename,
-                            folder=filefolder,
-                            file_content=file_content,
-                            db_save=False,
-                            parent=parent,
-                        )
-                        files_info.extend(sub_files_info)
+                    # Get the file content from the zip
+                    file_content = zip_ref.read(zip_info.filename)
+
+                    subfolder, filename = posixpath.split(zip_info.filename)
+                    filename = self.clean_filename(filename)
+                    filefolder = posixpath.join(folder, subfolder).rstrip("/")
+
+                    # Store the inner file
+                    sub_files_info = self._store_file(
+                        external_id=None,
+                        name=filename,
+                        folder=filefolder,
+                        file_content=file_content,
+                        db_save=False,
+                        parent=parent,
+                    )
+                    files_info.extend(sub_files_info)
 
         except zipfile.BadZipFile as ex:
             logger.error("File is not a valid zip file: %s", ex)
