@@ -228,14 +228,14 @@ if __name__ == "__main__":
     )
 
     INCLUDED_COLUMNS = [
-        "ccag",
         "lots.*.forme",
-        # "lots.*.duree_lot",
-        "lots.*.montant_ht",
         "forme_marche",
-        "duree_marche",
+        "lots.*.duree_lot",
+        "lots.*.montant_ht",
         "montant_ht",
+        "duree_marche",
         "revision_prix",
+        "ccag",
     ]
 
     comparison_functions = get_comparison_functions()

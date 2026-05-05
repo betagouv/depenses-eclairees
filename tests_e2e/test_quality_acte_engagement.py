@@ -266,14 +266,14 @@ if __name__ == "__main__":
     df_test, df_result, df_merged = create_batch_test(llm_model="mistral-medium-2508")
 
     INCLUDED_COLUMNS = [
-        "forme_marche",
+        "forme_marche.lot_concerne.numero_lot",
         "duree",
         "societe_principale",
         "siret_mandataire",
-        "siren_mandataire",
         "rib_mandataire",
-        "cotraitants",
-        "rib_autres",
+        "cotraitants.*.siret",
+        "cotraitants.*.nom",
+        "rib_autres.*.rib.iban",
         "conserve_avance",
         "montant_ht",
         "montant_tva",
@@ -285,7 +285,7 @@ if __name__ == "__main__":
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "forme_marche", comparison_functions, only_errors=True)
+    check_quality_one_field(df_merged, "conserve_avance", comparison_functions, only_errors=True)
 
     check_quality_one_row(df_merged, 26, comparison_functions, included_columns=INCLUDED_COLUMNS)
 

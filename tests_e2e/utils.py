@@ -535,7 +535,7 @@ def check_quality_one_field(df_merged, col_to_test, comparison_functions, only_e
     # COMPARAISON POUR UNE COLONNE SPÉCIFIQUE
     # ============================================================================
 
-    comparison_func = comparison_functions[col_to_test]
+    comparison_func = _get_comparison_function_for_column(col_to_test, comparison_functions)
 
     print(f"\n{'=' * 80}")
     print(f"Comparaison pour la colonne: {col_to_test}")
@@ -583,20 +583,51 @@ def _get_columns_to_compare(comparison_functions, excluded_columns=None, include
 
     Par defaut, toutes les colonnes definies dans comparison_functions sont comparees.
     Si included_columns est fourni, seules ces colonnes sont conservees dans cet ordre.
+    Les clés imbriquées (ex: ``forme_marche.lot_concerne.numero_lot``) sont acceptées
+    si leur racine est présente dans ``comparison_functions``.
     excluded_columns est applique en dernier.
     """
     excluded_columns = set(excluded_columns or [])
-    available_columns = comparison_functions.keys()
+    available_columns = set(comparison_functions.keys())
 
     if included_columns is None:
-        selected_columns = list(available_columns)
+        selected_columns = list(comparison_functions.keys())
     else:
-        assert set(included_columns).issubset(set(available_columns)), (
-            f"Columns {included_columns} not in {available_columns}"
-        )
-        selected_columns = included_columns
+        selected_columns = []
+        invalid_columns = []
+        for col in included_columns:
+            root_col = col.split(".", 1)[0]
+            if col == "duree" or col in available_columns:
+                selected_columns.append(col)
+                continue
+            if "." in col and root_col in available_columns:
+                selected_columns.append(col)
+                continue
+            invalid_columns.append(col)
+        assert not invalid_columns, f"Columns {invalid_columns} not in {sorted(available_columns)}"
 
-    return list(set(selected_columns) - excluded_columns)
+    return [col for col in selected_columns if col not in excluded_columns]
+
+
+def _get_comparison_function_for_column(col, comparison_functions):
+    """
+    Retourne la fonction de comparaison pour une colonne, y compris clé imbriquée.
+
+    - Colonne explicite (ex: 'forme_marche'): fonction dédiée dans comparison_functions.
+    - Clé imbriquée (ex: 'forme_marche.lot_concerne.numero_lot'):
+      comparaison feuille avec compare_exact_string.
+    - 'duree' garde sa comparaison dédiée quand utilisé tel quel.
+    - Les sous-clés (dont ``duree.*``) sont comparées comme des feuilles.
+    """
+    if col in comparison_functions:
+        return comparison_functions[col]
+
+    if "." in col:
+        root_col = col.split(".", 1)[0]
+        if root_col in comparison_functions:
+            return compare_exact_string
+
+    raise KeyError(f"No comparison function found for column '{col}'")
 
 
 def check_quality_one_row(
@@ -630,7 +661,7 @@ def check_quality_one_row(
 
         # Comparer les colonnes sélectionnées
         for col in columns_to_compare:
-            comparison_func = comparison_functions[col]
+            comparison_func = _get_comparison_function_for_column(col, comparison_functions)
             # Extraire les valeurs
             ref_val = _get_value_by_dotted_key(row, col)
             llm_val = _get_value_by_dotted_key(llm_data, col)
@@ -686,7 +717,7 @@ def get_fields_with_comparison_errors(
         errors = []
 
         for col in columns_to_compare:
-            comparison_func = comparison_functions[col]
+            comparison_func = _get_comparison_function_for_column(col, comparison_functions)
 
             ref_val = _get_value_by_dotted_key(row, col)
             llm_val = _get_value_by_dotted_key(llm_data, col) if llm_data is not None else None
@@ -862,7 +893,7 @@ def check_global_statistics(
 
     # Comparaison pour chaque colonne sélectionnée
     for col in columns_to_compare:
-        comparison_func = comparison_functions[col]
+        comparison_func = _get_comparison_function_for_column(col, comparison_functions)
         matches = []
         errors = []
         total_non_null = 0
@@ -920,7 +951,8 @@ def check_global_statistics(
                 # Écart au meilleur test (si colonne optionnelle présente)
                 if use_best_ref:
                     best_errors = _parse_best_test_errors(row)
-                    best_had_error = col in best_errors
+                    best_col = col.split(".", 1)[0] if "." in col else col
+                    best_had_error = best_col in best_errors
                     current_has_error = not match_result
                     if not best_had_error and current_has_error:
                         regressions_vs_best += 1
@@ -941,7 +973,8 @@ def check_global_statistics(
                 fp += dfp
                 if use_best_ref:
                     best_errors = _parse_best_test_errors(row)
-                    best_had_error = col in best_errors
+                    best_col = col.split(".", 1)[0] if "." in col else col
+                    best_had_error = best_col in best_errors
                     if not best_had_error:
                         regressions_vs_best += 1
 
