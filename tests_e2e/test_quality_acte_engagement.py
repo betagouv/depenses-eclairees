@@ -72,10 +72,10 @@ def compare_co_contractors(llm_val: list[dict[str, str]], ref_val: list[dict[str
 def _normalize_lot_concerne(lot):
     """Normalize lot_concerne to treat None and empty lot payload as equivalent."""
     if lot is None or lot == {}:
-        return (None, None)
+        return {"numero_lot": None, "titre_lot": None}
     if not isinstance(lot, dict):
-        return (None, None)
-    return (lot.get("numero_lot"), lot.get("titre_lot"))
+        return {"numero_lot": None, "titre_lot": None}
+    return {"numero_lot": lot.get("numero_lot"), "titre_lot": lot.get("titre_lot")}
 
 
 def compare_subcontractors(llm_val: list[dict[str, str]], ref_val: list[dict[str, str]]):
@@ -285,7 +285,7 @@ if __name__ == "__main__":
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "societe_principale", comparison_functions, only_errors=True)
+    check_quality_one_field(df_merged, "forme_marche", comparison_functions, only_errors=True)
 
     check_quality_one_row(df_merged, 26, comparison_functions, included_columns=INCLUDED_COLUMNS)
 

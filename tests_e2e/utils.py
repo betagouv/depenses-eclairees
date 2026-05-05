@@ -64,6 +64,30 @@ def compare_normalized_string(actual, expected):
 
     return normalize_string(actual.replace(" ", "")) == normalize_string(expected.replace(" ", ""))
 
+def _normalize_duree(duree):
+    """Normalize durée payload to compare empty-like values consistently."""
+    if duree is None or duree == {} or not isinstance(duree, dict):
+        return {
+            "duree_initiale": None,
+            "duree_reconduction": None,
+            "nb_reconductions": None,
+            "delai_tranche_optionnelle": None,
+        }
+
+    def _empty_like(value):
+        if value is None:
+            return True
+        return value in ("", 0)
+
+    return {
+        "duree_initiale": None if _empty_like(duree.get("duree_initiale")) else duree.get("duree_initiale"),
+        "duree_reconduction": None if _empty_like(duree.get("duree_reconduction")) 
+        else duree.get("duree_reconduction"),
+        "nb_reconductions": None if _empty_like(duree.get("nb_reconductions")) else duree.get("nb_reconductions"),
+        "delai_tranche_optionnelle": None
+        if _empty_like(duree.get("delai_tranche_optionnelle"))
+        else duree.get("delai_tranche_optionnelle"),
+    }
 
 def compare_duration(actual, expected):
     """Compare duree : nombre de mois, comparaison exacte."""
@@ -74,15 +98,15 @@ def compare_duration(actual, expected):
 
     if not actual or not expected:
         return False
-
+    normalized_actual = _normalize_duree(actual)
     try:
-        if actual.get("duree_initiale") != expected.get("duree_initiale"):
+        if normalized_actual.get("duree_initiale") != expected.get("duree_initiale"):
             return False
-        if actual.get("duree_reconduction") != expected.get("duree_reconduction"):
+        if normalized_actual.get("duree_reconduction") != expected.get("duree_reconduction"):
             return False
-        if actual.get("nb_reconductions") != expected.get("nb_reconductions"):
+        if normalized_actual.get("nb_reconductions") != expected.get("nb_reconductions"):
             return False
-        if actual.get("delai_tranche_optionnelle") != expected.get("delai_tranche_optionnelle"):
+        if normalized_actual.get("delai_tranche_optionnelle") != expected.get("delai_tranche_optionnelle"):
             return False
         return True
     except (ValueError, TypeError):
@@ -726,7 +750,98 @@ def _fmt_ratio_pct(num: int, den: int, ratio: float) -> str:
     return f"{num}/{den} = {ratio * 100:.1f}%"
 
 
-def check_global_statistics(df_merged, comparison_functions, excluded_columns=None, included_columns=None):
+def _classify_confusion_cell(ref_non_null: bool, match_result: bool, llm_non_null: bool) -> tuple[int, int, int, int, int]:
+    """
+    Retourne un incrément (vp, fp2, fn, vn, fp) — une seule cellule vaut 1, les autres 0.
+    """
+    if ref_non_null:
+        if match_result:
+            return (1, 0, 0, 0, 0)
+        if llm_non_null:
+            return (0, 1, 0, 0, 0)
+        return (0, 0, 1, 0, 0)
+    if match_result:
+        return (0, 0, 0, 1, 0)
+    if llm_non_null:
+        return (0, 0, 0, 0, 1)
+    return (0, 0, 0, 1, 0)
+
+
+def _fmt_quality_metric_columns(
+    *,
+    vp: int,
+    fp2: int,
+    fn: int,
+    vn: int,
+    fp: int,
+    w: int,
+) -> tuple[str, str, str]:
+    """Trois colonnes : Détection, Exactitude, Absence justifiée (taux de réussite)."""
+    det_den = vp + fp2 + fn
+    ex_den = vp + fp2
+    abs_den = fp + vn
+    det_num = vp + fp2
+    ex_num = vp
+    abs_num = vn
+    d = _fmt_ratio_pct(det_num, det_den, det_num / det_den) if det_den > 0 else "n/d"
+    e = _fmt_ratio_pct(ex_num, ex_den, ex_num / ex_den) if ex_den > 0 else "n/d"
+    a = _fmt_ratio_pct(abs_num, abs_den, abs_num / abs_den) if abs_den > 0 else "n/d"
+    return (f"{d:<{w}}", f"{e:<{w}}", f"{a:<{w}}")
+
+
+def _print_confusion_matrix_visual(
+    counts: tuple[int, int, int, int, int] | None = None,
+) -> None:
+    """
+    Affiche la matrice de confusion (référence × sortie LLM).
+    counts = (vp, fp2, fn, vn, fp) pour afficher les effectifs ; sinon légende seule.
+    """
+    if counts is None:
+        vp_n = fp2_n = fn_n = vn_n = fp_n = None
+    else:
+        vp_n, fp2_n, fn_n, vn_n, fp_n = counts
+
+    def cell(label: str, n: int | None) -> str:
+        if n is None:
+            return label.center(14)
+        return f"{label} ({n})".center(14)
+
+    dash = "—".center(14)
+    row_pres = (
+        f"│ {'Présente (1)':<14} │{cell('VP', vp_n)}│{cell('FP2', fp2_n)}│{cell('FN', fn_n)}│"
+    )
+    row_abs = (
+        f"│ {'Absente (0)':<14} │{dash}│{cell('FP', fp_n)}│{cell('VN', vn_n)}│"
+    )
+
+    border = "┌────────────────┬──────────────┬──────────────┬──────────────┐"
+    sep = "├────────────────┼──────────────┼──────────────┼──────────────┤"
+    bot = "└────────────────┴──────────────┴──────────────┴──────────────┘"
+    head = "│ Référence      │ LLM correct  │ LLM incorrect│ LLM absent   │"
+
+    print(border)
+    print(head)
+    print(sep)
+    print(row_pres)
+    print(row_abs)
+    print(bot)
+
+
+def check_global_statistics(
+    df_merged,
+    comparison_functions,
+    excluded_columns=None,
+    included_columns=None,
+):
+    """
+    Affiche d'abord la matrice de confusion et les métriques globales, puis le détail par colonne.
+
+    Métriques (taux de réussite) : Détection = (VP+FP2)/(VP+FP2+FN), Exactitude = VP/(VP+FP2),
+    Absence justifiée = VN/(FP+VN).
+
+    Retourne l'accuracy globale ``matches / total`` (comparaisons OK), inchangée pour la compatibilité
+    des tests (ex. seuil sur l'acte d'engagement).
+    """
     # ============================================================================
     # STATISTIQUES GLOBALES DE COMPARAISON
     # ============================================================================
@@ -740,15 +855,8 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
     print(f"\n{'=' * 80}")
     print("STATISTIQUES GLOBALES DE COMPARAISON")
     print(f"{'=' * 80}")
-    print(
-        "Rappel : parmi les champs où la référence est renseignée (non nulle), "
-        "proportion correctement retrouvée par le LLM."
-    )
-    print(
-        "Précision : parmi les champs où le LLM propose une valeur non nulle, "
-        "proportion de réponses correctes au regard de la référence."
-    )
-    print()
+    n_rows_test = len(df_merged)
+    print(f"Nombre de lignes du jeu de test : {n_rows_test}")
 
     results = {}
 
@@ -763,6 +871,7 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
         llm_non_null_ok = 0
         regressions_vs_best = 0
         improvements_vs_best = 0
+        vp = fp2 = fn = vn = fp = 0
 
         # Comparer toutes les lignes pour cette colonne
         for idx, row in df_merged.iterrows():
@@ -776,9 +885,16 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
                 matches.append(False)
                 if ref_non_null:
                     total_non_null += 1
+                dvp, dfp2, dfn, dvn, dfp = _classify_confusion_cell(ref_non_null, False, False)
+                vp += dvp
+                fp2 += dfp2
+                fn += dfn
+                vn += dvn
+                fp += dfp
                 continue
 
             llm_val = _get_value_by_dotted_key(structured_data, col)
+            llm_non_null = _field_value_is_non_null_non_empty(llm_val)
 
             # Comparer les valeurs
             try:
@@ -789,10 +905,17 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
                     total_non_null += 1
                     if match_result:
                         non_null_ok += 1
-                if _field_value_is_non_null_non_empty(llm_val):
+                if llm_non_null:
                     total_llm_non_null += 1
                     if match_result:
                         llm_non_null_ok += 1
+
+                dvp, dfp2, dfn, dvn, dfp = _classify_confusion_cell(ref_non_null, match_result, llm_non_null)
+                vp += dvp
+                fp2 += dfp2
+                fn += dfn
+                vn += dvn
+                fp += dfp
 
                 # Écart au meilleur test (si colonne optionnelle présente)
                 if use_best_ref:
@@ -808,8 +931,14 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
                 matches.append(False)
                 if ref_non_null:
                     total_non_null += 1
-                if _field_value_is_non_null_non_empty(llm_val):
+                if llm_non_null:
                     total_llm_non_null += 1
+                dvp, dfp2, dfn, dvn, dfp = _classify_confusion_cell(ref_non_null, False, llm_non_null)
+                vp += dvp
+                fp2 += dfp2
+                fn += dfn
+                vn += dvn
+                fp += dfp
                 if use_best_ref:
                     best_errors = _parse_best_test_errors(row)
                     best_had_error = col in best_errors
@@ -835,41 +964,85 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
             "total_llm_non_null": total_llm_non_null,
             "llm_non_null_ok": llm_non_null_ok,
             "precision_llm_non_null": precision_llm_non_null,
+            "vp": vp,
+            "fp2": fp2,
+            "fn": fn,
+            "vn": vn,
+            "fp": fp,
         }
         if use_best_ref:
             results[col]["delta_vs_best"] = regressions_vs_best - improvements_vs_best
             results[col]["regressions_vs_best"] = regressions_vs_best
             results[col]["improvements_vs_best"] = improvements_vs_best
 
-    # Affichage des statistiques (matches, rappel, précision condensés en ratios)
-    w_col, w_m, w_r, w_p = 32, 22, 22, 22
+    w_col, w_metric = 32, 30
+    dash_len = w_col + 3 * w_metric + 12 + (14 if use_best_ref else 0)
+
+    total_comparisons = sum(r["total"] for r in results.values())
+    total_matches = sum(r["matches"] for r in results.values())
+    global_accuracy = total_matches / total_comparisons if total_comparisons > 0 else 0.0
+
+    gvp = sum(r["vp"] for r in results.values())
+    gfp2 = sum(r["fp2"] for r in results.values())
+    gfn = sum(r["fn"] for r in results.values())
+    gvn = sum(r["vn"] for r in results.values())
+    gfp = sum(r["fp"] for r in results.values())
+
+    go, gi, gh = _fmt_quality_metric_columns(
+        vp=gvp,
+        fp2=gfp2,
+        fn=gfn,
+        vn=gvn,
+        fp=gfp,
+        w=w_metric,
+    )
+    match_failures = total_comparisons - total_matches
+
+    print()
+    _print_confusion_matrix_visual((gvp, gfp2, gfn, gvn, gfp))
+    print(
+        "Détection = (VP+FP2)/(VP+FP2+FN)  |  Exactitude = VP/(VP+FP2)  |  "
+        "Absence justifiée = VN/(FP+VN)"
+    )
+    print()
+    print(
+        f"Matches (comparaisons OK) : {total_matches}/{total_comparisons} = {global_accuracy * 100:.1f}%  |  "
+        f"échecs : {match_failures}"
+    )
+    print(f"Détection : {go.strip()} — {gfn} omissions")
+    print(f"Exactitude : {gi.strip()} — {gfp2} incompréhensions")
+    print(f"Absence justifiée : {gh.strip()} — {gfp} hallucinations")
+    if use_best_ref:
+        total_imp = sum(r.get("improvements_vs_best", 0) for r in results.values())
+        total_reg = sum(r.get("regressions_vs_best", 0) for r in results.values())
+        print(f"Écart au meilleur test: Améliorations +{total_imp}, Régressions -{total_reg}")
+
+    print(f"\n{'=' * dash_len}")
+    print("Détail par colonne")
     header_parts = [
         f"{'Colonne':<{w_col}}",
-        f"{'Matches':<{w_m}}",
-        f"{'Rappel':<{w_r}}",
-        f"{'Précision':<{w_p}}",
+        f"{'Détection':<{w_metric}}",
+        f"{'Exactitude':<{w_metric}}",
+        f"{'Absence justifiée':<{w_metric}}",
     ]
     if use_best_ref:
         header_parts.append(f"{'(+)':<5}")
         header_parts.append(f"{'(-)':<5}")
     print(" | ".join(header_parts))
-    dash_len = w_col + w_m + w_r + w_p + 9 + (14 if use_best_ref else 0)
     print("-" * dash_len)
 
     for col in columns_to_compare:
         result = results[col]
-        m = result["matches"]
-        t = result["total"]
-        nok = result["non_null_ok"]
-        tn = result["total_non_null"]
-        lok = result["llm_non_null_ok"]
-        ltn = result["total_llm_non_null"]
-        row_parts = [
-            f"{col:<{w_col}}",
-            f"{_fmt_ratio_pct(m, t, result['accuracy']):<{w_m}}",
-            f"{_fmt_ratio_pct(nok, tn, result['recall_non_null']):<{w_r}}",
-            f"{_fmt_ratio_pct(lok, ltn, result['precision_llm_non_null']):<{w_p}}",
-        ]
+        vp, fp2, fn, vn, fp = result["vp"], result["fp2"], result["fn"], result["vn"], result["fp"]
+        o, i, h = _fmt_quality_metric_columns(
+            vp=vp,
+            fp2=fp2,
+            fn=fn,
+            vn=vn,
+            fp=fp,
+            w=w_metric,
+        )
+        row_parts = [f"{col:<{w_col}}", o, i, h]
         if use_best_ref:
             imp = result.get("improvements_vs_best", 0)
             reg = result.get("regressions_vs_best", 0)
@@ -877,46 +1050,6 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
             row_parts.append(f"{'-' + str(reg) if reg else '0':<5}")
         print(" | ".join(row_parts))
 
-    print(f"\n{'=' * dash_len}")
-    print("Résumé global")
-    total_comparisons = sum(r["total"] for r in results.values())
-    total_matches = sum(r["matches"] for r in results.values())
-    global_accuracy = total_matches / total_comparisons if total_comparisons > 0 else 0.0
-
-    global_total_non_null = sum(r["total_non_null"] for r in results.values())
-    global_non_null_ok = sum(r["non_null_ok"] for r in results.values())
-    global_recall_non_null = global_non_null_ok / global_total_non_null if global_total_non_null > 0 else 0.0
-
-    global_total_llm_non_null = sum(r["total_llm_non_null"] for r in results.values())
-    global_llm_non_null_ok = sum(r["llm_non_null_ok"] for r in results.values())
-    global_precision = global_llm_non_null_ok / global_total_llm_non_null if global_total_llm_non_null > 0 else 0.0
-
-    match_failures = total_comparisons - total_matches
-    recall_failures = global_total_non_null - global_non_null_ok
-    precision_failures = global_total_llm_non_null - global_llm_non_null_ok
-
-    print(
-        f"Matches : {total_matches}/{total_comparisons} = {global_accuracy * 100:.1f}%  |  "
-        f"erreurs : {match_failures}  (toutes comparaisons non OK)"
-    )
-    print(
-        "Rappel : "
-        f"{global_non_null_ok}/{global_total_non_null} = {global_recall_non_null * 100:.1f}%  |  "
-        f"erreurs : {recall_failures}  (référence non nulle, comparaison incorrecte)"
-        if global_total_non_null > 0
-        else "Rappel : n/d (aucune référence non nulle)  |  erreurs : 0"
-    )
-    print(
-        "Précision : "
-        f"{global_llm_non_null_ok}/{global_total_llm_non_null} = {global_precision * 100:.1f}%  |  "
-        f"erreurs : {precision_failures}  (LLM non nul, valeur incorrecte vs référence)"
-        if global_total_llm_non_null > 0
-        else "Précision : n/d (aucune proposition LLM non nulle)  |  erreurs : 0"
-    )
-    if use_best_ref:
-        total_imp = sum(r.get("improvements_vs_best", 0) for r in results.values())
-        total_reg = sum(r.get("regressions_vs_best", 0) for r in results.values())
-        print(f"Écart au meilleur test: Améliorations +{total_imp}, Régressions -{total_reg}")
     print(f"{'=' * dash_len}\n")
 
     return global_accuracy
