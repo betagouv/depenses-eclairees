@@ -15,8 +15,8 @@ sys.path.append(".")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
 django.setup()
 
-from app.grist import get_data_from_grist  # noqa: E402
 from docia.file_processing.llm.client import LLMClient  # noqa: E402
+from tests_e2e.grist_api import get_data_from_grist  # noqa: E402
 from tests_e2e.test_quality_acte_engagement import get_comparison_functions  # noqa: E402
 from tests_e2e.utils import (  # noqa: E402
     analyze_content_quality_test,
