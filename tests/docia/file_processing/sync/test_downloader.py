@@ -306,3 +306,48 @@ def test_clean_filename_edge_cases(downloader):
     # Test filename with no extension
     result = downloader.clean_filename("file_without_extension")
     assert result == "file_without_extension"
+
+
+@pytest.mark.django_db
+def test_zip_file_with_macOSX_directories(downloader):
+    """Test that __MACOSX directories are skipped when extracting zip files"""
+
+    with (
+        patch.object(downloader.client, "download_document", autospec=True) as m_client_download,
+    ):
+        # Create zip file in memory with regular files and __MACOSX directory
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w") as zip_file:
+            # Add regular files
+            zip_file.writestr("document.txt", b"Content of document")
+            zip_file.writestr("subfolder/file.txt", b"Content of file")
+            # Add __MACOSX directory with files that should be skipped
+            zip_file.writestr("__MACOSX/document.txt", b"MAC metadata")
+            zip_file.writestr("__MACOSX/._document.txt", b"MAC resource fork")
+            zip_file.writestr("subfolder/__MACOSX/file.txt", b"MAC metadata in subfolder")
+
+        zip_content = zip_buffer.getvalue()
+
+        # Mock the client to return our zip content
+        m_client_download.return_value = zip_content
+
+        # Test data
+        external_id = "test_external_id_macOSX"
+        name = "archive_with_macOSX.zip"
+
+        # Call the download method
+        downloader.download_document(external_id, name)
+
+        # Check that files were stored
+        files_info = FileInfo.objects.order_by("file")
+
+        # Check the filenames - __MACOSX files should be skipped
+        files = [fi.file.name for fi in files_info]
+        prefix = f"docs/{external_id}/"
+        expected_files = [
+            f"{prefix}archive_with_macOSX.zip",
+            f"{prefix}archive_with_macOSX.zip_/document.txt",
+            f"{prefix}archive_with_macOSX.zip_/subfolder/file.txt",
+        ]
+
+        assert sorted(files) == sorted(expected_files)
