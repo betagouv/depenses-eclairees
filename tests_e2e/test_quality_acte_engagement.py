@@ -69,15 +69,6 @@ def compare_co_contractors(llm_val: list[dict[str, str]], ref_val: list[dict[str
     return not missing_co_contractors and not additional_co_contractors
 
 
-def _normalize_lot_concerne(lot):
-    """Normalize lot_concerne to treat None and empty lot payload as equivalent."""
-    if lot is None or lot == {}:
-        return {"numero_lot": None, "titre_lot": None}
-    if not isinstance(lot, dict):
-        return {"numero_lot": None, "titre_lot": None}
-    return {"numero_lot": lot.get("numero_lot"), "titre_lot": lot.get("titre_lot")}
-
-
 def compare_subcontractors(llm_val: list[dict[str, str]], ref_val: list[dict[str, str]]):
     """
     Compare sous_traitants : liste de json, renvoie True si tous les sous_traitants LLM sont trouvés côté référence.
@@ -189,7 +180,7 @@ def compare_contract_form(llm_val, ref_val):
     if not llm_val or not ref_val:
         return False
 
-    if _normalize_lot_concerne(llm_val.get("lot_concerne")) != ref_val.get("lot_concerne"):
+    if llm_val.get("lot_concerne") != ref_val.get("lot_concerne"):
         return False
     if llm_val.get("marche_subsequent") != ref_val.get("marche_subsequent"):
         return False
@@ -285,7 +276,7 @@ if __name__ == "__main__":
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "conserve_avance", comparison_functions, only_errors=True)
+    check_quality_one_field(df_merged, "forme_marche.lot_concerne", comparison_functions, only_errors=False)
 
     check_quality_one_row(df_merged, 26, comparison_functions, included_columns=INCLUDED_COLUMNS)
 

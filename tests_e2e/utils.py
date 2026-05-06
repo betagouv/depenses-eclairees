@@ -64,30 +64,6 @@ def compare_normalized_string(actual, expected):
 
     return normalize_string(actual.replace(" ", "")) == normalize_string(expected.replace(" ", ""))
 
-def _normalize_duree(duree):
-    """Normalize durée payload to compare empty-like values consistently."""
-    if duree is None or duree == {} or not isinstance(duree, dict):
-        return {
-            "duree_initiale": None,
-            "duree_reconduction": None,
-            "nb_reconductions": None,
-            "delai_tranche_optionnelle": None,
-        }
-
-    def _empty_like(value):
-        if value is None:
-            return True
-        return value in ("", 0)
-
-    return {
-        "duree_initiale": None if _empty_like(duree.get("duree_initiale")) else duree.get("duree_initiale"),
-        "duree_reconduction": None if _empty_like(duree.get("duree_reconduction")) 
-        else duree.get("duree_reconduction"),
-        "nb_reconductions": None if _empty_like(duree.get("nb_reconductions")) else duree.get("nb_reconductions"),
-        "delai_tranche_optionnelle": None
-        if _empty_like(duree.get("delai_tranche_optionnelle"))
-        else duree.get("delai_tranche_optionnelle"),
-    }
 
 def compare_duration(actual, expected):
     """Compare duree : nombre de mois, comparaison exacte."""
@@ -98,15 +74,14 @@ def compare_duration(actual, expected):
 
     if not actual or not expected:
         return False
-    normalized_actual = _normalize_duree(actual)
     try:
-        if normalized_actual.get("duree_initiale") != expected.get("duree_initiale"):
+        if actual.get("duree_initiale") != expected.get("duree_initiale"):
             return False
-        if normalized_actual.get("duree_reconduction") != expected.get("duree_reconduction"):
+        if actual.get("duree_reconduction") != expected.get("duree_reconduction"):
             return False
-        if normalized_actual.get("nb_reconductions") != expected.get("nb_reconductions"):
+        if actual.get("nb_reconductions") != expected.get("nb_reconductions"):
             return False
-        if normalized_actual.get("delai_tranche_optionnelle") != expected.get("delai_tranche_optionnelle"):
+        if actual.get("delai_tranche_optionnelle") != expected.get("delai_tranche_optionnelle"):
             return False
         return True
     except (ValueError, TypeError):
@@ -781,7 +756,9 @@ def _fmt_ratio_pct(num: int, den: int, ratio: float) -> str:
     return f"{num}/{den} = {ratio * 100:.1f}%"
 
 
-def _classify_confusion_cell(ref_non_null: bool, match_result: bool, llm_non_null: bool) -> tuple[int, int, int, int, int]:
+def _classify_confusion_cell(
+    ref_non_null: bool, match_result: bool, llm_non_null: bool
+) -> tuple[int, int, int, int, int]:
     """
     Retourne un incrément (vp, fp2, fn, vn, fp) — une seule cellule vaut 1, les autres 0.
     """
@@ -838,12 +815,8 @@ def _print_confusion_matrix_visual(
         return f"{label} ({n})".center(14)
 
     dash = "—".center(14)
-    row_pres = (
-        f"│ {'Présente (1)':<14} │{cell('VP', vp_n)}│{cell('FP2', fp2_n)}│{cell('FN', fn_n)}│"
-    )
-    row_abs = (
-        f"│ {'Absente (0)':<14} │{dash}│{cell('FP', fp_n)}│{cell('VN', vn_n)}│"
-    )
+    row_pres = f"│ {'Présente (1)':<14} │{cell('VP', vp_n)}│{cell('FP2', fp2_n)}│{cell('FN', fn_n)}│"
+    row_abs = f"│ {'Absente (0)':<14} │{dash}│{cell('FP', fp_n)}│{cell('VN', vn_n)}│"
 
     border = "┌────────────────┬──────────────┬──────────────┬──────────────┐"
     sep = "├────────────────┼──────────────┼──────────────┼──────────────┤"
@@ -1033,10 +1006,7 @@ def check_global_statistics(
 
     print()
     _print_confusion_matrix_visual((gvp, gfp2, gfn, gvn, gfp))
-    print(
-        "Détection = (VP+FP2)/(VP+FP2+FN)  |  Exactitude = VP/(VP+FP2)  |  "
-        "Absence justifiée = VN/(FP+VN)"
-    )
+    print("Détection = (VP+FP2)/(VP+FP2+FN)  |  Exactitude = VP/(VP+FP2)  |  Absence justifiée = VN/(FP+VN)")
     print()
     print(
         f"Matches (comparaisons OK) : {total_matches}/{total_comparisons} = {global_accuracy * 100:.1f}%  |  "
