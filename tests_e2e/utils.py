@@ -378,7 +378,7 @@ def analyze_content_quality_test(
             df=df_analyze,
             df_attributes=ATTRIBUTES,
             max_workers=max_workers,
-            temperature=0.1,
+            temperature=0.0,
             llm_model=llm_model,
             debug_mode=debug_mode,
         )

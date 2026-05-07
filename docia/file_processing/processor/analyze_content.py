@@ -72,6 +72,7 @@ def create_response_format(df_attributes, classification):
         "type": "json_schema",
         "json_schema": {
             "name": f"{classification}",
+            "strict": True,
             "schema": {"type": "object", "properties": properties, "required": l_output_field},
         },
     }
