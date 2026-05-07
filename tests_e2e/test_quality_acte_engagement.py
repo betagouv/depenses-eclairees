@@ -66,11 +66,6 @@ def compare_co_contractors(llm_val: list[dict[str, str]], ref_val: list[dict[str
         if i not in found_llm:
             additional_co_contractors.append(llm_item)
 
-    for x in missing_co_contractors:
-        print("Co-contractor not found:", x)
-    for x in additional_co_contractors:
-        print("Co-contractor allucination:", x)
-
     return not missing_co_contractors and not additional_co_contractors
 
 
@@ -261,18 +256,34 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="mistral-medi
 if __name__ == "__main__":
     df_test, df_result, df_merged = create_batch_test(llm_model="mistral-medium-2508")
 
-    EXCLUDED_COLUMNS = ["objet_marche", "administration_beneficiaire"]
+    INCLUDED_COLUMNS = [
+        "forme_marche.lot_concerne.numero_lot",
+        "duree",
+        "societe_principale",
+        "siret_mandataire",
+        "rib_mandataire",
+        "cotraitants.*.siret",
+        "cotraitants.*.nom",
+        "rib_autres.*.rib.iban",
+        "conserve_avance",
+        "montant_ht",
+        "montant_tva",
+        "montant_ttc",
+        "date_signature_mandataire",
+        "date_signature_administration",
+        "date_notification",
+    ]
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "societe_principale", comparison_functions, only_errors=True)
+    check_quality_one_field(df_merged, "forme_marche.lot_concerne", comparison_functions, only_errors=False)
 
-    check_quality_one_row(df_merged, 26, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
+    check_quality_one_row(df_merged, 26, comparison_functions, included_columns=INCLUDED_COLUMNS)
 
-    check_global_statistics(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
+    check_global_statistics(df_merged, comparison_functions, included_columns=INCLUDED_COLUMNS)
 
     fields_with_errors = get_fields_with_comparison_errors(
-        df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS
+        df_merged.sort_values(by="filename"), comparison_functions, included_columns=INCLUDED_COLUMNS
     )
 
     for v in fields_with_errors.values():

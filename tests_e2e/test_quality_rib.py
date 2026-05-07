@@ -57,23 +57,21 @@ def create_batch_test(multi_line_coef=1):
 
 if __name__ == "__main__":
     df_test, df_result, df_merged = create_batch_test()
+    INCLUDED_COLUMNS = ["iban", "bic", "titulaire_compte", "banque"]
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "iban", comparison_functions)
-    check_quality_one_field(df_merged, "titulaire_compte", comparison_functions)
-    # check_quality_one_field(df_merged, "adresse_postale_titulaire", comparison_functions)
+    check_quality_one_field(df_merged, "iban", comparison_functions, only_errors=True)
+    check_quality_one_field(df_merged, "banque", comparison_functions, only_errors=True)
 
-    check_quality_one_row(df_merged, 26, comparison_functions)
+    check_quality_one_row(df_merged, 26, comparison_functions, included_columns=INCLUDED_COLUMNS)
 
-    check_global_statistics(
-        df_merged, comparison_functions, excluded_columns=["adresse_postale_titulaire", "domiciliation", "banque"]
-    )
+    check_global_statistics(df_merged, comparison_functions, included_columns=INCLUDED_COLUMNS)
 
     fields_with_errors = get_fields_with_comparison_errors(
         df_merged.sort_values(by="filename"),
         comparison_functions,
-        excluded_columns=["adresse_postale_titulaire", "domiciliation", "banque"],
+        included_columns=INCLUDED_COLUMNS,
     )
 
     for v in fields_with_errors.values():

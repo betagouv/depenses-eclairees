@@ -74,7 +74,6 @@ def compare_duration(actual, expected):
 
     if not actual or not expected:
         return False
-
     try:
         if actual.get("duree_initiale") != expected.get("duree_initiale"):
             return False
@@ -511,7 +510,7 @@ def check_quality_one_field(df_merged, col_to_test, comparison_functions, only_e
     # COMPARAISON POUR UNE COLONNE SPÉCIFIQUE
     # ============================================================================
 
-    comparison_func = comparison_functions[col_to_test]
+    comparison_func = _get_comparison_function_for_column(col_to_test, comparison_functions)
 
     print(f"\n{'=' * 80}")
     print(f"Comparaison pour la colonne: {col_to_test}")
@@ -555,22 +554,55 @@ def check_quality_one_field(df_merged, col_to_test, comparison_functions, only_e
 
 
 def _get_columns_to_compare(comparison_functions, excluded_columns=None, included_columns=None):
-    """Construit la liste des colonnes a comparer.
+    """Construit la liste ordonnée des colonnes a comparer.
 
     Par defaut, toutes les colonnes definies dans comparison_functions sont comparees.
-    Si included_columns est fourni, seules ces colonnes sont conservees.
+    Si included_columns est fourni, seules ces colonnes sont conservees dans cet ordre.
+    Les clés imbriquées (ex: ``forme_marche.lot_concerne.numero_lot``) sont acceptées
+    si leur racine est présente dans ``comparison_functions``.
     excluded_columns est applique en dernier.
     """
     excluded_columns = set(excluded_columns or [])
-    available_columns = list(comparison_functions.keys())
+    available_columns = set(comparison_functions.keys())
 
     if included_columns is None:
-        selected_columns = available_columns
+        selected_columns = list(comparison_functions.keys())
     else:
-        included_columns = set(included_columns)
-        selected_columns = [col for col in available_columns if col in included_columns]
+        selected_columns = []
+        invalid_columns = []
+        for col in included_columns:
+            root_col = col.split(".", 1)[0]
+            if col == "duree" or col in available_columns:
+                selected_columns.append(col)
+                continue
+            if "." in col and root_col in available_columns:
+                selected_columns.append(col)
+                continue
+            invalid_columns.append(col)
+        assert not invalid_columns, f"Columns {invalid_columns} not in {sorted(available_columns)}"
 
     return [col for col in selected_columns if col not in excluded_columns]
+
+
+def _get_comparison_function_for_column(col, comparison_functions):
+    """
+    Retourne la fonction de comparaison pour une colonne, y compris clé imbriquée.
+
+    - Colonne explicite (ex: 'forme_marche'): fonction dédiée dans comparison_functions.
+    - Clé imbriquée (ex: 'forme_marche.lot_concerne.numero_lot'):
+      comparaison feuille avec compare_exact_string.
+    - 'duree' garde sa comparaison dédiée quand utilisé tel quel.
+    - Les sous-clés (dont ``duree.*``) sont comparées comme des feuilles.
+    """
+    if col in comparison_functions:
+        return comparison_functions[col]
+
+    if "." in col:
+        root_col = col.split(".", 1)[0]
+        if root_col in comparison_functions:
+            return compare_exact_string
+
+    raise KeyError(f"No comparison function found for column '{col}'")
 
 
 def check_quality_one_row(
@@ -602,10 +634,9 @@ def check_quality_one_row(
 
         llm_data = row.get("structured_data", None)
 
-        # Comparer les colonnes selectionnees
+        # Comparer les colonnes sélectionnées
         for col in columns_to_compare:
-            comparison_func = comparison_functions[col]
-
+            comparison_func = _get_comparison_function_for_column(col, comparison_functions)
             # Extraire les valeurs
             ref_val = _get_value_by_dotted_key(row, col)
             llm_val = _get_value_by_dotted_key(llm_data, col)
@@ -661,7 +692,7 @@ def get_fields_with_comparison_errors(
         errors = []
 
         for col in columns_to_compare:
-            comparison_func = comparison_functions[col]
+            comparison_func = _get_comparison_function_for_column(col, comparison_functions)
 
             ref_val = _get_value_by_dotted_key(row, col)
             llm_val = _get_value_by_dotted_key(llm_data, col) if llm_data is not None else None
@@ -701,7 +732,120 @@ def _parse_best_test_errors(row):
     return []
 
 
-def check_global_statistics(df_merged, comparison_functions, excluded_columns=None, included_columns=None):
+def _field_value_is_non_null_non_empty(val) -> bool:
+    """True si une valeur de champ (référence ou LLM) est considérée renseignée (non vide / non nulle)."""
+    if val is None:
+        return False
+    if isinstance(val, bool):
+        return True
+    if isinstance(val, (dict, list, tuple, set)):
+        return len(val) > 0
+    if isinstance(val, str):
+        return bool(val.strip())
+    try:
+        if pd.isna(val):
+            return False
+    except (ValueError, TypeError):
+        pass
+    return True
+
+
+def _fmt_ratio_pct(num: int, den: int, ratio: float) -> str:
+    if den <= 0:
+        return "n/d"
+    return f"{num}/{den} = {ratio * 100:.1f}%"
+
+
+def _classify_confusion_cell(
+    ref_non_null: bool, match_result: bool, llm_non_null: bool
+) -> tuple[int, int, int, int, int]:
+    """
+    Retourne un incrément (vp, fp2, fn, vn, fp) — une seule cellule vaut 1, les autres 0.
+    """
+    if ref_non_null:
+        if match_result:
+            return (1, 0, 0, 0, 0)
+        if llm_non_null:
+            return (0, 1, 0, 0, 0)
+        return (0, 0, 1, 0, 0)
+    if match_result:
+        return (0, 0, 0, 1, 0)
+    if llm_non_null:
+        return (0, 0, 0, 0, 1)
+    return (0, 0, 0, 1, 0)
+
+
+def _fmt_quality_metric_columns(
+    *,
+    vp: int,
+    fp2: int,
+    fn: int,
+    vn: int,
+    fp: int,
+    w: int,
+) -> tuple[str, str, str]:
+    """Trois colonnes : Détection, Exactitude, Absence justifiée (taux de réussite)."""
+    det_den = vp + fp2 + fn
+    ex_den = vp + fp2
+    abs_den = fp + vn
+    det_num = vp + fp2
+    ex_num = vp
+    abs_num = vn
+    d = _fmt_ratio_pct(det_num, det_den, det_num / det_den) if det_den > 0 else "n/d"
+    e = _fmt_ratio_pct(ex_num, ex_den, ex_num / ex_den) if ex_den > 0 else "n/d"
+    a = _fmt_ratio_pct(abs_num, abs_den, abs_num / abs_den) if abs_den > 0 else "n/d"
+    return (f"{d:<{w}}", f"{e:<{w}}", f"{a:<{w}}")
+
+
+def _print_confusion_matrix_visual(
+    counts: tuple[int, int, int, int, int] | None = None,
+) -> None:
+    """
+    Affiche la matrice de confusion (référence × sortie LLM).
+    counts = (vp, fp2, fn, vn, fp) pour afficher les effectifs ; sinon légende seule.
+    """
+    if counts is None:
+        vp_n = fp2_n = fn_n = vn_n = fp_n = None
+    else:
+        vp_n, fp2_n, fn_n, vn_n, fp_n = counts
+
+    def cell(label: str, n: int | None) -> str:
+        if n is None:
+            return label.center(14)
+        return f"{label} ({n})".center(14)
+
+    dash = "—".center(14)
+    row_pres = f"│ {'Présente (1)':<14} │{cell('VP', vp_n)}│{cell('FP2', fp2_n)}│{cell('FN', fn_n)}│"
+    row_abs = f"│ {'Absente (0)':<14} │{dash}│{cell('FP', fp_n)}│{cell('VN', vn_n)}│"
+
+    border = "┌────────────────┬──────────────┬──────────────┬──────────────┐"
+    sep = "├────────────────┼──────────────┼──────────────┼──────────────┤"
+    bot = "└────────────────┴──────────────┴──────────────┴──────────────┘"
+    head = "│ Référence      │ LLM correct  │ LLM incorrect│ LLM absent   │"
+
+    print(border)
+    print(head)
+    print(sep)
+    print(row_pres)
+    print(row_abs)
+    print(bot)
+
+
+def check_global_statistics(
+    df_merged,
+    comparison_functions,
+    excluded_columns=None,
+    included_columns=None,
+):
+    """
+    Affiche d'abord la matrice de confusion et les métriques globales, puis le détail par colonne.
+
+    Métriques (taux de réussite) : Détection = (VP+FP2)/(VP+FP2+FN), Exactitude = VP/(VP+FP2),
+    Absence justifiée = VN/(FP+VN).
+
+    Retourne l'accuracy globale ``matches / total`` (comparaisons OK), inchangée pour la compatibilité
+    des tests (ex. seuil sur l'acte d'engagement).
+    """
     # ============================================================================
     # STATISTIQUES GLOBALES DE COMPARAISON
     # ============================================================================
@@ -714,44 +858,74 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
 
     print(f"\n{'=' * 80}")
     print("STATISTIQUES GLOBALES DE COMPARAISON")
-    print(f"{'=' * 80}\n")
+    print(f"{'=' * 80}")
+    n_rows_test = len(df_merged)
+    print(f"Nombre de lignes du jeu de test : {n_rows_test}")
 
     results = {}
 
-    # Comparaison pour chaque colonne selectionnee
+    # Comparaison pour chaque colonne sélectionnée
     for col in columns_to_compare:
-        comparison_func = comparison_functions[col]
-
+        comparison_func = _get_comparison_function_for_column(col, comparison_functions)
         matches = []
         errors = []
-        matches_no_ocr = []
+        total_non_null = 0
+        non_null_ok = 0
+        total_llm_non_null = 0
+        llm_non_null_ok = 0
         regressions_vs_best = 0
         improvements_vs_best = 0
+        vp = fp2 = fn = vn = fp = 0
 
         # Comparer toutes les lignes pour cette colonne
         for idx, row in df_merged.iterrows():
             filename = row.get("filename", "unknown")
+            ref_val = _get_value_by_dotted_key(row, col)
+            ref_non_null = _field_value_is_non_null_non_empty(ref_val)
 
             structured_data = row.get("structured_data", None)
             if structured_data is None or pd.isna(structured_data):
                 errors.append(f"{filename}: structured_data is None or NaN")
                 matches.append(False)
+                if ref_non_null:
+                    total_non_null += 1
+                dvp, dfp2, dfn, dvn, dfp = _classify_confusion_cell(ref_non_null, False, False)
+                vp += dvp
+                fp2 += dfp2
+                fn += dfn
+                vn += dvn
+                fp += dfp
                 continue
 
-            # Extraire les valeurs
-            ref_val = _get_value_by_dotted_key(row, col)
             llm_val = _get_value_by_dotted_key(structured_data, col)
+            llm_non_null = _field_value_is_non_null_non_empty(llm_val)
 
             # Comparer les valeurs
             try:
                 match_result = comparison_func(llm_val, ref_val)
                 match_result = bool(match_result) if not isinstance(match_result, bool) else match_result
                 matches.append(match_result)
+                if ref_non_null:
+                    total_non_null += 1
+                    if match_result:
+                        non_null_ok += 1
+                if llm_non_null:
+                    total_llm_non_null += 1
+                    if match_result:
+                        llm_non_null_ok += 1
+
+                dvp, dfp2, dfn, dvn, dfp = _classify_confusion_cell(ref_non_null, match_result, llm_non_null)
+                vp += dvp
+                fp2 += dfp2
+                fn += dfn
+                vn += dvn
+                fp += dfp
 
                 # Écart au meilleur test (si colonne optionnelle présente)
                 if use_best_ref:
                     best_errors = _parse_best_test_errors(row)
-                    best_had_error = col in best_errors
+                    best_col = col.split(".", 1)[0] if "." in col else col
+                    best_had_error = best_col in best_errors
                     current_has_error = not match_result
                     if not best_had_error and current_has_error:
                         regressions_vs_best += 1
@@ -760,9 +934,20 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
             except Exception as e:
                 errors.append(f"{filename}: Error in comparison_func: {str(e)}")
                 matches.append(False)
+                if ref_non_null:
+                    total_non_null += 1
+                if llm_non_null:
+                    total_llm_non_null += 1
+                dvp, dfp2, dfn, dvn, dfp = _classify_confusion_cell(ref_non_null, False, llm_non_null)
+                vp += dvp
+                fp2 += dfp2
+                fn += dfn
+                vn += dvn
+                fp += dfp
                 if use_best_ref:
                     best_errors = _parse_best_test_errors(row)
-                    best_had_error = col in best_errors
+                    best_col = col.split(".", 1)[0] if "." in col else col
+                    best_had_error = best_col in best_errors
                     if not best_had_error:
                         regressions_vs_best += 1
 
@@ -771,50 +956,96 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
         matches_count = sum(matches)
         errors_count = len(errors)
         accuracy = matches_count / total if total > 0 else 0.0
-
-        # Calculer l'accuracy sans OCR (seulement sur les comparaisons sans problème OCR)
-        total_no_ocr = len(matches_no_ocr)
-        matches_no_ocr_count = sum(matches_no_ocr)
-        accuracy_no_ocr = matches_no_ocr_count / total_no_ocr if total_no_ocr > 0 else 0.0
+        recall_non_null = non_null_ok / total_non_null if total_non_null > 0 else 0.0
+        precision_llm_non_null = llm_non_null_ok / total_llm_non_null if total_llm_non_null > 0 else 0.0
 
         results[col] = {
             "total": total,
             "matches": matches_count,
             "errors": errors_count,
             "accuracy": accuracy,
-            "accuracy_no_ocr": accuracy_no_ocr,
-            "total_no_ocr": total_no_ocr,
-            "matches_no_ocr": matches_no_ocr_count,
+            "total_non_null": total_non_null,
+            "non_null_ok": non_null_ok,
+            "recall_non_null": recall_non_null,
+            "total_llm_non_null": total_llm_non_null,
+            "llm_non_null_ok": llm_non_null_ok,
+            "precision_llm_non_null": precision_llm_non_null,
+            "vp": vp,
+            "fp2": fp2,
+            "fn": fn,
+            "vn": vn,
+            "fp": fp,
         }
         if use_best_ref:
             results[col]["delta_vs_best"] = regressions_vs_best - improvements_vs_best
             results[col]["regressions_vs_best"] = regressions_vs_best
             results[col]["improvements_vs_best"] = improvements_vs_best
 
-    # Affichage des statistiques
+    w_col, w_metric = 32, 30
+    dash_len = w_col + 3 * w_metric + 12 + (14 if use_best_ref else 0)
+
+    total_comparisons = sum(r["total"] for r in results.values())
+    total_matches = sum(r["matches"] for r in results.values())
+    global_accuracy = total_matches / total_comparisons if total_comparisons > 0 else 0.0
+
+    gvp = sum(r["vp"] for r in results.values())
+    gfp2 = sum(r["fp2"] for r in results.values())
+    gfn = sum(r["fn"] for r in results.values())
+    gvn = sum(r["vn"] for r in results.values())
+    gfp = sum(r["fp"] for r in results.values())
+
+    go, gi, gh = _fmt_quality_metric_columns(
+        vp=gvp,
+        fp2=gfp2,
+        fn=gfn,
+        vn=gvn,
+        fp=gfp,
+        w=w_metric,
+    )
+    match_failures = total_comparisons - total_matches
+
+    print()
+    _print_confusion_matrix_visual((gvp, gfp2, gfn, gvn, gfp))
+    print("Détection = (VP+FP2)/(VP+FP2+FN)  |  Exactitude = VP/(VP+FP2)  |  Absence justifiée = VN/(FP+VN)")
+    print()
+    print(
+        f"Matches (comparaisons OK) : {total_matches}/{total_comparisons} = {global_accuracy * 100:.1f}%  |  "
+        f"échecs : {match_failures}"
+    )
+    print(f"Détection : {go.strip()} — {gfn} omissions")
+    print(f"Exactitude : {gi.strip()} — {gfp2} incompréhensions")
+    print(f"Absence justifiée : {gh.strip()} — {gfp} hallucinations")
+    if use_best_ref:
+        total_imp = sum(r.get("improvements_vs_best", 0) for r in results.values())
+        total_reg = sum(r.get("regressions_vs_best", 0) for r in results.values())
+        print(f"Écart au meilleur test: Améliorations +{total_imp}, Régressions -{total_reg}")
+
+    print(f"\n{'=' * dash_len}")
+    print("Détail par colonne")
     header_parts = [
-        f"{'Colonne':<35}",
-        f"{'Total':<6}",
-        f"{'Matches':<8}",
-        f"{'Erreurs':<8}",
-        f"{'Accuracy':<10}",
-        f"{'Accuracy (no OCR)':<18}",
+        f"{'Colonne':<{w_col}}",
+        f"{'Détection':<{w_metric}}",
+        f"{'Exactitude':<{w_metric}}",
+        f"{'Absence justifiée':<{w_metric}}",
     ]
     if use_best_ref:
         header_parts.append(f"{'(+)':<5}")
         header_parts.append(f"{'(-)':<5}")
     print(" | ".join(header_parts))
-    print("-" * (160 if use_best_ref else 120))
+    print("-" * dash_len)
 
-    for col, result in results.items():
-        row_parts = [
-            f"{col:<35}",
-            f"{result['total']:<6}",
-            f"{result['matches']:<8}",
-            f"{result['errors']:<8}",
-            f"{result['accuracy'] * 100:>6.2f}%",
-            f"{result['accuracy_no_ocr'] * 100:>14.2f}%",
-        ]
+    for col in columns_to_compare:
+        result = results[col]
+        vp, fp2, fn, vn, fp = result["vp"], result["fp2"], result["fn"], result["vn"], result["fp"]
+        o, i, h = _fmt_quality_metric_columns(
+            vp=vp,
+            fp2=fp2,
+            fn=fn,
+            vn=vn,
+            fp=fp,
+            w=w_metric,
+        )
+        row_parts = [f"{col:<{w_col}}", o, i, h]
         if use_best_ref:
             imp = result.get("improvements_vs_best", 0)
             reg = result.get("regressions_vs_best", 0)
@@ -822,27 +1053,6 @@ def check_global_statistics(df_merged, comparison_functions, excluded_columns=No
             row_parts.append(f"{'-' + str(reg) if reg else '0':<5}")
         print(" | ".join(row_parts))
 
-    print(f"\n{'=' * 120}")
-    print("Résumé global:")
-    total_comparisons = sum(r["total"] for r in results.values())
-    total_matches = sum(r["matches"] for r in results.values())
-    total_errors = sum(r["errors"] for r in results.values())
-    global_accuracy = total_matches / total_comparisons if total_comparisons > 0 else 0.0
-
-    # Calculer l'accuracy globale sans OCR
-    total_no_ocr = sum(r["total_no_ocr"] for r in results.values())
-    total_matches_no_ocr = sum(r["matches_no_ocr"] for r in results.values())
-    global_accuracy_no_ocr = total_matches_no_ocr / total_no_ocr if total_no_ocr > 0 else 0.0
-
-    print(f"Total de comparaisons: {total_comparisons}")
-    print(f"Total de matches: {total_matches}")
-    print(f"Total d'erreurs: {total_errors}")
-    print(f"Accuracy globale: {global_accuracy * 100:.2f}%")
-    print(f"Accuracy globale sans OCR: {global_accuracy_no_ocr * 100:.2f}%")
-    if use_best_ref:
-        total_imp = sum(r.get("improvements_vs_best", 0) for r in results.values())
-        total_reg = sum(r.get("regressions_vs_best", 0) for r in results.values())
-        print(f"Écart au meilleur test: Améliorations +{total_imp}, Régressions -{total_reg}")
-    print(f"{'=' * (160 if use_best_ref else 120)}\n")
+    print(f"{'=' * dash_len}\n")
 
     return global_accuracy

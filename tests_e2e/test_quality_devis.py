@@ -68,11 +68,11 @@ if __name__ == "__main__":
         multi_line_coef=1, max_workers=30, debug_mode=True, llm_model="mistral-medium-2508"
     )
 
-    EXCLUDED_COLUMNS = ["objet"]
+    EXCLUDED_COLUMNS = ["objet", "administration_beneficiaire"]
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "date_emission", comparison_functions, only_errors=False)
+    check_quality_one_field(df_merged, "montants", comparison_functions, only_errors=False)
 
     check_quality_one_row(df_merged, 8, comparison_functions, excluded_columns=[])
 
