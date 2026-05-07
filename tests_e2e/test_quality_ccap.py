@@ -5,8 +5,6 @@ import sys
 
 import django
 
-import numpy as np
-
 sys.path.append(".")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "docia.settings")
 django.setup()
@@ -27,20 +25,6 @@ from tests_e2e.utils import (  # noqa: E402
 )
 
 logger = logging.getLogger("docia." + __name__)
-
-
-def _parse_json_cell(x):
-    """Parse une cellule JSON depuis Grist : str JSON, déjà un objet, vide/NaN → None sans lever."""
-    if x is None:
-        return None
-    if isinstance(x, float) and np.isnan(x):
-        return None
-    if not isinstance(x, str):
-        return x
-    s = x.strip()
-    if not s:
-        return None
-    return json.loads(s)
 
 
 def compare_lots_title(llm_val: list[dict[str, str]], ref_val: list[dict[str, str]]):
