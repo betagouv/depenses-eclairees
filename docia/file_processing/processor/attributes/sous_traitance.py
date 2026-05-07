@@ -4,7 +4,7 @@ Définitions des attributs à extraire pour les documents de type "sous_traitanc
 
 SOUS_TRAITANCE_ATTRIBUTES = {
     "administration_beneficiaire": {
-        "consigne": """ADMINISTRATION_BENEFICIAIRE 
+        "consigne": """
      Définition : Structure administrative ou publique qui bénéficie de la commande, ou qui achète la prestation.
      Indices :
      - Rechercher les mentions d'achateurs, de pouvoir adjudicateur, ou d'autorité contractante.
@@ -12,21 +12,17 @@ SOUS_TRAITANCE_ATTRIBUTES = {
      - S'il est seulement précisé les rôles ou les postes de persones (ex : le préfet de la région Île-de-France), déduire la direction / le service / l'administration bénéficiaire (ex : la préfecture de la région Île-de-France).
      Format : le nom de l'administration bénéficiaire en toutes lettres (pas d'acronymes si possible). 
 """,
-        "search": "",
-        "output_field": "administration_beneficiaire",
     },
     "objet_marche": {
-        "consigne": """OBJET_MARCHE
+        "consigne": """
      Définition : Formulation synthétique de l'objet du marché.
      Indices : 
      - L'objet du marché peut être dans le titre directement, ou plus généralement dans une section dédiée.
      - Identifier les formules comme "Objet du marché", "Le marché a pour objet", ou toute expression indiquant l'intitulé de la mission.  
 """,
-        "search": "Section du document qui décrit l'objet du marché ou le contexte général de la consultation.",
-        "output_field": "objet_marche",
     },
     "societe_principale": {
-        "consigne": """SOCIETE_PRINCIPALE  
+        "consigne": """
      Définition : Société principale contractante avec l'administration publique ou ses représentants. Si un groupement est mentionné, extraire la société mandataire ou représentante.  
      Indices : 
      - Rechercher les mentions de société, entreprise, titulaire, mandataire, contractant.
@@ -34,11 +30,9 @@ SOUS_TRAITANCE_ATTRIBUTES = {
      - Le nom de la société est souvent cohérent avec le nom de domaine du site interne.
      Format : renvoyer le nom de la société telle qu'écrit dans le document.
 """,
-        "search": "",
-        "output_field": "societe_principale",
     },
     "adresse_postale_titulaire": {
-        "consigne": """ADRESSE_POSTALE_TITULAIRE  
+        "consigne": """
      Définition : Adresse postale  de la société titulaire principale du marché (json).
      Indices : 
      - Rechercher l'adresse postale indiquée sur ce RIB. 
@@ -53,8 +47,6 @@ SOUS_TRAITANCE_ATTRIBUTES = {
      - Si aucune adresse trouvée pour le titulaire du compte, renvoyer ''
      Format : un json sous format suivant : {'numero_voie': 'le numéro de voie', 'nom_voie': 'le nom de la voie', 'complement_adresse': 'le complément d'adresse éventuel', 'code_postal': 'le code postal', 'ville': 'la ville','pays': 'le pays'}
 """,
-        "search": "",
-        "output_field": "adresse_postale_titulaire",
         "schema": {
             "type": "object",
             "properties": {
@@ -69,29 +61,25 @@ SOUS_TRAITANCE_ATTRIBUTES = {
         },
     },
     "siret_titulaire": {
-        "consigne": """SIRET_TITULAIRE  
+        "consigne": """
    Définition : Numéro SIRET du titulaire principal du marché, composé de 14 chiffres.  
    Indices :
    - Peut être mentionné comme "SIRET", "numéro d'immatriculation" ou "SIRET du titulaire"
    - Rechercher dans la section du titulaire principal du marché
    Format : un numéro composé de 14 chiffres, sans espaces.  
 """,
-        "search": "",
-        "output_field": "siret_titulaire",
     },
     "societe_sous_traitant": {
-        "consigne": """SOCIETE_SOUS_TRAITANT  
+        "consigne": """
      Définition : Société sous-traitante qui réalise une partie des prestations du marché.  
      Indices : 
      - Rechercher les mentions de société, entreprise, sous-traitant dans la section dédiée à la sous-traitance.
      - Le nom de la société sous-traitante est généralement distinct de la société principale.
      Format : renvoyer le nom de la société sous-traitante telle qu'écrit dans le document.
 """,
-        "search": "",
-        "output_field": "societe_sous_traitant",
     },
     "adresse_postale_sous_traitant": {
-        "consigne": """ADRESSE_POSTALE_SOUS_TRAITANT  
+        "consigne": """
      Définition : Adresse postale  de la société sous-traitant (json).
      Indices : 
      - Rechercher l'adresse postale indiquée sur la sous-traitance. 
@@ -105,8 +93,6 @@ SOUS_TRAITANCE_ATTRIBUTES = {
      - Si aucune adresse trouvée pour le sous-traitant, renvoyer {}
      Format : un json sous format suivant : {'numero_voie': 'le numéro de voie', 'nom_voie': 'le nom de la voie', 'complement_adresse': 'le complément d'adresse éventuel', 'code_postal': 'le code postal', 'ville': 'la ville','pays': 'le pays'}
 """,
-        "search": "",
-        "output_field": "adresse_postale_sous_traitant",
         "schema": {
             "type": "object",
             "properties": {
@@ -121,18 +107,16 @@ SOUS_TRAITANCE_ATTRIBUTES = {
         },
     },
     "siret_sous_traitant": {
-        "consigne": """SIRET_SOUS_TRAITANT  
+        "consigne": """
    Définition : Numéro SIRET du sous-traitant, composé de 14 chiffres.  
    Indices :
    - Peut être mentionné comme "SIRET", "numéro d'immatriculation" ou "SIRET du sous-traitant"
    - Rechercher dans la section du sous-traitant
    Format : un numéro composé de 14 chiffres, sans espaces.  
 """,
-        "search": "",
-        "output_field": "siret_sous_traitant",
     },
     "montant_sous_traitance_ht": {
-        "consigne": """MONTANT_SOUS_TRAITANCE_HT  
+        "consigne": """
      Définition : Montant de la sous-traitance hors taxes (également hors TVA).  
      Indices : 
      - Rechercher les mentions "hors taxes", "HT", "sans TVA" ou équivalent dans la section sous-traitance. 
@@ -140,11 +124,9 @@ SOUS_TRAITANCE_ATTRIBUTES = {
      - Ne rien envoyer si aucun montant trouvé.
      Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
      """,
-        "search": "",
-        "output_field": "montant_sous_traitance_ht",
     },
     "montant_sous_traitance_ttc": {
-        "consigne": """MONTANT_SOUS_TRAITANCE_TTC  
+        "consigne": """
      Définition : Montant de la sous-traitance toutes taxes comprises (ou avec TVA incluse).  
      Indices : 
      - Rechercher les expressions "TTC", "TVA incluse", "TVA comprise" dans la section sous-traitance. 
@@ -153,11 +135,9 @@ SOUS_TRAITANCE_ATTRIBUTES = {
      - Ne rien envoyer si aucun montant trouvé.
      Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
 """,
-        "search": "",
-        "output_field": "montant_sous_traitance_ttc",
     },
     "description_prestations": {
-        "consigne": """DESCRIPTION_PRESTATIONS
+        "consigne": """
    Définition : Description des prestations de la commande ou du marché, structurée et compréhensible.
    Indices : 
    - Un texte décrivant le contenu de la prestation, des services attendus ou réalisés, et du matériel utilisé ou acheté.
@@ -166,11 +146,9 @@ SOUS_TRAITANCE_ATTRIBUTES = {
    - Attention à ne pas renvoyer de détails de prix.
    Format : en bon Français, reformulé si besoin.
    """,
-        "search": "",
-        "output_field": "description_prestations",
     },
     "date_signature": {
-        "consigne": """DATE_SIGNATURE
+        "consigne": """
       Définition : Date de signature du document par une des parties.  
       Indices : 
       - Repérer les expressions comme "Signé le", "Fait à ...", ou des dates en bas du document associées à une signature.
@@ -178,11 +156,9 @@ SOUS_TRAITANCE_ATTRIBUTES = {
       - Ne rien renvoyer si aucune date de signature trouvée
      Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
 """,
-        "search": "",
-        "output_field": "date_signature",
     },
     "montant_tva": {
-        "consigne": """MONTANT_TVA
+        "consigne": """
      Définition : Montant de la TVA.
      Indices : 
      - Rechercher le taux de la TVA dans la section du sous traitant.
@@ -190,26 +166,22 @@ SOUS_TRAITANCE_ATTRIBUTES = {
      Format : "0.20" ou "0.055" et non "20%" ou "5.5%"
      Ne rien renvoyer si aucune indication trouvée.
 """,
-        "search": "",
-        "output_field": "montant_tva",
     },
     "paiement_direct": {
-        "consigne": """PAIEMENT_DIRECT
+        "consigne": """
      Définition : Indique si le sous traitant est eligible au paiement direct.
      Indices : 
      - Rechercher les expressions "eligible au paiement direct", "eligible au paiement indirect", "eligible au paiement en direct", "eligible au paiement en indirect", "eligible au paiement directement", "eligible au paiement indirectement".
      - Ne rien renvoyer si aucune indication trouvée.
      Format : "oui" ou "non".
 """,
-        "search": "",
-        "output_field": "paiement_direct",
         "schema": {
             "type": "string",
             "enum": ["oui", "non", ""],
         },
     },
     "rib_sous_traitant": {
-        "consigne": """RIB_SOUS_TRAITANT
+        "consigne": """
      Définition : Informations bancaires (IBAN en priorité) du compte à créditer indiqué dans la sous-traitance.
      Indices : 
      - Rechercher dans les informations bancaires, en priorité près des mentions "RIB" ou "IBAN".
@@ -227,8 +199,6 @@ SOUS_TRAITANCE_ATTRIBUTES = {
      - 1er cas (prioritaire) : un json sous format suivant {"banque": "nom de la banque", "iban": "IBAN avec espaces tous les 4 caractères"}
      - 2ème cas (secondaire - uniquement s'il n'y a pas d'IBAN) : un json sous format suivant {"banque": "nom de la banque", "code_banque": "code de la banque à 5 chiffres", "code_guichet": "code du guichet à 5 chiffres", "numero_compte": "numéro de compte à 11 chiffres", "cle_rib": "clé du RIB à 2 chiffres"}
 """,
-        "search": "",
-        "output_field": "rib_sous_traitant",
         "schema": {
             "type": "object",
             "oneOf": [
@@ -253,22 +223,20 @@ SOUS_TRAITANCE_ATTRIBUTES = {
         },
     },
     "conserve_avance": {
-        "consigne": """CONSERVE_AVANCE
+        "consigne": """
      Définition : Indique si le sous traitant conserve l'avance.
      Indices : 
      - Rechercher les expressions "conserve l'avance", "conserve l'avancement", "conserve l'avancement", "conserve l'avancement", "conserve l'avancement", "conserve l'avancement".
      - Ne rien renvoyer si aucune indication trouvée.
      Format : "conserve" ou "renonce".
 """,
-        "search": "",
-        "output_field": "conserve_avance",
         "schema": {
             "type": "string",
             "enum": ["conserve", "renonce", ""],
         },
     },
     "duree_sous_traitance": {
-        "consigne": """DUREE_SOUS_TRAITANCE
+        "consigne": """
         Définition : Durée de la sous-traitance totale exprimée en mois et extension possible.
         Indices :
         - Chercher dans le paragraphe indiquant la durée de la sous-traitance ou le délai d'exécution des prestations.
@@ -287,8 +255,6 @@ SOUS_TRAITANCE_ATTRIBUTES = {
                     Exemple : 2 tranches optionnelles de 8 mois, renvoyer 8 + 8 = 16.
         Format : un json sous format suivant {"duree_initiale": "nombre entier de mois", "duree_reconduction": "nombre entier de mois", "nb_reconductions": "nombre entier de reconductions possibles", "delai_tranche_optionnelle": "nombre entier de mois"}
     """,
-        "search": "Section du document qui décrit la durée du marché ou le délai d'exécution des prestations.",
-        "output_field": "duree_sous_traitance",
         "schema": {
             "type": "object",
             "properties": {

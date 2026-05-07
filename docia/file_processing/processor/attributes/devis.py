@@ -4,7 +4,7 @@ Définitions des attributs à extraire pour les documents de type "devis".
 
 DEVIS_ATTRIBUTES = {
     "numero_devis": {
-        "consigne": """NUMERO_DEVIS
+        "consigne": """
    Définition : Numéro ou référence propre au devis.
    Indices :
    - Chercher les mentions "N° devis", "Devis n°", "Réf. devis", "Référence", N° Dossier.
@@ -13,12 +13,10 @@ DEVIS_ATTRIBUTES = {
    - Si aucune référence n'est trouvée, renvoyer null.
    Format : chaîne de caractères, conserver exactement la forme trouvée.
 """,
-        "search": "",
-        "output_field": "numero_devis",
         "schema": {"type": ["string"]},
     },
     "objet": {
-        "consigne": """OBJET
+        "consigne": """
    Définition : Objet métier du devis (ce qui est acheté ou réalisé).
    Indices :
    - Chercher après les mentions "Objet", "Intitulé", "Sujet", ou dans le titre.
@@ -31,12 +29,10 @@ DEVIS_ATTRIBUTES = {
      trop vagues, absentes ou inexploitables pour formuler un objet compréhensible par un tiers).
    Format : phrase courte en français, ou null.
 """,
-        "search": "",
-        "output_field": "objet",
         "schema": {"type": ["string", "null"]},
     },
     "raisonnement": {
-        "consigne": """RAISONNEMENT_OBJET
+        "consigne": """
    Définition : Indiquer comment l'objet a été obtenu (champ objet ci-dessus).
    Règles :
    - Si l'objet a été trouvé explicitement dans le document (mention "Objet", "Intitulé", etc.) :
@@ -48,12 +44,10 @@ DEVIS_ATTRIBUTES = {
      renvoyer une phrase du type : "Objet non trouvé ; inférence impossible ou trop vague (prestations absentes ou inexploitables)".
    Format : une ou deux phrases en français.
 """,
-        "search": "",
-        "output_field": "raisonnement",
         "schema": {"type": ["string"]},
     },
     "date_emission": {
-        "consigne": """DATE_EMISSION
+        "consigne": """
    Définition : Date d'émission / édition / création du devis.
    Indices :
    - Repérer "Émis le", "Date du devis", "Date d'édition", "Fait le" en en-tête.
@@ -62,12 +56,10 @@ DEVIS_ATTRIBUTES = {
    - Si aucune date d'émission claire n'est trouvée, renvoyer null.
    Format : "JJ/MM/AAAA".
 """,
-        "search": "",
-        "output_field": "date_emission",
         "schema": {"type": ["string", "null"]},
     },
     "titulaire": {
-        "consigne": """TITULAIRE
+        "consigne": """
    Définition : Informations d'identification du prestataire principal du devis.
    Indices :
    - Rechercher la société émettrice : raison sociale, SIREN, SIRET, adresse postale.
@@ -81,8 +73,6 @@ DEVIS_ATTRIBUTES = {
    - Si aucun titulaire identifiable, renvoyer {"raison_sociale": null, "siren": null, "siret": null, "adresse": null}.
    Format : objet JSON {"raison_sociale": ..., "siren": ..., "siret": ..., "adresse": ...}.
 """,
-        "search": "",
-        "output_field": "titulaire",
         "schema": {
             "type": "object",
             "properties": {
@@ -95,7 +85,7 @@ DEVIS_ATTRIBUTES = {
         },
     },
     "administration_beneficiaire": {
-        "consigne": """ADMINISTRATION_BENEFICIAIRE
+        "consigne": """
    Définition : Entité publique bénéficiaire de la prestation.
    Indices :
    - Rechercher "acheteur", "pouvoir adjudicateur", "autorité contractante", "bénéficiaire", ou simplement à qui s'adresse le devis.
@@ -104,12 +94,10 @@ DEVIS_ATTRIBUTES = {
    - Si aucune administration identifiable n'est trouvée, renvoyer null.
    Format : nom de l'administration en toutes lettres.
 """,
-        "search": "",
-        "output_field": "administration_beneficiaire",
         "schema": {"type": ["string", "null"]},
     },
     "prestations": {
-        "consigne": """PRESTATIONS
+        "consigne": """
    Définition : Résumé synthétique du contenu des prestations du devis (pas une liste ligne à ligne).
    Indices :
    - S'appuyer sur le tableau des lignes, les postes, les intitulés et montants globaux pour dégager le périmètre réel de l'offre.
@@ -119,12 +107,10 @@ DEVIS_ATTRIBUTES = {
    - Si aucune prestation n'est identifiable, renvoyer null.
    Format : paragraphe court en français, ou null.
 """,
-        "search": "",
-        "output_field": "prestations",
         "schema": {"type": ["string", "null"]},
     },
     "montants": {
-        "consigne": """MONTANTS
+        "consigne": """
    Définition : Synthèse financière du devis.
    Indices :
    - Extraire les montants HT, TVA, TTC et le taux de TVA.
@@ -134,8 +120,6 @@ DEVIS_ATTRIBUTES = {
    - Si aucun montant n'est trouvé, renvoyer {"ht": null, "taux_tva": null, "tva": null, "ttc": null}.
    Format : objet JSON {"ht": ..., "taux_tva": ..., "tva": ..., "ttc": ...}.
 """,
-        "search": "",
-        "output_field": "montants",
         "schema": {
             "type": "object",
             "properties": {
@@ -148,7 +132,7 @@ DEVIS_ATTRIBUTES = {
         },
     },
     "duree_validite": {
-        "consigne": """DUREE_VALIDITE
+        "consigne": """
    Définition : Durée de validité de l'offre/devis.
    Indices :
    - Rechercher "durée de validité", "devis valable", "offre valable jusqu'au", "validité".
@@ -157,12 +141,10 @@ DEVIS_ATTRIBUTES = {
    - Si aucune information n'est trouvée, renvoyer null.
    Format : nombre de jours (ex : 90). 
 """,
-        "search": "",
-        "output_field": "duree_validite",
         "schema": {"type": ["string", "null"]},
     },
     "date_signature": {
-        "consigne": """DATE_SIGNATURE
+        "consigne": """
    Définition : Date de signature effective du devis.
    Indices :
    - Repérer les mentions "Signé le", "Bon pour accord", "Fait à ... le ...", signature électronique.
@@ -171,12 +153,10 @@ DEVIS_ATTRIBUTES = {
    - Si aucune signature datée n'est présente, renvoyer null.
    Format : "JJ/MM/AAAA".
 """,
-        "search": "",
-        "output_field": "date_signature",
         "schema": {"type": ["string", "null"]},
     },
     "dernier_signataire": {
-        "consigne": """DERNIER_SIGNATAIRE
+        "consigne": """
    Définition : Nom du dernier signataire identifié sur le devis.
    Indices :
    - Chercher les noms proches de blocs de signature, cachets ou signatures électroniques.
@@ -185,8 +165,6 @@ DEVIS_ATTRIBUTES = {
    - Si aucun nom de signataire n'est identifiable, renvoyer null.
    Format : nom et prénom sous forme texte.
 """,
-        "search": "",
-        "output_field": "dernier_signataire",
         "schema": {"type": ["string", "null"]},
     },
 }

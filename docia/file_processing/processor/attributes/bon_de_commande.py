@@ -4,7 +4,7 @@ Définitions des attributs à extraire pour les documents de type "bon_de_comman
 
 BON_DE_COMMANDE_ATTRIBUTES = {
     "objet": {
-        "consigne": """OBJET
+        "consigne": """
    Définition : l'objet de la commande ou du marché, c'est-à-dire ce qui a été acheté, ou le service fourni.
    Indices :
    - Chercher après les mentions "Objet :", ou autre mention similaire.
@@ -16,11 +16,9 @@ BON_DE_COMMANDE_ATTRIBUTES = {
    - Attention, ne pas inclure le type de document dans l'objet : "Devis pour ..." enlever "Devis pour" / "Avenant pour ..." enlever "Avenant pour".
    - Si l'objet de la commande est incompréhensible, proposer un objet simple qui reflète le contenu de la commande.
 """,
-        "search": "",
-        "output_field": "objet",
     },
     "type_document": {
-        "consigne": """TYPE_DOCUMENT
+        "consigne": """
    Définition : catégorie juridique ou administrative du document.
    Indices :
    - Le type de document est souvent mentionné au début du document dans le titre ou le sous-titre.
@@ -28,11 +26,9 @@ BON_DE_COMMANDE_ATTRIBUTES = {
    - Ne rien renvoyer si aucun type de document trouvé
    Format : en minuscule, sans accent, sans espace (ex: "devis", "acte_engagement", "bon_de_commande")
 """,
-        "search": "",
-        "output_field": "type_document",
     },
     "montant_ht": {
-        "consigne": """MONTANT_HT  
+        "consigne": """
      Définition : Montant du marché hors taxes (également hors TVA).  
      Indices : 
      - Rechercher les mentions "hors taxes", "HT", "sans TVA" ou équivalent. 
@@ -40,11 +36,9 @@ BON_DE_COMMANDE_ATTRIBUTES = {
      - Ne rien envoyer si aucun montant trouvé.
      Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
      """,
-        "search": "",
-        "output_field": "montant_ht",
     },
     "montant_ttc": {
-        "consigne": """MONTANT_TTC  
+        "consigne": """
      Définition : Montant du marché toutes taxes comprises (ou avec TVA incluse).  
      Indices : 
      - Rechercher les expressions "TTC", "TVA incluse", "TVA comprise". 
@@ -53,11 +47,9 @@ BON_DE_COMMANDE_ATTRIBUTES = {
      - Ne rien envoyer si aucun montant trouvé.
      Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
 """,
-        "search": "",
-        "output_field": "montant_ttc",
     },
     "administration_beneficiaire": {
-        "consigne": """ADMINISTRATION_BENEFICIAIRE 
+        "consigne": """
      Définition : Structure administrative ou publique qui bénéficie de la commande, ou qui achète la prestation.
      Indices :
      - Rechercher les mentions d'achateurs, de pouvoir adjudicateur, ou d'autorité contractante.
@@ -65,11 +57,9 @@ BON_DE_COMMANDE_ATTRIBUTES = {
      - S'il est seulement précisé les rôles ou les postes de persones (ex : le préfet de la région Île-de-France), déduire la direction / le service / l'administration bénéficiaire (ex : la préfecture de la région Île-de-France).
      Format : le nom de l'administration bénéficiaire en toutes lettres (pas d'acronymes si possible). 
 """,
-        "search": "",
-        "output_field": "administration_bénéficiaire",
     },
     "description_prestations": {
-        "consigne": """DESCRIPTION_PRESTATIONS
+        "consigne": """
    Définition : Description des prestations de la commande ou du marché, structurée et compréhensible.
    Indices : 
    - Un texte décrivant le contenu de la prestation, des services attendus ou réalisés, et du matériel utilisé ou acheté.
@@ -78,11 +68,9 @@ BON_DE_COMMANDE_ATTRIBUTES = {
    - Attention à ne pas renvoyer de détails de prix.
    Format : en bon Français, reformulé si besoin.
    """,
-        "search": "",
-        "output_field": "description_prestations",
     },
     "date_signature": {
-        "consigne": """DATE_SIGNATURE
+        "consigne": """
       Définition : Date de signature du document par une des parties.  
       Indices : 
       - Repérer les expressions comme "Signé le", "Fait à ...", ou des dates en bas du document associées à une signature.
@@ -90,11 +78,9 @@ BON_DE_COMMANDE_ATTRIBUTES = {
       - Ne rien renvoyer si aucune date de signature trouvée
      Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
 """,
-        "search": "",
-        "output_field": "date_signature",
     },
     "societe_principale": {
-        "consigne": """SOCIETE_PRINCIPALE  
+        "consigne": """
      Définition : Société principale contractante avec l'administration publique ou ses représentants. Si un groupement est mentionné, extraire la société mandataire ou représentante.  
      Indices : 
      - Rechercher les mentions de société, entreprise, titulaire, mandataire, contractant.
@@ -102,11 +88,9 @@ BON_DE_COMMANDE_ATTRIBUTES = {
      - Le nom de la société est souvent cohérent avec le nom de domaine du site interne.
      Format : renvoyer le nom de la société telle qu'écrit dans le document.
 """,
-        "search": "",
-        "output_field": "societe_principale",
     },
     "siren": {
-        "consigne": """SIREN
+        "consigne": """
    Définition : numéro de SIREN du prestataire / du titulaire principal, composé de 9 chiffres
    Indices :
    - Après la mention SIREN au début ou à la fin du document.
@@ -116,17 +100,13 @@ BON_DE_COMMANDE_ATTRIBUTES = {
    - Ne rien renvoyer si aucun SIREN trouvé
    Format : un numéro composé de 9 chiffres, sans espaces ni caractères spéciaux
 """,
-        "search": "",
-        "output_field": "siren",
     },
     "siret": {
-        "consigne": """SIRET  
+        "consigne": """
    Définition : Numéro SIRET de la société principale, composé de 14 chiffres.  
    Indices :
    - Peut être mentionné comme "SIRET", ou "numéro d'immatriculation"
    Format : un numéro composé de 14 chiffres, sans espaces.  
 """,
-        "search": "",
-        "output_field": "siret",
     },
 }
