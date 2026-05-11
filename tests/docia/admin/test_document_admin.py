@@ -7,7 +7,7 @@ from django.urls import reverse
 
 import pytest
 
-from tests.factories.data import EngagementFactory, DocumentFactory
+from tests.factories.data import DocumentFactory, EngagementFactory
 
 
 @pytest.mark.django_db

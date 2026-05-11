@@ -9,7 +9,7 @@ from celery import group, shared_task
 
 from docia.file_processing.models import ExternalLinkDocumentOrder, FileInfo
 from docia.file_processing.processor.cleaner import extract_num_EJ, get_file_initial_info
-from docia.models import EngagementTag, Engagement, Document
+from docia.models import Document, Engagement, EngagementTag
 
 logger = logging.getLogger(__name__)
 

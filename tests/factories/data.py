@@ -5,7 +5,7 @@ import string
 import factory
 
 from docia.documents.models import EngagementScope
-from docia.models import EngagementTag, Engagement, Document
+from docia.models import Document, Engagement, EngagementTag
 
 
 class EngagementFactory(factory.django.DjangoModelFactory):

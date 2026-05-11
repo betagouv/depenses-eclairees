@@ -5,8 +5,8 @@ import pytest
 
 from docia.file_processing.models import FileInfo
 from docia.file_processing.pipeline.steps.init_documents import (
-    bulk_create_ej_tags,
     bulk_create_documents,
+    bulk_create_ej_tags,
     bulk_create_engagements,
     bulk_create_links_document_engagement_using_external_data,
     bulk_create_links_document_engagement_using_filenames,
@@ -16,8 +16,8 @@ from docia.file_processing.pipeline.steps.init_documents import (
     listdir_chunk,
     remove_duplicates,
 )
-from docia.models import EngagementTag, Engagement, Document
-from tests.factories.data import EngagementTagFactory, EngagementFactory, DocumentFactory
+from docia.models import Document, Engagement, EngagementTag
+from tests.factories.data import DocumentFactory, EngagementFactory, EngagementTagFactory
 from tests.factories.file_processing import ExternalLinkDocumentOrderFactory, FileInfoFactory, SubFileInfoFactory
 
 

@@ -9,7 +9,7 @@ from docia.views import (
     format_ratio_to_percent,
     sort_by_order_and_field,
 )
-from tests.factories.data import EngagementFactory, DocumentFactory
+from tests.factories.data import DocumentFactory, EngagementFactory
 from tests.factories.users import UserFactory
 
 

@@ -88,7 +88,12 @@ class EngagementTag(BaseModel):
     )
     name = models.CharField(max_length=255, null=True, blank=True)  # noqa: DJ001
     ej = models.ForeignKey(
-        Engagement, on_delete=models.PROTECT, db_column="num_ej", to_field="num_ej", null=True, blank=True,
+        Engagement,
+        on_delete=models.PROTECT,
+        db_column="num_ej",
+        to_field="num_ej",
+        null=True,
+        blank=True,
         related_name="tag_set",
         related_query_name="tag",
     )

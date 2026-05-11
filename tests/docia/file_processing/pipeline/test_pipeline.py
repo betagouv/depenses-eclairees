@@ -17,7 +17,7 @@ from docia.file_processing.pipeline.pipeline import (
     sync_and_analyze_ej_list,
 )
 from docia.models import Document
-from tests.factories.data import EngagementFactory, DocumentFactory
+from tests.factories.data import DocumentFactory, EngagementFactory
 from tests.factories.file_processing import (
     ProcessDocumentBatchFactory,
     ProcessDocumentJobFactory,
