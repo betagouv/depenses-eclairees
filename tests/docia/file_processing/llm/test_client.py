@@ -16,7 +16,6 @@ from docia.file_processing.llm.client import (
 from docia.file_processing.processor.analyze_content import create_response_format
 from docia.file_processing.processor.attributes_query import DOC_TYPE_SCHEMA_MAPPING
 
-
 # --- _build_pdf_document_payload / _extract_markdown_from_ocr_response ---
 
 
@@ -200,7 +199,13 @@ def run_llm_error_test(mock_handler, retry_delay, expected_code, expected_messag
 
         # Appeler ask_llm - cela devrait lever une exception après les retries
         with pytest.raises(LLMApiError) as exc_info:
-            llm_env.ask_llm(messages=messages, model="openweight-medium", temperature=0.0, max_retries=3, response_format=response_format)
+            llm_env.ask_llm(
+                messages=messages,
+                model="openweight-medium",
+                temperature=0.0,
+                max_retries=3,
+                response_format=response_format,
+            )
 
         # Vérifier que create a été appelé 4 fois (appel initial + 3 retry)
         assert mock_handler.call_count == 4
@@ -399,8 +404,7 @@ def test_ask_llm_json_decode_error_retries():
     # Mock handler qui retourne toujours une réponse avec du JSON invalide
     mock_handler = Mock(
         return_value=httpx.Response(
-            status_code=200,
-            json={"choices": [{"message": {"content": "Not a valid JSON string"}}]}
+            status_code=200, json={"choices": [{"message": {"content": "Not a valid JSON string"}}]}
         )
     )
 
@@ -420,14 +424,8 @@ def test_ask_llm_json_decode_error_success_on_retry():
     # Mock handler : première réponse invalide, deuxième valide
     mock_handler = Mock(
         side_effect=[
-            httpx.Response(
-                status_code=200,
-                json={"choices": [{"message": {"content": "Not a valid JSON"}}]}
-            ),
-            httpx.Response(
-                status_code=200,
-                json={"choices": [{"message": {"content": '{"valid": true}'}}]}
-            ),
+            httpx.Response(status_code=200, json={"choices": [{"message": {"content": "Not a valid JSON"}}]}),
+            httpx.Response(status_code=200, json={"choices": [{"message": {"content": '{"valid": true}'}}]}),
         ]
     )
 
