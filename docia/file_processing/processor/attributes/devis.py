@@ -65,9 +65,6 @@ DEVIS_ATTRIBUTES = {
    - Rechercher la société émettrice : raison sociale, SIREN, SIRET, adresse postale.
    - Privilégier la société contractante principale (pas les sous-traitants).
    - SIREN : composé de 9 chiffres. Exemple : 437813287.
-      * le SIREN peut être extrait à partir d'un numéro RCS, il s'agit des 9 chiffres du numéro RCS (après "RCS" ou "N° RCS")
-      * le SIREN peut également être extrait à partir d'un numéro de TVA, il s'agit des 9 derniers chiffres du numéro de TVA (après l'identifiant du pays et du département ex : FR12)
-      * le SIREN peut également être extrait à partir du SIRET, il s'agit des 9 premiers chiffres d'un SIRET de 14 chiffres.
    - SIRET : composé de 14 chiffres. Exemple : 43781328700001.
    - Si une information est absente, renvoyer null pour cette clé.
    - Si aucun titulaire identifiable, renvoyer {"raison_sociale": null, "siren": null, "siret": null, "adresse": null}.
@@ -76,10 +73,10 @@ DEVIS_ATTRIBUTES = {
         "schema": {
             "type": "object",
             "properties": {
-                "raison_sociale": {"type": ["string"]},
-                "siren": {"type": ["string"]},
-                "siret": {"type": ["string"]},
-                "adresse": {"type": ["string"]},
+                "raison_sociale": {"type": ["string", "null"]},
+                "siren": {"type": ["string", "null"]},
+                "siret": {"type": ["string", "null"]},
+                "adresse": {"type": ["string", "null"]},
             },
             "required": ["raison_sociale", "siren", "siret", "adresse"],
         },

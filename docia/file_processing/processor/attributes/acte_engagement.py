@@ -30,8 +30,9 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
      * Si le document précise que ce marché est un marché subséquent ou fait partie d'un marché à marchés subséquents, renvoyer true.
      * Sinon, renvoyer false.
    - Pour le champ marche_parent :
-     * Rechercher l'identifiant du marché parent (souvent mentionné comme "accord-cadre", "contrat-cadre", "marché global", etc.).
-     * L'identifiant peut être un numéro de marché, un code, un numéro de consultation ou toute référence unique au marché parent.
+     * Rechercher l'identifiant du marché parent (souvent mentionné après "accord-cadre", "contrat-cadre", "marché global", etc.).
+     * L'identifiant peut être un numéro de marché, un code, un numéro de consultation ou toute référence unique au marché parent. Exemple 22_BAM_035, ou SIG_AOO_2021_07
+     * Ne pas inclure ATTRI1, n°Chorus, 1300000000 ou 2025.1000000000, uniquement le numéro (pas de parenthèses de précision). Pas de reformulation.
      * Si aucun marché parent n'est mentionné ou si son identifiant n'est pas disponible, renvoyer null.
    Format : 
    - Un objet JSON avec les trois champs suivants au même niveau :
@@ -233,7 +234,7 @@ Règles d’extraction :
      - Rechercher les mentions "hors taxes", "HT", "sans TVA", "hors TVA" ou équivalent. 
      - Extraire le montant exprimé en euros ou en écriture littérale, et mets le en chiffres en euros.
      - Cas particuliers :
-        * Pour un marché en plusieurs lots (cf champ lot_concerne), ne renvoyer que le montant du lot concerné.
+        * Pour un marché en plusieurs lots (cf champ lot_concerne), ne renvoyer que le montant (maximum) du lot concerné.
         * Pour un marché en plusieurs tranches, renvoyer la somme des montants de toutes les tranches.
      - Ne rien envoyer si aucun montant HT trouvé.
      Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
@@ -259,10 +260,8 @@ Règles d’extraction :
         Indices :
         - Chercher dans le paragraphe indiquant la durée du marché ou le délai d'exécution des prestations.
         - Durée initiale : la durée du marché ferme (sans reconduction ou tranches optionnelles), en nombre de mois.
-            * En l'absence de précisions sur la durée ferme, renvoyer duree_initiale: null
+            * En l'absence de précisions sur la durée ferme, par exemple s'il y a seulement des dates de début et de fin, renvoyer duree_initiale: null
             * Exemple : une durée de 1 an, renvoyer 12.
-            * Pour une durée entre des dates clés, par exemple "jusqu'à la réunion de conclusion 6 mois après le lancement" : renvoyer 6 mois.
-                -> Attention : si ces dates clés sont insuffisamment documentées, renvoyer duree_initiale: null
         - Extension de durée possible : extenion maximale en nombre de mois.
             * En l'absence d'informations claires, renvoyer duree_reconduction: null
             * Si des reconductions sont précisées (ne pas confondre avec des tranches optionnelles qui sont gérées ci-dessous) :
@@ -274,7 +273,7 @@ Règles d’extraction :
         Format : un json sous format suivant {"duree_initiale": "nombre entier de mois", "duree_reconduction": "nombre entier de mois", "nb_reconductions": "nombre entier de reconductions possibles", "delai_tranche_optionnelle": "nombre entier de mois"}
     """,
         "schema": {
-            "type": "object",
+            "type": ["object","null"],
             "properties": {
                 "duree_initiale": {"type": ["integer", "null"]},
                 "duree_reconduction": {"type": ["integer", "null"]},
@@ -388,7 +387,7 @@ Règles d’extraction :
         - Rechercher la mention de TVA ou de "taux de TVA". Le montant est souvent sous la forme d'un pourcentage.
         - Convertir le pourcentage en chiffre décimal entre 0 et 1.
         - Ne rien renvoyer si aucun montant de TVA trouvé.
-        Format : en "0.XX" avec deux décimales (ex. 0.20 pour 20%).
+        Format : exprimé en décimales (ex: 0.20, 0.055), pas en pourcentage.
         """,
     },
     "mode_consultation": {
