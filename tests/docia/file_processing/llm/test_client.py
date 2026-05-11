@@ -13,6 +13,9 @@ from docia.file_processing.llm.client import (
     _build_pdf_document_payload,
     _extract_markdown_from_ocr_response,
 )
+from docia.file_processing.processor.analyze_content import create_response_format
+from docia.file_processing.processor.attributes_query import DOC_TYPE_SCHEMA_MAPPING
+
 
 # --- _build_pdf_document_payload / _extract_markdown_from_ocr_response ---
 
@@ -162,7 +165,7 @@ def test_api_call_success_on_second_attempt():
         m_sleep.assert_called_with(60 * 1.05 * 1)
 
 
-def run_llm_error_test(mock_handler, retry_delay, expected_code, expected_message):
+def run_llm_error_test(mock_handler, retry_delay, expected_code, expected_message, response_format=None):
     """
     Helper function to test LLM error handling and retry logic.
 
@@ -197,7 +200,7 @@ def run_llm_error_test(mock_handler, retry_delay, expected_code, expected_messag
 
         # Appeler ask_llm - cela devrait lever une exception après les retries
         with pytest.raises(LLMApiError) as exc_info:
-            llm_env.ask_llm(messages=messages, model="openweight-medium", temperature=0.0, max_retries=3)
+            llm_env.ask_llm(messages=messages, model="openweight-medium", temperature=0.0, max_retries=3, response_format=response_format)
 
         # Vérifier que create a été appelé 4 fois (appel initial + 3 retry)
         assert mock_handler.call_count == 4
@@ -388,3 +391,68 @@ def test_ocr_pdf_success():
     assert result == expected
     assert nb_pages == 2
     assert mock_handler.call_count == 1
+
+
+def test_ask_llm_json_decode_error_retries():
+    """Test que ask_llm retry sur JSON_DECODE_ERROR puis lève après épuisement des retries."""
+
+    # Mock handler qui retourne toujours une réponse avec du JSON invalide
+    mock_handler = Mock(
+        return_value=httpx.Response(
+            status_code=200,
+            json={"choices": [{"message": {"content": "Not a valid JSON string"}}]}
+        )
+    )
+
+    expected_code = "JSON_DECODE_ERROR"
+    expected_message = f"Api Error: {expected_code} - Expecting value: line 1 column 1 (char 0)"
+
+    document_type = "rib"
+    response_format = create_response_format(DOC_TYPE_SCHEMA_MAPPING[document_type], document_type)
+
+    run_llm_error_test(mock_handler, 0, expected_code, expected_message, response_format=response_format)
+
+
+def test_ask_llm_json_decode_error_success_on_retry():
+    """Test que ask_llm retry sur JSON_DECODE_ERROR et réussit au 2ème essai."""
+    messages = [{"role": "user", "content": "Test"}]
+
+    # Mock handler : première réponse invalide, deuxième valide
+    mock_handler = Mock(
+        side_effect=[
+            httpx.Response(
+                status_code=200,
+                json={"choices": [{"message": {"content": "Not a valid JSON"}}]}
+            ),
+            httpx.Response(
+                status_code=200,
+                json={"choices": [{"message": {"content": '{"valid": true}'}}]}
+            ),
+        ]
+    )
+
+    httpx_client = SyncHttpxClientWrapper(transport=httpx.MockTransport(handler=mock_handler))
+    client = LLMClient(http_client=httpx_client, use_rate_limiter=False)
+
+    with (
+        patch("time.sleep", autospec=True) as m_sleep,
+        patch("random.random", autospec=True) as m_random,
+    ):
+        m_random.return_value = 0.5
+        result = client.ask_llm(
+            messages=messages,
+            model="test-model",
+            response_format={"type": "json_object"},
+            max_retries=3,
+            retry_short_delay=10,
+        )
+
+        # Vérifier le résultat
+        assert result == {"valid": True}
+
+        # Vérifier qu'il y a eu 2 appels (1 initial + 1 retry)
+        assert mock_handler.call_count == 2
+
+        # Vérifier qu'il y a eu 1 appel à sleep
+        assert m_sleep.call_count == 1
+        m_sleep.assert_called_with(0)

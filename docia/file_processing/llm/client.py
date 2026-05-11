@@ -4,6 +4,7 @@ import logging
 import random
 import time
 from collections.abc import Callable
+from json import JSONDecodeError
 from typing import TypeVar
 from urllib.parse import urljoin
 
@@ -149,6 +150,8 @@ class LLMClient:
                     effective_delay = retry_delay
                 elif e.code.startswith("HTTP_5") or e.code.startswith("ERROR_"):
                     effective_delay = retry_short_delay
+                elif e.code == "JSON_DECODE_ERROR":
+                    effective_delay = 0
                 else:
                     raise  # 4xx : on relève tout de suite
                 if attempt < max_retries:
@@ -202,18 +205,25 @@ class LLMClient:
                     temperature=temperature,
                     response_format=response_format if response_format else None,
                 )
-                return response.choices[0].message.content.strip()
             except APIError as e:
                 raise LLMApiError.from_api_error(e) from e
+            response_content = response.choices[0].message.content.strip()
+            try:
+                result = json.loads(response_content) if response_format else response_content
+            except JSONDecodeError as e:
+                logger.info("Error parsing response: %s", e)
+                code = "JSON_DECODE_ERROR"
+                details = str(e)
+                raise LLMApiError(f"Api Error: {code} - {details}", code=code, details=details) from e
+            return result
 
-        content = self._api_call(
+        return self._api_call(
             _do_call,
             max_retries=max_retries,
             retry_delay=retry_delay,
             retry_short_delay=retry_short_delay,
             limiter=limiter,
         )
-        return json.loads(content) if response_format else content
 
     def ocr_pdf(
         self,
