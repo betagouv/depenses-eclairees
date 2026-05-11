@@ -9,12 +9,12 @@ from docia.views import (
     format_ratio_to_percent,
     sort_by_order_and_field,
 )
-from tests.factories.data import DataEngagementFactory, DocumentFactory
+from tests.factories.data import EngagementFactory, DocumentFactory
 from tests.factories.users import UserFactory
 
 
 def create_ej_and_document(**kwargs):
-    ej = DataEngagementFactory(**kwargs)
+    ej = EngagementFactory(**kwargs)
     doc = DocumentFactory()
     doc.engagements.add(ej)
     return ej, doc

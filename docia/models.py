@@ -1,8 +1,8 @@
 # Import other models so Django can discover them
 from .common.models import BaseModel, User  # noqa: F401
 from .documents.models import (  # noqa: F401
-    DataBatch,
-    DataEngagement,
+    EngagementTag,
+    Engagement,
     DataEngagementItems,
     DataProgrammesMinisteriels,
     Document,

@@ -4,7 +4,7 @@ from django.db import models
 from docia.common.models import BaseModel
 
 
-class DataEngagement(BaseModel):
+class Engagement(BaseModel):
     id = models.UUIDField(
         primary_key=True,
         db_default=RandomUUID(),
@@ -22,7 +22,6 @@ class DataEngagement(BaseModel):
     external_updated_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        db_table = "engagements"
         verbose_name = "Engagement Juridique"
         verbose_name_plural = "Engagements Juridique"
 
@@ -41,7 +40,7 @@ class Document(BaseModel):
     extension = models.CharField(null=True, blank=True)  # noqa: DJ001
     dossier = models.CharField()
     engagements = models.ManyToManyField(
-        DataEngagement,
+        Engagement,
         related_name="documents",
         related_query_name="documents",
     )
@@ -70,7 +69,7 @@ class EngagementScope(BaseModel):
     purchase_organization = models.CharField(max_length=255)
     # GA: Groupe d'achat
     purchase_group = models.CharField(max_length=255)
-    engagements = models.ManyToManyField(DataEngagement, related_name="scopes", related_query_name="scopes")
+    engagements = models.ManyToManyField(Engagement, related_name="scopes", related_query_name="scopes")
 
     class Meta:
         unique_together = [("purchase_organization", "purchase_group")]
@@ -81,23 +80,24 @@ class EngagementScope(BaseModel):
         return f"{self.purchase_organization}/{self.purchase_group}"
 
 
-class DataBatch(BaseModel):
+class EngagementTag(BaseModel):
     id = models.UUIDField(
         primary_key=True,
         db_default=RandomUUID(),
         editable=False,
     )
-    batch = models.CharField(max_length=255, null=True, blank=True)  # noqa: DJ001
+    name = models.CharField(max_length=255, null=True, blank=True)  # noqa: DJ001
     ej = models.ForeignKey(
-        DataEngagement, on_delete=models.PROTECT, db_column="num_ej", to_field="num_ej", null=True, blank=True
+        Engagement, on_delete=models.PROTECT, db_column="num_ej", to_field="num_ej", null=True, blank=True,
+        related_name="tag_set",
+        related_query_name="tag",
     )
 
     class Meta:
-        db_table = "batch"
-        unique_together = ("batch", "ej")
+        unique_together = ("name", "ej")
 
     def __str__(self):
-        return f"{self.batch} - {self.ej_id}"
+        return f"{self.name} - {self.ej_id}"
 
 
 class DataEngagementItems(BaseModel):

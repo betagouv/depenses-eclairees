@@ -5,7 +5,7 @@ import pytest
 
 from docia.file_processing.models import FileInfo
 from docia.file_processing.pipeline.steps.init_documents import (
-    bulk_create_batches,
+    bulk_create_ej_tags,
     bulk_create_documents,
     bulk_create_engagements,
     bulk_create_links_document_engagement_using_external_data,
@@ -16,8 +16,8 @@ from docia.file_processing.pipeline.steps.init_documents import (
     listdir_chunk,
     remove_duplicates,
 )
-from docia.models import DataBatch, DataEngagement, Document
-from tests.factories.data import DataBatchFactory, DataEngagementFactory, DocumentFactory
+from docia.models import EngagementTag, Engagement, Document
+from tests.factories.data import EngagementTagFactory, EngagementFactory, DocumentFactory
 from tests.factories.file_processing import ExternalLinkDocumentOrderFactory, FileInfoFactory, SubFileInfoFactory
 
 
@@ -36,10 +36,10 @@ def test_init_documents_in_folder():
         init_documents_in_folder("folder", "batch1")
         m_listdir.assert_called_once_with("folder")
 
-        batches = list(DataBatch.objects.values("ej__num_ej", "batch"))
-        assert batches == [
-            {"ej__num_ej": num_ej1, "batch": "batch1"},
-            {"ej__num_ej": num_ej2, "batch": "batch1"},
+        tags = list(EngagementTag.objects.values("ej__num_ej", "name"))
+        assert tags == [
+            {"ej__num_ej": num_ej1, "name": "batch1"},
+            {"ej__num_ej": num_ej2, "name": "batch1"},
         ]
 
         documents = list(
@@ -87,10 +87,10 @@ def test_init_documents_in_folder_complex_case():
         init_documents_in_folder("folder", "batch1")
         m_listdir.assert_called_once_with("folder")
 
-        batches = list(DataBatch.objects.values("ej__num_ej", "batch"))
-        assert batches == [
-            {"ej__num_ej": num_ej1, "batch": "batch1"},
-            {"ej__num_ej": num_ej2, "batch": "batch1"},
+        tags = list(EngagementTag.objects.values("ej__num_ej", "name"))
+        assert tags == [
+            {"ej__num_ej": num_ej1, "name": "batch1"},
+            {"ej__num_ej": num_ej2, "name": "batch1"},
         ]
 
         documents = list(
@@ -126,7 +126,7 @@ def test_init_documents_in_folder_handle_duplicate_file_info():
     """Test with duplicate file infos during init_documents process.
 
     Only one Document should be created, but relationships with
-    Engagements (Batch<>Engagement and Document<>Engagement) should still be created.
+    Engagements (Tag<>Engagement and Document<>Engagement) should still be created.
     """
     with (
         patch("django.core.files.storage.default_storage.listdir", autospec=True) as m_listdir,
@@ -151,10 +151,10 @@ def test_init_documents_in_folder_handle_duplicate_file_info():
         assert Document.objects.count() == 1
 
         # Assert: Even if duplicates, all relations with Engagement should be inserted
-        batches = list(DataBatch.objects.values("ej__num_ej", "batch"))
-        assert batches == [
-            {"ej__num_ej": num_ej1, "batch": "batch1"},
-            {"ej__num_ej": num_ej2, "batch": "batch1"},
+        tags = list(EngagementTag.objects.values("ej__num_ej", "name"))
+        assert tags == [
+            {"ej__num_ej": num_ej1, "name": "batch1"},
+            {"ej__num_ej": num_ej2, "name": "batch1"},
         ]
 
         # Assert: Even if duplicates, all relations with Engagement should be inserted
@@ -177,7 +177,7 @@ def test_init_documents_in_folder_handle_duplicate_file_info():
 def test_init_documents_in_folder_handle_duplicate_document():
     """Test with an existing Document (same hash) during init_documents process.
 
-    No Document should be created, but relationships with Engagements (Batch<>Engagement
+    No Document should be created, but relationships with Engagements (Tag<>Engagement
     and Document<>Engagement) should still be created. Previous relationships should
     be preserved.
     """
@@ -190,7 +190,7 @@ def test_init_documents_in_folder_handle_duplicate_document():
         file_info_1 = FileInfoFactory(external_id=None, filename=f"{num_ej1}_doc1.pdf", folder="folder")
         # Existing Document
         existing_doc = DocumentFactory(filename="existing_doc.pdf", hash=file_info_1.hash, taille=42)
-        existing_doc.engagements.add(DataEngagementFactory(num_ej=num_ej2))
+        existing_doc.engagements.add(EngagementFactory(num_ej=num_ej2))
 
         # Mock
         m_listdir.return_value = ([], [file_info_1.filename])
@@ -203,9 +203,9 @@ def test_init_documents_in_folder_handle_duplicate_document():
         assert Document.objects.count() == 1
 
         # Assert: New rel with Batch should be created
-        batches = list(DataBatch.objects.values("ej__num_ej", "batch").order_by("ej__num_ej"))
-        assert batches == [
-            {"ej__num_ej": num_ej1, "batch": "batch1"},
+        tags = list(EngagementTag.objects.values("ej__num_ej", "name").order_by("ej__num_ej"))
+        assert tags == [
+            {"ej__num_ej": num_ej1, "name": "batch1"},
         ]
 
         # Assert: Previous rel should be kept, new one should be created
@@ -235,10 +235,10 @@ def test_init_documents_from_external():
 
     init_documents_from_external_filter_by_num_ejs([num_ej1, num_ej2], "batch1")
 
-    batches = list(DataBatch.objects.values("ej__num_ej", "batch"))
-    assert batches == [
-        {"ej__num_ej": num_ej1, "batch": "batch1"},
-        {"ej__num_ej": num_ej2, "batch": "batch1"},
+    tags = list(EngagementTag.objects.values("ej__num_ej", "name"))
+    assert tags == [
+        {"ej__num_ej": num_ej1, "name": "batch1"},
+        {"ej__num_ej": num_ej2, "name": "batch1"},
     ]
 
     documents = list(
@@ -276,10 +276,10 @@ def test_init_documents_from_external_handles_duplicate_file_info():
 
     init_documents_from_external_filter_by_num_ejs([num_ej1, num_ej2], "batch1")
 
-    batches = list(DataBatch.objects.values("ej__num_ej", "batch"))
-    assert batches == [
-        {"ej__num_ej": num_ej1, "batch": "batch1"},
-        {"ej__num_ej": num_ej2, "batch": "batch1"},
+    tags = list(EngagementTag.objects.values("ej__num_ej", "name"))
+    assert tags == [
+        {"ej__num_ej": num_ej1, "name": "batch1"},
+        {"ej__num_ej": num_ej2, "name": "batch1"},
     ]
 
     documents = list(Document.objects.values("hash", "engagements__num_ej"))
@@ -300,9 +300,9 @@ def test_init_documents_from_external_handles_duplicate_existing_document():
 
     init_documents_from_external_filter_by_num_ejs([num_ej], "batch1")
 
-    batches = list(DataBatch.objects.values("ej__num_ej", "batch"))
-    assert batches == [
-        {"ej__num_ej": num_ej, "batch": "batch1"},
+    tags = list(EngagementTag.objects.values("ej__num_ej", "name"))
+    assert tags == [
+        {"ej__num_ej": num_ej, "name": "batch1"},
     ]
 
     documents = list(Document.objects.values("hash", "engagements__num_ej"))
@@ -423,40 +423,40 @@ def test_listdir_chunk():
 def test_bulk_create_engagements():
     num_ejs = ["EJ1", "EJ2", "EJ3"]
     bulk_create_engagements(num_ejs)
-    engagements = list(DataEngagement.objects.all().order_by("num_ej").values_list("num_ej", flat=True))
+    engagements = list(Engagement.objects.all().order_by("num_ej").values_list("num_ej", flat=True))
     assert engagements == num_ejs
 
 
 @pytest.mark.django_db
 def test_bulk_create_engagements_ignore_duplicates():
-    ej = DataEngagementFactory(num_ej="EJ1", designation="toto")
+    ej = EngagementFactory(num_ej="EJ1", designation="toto")
     bulk_create_engagements(["EJ1"])
     ej.refresh_from_db()
-    engagements = list(DataEngagement.objects.all().order_by("num_ej").values("id", "num_ej", "designation"))
+    engagements = list(Engagement.objects.all().order_by("num_ej").values("id", "num_ej", "designation"))
     assert engagements == [{"id": ej.id, "num_ej": "EJ1", "designation": "toto"}]
 
 
 @pytest.mark.django_db
-def test_bulk_create_batches():
-    ej1, ej2, ej3 = DataEngagementFactory.create_batch(3)
+def test_bulk_create_ej_tags():
+    ej1, ej2, ej3 = EngagementFactory.create_batch(3)
     num_ejs = [ej1.num_ej, ej2.num_ej, ej3.num_ej]
-    bulk_create_batches(num_ejs, "Batch")
-    batches = list(DataBatch.objects.all().order_by("batch").values("batch", "ej"))
-    assert batches == [
-        {"batch": "Batch", "ej": ej1.num_ej},
-        {"batch": "Batch", "ej": ej2.num_ej},
-        {"batch": "Batch", "ej": ej3.num_ej},
+    bulk_create_ej_tags(num_ejs, "Batch")
+    tags = list(EngagementTag.objects.all().order_by("name").values("name", "ej"))
+    assert tags == [
+        {"name": "Batch", "ej": ej1.num_ej},
+        {"name": "Batch", "ej": ej2.num_ej},
+        {"name": "Batch", "ej": ej3.num_ej},
     ]
 
 
 @pytest.mark.django_db
-def test_bulk_create_batches_ignore_duplicates():
-    ej = DataEngagementFactory()
-    batch = DataBatchFactory(batch="Batch", ej=ej)
-    bulk_create_batches([ej.num_ej], batch.batch)
-    batches = list(DataBatch.objects.all().order_by("batch").values("batch", "ej"))
-    assert batches == [
-        {"batch": "Batch", "ej": ej.num_ej},
+def test_bulk_create_ej_tags_ignore_duplicates():
+    ej = EngagementFactory()
+    tag = EngagementTagFactory(name="Batch", ej=ej)
+    bulk_create_ej_tags([ej.num_ej], tag.name)
+    tags = list(EngagementTag.objects.all().order_by("name").values("name", "ej"))
+    assert tags == [
+        {"name": "Batch", "ej": ej.num_ej},
     ]
 
 
@@ -498,9 +498,9 @@ def test_bulk_create_documents_ignore_duplicates():
 def test_bulk_create_links_doc_engagement_using_filenames():
     """Test that links between Documents and Engagements are created correctly (using filename)."""
     # Create Engagements
-    ej1 = DataEngagementFactory()
-    ej2 = DataEngagementFactory()
-    ej3 = DataEngagementFactory()
+    ej1 = EngagementFactory()
+    ej2 = EngagementFactory()
+    ej3 = EngagementFactory()
     ej_list = [ej1, ej2, ej3]
 
     # Create FileInfo objects with filenames matching the Engagements
@@ -519,9 +519,9 @@ def test_bulk_create_links_doc_engagement_using_filenames():
 
     # Verify that the links were created correctly
     RelModel = Document.engagements.through
-    links = list(RelModel.objects.order_by("document__filename").values("document__filename", "dataengagement__num_ej"))
+    links = list(RelModel.objects.order_by("document__filename").values("document__filename", "engagement__num_ej"))
     assert links == [
-        {"document__filename": fi.filename, "dataengagement__num_ej": ej.num_ej} for fi, ej in zip(files_info, ej_list)
+        {"document__filename": fi.filename, "engagement__num_ej": ej.num_ej} for fi, ej in zip(files_info, ej_list)
     ]
 
 
@@ -532,7 +532,7 @@ def test_bulk_create_links_doc_engagement_using_filenames_ignores_duplicates():
     If a Document already has a link to an Engagement, the function should not create a duplicate link.
     """
     # Create an Engagement and a FileInfo
-    ej = DataEngagementFactory()
+    ej = EngagementFactory()
     file_info = FileInfoFactory(external_id=None, filename=f"{ej.num_ej}_doc.pdf")
 
     # Create a Document with the same hash as the FileInfo and link it to the Engagement
@@ -544,8 +544,8 @@ def test_bulk_create_links_doc_engagement_using_filenames_ignores_duplicates():
 
     # Verify that no duplicate link was created
     RelModel = Document.engagements.through
-    links = list(RelModel.objects.order_by("document__filename").values("document__filename", "dataengagement__num_ej"))
-    assert links == [{"document__filename": doc.filename, "dataengagement__num_ej": ej.num_ej}]
+    links = list(RelModel.objects.order_by("document__filename").values("document__filename", "engagement__num_ej"))
+    assert links == [{"document__filename": doc.filename, "engagement__num_ej": ej.num_ej}]
 
 
 @pytest.mark.django_db
@@ -555,7 +555,7 @@ def test_bulk_create_links_doc_engagement_using_external():
     sub_file_info = SubFileInfoFactory(parent=files_info[0])
     expected_links = []
     for fi in files_info:
-        ej = DataEngagementFactory()
+        ej = EngagementFactory()
         ExternalLinkDocumentOrderFactory(
             external_document__external_id=fi.external_id,
             order_id=ej.num_ej,
@@ -570,7 +570,7 @@ def test_bulk_create_links_doc_engagement_using_external():
 
     # Verify that the links were created correctly
     RelModel = Document.engagements.through
-    links = list(RelModel.objects.order_by("document__file").values_list("document__hash", "dataengagement__num_ej"))
+    links = list(RelModel.objects.order_by("document__file").values_list("document__hash", "engagement__num_ej"))
     assert links == expected_links
 
 
@@ -581,7 +581,7 @@ def test_bulk_create_links_doc_engagement_using_external_ignores_duplicates():
     If a Document already has a link to an Engagement, the function should not create a duplicate link.
     """
     file_info = FileInfoFactory()
-    ej = DataEngagementFactory()
+    ej = EngagementFactory()
     ExternalLinkDocumentOrderFactory(
         external_document__external_id=file_info.external_id,
         order_id=ej.num_ej,
@@ -590,5 +590,5 @@ def test_bulk_create_links_doc_engagement_using_external_ignores_duplicates():
     doc.engagements.add(ej)
     bulk_create_links_document_engagement_using_external_data([file_info])
     RelModel = Document.engagements.through
-    links = list(RelModel.objects.order_by("document__file").values_list("document__hash", "dataengagement__num_ej"))
+    links = list(RelModel.objects.order_by("document__file").values_list("document__hash", "engagement__num_ej"))
     assert links == [(file_info.hash, ej.num_ej)]

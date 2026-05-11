@@ -4,7 +4,7 @@ from datetime import datetime
 from django.db.transaction import atomic
 from django.utils import timezone
 
-from docia.documents.models import DataEngagement, EngagementScope
+from docia.documents.models import Engagement, EngagementScope
 from docia.file_processing.sync.client import ApiEngagementActivity, SyncClient
 
 logger = logging.getLogger(__name__)
@@ -87,7 +87,7 @@ class EngagementsSync:
             # Fetch existing engagements with their current dates for comparison
             existing_engagements_dict = {
                 ej.num_ej: ej
-                for ej in DataEngagement.objects.filter(num_ej__in=[activity.num_ej for activity in activities])
+                for ej in Engagement.objects.filter(num_ej__in=[activity.num_ej for activity in activities])
             }
 
             for activity in activities:
@@ -104,22 +104,22 @@ class EngagementsSync:
                 else:
                     # Engagements to add
                     engagements_to_add.append(
-                        DataEngagement(num_ej=activity.num_ej, external_updated_at=activity.received_at)
+                        Engagement(num_ej=activity.num_ej, external_updated_at=activity.received_at)
                     )
 
             # Bulk create engagements to add
             if engagements_to_add:
-                DataEngagement.objects.bulk_create(engagements_to_add, batch_size=1000)
+                Engagement.objects.bulk_create(engagements_to_add, batch_size=1000)
 
             # Bulk update existing engagements that need updating
             if engagements_to_update:
-                DataEngagement.objects.bulk_update(
+                Engagement.objects.bulk_update(
                     engagements_to_update, fields=["external_updated_at", "updated_at"], batch_size=1000
                 )
 
             # Link all engagements to the scope
             num_ejs = [activity.num_ej for activity in activities]
-            db_ids = list(DataEngagement.objects.filter(num_ej__in=num_ejs).values_list("id", flat=True))
+            db_ids = list(Engagement.objects.filter(num_ej__in=num_ejs).values_list("id", flat=True))
             scope.engagements.add(*db_ids)
 
             return num_ejs

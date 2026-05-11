@@ -7,16 +7,16 @@ from django.urls import reverse
 
 import pytest
 
-from tests.factories.data import DataEngagementFactory, DocumentFactory
+from tests.factories.data import EngagementFactory, DocumentFactory
 
 
 @pytest.mark.django_db
 def test_document_admin_search_by_engagements_num_ej(admin_client):
     """Test that DocumentAdmin search works correctly on engagements__num_ej field"""
     # Create test engagements with specific num_ej values
-    engagement1 = DataEngagementFactory(num_ej="EJ001")
-    engagement2 = DataEngagementFactory(num_ej="EJ002")
-    engagement3 = DataEngagementFactory(num_ej="EJ003")
+    engagement1 = EngagementFactory(num_ej="EJ001")
+    engagement2 = EngagementFactory(num_ej="EJ002")
+    engagement3 = EngagementFactory(num_ej="EJ003")
 
     # Create documents and associate them with engagements
     # Document 1: associated with EJ001
@@ -88,8 +88,8 @@ def test_document_admin_search_by_engagements_num_ej(admin_client):
 def test_document_admin_search_by_partial_engagements_num_ej(admin_client):
     """Test that DocumentAdmin search works with partial matches on engagements__num_ej"""
     # Create test engagements
-    engagement1 = DataEngagementFactory(num_ej="EJ12345")
-    engagement2 = DataEngagementFactory(num_ej="EJ67890")
+    engagement1 = EngagementFactory(num_ej="EJ12345")
+    engagement2 = EngagementFactory(num_ej="EJ67890")
 
     # Create documents
     doc1 = DocumentFactory(filename="doc_with_EJ12345.pdf")
@@ -112,7 +112,7 @@ def test_document_admin_search_by_partial_engagements_num_ej(admin_client):
 def test_document_admin_search_combined_fields(admin_client):
     """Test that DocumentAdmin search works when combining engagements__num_ej with other fields"""
     # Create test engagement
-    engagement = DataEngagementFactory(num_ej="EJ_SEARCH")
+    engagement = EngagementFactory(num_ej="EJ_SEARCH")
 
     # Create documents
     doc1 = DocumentFactory(filename="searchable_document.pdf")
@@ -138,7 +138,7 @@ def test_document_admin_search_combined_fields(admin_client):
 def test_document_admin_list_view_shows_engagements(admin_client):
     """Test that the document list view in admin shows documents with their engagements"""
     # Create test engagement
-    engagement = DataEngagementFactory(num_ej="EJ_LIST_TEST")
+    engagement = EngagementFactory(num_ej="EJ_LIST_TEST")
 
     # Create document with engagement
     doc = DocumentFactory(filename="list_test_document.pdf")
@@ -159,8 +159,8 @@ def test_document_admin_list_view_shows_engagements(admin_client):
 def test_document_admin_search_empty_query(admin_client):
     """Test that DocumentAdmin search with empty query returns all documents"""
     # Create test engagements
-    engagement1 = DataEngagementFactory(num_ej="EJ_EMPTY1")
-    engagement2 = DataEngagementFactory(num_ej="EJ_EMPTY2")
+    engagement1 = EngagementFactory(num_ej="EJ_EMPTY1")
+    engagement2 = EngagementFactory(num_ej="EJ_EMPTY2")
 
     # Create documents
     doc1 = DocumentFactory(filename="empty_search_doc1.pdf")

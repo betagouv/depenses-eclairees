@@ -7,7 +7,7 @@ from django.urls import reverse
 
 import pytest
 
-from docia.documents.models import DataEngagement, EngagementScope
+from docia.documents.models import Engagement, EngagementScope
 from tests.utils import assert_queryset_equal
 
 
@@ -19,7 +19,7 @@ def test_engagement_admin_add_view(admin_client):
     scope2 = EngagementScope.objects.create(purchase_organization="OA2", purchase_group="GA2")
 
     # Get the add Engagement URL
-    add_url = reverse("admin:docia_dataengagement_add")
+    add_url = reverse("admin:docia_engagement_add")
 
     # Test GET request
     response = admin_client.get(add_url)
@@ -38,7 +38,7 @@ def test_engagement_admin_add_view(admin_client):
     assert response.status_code == 302
 
     # Check that the Engagement exists with correct scopes
-    engagement = DataEngagement.objects.get(num_ej="EJ001")
+    engagement = Engagement.objects.get(num_ej="EJ001")
     assert_queryset_equal(engagement.scopes.all(), [scope1, scope2])
 
 
@@ -51,11 +51,11 @@ def test_engagement_admin_change_view(admin_client):
     scope3 = EngagementScope.objects.create(purchase_organization="OA3", purchase_group="GA3")
 
     # Create a Engagement to edit with initial scope
-    engagement = DataEngagement.objects.create(num_ej="EJ002")
+    engagement = Engagement.objects.create(num_ej="EJ002")
     engagement.scopes.add(scope1)
 
     # Get the change Engagement URL
-    change_url = reverse("admin:docia_dataengagement_change", args=[engagement.pk])
+    change_url = reverse("admin:docia_engagement_change", args=[engagement.pk])
 
     # Test GET request
     response = admin_client.get(change_url)
@@ -89,15 +89,15 @@ def test_engagement_admin_list_view(admin_client):
     scope2 = EngagementScope.objects.create(purchase_organization="OA2", purchase_group="GA2")
 
     # Create some test Engagements
-    engagement1 = DataEngagement.objects.create(num_ej="EJ003")
+    engagement1 = Engagement.objects.create(num_ej="EJ003")
     engagement1.scopes.add(scope1)
 
-    engagement2 = DataEngagement.objects.create(num_ej="EJ004")
+    engagement2 = Engagement.objects.create(num_ej="EJ004")
     engagement2.scopes.add(scope1)
     engagement2.scopes.add(scope2)
 
     # Get the Engagement list URL
-    list_url = reverse("admin:docia_dataengagement_changelist")
+    list_url = reverse("admin:docia_engagement_changelist")
 
     # Test GET request
     response = admin_client.get(list_url)
@@ -119,28 +119,28 @@ def test_engagement_admin_search_functionality(admin_client):
     scope2 = EngagementScope.objects.create(purchase_organization="SEARCH_OA", purchase_group="SEARCH_GA")
 
     # Create test Engagements
-    engagement1 = DataEngagement.objects.create(num_ej="EJ_SEARCH")
+    engagement1 = Engagement.objects.create(num_ej="EJ_SEARCH")
     engagement1.scopes.add(scope1)
 
-    engagement2 = DataEngagement.objects.create(num_ej="EJ_OTHER")
+    engagement2 = Engagement.objects.create(num_ej="EJ_OTHER")
     engagement2.scopes.add(scope2)
 
     # Test 1: Search by num_ej
-    search_url = reverse("admin:docia_dataengagement_changelist") + "?q=EJ_SEARCH"
+    search_url = reverse("admin:docia_engagement_changelist") + "?q=EJ_SEARCH"
     response = admin_client.get(search_url)
     assert response.status_code == 200
     assert "EJ_SEARCH" in response.text
     assert "EJ_OTHER" not in response.text
 
     # Test 2: Search by purchase_organization
-    search_url = reverse("admin:docia_dataengagement_changelist") + "?q=SEARCH_OA"
+    search_url = reverse("admin:docia_engagement_changelist") + "?q=SEARCH_OA"
     response = admin_client.get(search_url)
     assert response.status_code == 200
     assert "EJ_OTHER" in response.text
     assert "EJ_SEARCH" not in response.text
 
     # Test 3: Search by purchase_group
-    search_url = reverse("admin:docia_dataengagement_changelist") + "?q=SEARCH_GA"
+    search_url = reverse("admin:docia_engagement_changelist") + "?q=SEARCH_GA"
     response = admin_client.get(search_url)
     assert response.status_code == 200
     assert "EJ_OTHER" in response.text
@@ -156,11 +156,11 @@ def test_engagement_admin_scopes_display(admin_client):
     scope3 = EngagementScope.objects.create(purchase_organization="OA3", purchase_group="GA3")
 
     # Create Engagement with multiple scopes
-    engagement = DataEngagement.objects.create(num_ej="EJ_MULTI")
+    engagement = Engagement.objects.create(num_ej="EJ_MULTI")
     engagement.scopes.add(scope1, scope2, scope3)
 
     # Get the Engagement list URL
-    list_url = reverse("admin:docia_dataengagement_changelist")
+    list_url = reverse("admin:docia_engagement_changelist")
 
     # Test GET request
     response = admin_client.get(list_url)
@@ -179,7 +179,7 @@ def test_complete_engagement_lifecycle(admin_client):
     scope2 = EngagementScope.objects.create(purchase_organization="OA2", purchase_group="GA2")
 
     # Step 1: Create a Engagement with scopes
-    add_url = reverse("admin:docia_dataengagement_add")
+    add_url = reverse("admin:docia_engagement_add")
     post_data = {
         "num_ej": "EJ_LIFECYCLE",
         "scopes": [str(scope1.id)],
@@ -190,11 +190,11 @@ def test_complete_engagement_lifecycle(admin_client):
     assert response.status_code == 302
 
     # Get the created Engagement and verify scopes
-    engagement = DataEngagement.objects.get(num_ej="EJ_LIFECYCLE")
+    engagement = Engagement.objects.get(num_ej="EJ_LIFECYCLE")
     assert_queryset_equal(engagement.scopes.all(), [scope1])
 
     # Step 2: Edit the Engagement and change num_ej and scopes
-    change_url = reverse("admin:docia_dataengagement_change", args=[engagement.pk])
+    change_url = reverse("admin:docia_engagement_change", args=[engagement.pk])
     post_data = {
         "num_ej": "EJ_LIFECYCLE_UPDATED",  # Changed from EJ_LIFECYCLE to EJ_LIFECYCLE_UPDATED
         "scopes": [str(scope1.id), str(scope2.id)],
@@ -210,9 +210,9 @@ def test_complete_engagement_lifecycle(admin_client):
     assert_queryset_equal(engagement.scopes.all(), [scope1, scope2])
 
     # Step 3: Delete the Engagement
-    delete_url = reverse("admin:docia_dataengagement_delete", args=[engagement.pk])
+    delete_url = reverse("admin:docia_engagement_delete", args=[engagement.pk])
     response = admin_client.post(delete_url, {"post": "yes"})
     assert response.status_code == 302
 
     # Verify deletion
-    assert not DataEngagement.objects.filter(pk=engagement.pk).exists()
+    assert not Engagement.objects.filter(pk=engagement.pk).exists()

@@ -213,7 +213,7 @@ class EngagementForm(forms.ModelForm):
     )
 
     class Meta:
-        model = models.DataEngagement
+        model = models.Engagement
         fields = ("num_ej", "external_updated_at", "scopes")
 
     def __init__(self, *args, **kwargs):
@@ -228,7 +228,7 @@ class EngagementForm(forms.ModelForm):
         self.instance.scopes.set(scopes)
 
 
-@admin.register(models.DataEngagement)
+@admin.register(models.Engagement)
 class EngagementAdmin(admin.ModelAdmin):
     """Admin class for DataEngagement model"""
 

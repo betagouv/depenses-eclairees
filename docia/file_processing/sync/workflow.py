@@ -5,7 +5,7 @@ from datetime import datetime
 from django.conf import settings
 from django.utils import timezone
 
-from docia.documents.models import DataEngagement
+from docia.documents.models import Engagement
 
 from ..models import ExternalDocumentMetadata
 from .downloader import DocumentDownloader
@@ -45,7 +45,7 @@ def sync_engagements(start: datetime, end: datetime = None) -> list[str]:
 
 
 def sync_documents(num_ejs: list[str]) -> list[str]:
-    qs = DataEngagement.objects.filter(num_ej__in=num_ejs)
+    qs = Engagement.objects.filter(num_ej__in=num_ejs)
     qs = qs.order_by("external_updated_at")
     order_ids = list(qs.values_list("num_ej", flat=True))
     doc_syncer = DocumentMetadataSync()
