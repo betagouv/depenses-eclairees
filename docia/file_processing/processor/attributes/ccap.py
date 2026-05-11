@@ -4,19 +4,17 @@ Définitions des attributs à extraire pour les documents de type "ccap".
 
 CCAP_ATTRIBUTES = {
     "intro": {
-        "consigne": """INTRODUCTION
+        "consigne": """
     Ce paragraphe donne des précisions et des définitions sur le document à analyser. Le champ introduction n'appelle pas de réponse, renvoyer null.
     Définitions : 
     - LOT : l'acheteur peut décomposer un besoin en lots séparés, chacun constituant une marché à part entière lors de l'attribution. Autrement dit, un lot est une fraction du besoin globla, chaque lot est juridiquement équivalent à un marché autonome.
     - TRANCHE : un marché à tranches est un marché unique composé de plusieurs phases. La tranche ferme est celle pour laquelle l'acheteur s'engage contractuellement, les tranches optionnelles (ou conditionnelles) sont des parties supplementaires que l'acheteur peut faire exécuter plus tard.
     Attention : le terme de tranche peut parfois signifier autre chose. Il faut distinguer les tranches du marché (terme juridique) des tranches de prix ou de autre formulation non juridique.
 """,
-        "search": "",
-        "output_field": "intro",
         "schema": {"type": "null"},
     },
     "objet_marche": {
-        "consigne": """OBJET_MARCHE
+        "consigne": """
     Définition : Formulation synthétique de l'objet du marché.
     Indices : 
     - L'objet du marché peut être dans le titre directement, ou plus généralement dans une section dédiée.
@@ -27,11 +25,9 @@ CCAP_ATTRIBUTES = {
     - Si l'objet de la commande est incompréhensible, proposer un objet simple qui reflète le contenu de la commande.
  
 """,
-        "search": "Section du document qui décrit l'objet du marché ou le contexte général de la consultation.",
-        "output_field": "objet_marche",
     },
     "id_marche": {
-        "consigne": """ID_MARCHE
+        "consigne": """
     Définition : Identifiant unique du marché.
     Indices : 
     - Chercher dans le titre du document.
@@ -42,11 +38,9 @@ CCAP_ATTRIBUTES = {
     Format : un identifiant unique de la consultation.
  
 """,
-        "search": "",
-        "output_field": "id_marche",
     },
     "lots": {
-        "consigne": """LOTS
+        "consigne": """
      Définition : Liste des lots du marché (si le marché est alloti)
      Indices : 
      - Le marché est alloti si plusieurs lots sont décrits dans le CCAP : il faut que les lots soient explicitement citées avec la mention "Lot" et le titre de chaque lot.
@@ -58,8 +52,6 @@ CCAP_ATTRIBUTES = {
      - Ne pas inclure les tranches dans la liste des lots. Les tranches sont des sous-parts d'un lot, elles ne donnent pas lieu à des sous-marchés.
      Format : une liste de json [{'numero_lot': numéro du lot, 'titre_lot': l'intitulé du lot }, {...}]
 """,
-        "search": "",
-        "output_field": "lots",
         "schema": {
             "type": "array",
             "items": {
@@ -70,7 +62,7 @@ CCAP_ATTRIBUTES = {
         },
     },
     "forme_marche": {
-        "consigne": """FORME_MARCHE
+        "consigne": """
         Définition : Identifier la forme de passation du marché.
         Indices :
         - Rechercher dans les sections de la forme du marché et dans celle définissant les lots.
@@ -96,8 +88,6 @@ CCAP_ATTRIBUTES = {
                 * Sinon attributaires = null
         Format : un json {'structure': ..., 'tranches': ..., 'forme_prix': ..., 'attributaires': ...}.
    """,
-        "search": "",
-        "output_field": "forme_marche",
         "schema": {
             "type": ["object", "null"],
             "oneOf": [
@@ -125,7 +115,7 @@ CCAP_ATTRIBUTES = {
         },
     },
     "forme_marche_lots": {
-        "consigne": """FORME_MARCHE_LOTS
+        "consigne": """
         Définition : Identifier la forme de passation des lots du marché (seulement si le marché est alloti).
         Indices :
         - Rechercher dans les sections de la forme du marché et dans celle définissant les lots (cf LOTS ci-dessus). Si le marché ne comprend pas de lots, renvoyer [].
@@ -151,8 +141,6 @@ CCAP_ATTRIBUTES = {
             * Si le lot est multi-attributaire, chercher le nombre d'attibutaires maximum.
         Format : une liste de json [{'numero_lot': numéro du lot, 'structure': structure, 'tranches': nombre de tranches, 'forme_prix': forme_prix, 'attributaires': nombre d'attibutaires}, {...}]
    """,
-        "search": "",
-        "output_field": "forme_marche_lots",
         "schema": {
             "type": "array",
             "items": {
@@ -170,7 +158,7 @@ CCAP_ATTRIBUTES = {
     },
     # Ajouter si durée préciser dans l'acte d'engagement, renvoyer None à chaque valeur.
     "duree_marche": {
-        "consigne": """DUREE_MARCHE
+        "consigne": """
         Définition : Durée du marché totale exprimée en mois et extension possible.
         Indices :
         - Chercher dans le paragraphe indiquant la durée du marché ou le délai d'exécution des prestations.
@@ -189,8 +177,6 @@ CCAP_ATTRIBUTES = {
                     Exemple : 2 tranches optionnelles de 8 mois, renvoyer 8 + 8 = 16.
         Format : un json sous format suivant {"duree_initiale": "nombre entier de mois", "duree_reconduction": "nombre entier de mois", "nb_reconductions": "nombre entier de reconductions possibles", "delai_tranche_optionnelle": "nombre entier de mois"}
     """,
-        "search": "Section du document qui décrit la durée du marché ou le délai d'exécution des prestations.",
-        "output_field": "duree_marche",
         "schema": {
             "type": ["object", "null"],
             "properties": {
@@ -203,7 +189,7 @@ CCAP_ATTRIBUTES = {
         },
     },
     "duree_lots": {
-        "consigne": """DUREE_LOTS
+        "consigne": """
      Définition : Durée de chaque lot du marché exprimée en mois.
      Indices : 
      - S'il n'y pas de lots, renvoyer []
@@ -214,8 +200,6 @@ CCAP_ATTRIBUTES = {
      - Si la durée sera précisée ultérieurement (dans l'acte d'engagement par exemple), renvoyer []
      Format : une liste de json [{"numero_lot": numéro du lot, "duree_lot": "string" ou objet json}, ...].
 """,
-        "search": "",
-        "output_field": "duree_lots",
         "schema": {
             "type": "array",
             "items": {
@@ -249,7 +233,7 @@ CCAP_ATTRIBUTES = {
     },
     # Ajout si sans montant maximum explicite, renvoyer None
     "montant_ht": {
-        "consigne": """MONTANT_HT
+        "consigne": """
       Définition : Montant maximum hors taxes du marché pour un marché non alloti.
       Indices :
      - Dans la section spécifique des montants du marché, ou dans la forme du marché.
@@ -259,8 +243,6 @@ CCAP_ATTRIBUTES = {
      - S'il n'y a pas d'informations disponibles sur le montant maximum hors taxes, renvoyer null.
      Format : un json {"montant_ht_maximum": "XXXX.XX", "type_montant": "annuel" ou "total"}.
 """,
-        "search": "",
-        "output_field": "montant_ht",
         "schema": {
             "type": ["object", "null"],
             "properties": {
@@ -271,7 +253,7 @@ CCAP_ATTRIBUTES = {
         },
     },
     "montant_ht_lots": {
-        "consigne": """MONTANT_HT_LOTS
+        "consigne": """
      Définition : Montant hors taxes maximum de chaque lot du marché.
      Indices : 
      - Dans la section spécifique des montants maximums hors taxes des lots du marché, ou dans la forme du marché.
@@ -282,8 +264,6 @@ CCAP_ATTRIBUTES = {
      - Pour chaque montant hors taxes, indiquer si le montant maximum est annuel ou pour toute la durée du marché.
      Format : une liste de json au format suivant [{"numero_lot": le numéro du lot, 'montant_ht_maximum': le montant hors taxes maximum du lot en "XXXX.XX" (sans séparateur de milliers, avec 2 décimales) sans unité monétaire, 'type_montant': 'annuel' ou 'total'}, {...}]
 """,
-        "search": "",
-        "output_field": "montant_ht_lots",
         "schema": {
             "type": "array",
             "items": {
@@ -298,7 +278,7 @@ CCAP_ATTRIBUTES = {
         },
     },
     "ccag": {
-        "consigne": """CCAG
+        "consigne": """
      Définition : Le CCAG en vigueur pour ce marché.
      Indices : 
      - Dans le corps du document, ou en dernier paragraphe dans les dérogations au CCAG.
@@ -308,11 +288,9 @@ CCAP_ATTRIBUTES = {
      - Si aucun CCAG n'est mentionné, renvoyer null.
      Format : un acronyme de quelques lettres ou null.
 """,
-        "search": "",
-        "output_field": "ccag",
     },
     "formule_revision_prix": {
-        "consigne": """FORMULE_REVISION_PRIX
+        "consigne": """
     Définition : Détail de la formule mathématique permettant de réviser les prix du marché.
     Indices :
     - Rechercher la clause "Formule de révision" ou "Coefficient de révision".
@@ -334,8 +312,6 @@ CCAP_ATTRIBUTES = {
        - Extraire la règle de calcul de la nouvelle valeur (ex: "dernier indice publié au mois de la prestation" ou "valeur connue avec un décalage de 3 mois").
         Format : Renvoyer un objet structuré détaillant la partie fixe et la liste des termes_variables avec leurs poids respectifs.
         """,
-        "search": "formule de révision des prix coefficient C K partie fixe terme fixe pondération",
-        "output_field": "formule_revision_prix",
         "schema": {
             "type": "object",
             "properties": {
@@ -370,17 +346,15 @@ CCAP_ATTRIBUTES = {
         },
     },
     "index_reference": {
-        "consigne": """INDEX_REFERENCE
+        "consigne": """
     Définition : Index de référence utilisé pour la révision des prix.
     Indices :
     - Dans une section spécifique de l'index de référence.
     Format : le nom de l'index de référence.
 """,
-        "search": "",
-        "output_field": "index_reference",
     },
     "revision_prix": {
-        "consigne": """REVISION_PRIX
+        "consigne": """
      Définition : Evolution possible des prix du marché.
      Indices :
      - Dans la section spécifique aux prix.
@@ -389,12 +363,10 @@ CCAP_ATTRIBUTES = {
         * Fermes : les prix sont fermes, c'est à dire qu'ils ne peuvent pas être révisés. Formules "fermes" ou "définitifs".
      - Si aucun paragraphe sur la révision des prix n'est présent et aucune mention de prix fermes ou révisables, renvoyer null.
 """,
-        "search": "",
-        "output_field": "revision_prix",
         "schema": {"type": ["string", "null"], "enum": ["fermes", "révisables", None]},
     },
     "mode_consultation": {
-        "consigne": """MODE_CONSULTATION
+        "consigne": """
     Définition : Identification de la procédure de passation.
     - Si mention de L.2123-1 ou R.2123-1 -> type_procedure : "Procédure adaptée (MAPA)"
     - Si mention de L.2124-2, R.2161-2 (Appel d'offres) ou L.2124-3 (Négociation) -> type_procedure : "Procédure formalisée".
@@ -405,8 +377,6 @@ CCAP_ATTRIBUTES = {
         * "Procédure formalisée - Dialogue compétitif"
     Note : Si le texte est ambigu, privilégier l'article de loi cité pour déterminer la catégorie.
 """,
-        "search": "procédure passation consultation appel d'offres MAPA procédure adaptée article L.2123-1 R.2122-8 formalisée",
-        "output_field": "mode_consultation",
         "schema": {
             "type": ["object", "null"],
             "properties": {
@@ -425,7 +395,7 @@ CCAP_ATTRIBUTES = {
         },
     },
     "regle_attribution_bc": {
-        "consigne": """REGLE_ATTRIBUTION_BC
+        "consigne": """
     Définition : Méthode de choix du titulaire pour l'émission des bons de commande (concerne les accords-cadres multi-attributaires).
     Indices : 
     - Dans la section exécution des bons de commande ou règles d'attribution.
@@ -440,11 +410,9 @@ CCAP_ATTRIBUTES = {
     - Si le marché est mono-attributaire, ne rien renvoyer.
     Format : string parmi "En cascade", "A tour de rôle", "Avec remise en concurrence", "Avec minimums d'attribution".
 """,
-        "search": "attribution bons de commande cascade tour de rôle remise en concurrence",
-        "output_field": "regle_attribution_bc",
     },
-    "mention_reconduction": {
-        "consigne": """MENTION_RECONDUCTION
+    "type_reconduction": {
+        "consigne": """
     Définition : Extraction de la mention explicite du mode de reconduction dans le texte du document.
     Instructions :
     1. RECHERCHE : Identifier la clause relative à la reconduction du marché.
@@ -457,22 +425,18 @@ CCAP_ATTRIBUTES = {
        - Si le marché est ferme (non reconductible), renvoyer null.
     Format : "tacite", "expresse" ou null.
 """,
-        "search": "reconduction tacite expresse",
-        "output_field": "type_reconduction",
         "schema": {"type": ["string", "null"], "enum": ["tacite", "expresse", None]},
     },
     "debut_execution": {
-        "consigne": """DEBUT_EXECUTION
+        "consigne": """
     Définition : Point de départ de la durée du marché ou des prestations.
     Indices : 
     - Souvent : "à la date de notification", "à compter de l'ordre de service (OS)", ou une date fixe.
     Format : Texte court (ex: "date de notification" ou "1er janvier 2024").
 """,
-        "search": "début exécution prise d'effet notification ordre de service",
-        "output_field": "debut_execution",
     },
     "avance": {
-        "consigne": """AVANCE
+        "consigne": """
     Définition : Paramètres de l'avance selon les clauses du marché et le Code de la Commande Publique (CCP).
     1. TAUX (Standard & PME) :
        - Extraire le taux écrit, sous forme d'un pourcentage (ex: 5%).
@@ -495,8 +459,6 @@ CCAP_ATTRIBUTES = {
        - Si le document précise d'autres seuils, extraire les valeurs du document.
     Format : Renvoyer un objet JSON. Pour les champs déduits du Code (et non écrits en clair).
 """,
-        "search": "avance taux PME montant 50000 durée 2 mois assiette HT TTC remboursement précompte 65% 80% prorata 12 mois",
-        "output_field": "avance",
         "schema": {
             "type": ["object"],
             "properties": {
@@ -532,37 +494,31 @@ CCAP_ATTRIBUTES = {
         },
     },
     "retenue_garantie": {
-        "consigne": """RETENUE_GARANTIE
+        "consigne": """
     Définition : Somme retenue sur les paiements pour garantir la bonne exécution.
     Indices : 
     - Chercher un pourcentage (souvent 5%) prélevé sur les acomptes.
     - Mentionner si elle peut être remplacée par une caution.
     Format : Paragraphe libre résumant les conditions. Si absent, renvoyer null.
 """,
-        "search": "retenue de garantie caution garantie à première demande",
-        "output_field": "retenue_garantie",
     },
     "mois_zero_revision": {
-        "consigne": """MOIS_ZERO_REVISION
+        "consigne": """
     Définition : Mois de référence de l'indice pour la révision des prix.
     Indices : 
     - Souvent appelé "M0" ou "mois d'établissement des prix".
     - Peut être une date précise ou une description relative (ex: "mois de la notification").
     Format : "01/MM/AAAA" ou texte descriptif.
 """,
-        "search": "mois zéro M0 établissement des prix",
-        "output_field": "mois_zero_revision",
     },
     "clause_sauvegarde_revision": {
-        "consigne": """CLAUSE_SAUVEGARDE_REVISION
+        "consigne": """
     Définition : Limite ou condition d'annulation de la révision des prix.
     Indices : 
     - Chercher des seuils de variation (ex: "+/- 2%").
     - Identifier la conséquence : blocage du prix ou annulation de la révision.
     Format : JSON {"seuil": "XX%", "consequence": "texte"}.
 """,
-        "search": "clause de sauvegarde révision blocage seuil",
-        "output_field": "clause_sauvegarde_revision",
         "schema": {
             "type": "object",
             "properties": {
@@ -572,15 +528,13 @@ CCAP_ATTRIBUTES = {
         },
     },
     "delai_execution_entite": {
-        "consigne": """DELAI EXECUTION ENTITE
+        "consigne": """
     Définition : Délai impart pour émettre et cloturer des bons de commande (BC) et des marchés subséquents (MS).
     Indices : 
     - Dans la section exécution des bons de commande ou des marchés subséquents s'il y en a.
     - Chercher le délai pour émettre et cloturé des bons de commande (BC) et des marchés subséquents (MS).
     Format : JSON {"type": "BC" ou "MS", "delai": "texte"}.
 """,
-        "search": "délai exécution bon de commande marché subséquent émettre cloturer",
-        "output_field": "delai_execution_entite",
         "schema": {
             "type": "object",
             "properties": {
@@ -590,7 +544,7 @@ CCAP_ATTRIBUTES = {
         },
     },
     "penalites": {
-        "consigne": """PENALITES
+        "consigne": """
     Définition : Sanctions financières en cas de retard ou de mauvaise exécution.
     Indices : 
     - Lister chaque type de pénalité séparément.
@@ -601,8 +555,6 @@ CCAP_ATTRIBUTES = {
     - Si une pénalité n'est pas proportionnelle (montant variable par paliers), créer plusieurs entrées forfaitaires.
     Format : Liste de JSON [{"condition": "ex: retard livraison", "montant": "valeur numérique", "unite": "ex: par jour de retard"}].
 """,
-        "search": "pénalités retard inexécution déduction",
-        "output_field": "penalites",
         "schema": {
             "type": "array",
             "items": {
@@ -616,7 +568,7 @@ CCAP_ATTRIBUTES = {
         },
     },
     "code_cpv": {
-        "consigne": """CODE_CPV
+        "consigne": """
     Définition : Nomenclature européenne pour les marchés publics.
     Indices : 
     - Un code CPV est de la forme : 
@@ -629,8 +581,6 @@ CCAP_ATTRIBUTES = {
     - Si absent du document, renvoyer null (ne pas essayer de le deviner).
     Format : une liste de codes CPV ou null.
 """,
-        "search": "CPV nomenclature",
-        "output_field": "code_cpv",
         "schema": {
             "type": ["array", "null"],
             "items": {

@@ -5,78 +5,41 @@ Contexte = parfois tout le texte extrait, parfois seulement une liste de chunks 
 
 import logging
 
-import pandas as pd
-
 from ..llm.client import LLMClient
-from .attributes_query import ATTRIBUTES, select_attr
+from .attributes_query import DOC_TYPE_ATTRIBUTES_MAPPING, DOC_TYPE_SCHEMA_MAPPING
 from .post_processing_llm import clean_llm_response
 
 logger = logging.getLogger("docia." + __name__)
 
 
 # Fonction pour générer le prompt à partir des attributs à chercher
-def get_prompt_from_attributes(df_attributes: pd.DataFrame):
+def get_question(doc_attributes):
     question = """Extrait les informations clés et renvoie-les uniquement au format 
         JSON spécifié, sans texte supplémentaire.
 
         Format de réponse (commence par "{" et termine par "}") :
         {
     """
-    for idx, row in df_attributes.iterrows():
-        attr = row["attribut"]
-        if idx != df_attributes.index[-1]:
-            question += f"""  "{attr}": "", \n"""
-        else:
-            question += f"""  "{attr}": "" \n"""
+    for attr in doc_attributes.keys():
+        question += f"""  "{attr}": "",\n"""
     question += """}
 
   Instructions d'extraction :\n\n"""
-    for idx, row in df_attributes.iterrows():
-        consigne = row["consigne"]
-        if idx != df_attributes.index[-1]:
-            question += f"""{consigne}\n"""
-        else:
-            question += f"""{consigne}"""
+    for attribute_key, attribute_definition in doc_attributes.items():
+        consigne = attribute_definition["consigne"]
+        question += f"""{attribute_key.upper()}\n{consigne}\n\n"""
     return question
 
 
-def create_response_format(df_attributes, classification):
-    df_filtered = select_attr(df_attributes, classification)
-
-    # Schéma par défaut : type string
-    default_schema = {"type": ["string", "null"]}
-
-    # Construire le dictionnaire des propriétés avec les schémas appropriés
-    properties = {}
-    l_output_field = []
-
-    for idx, row in df_filtered.iterrows():
-        output_field = row["output_field"]
-        l_output_field.append(output_field)
-
-        # Par défaut, utiliser le schéma string
-        schema_to_use = default_schema
-
-        # Si la colonne 'schema' existe et contient une valeur valide
-        if "schema" in df_filtered.columns:
-            schema_value = row.get("schema")
-
-            if schema_value:
-                if not isinstance(schema_value, dict):
-                    raise ValueError(f"Schema must be a dict (field={output_field})")
-                schema_to_use = schema_value
-
-        properties[output_field] = schema_to_use
-
-    response_format = {
+def create_response_format(doc_schema, classification):
+    return {
         "type": "json_schema",
         "json_schema": {
             "name": f"{classification}",
             "strict": True,
-            "schema": {"type": "object", "properties": properties, "required": l_output_field},
+            "schema": doc_schema,
         },
     }
-    return response_format
 
 
 def analyze_file_text(text: str, document_type: str, llm_model: str = "mistral-medium-2508", temperature: float = 0.0):
@@ -106,8 +69,8 @@ def analyze_file_text_llm(
 ):
     llm_env = LLMClient()
 
-    question = get_prompt_from_attributes(select_attr(ATTRIBUTES, document_type))
-    response_format = create_response_format(ATTRIBUTES, document_type)
+    question = get_question(DOC_TYPE_ATTRIBUTES_MAPPING[document_type])
+    response_format = create_response_format(DOC_TYPE_SCHEMA_MAPPING[document_type], document_type)
 
     if not text:
         raise ValueError("Le texte est vide.")

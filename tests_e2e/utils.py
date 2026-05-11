@@ -12,7 +12,6 @@ from tqdm import tqdm
 import pandas as pd
 
 from docia.file_processing.processor.analyze_content import LLMClient, analyze_file_text
-from docia.file_processing.processor.attributes_query import ATTRIBUTES
 
 logger = logging.getLogger(__name__)
 
@@ -280,7 +279,6 @@ def compare_with_llm(
 
 def df_analyze_content(
     df: pd.DataFrame,
-    df_attributes: pd.DataFrame,
     llm_model: str | None = None,
     temperature: float = 0.0,
     max_workers: int = 4,
@@ -376,9 +374,8 @@ def analyze_content_quality_test(
         # Analyse du contenu avec df_analyze_content
         df_result = df_analyze_content(
             df=df_analyze,
-            df_attributes=ATTRIBUTES,
             max_workers=max_workers,
-            temperature=0.0,
+            temperature=0,
             llm_model=llm_model,
             debug_mode=debug_mode,
         )

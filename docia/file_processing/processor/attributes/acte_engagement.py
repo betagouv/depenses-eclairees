@@ -4,7 +4,7 @@ Définitions des attributs à extraire pour les documents de type "acte_engageme
 
 ACTE_ENGAGEMENT_ATTRIBUTES = {
     "objet_marche": {
-        "consigne": """OBJET
+        "consigne": """
    Définition : l'objet du marché, c'est-à-dire ce qui a été acheté, ou le service fourni.
    Indices :
    - Chercher après les mentions "Objet :", ou autre mention similaire.
@@ -16,11 +16,9 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
    - Attention, ne pas inclure le type de document dans l'objet : "Devis pour ..." enlever "Devis pour" / "Avenant pour ..." enlever "Avenant pour".
    - Si l'objet de la commande est incompréhensible, proposer un objet simple qui reflète le contenu de la commande.
 """,
-        "search": "",
-        "output_field": "objet_marche",
     },
     "forme_marche": {
-        "consigne": """FORME MARCHE
+        "consigne": """
    Définition : Informations sur la forme du marché concernant les lots, les marchés subséquents et les marchés parents.
    Indices :
    - Chercher après les mentions "Objet", "Lot", "marché subséquent", "marché parent", ou autres mentions similaires, en particulier en début du document.
@@ -41,8 +39,6 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
      * "marche_subsequent" : booléen (true ou false)
      * "marche_parent" : chaîne (identifiant du marché parent) ou null
 """,
-        "search": "",
-        "output_field": "forme_marche",
         "schema": {
             "type": "object",
             "properties": {
@@ -61,7 +57,7 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
         },
     },
     "administration_beneficiaire": {
-        "consigne": """ADMINISTRATION_BENEFICIAIRE 
+        "consigne": """
      Définition : Structure administrative ou publique qui bénéficie de la commande, ou qui achète la prestation.
      Indices :
      - Rechercher les mentions d'achateurs, de pouvoir adjudicateur, ou d'autorité contractante. Le résultat est souvent une direction ou un service au sein d'une administration.
@@ -75,11 +71,9 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
         * Exemple : le préfet de la région Île-de-France -> Préfecture de la région Île-de-France
      Format : les différents niveaux de l'administration bénéficiaire en minuscule correctement écrit (et leurs acronymes entre parenthèses si disponibles), séparés par des tirets, . 
 """,
-        "search": "",
-        "output_field": "administration_beneficiaire",
     },
     "societe_principale": {
-        "consigne": """SOCIETE_PRINCIPALE  
+        "consigne": """
      Définition : Société principale contractante (titulaire). Si un groupement est mentionné, extraire la société mandataire ou représentante.  
      Indices : 
      - Rechercher les mentions de société, entreprise, titulaire, mandataire, contractant.
@@ -87,11 +81,9 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
      - Les noms de domaine des adresses mails peuvent donner des indices sur la bonne orthographe.
      Format : renvoyer le nom de la société.
 """,
-        "search": "",
-        "output_field": "societe_principale",
     },
     "siret_mandataire": {
-        "consigne": """SIRET_MANDATAIRE  
+        "consigne": """
    Définition : Numéro SIRET de la société principale, composé de 14 chiffres.  
    Indices :
    - Peut être mentionné comme "SIRET", ou "numéro d'immatriculation".
@@ -103,11 +95,9 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
    - Si le numéro de SIRET ne contient pas suffisamment de caractères, ne pas compléter : renvoyer tel quel.
    Format : un numéro composé de 14 chiffres, sans espaces.  
 """,
-        "search": "",
-        "output_field": "siret_mandataire",
     },
     "siren_mandataire": {
-        "consigne": """SIREN_MANDATAIRE
+        "consigne": """
    Définition : numéro de SIREN du prestataire / du titulaire principal, composé de 9 chiffres
    Indices :
    - Après la mention SIREN au début ou à la fin du document.
@@ -117,11 +107,9 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
    - Ne rien renvoyer si aucun SIREN trouvé
    Format : un numéro composé de 9 chiffres, sans espaces ni caractères spéciaux
 """,
-        "search": "",
-        "output_field": "siren_mandataire",
     },
     "rib_mandataire": {
-        "consigne": """RIB_MANDATAIRE
+        "consigne": """
      Définition : Informations bancaires (IBAN en priorité) du compte à créditer indiqué dans l'acte d'engagement.
      Indices : 
      - Rechercher dans les informations bancaires, en priorité près des mentions "RIB" ou "IBAN".
@@ -139,8 +127,6 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
      - 1er cas (prioritaire) : un json sous format suivant {"banque": "nom de la banque", "iban": "IBAN avec espaces tous les 4 caractères"}
      - 2ème cas (secondaire - uniquement s'il n'y a pas d'IBAN) : un json sous format suivant {"banque": "nom de la banque", "code_banque": "code de la banque à 5 chiffres", "code_guichet": "code du guichet à 5 chiffres", "numero_compte": "numéro de compte à 11 chiffres", "cle_rib": "clé du RIB à 2 chiffres"}
 """,
-        "search": "",
-        "output_field": "rib_mandataire",
         "schema": {
             "type": "object",
             "properties": {
@@ -154,7 +140,7 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
         },
     },
     "cotraitants": {
-        "consigne": """COTRAITANTS
+        "consigne": """
 Objectif : Extraire uniquement les entreprises réellement mentionnées comme cotraitantes (hors mandataire).
 Règles d’extraction :
 - Ne retenir qu’une entreprise explicitement décrite comme cotraitante dans le texte.
@@ -170,8 +156,6 @@ Règles d’extraction :
     * une liste JSON : [{"nom": "...", "siret": "..."}]
     * Si aucun cotraitant valide n’est trouvé, renvoyer exactement : []
 """,
-        "search": "",
-        "output_field": "cotraitants",
         "schema": {
             "type": "array",
             "items": {
@@ -182,7 +166,7 @@ Règles d’extraction :
         },
     },
     "sous_traitants": {
-        "consigne": """SOUS_TRAITANTS
+        "consigne": """
      Définition : Liste des sous-traitants du mandataire, s'il y en a.
      Indices : 
      - Rechercher dans le paragraphe de description du groupement, s'il y a plusieurs entreprises sous-traitantes (et non pas cotraitantes).
@@ -190,8 +174,6 @@ Règles d’extraction :
      - Ne rien renvoyer si aucun sous-traitant trouvé.
      Format : une liste de dictionnaires sous format [{"nom": "nom de la société", "siret": "siret de la société"}]
 """,
-        "search": "Section du document qui décrit le groupement et les entreprises qui le composent.",
-        "output_field": "sous_traitants",
         "schema": {
             "type": "array",
             "items": {
@@ -202,7 +184,7 @@ Règles d’extraction :
         },
     },
     "rib_autres": {
-        "consigne": """RIB_AUTRES
+        "consigne": """
      Définition : RIB des autres entreprises du groupement (cotraitants, etc.), s'il y en a. Informations bancaires (IBAN en priorité) du compte à créditer pour chaque entreprise.
      Indices : 
      - Rechercher dans le paragraphe des comptes à créditer, s'il y a plusieurs RIB indiqués pour plusieurs entreprises différentes.
@@ -222,8 +204,6 @@ Règles d’extraction :
      - 1er cas (prioritaire) : [{"societe": "nom de la société", "rib": {"banque": "nom de la banque", "iban": "IBAN avec espaces tous les 4 caractères"}}]
      - 2ème cas (secondaire - uniquement s'il n'y a pas d'IBAN) : [{"societe": "nom de la société", "rib": {"banque": "nom de la banque", "code_banque": "...", "code_guichet": "...", "numero_compte": "...", "cle_rib": "..."}}]
 """,
-        "search": "Section du document qui décrit le groupement et les entreprises qui le composent.",
-        "output_field": "rib_autres",
         "schema": {
             "type": "array",
             "items": {
@@ -247,7 +227,7 @@ Règles d’extraction :
         },
     },
     "montant_ht": {
-        "consigne": """MONTANT_HT  
+        "consigne": """
      Définition : Montant du marché hors taxes (également hors TVA).  
      Indices : 
      - Rechercher les mentions "hors taxes", "HT", "sans TVA", "hors TVA" ou équivalent. 
@@ -258,11 +238,9 @@ Règles d’extraction :
      - Ne rien envoyer si aucun montant HT trouvé.
      Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
 """,
-        "search": "",
-        "output_field": "montant_ht",
     },
     "montant_ttc": {
-        "consigne": """MONTANT_TTC  
+        "consigne": """
      Définition : Montant du marché toutes taxes comprises (avec TVA incluse).  
      Indices : 
      - Rechercher les expressions "TTC", "TVA incluse", "TVA comprise".
@@ -274,11 +252,9 @@ Règles d’extraction :
      - Ne rien envoyer si aucun montant TTC trouvé, ou si le montant a plus de chance d'être en HT que en TTC.
      Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
 """,
-        "search": "",
-        "output_field": "montant_ttc",
     },
     "duree": {
-        "consigne": """DUREE
+        "consigne": """
         Définition : Durée du marché totale exprimée en mois et extension possible.
         Indices :
         - Chercher dans le paragraphe indiquant la durée du marché ou le délai d'exécution des prestations.
@@ -297,8 +273,6 @@ Règles d’extraction :
                     Exemple : 2 tranches optionnelles de 8 mois, renvoyer 8 + 8 = 16.
         Format : un json sous format suivant {"duree_initiale": "nombre entier de mois", "duree_reconduction": "nombre entier de mois", "nb_reconductions": "nombre entier de reconductions possibles", "delai_tranche_optionnelle": "nombre entier de mois"}
     """,
-        "search": "Section du document qui décrit la durée du marché ou le délai d'exécution des prestations.",
-        "output_field": "duree",
         "schema": {
             "type": "object",
             "properties": {
@@ -311,7 +285,7 @@ Règles d’extraction :
         },
     },
     "date_signature_mandataire": {
-        "consigne": """DATE_SIGNATURE_MANDATAIRE
+        "consigne": """
       Définition : Date de signature du document par le mandataire (entreprise prestataire principale). 
       Indices : 
       - Uniquement la date de signature de l'entreprise mandataire, pas celle de l'administration bénéficiaire.
@@ -324,11 +298,9 @@ Règles d’extraction :
       - Ne rien renvoyer si aucune date de signature trouvée pour le mandataire.
      Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
 """,
-        "search": "",
-        "output_field": "date_signature_mandataire",
     },
     "date_signature_administration": {
-        "consigne": """DATE_SIGNATURE_ADMINISTRATION
+        "consigne": """
       Définition : Date de signature du document par l'administration. 
       Indices : 
       - Uniquement la date de signature de l'acheteur, du pouvoir adjudicateur, ou de l'administration bénéficiaire.
@@ -342,11 +314,9 @@ Règles d’extraction :
       - Ne rien renvoyer si aucune date de signature trouvée
      Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
 """,
-        "search": "",
-        "output_field": "date_signature_administration",
     },
     "date_notification": {
-        "consigne": """DATE_NOTIFICATION
+        "consigne": """
       Définition : Date de notification du marché aux mandataires. 
       Indices : 
       - Parfois en début du document, ou en toute fin de document.
@@ -357,11 +327,9 @@ Règles d’extraction :
       - Attention à ne pas confondre la date de notification avec la date de signature.
      Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
 """,
-        "search": "",
-        "output_field": "date_notification",
     },
     "conserve_avance": {
-        "consigne": """CONSERVE_AVANCE
+        "consigne": """
         Définition : Information sur la volonté du titulaire de conserver ou de renoncer au bénéfice de l'avance.
         Indices :
         Le texte présente souvent une phrase de type "Je renonce au bénéfice de l'avance" suivie de deux options : [ ] Non et [ ] Oui.
@@ -374,11 +342,9 @@ Règles d’extraction :
         - Si la phrase est "Je souhaite BENEFICIER de l'avance" : Oui = Conserve -> Renvoyer "conserve", Non = Renonce -> Renvoyer "renonce"
         - Uniquement si le paragraphe est totalement absent ou si aucune mention ([X], [x], X ou x n'est présente) -> Renvoyer null
 """,
-        "search": "",
-        "output_field": "conserve_avance",
     },
     "montants_en_annexe": {
-        "consigne": """MONTANTS_EN_ANNEXE  
+        "consigne": """
      Définition : Indique si les montants sont précisés dans un autre document en annexe (uniquement ou en complément).
      Indices : 
      - Dans le paragraphe de l'engagement du titulaire, près de la mention des prix sur lesquels le titulaire s'engage.
@@ -392,8 +358,6 @@ Règles d’extraction :
         * "annexe_financière": false
         * "classification": null
 """,
-        "search": "",
-        "output_field": "montants_en_annexe",
         "schema": {
             "type": "object",
             "properties": {
@@ -410,16 +374,15 @@ Règles d’extraction :
         },
     },
     "code_cpv": {
-        "consigne": """CODE_CPV — Code CPV (catégorie de dépense du marché).
+        "consigne": """
+        Définition : Code CPV (catégorie de dépense du marché).
         - Chercher "CPV", "Code CPV" ; format type 8 chiffres (optionnel + tiret + chiffre), éventuellement suivi de l'intitulé du code.
         - Ex. 72611000-6 - Fournitures
         Si plusieurs : priorité au CPV principal, sinon tous séparés par des ";" 
         Format : "XXXXXXXX-X Intitulé" ou "XXXXXXXX Intitulé". Sinon null.""",
-        "search": "",
-        "output_field": "code_cpv",
     },
     "montant_tva": {
-        "consigne": """MONTANT_TVA
+        "consigne": """
         Définition : Montant de la TVA.
         Indices :
         - Rechercher la mention de TVA ou de "taux de TVA". Le montant est souvent sous la forme d'un pourcentage.
@@ -427,40 +390,34 @@ Règles d’extraction :
         - Ne rien renvoyer si aucun montant de TVA trouvé.
         Format : en "0.XX" avec deux décimales (ex. 0.20 pour 20%).
         """,
-        "search": "",
-        "output_field": "montant_tva",
     },
     "mode_consultation": {
-        "consigne": """MODE_CONSULTATION — Mode de passation du marché (procédure adaptée, appel d'offres, MAPA, etc.).
+        "consigne": """
+        Définition : Mode de passation du marché (procédure adaptée, appel d'offres, MAPA, etc.).
         Chercher dans intro, préambule ou visas. Extraire la citation exacte du document, sans reformuler. Sinon null.""",
-        "search": "",
-        "output_field": "mode_consultation",
     },
     "mode_reconduction": {
-        "consigne": """MODE_RECONDUCTION — Reconduction du marché : expresse ou tacite ou null.
+        "consigne": """
+        Définition : Reconduction du marché : expresse ou tacite ou null.
         - Sous la forme d'une case cochée ou explicitement mentionné dans le document.
         - Chercher "reconduction expresse", "reconduction tacite", "reconduit tacitement". Renvoyer "expresse" ou "tacite" si explicite.
         - Si aucune case cochée, et aucune mention renvoyer null.""",
-        "search": "",
-        "output_field": "mode_reconduction",
         "schema": {
             "type": "string",
             "enum": ["expresse", "tacite", "null"],
         },
     },
     "ligne_imputation_budgetaire": {
-        "consigne": """LIGNE_IMPUTATION_BUDGETAIRE — Ligne budgétaire d’imputation de la dépense.
+        "consigne": """
+        Définition : Ligne budgétaire d’imputation de la dépense.
         Chercher "imputation budgétaire", "ligne budgétaire", "chapitre", "article". Format type : chiffres/lettres/tirets (ex. 0723-CDIE).
         Ne pas confondre avec référence de marché. Sinon null.""",
-        "search": "",
-        "output_field": "ligne_imputation_budgetaire",
     },
     "remise_catalogue": {
-        "consigne": """REMISE_CATALOGUE — Remise dans le catalogue.
+        "consigne": """
+        Définition : Remise dans le catalogue.
         - Remise sur le catalogue proposée par le fournisseur titulaire.
         - Sous la d'un pourcentage à renvoyer tel quel (ex. 10 pour cent -> renvoyer "10").
         - Si aucune case cochée, et aucune mention renvoyer null.""",
-        "search": "",
-        "output_field": "remise_catalogue",
     },
 }
