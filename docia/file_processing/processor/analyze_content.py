@@ -36,6 +36,7 @@ def create_response_format(doc_schema, classification):
         "type": "json_schema",
         "json_schema": {
             "name": f"{classification}",
+            "strict": True,
             "schema": doc_schema,
         },
     }
