@@ -609,16 +609,12 @@ def check_quality_by_error_type(
                 llm_non_null = _field_value_is_non_null_non_empty(llm_val)
                 try:
                     match_result = comparison_func(llm_val, ref_val)
-                    match_result = (
-                        bool(match_result) if not isinstance(match_result, bool) else match_result
-                    )
+                    match_result = bool(match_result) if not isinstance(match_result, bool) else match_result
                 except Exception as e:
                     match_result = False
                     compare_error = str(e)
 
-            _dvp, dfp2, dfn, _dvn, dfp = _classify_confusion_cell(
-                ref_non_null, match_result, llm_non_null
-            )
+            _dvp, dfp2, dfn, _dvn, dfp = _classify_confusion_cell(ref_non_null, match_result, llm_non_null)
             if mode == "FN" and dfn != 1:
                 continue
             if mode == "FP2" and dfp2 != 1:
@@ -633,20 +629,10 @@ def check_quality_by_error_type(
                 print(f"❌ NO MATCH | {filename} | {col}")
             print(f"  LLM: {llm_val!r}")
             print(f"  REF: {ref_val!r}")
-            if (
-                compare_error is None
-                and not match_result
-                and isinstance(ref_val, dict)
-                and isinstance(llm_val, dict)
-            ):
+            if compare_error is None and not match_result and isinstance(ref_val, dict) and isinstance(llm_val, dict):
                 print("  Diff détaillée (feuilles REF | LLM):")
                 print_json_diff(ref_val, llm_val)
-            elif (
-                compare_error is None
-                and not match_result
-                and isinstance(ref_val, list)
-                and isinstance(llm_val, list)
-            ):
+            elif compare_error is None and not match_result and isinstance(ref_val, list) and isinstance(llm_val, list):
                 print("  Diff détaillée (listes REF | LLM):")
                 for i in range(min(len(ref_val), len(llm_val))):
                     print(f"  {i}:")
