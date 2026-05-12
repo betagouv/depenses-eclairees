@@ -185,7 +185,7 @@ SOUS_TRAITANCE_ATTRIBUTES = {
      Définition : Informations bancaires (IBAN en priorité) du compte à créditer indiqué dans la sous-traitance.
      Indices : 
      - Rechercher dans les informations bancaires, en priorité près des mentions "RIB" ou "IBAN".
-     - 1er cas (prioritaire) : l'IBAN est fourni (27 caractères commençant par "FR76"). Renvoyer :
+     - 1er cas (prioritaire) : l'IBAN est fourni (27 caractères commençant par "FR76" pour un RIB français). Renvoyer :
         * 'banque' : Nom de la banque (sans la mention "Banque")
         * 'iban' : IBAN du compte à créditer (souvent 6 groupes de 4 caractères, puis 3 caractères)
      - 2ème cas (uniquement s'il n'y a pas d'IBAN) : l'IBAN n'est pas fourni, mais les autres informations bancaires sont fournies. Renvoyer :
@@ -195,31 +195,20 @@ SOUS_TRAITANCE_ATTRIBUTES = {
         * 'numero_compte' : numéro de compte français à 11 chiffres (espaces non compris)
         * 'cle_rib' : clé du RIB à 2 chiffres (espaces non compris)
      - Si aucune information bancaire trouvée pour le sous-traitant (ni IBAN, ni informations seules), renvoyer {}.
-     Format : 
+     Format :
      - 1er cas (prioritaire) : un json sous format suivant {"banque": "nom de la banque", "iban": "IBAN avec espaces tous les 4 caractères"}
      - 2ème cas (secondaire - uniquement s'il n'y a pas d'IBAN) : un json sous format suivant {"banque": "nom de la banque", "code_banque": "code de la banque à 5 chiffres", "code_guichet": "code du guichet à 5 chiffres", "numero_compte": "numéro de compte à 11 chiffres", "cle_rib": "clé du RIB à 2 chiffres"}
 """,
         "schema": {
             "type": "object",
-            "oneOf": [
-                {
-                    "type": "object",
-                    "properties": {"banque": {"type": "string"}, "iban": {"type": "string"}},
-                    "required": ["banque", "iban"],
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "banque": {"type": "string"},
-                        "code_banque": {"type": "string"},
-                        "code_guichet": {"type": "string"},
-                        "numero_compte": {"type": "string"},
-                        "cle_rib": {"type": "string"},
-                    },
-                    "required": ["banque", "code_banque", "code_guichet", "numero_compte", "cle_rib"],
-                },
-                {},
-            ],
+            "properties": {
+                "banque": {"type": ["string", "null"]},
+                "iban": {"type": ["string", "null"]},
+                "code_banque": {"type": ["string", "null"]},
+                "code_guichet": {"type": ["string", "null"]},
+                "numero_compte": {"type": ["string", "null"]},
+                "cle_rib": {"type": ["string", "null"]},
+            },
         },
     },
     "conserve_avance": {
