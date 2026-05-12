@@ -266,7 +266,7 @@ Règles d’extraction :
             * En l'absence d'informations claires, renvoyer duree_reconduction: null
             * Si des reconductions sont précisées (ne pas confondre avec des tranches optionnelles qui sont gérées ci-dessous) :
                 1. duree_reconduction : Trouver la durée d'une reconduction (en nombre de mois). Si l'information n'est pas précisée ou qu'il n'y a pas de reconduction, renvoyer null.
-                2. nb_reconductions : Trouver le nombre de reconductions possibles (éventuellement 0). Si l'information n'est pas précisée ou qu'il n'y a pas de reconduction, renvoyer null.
+                2. nb_reconductions : Trouver le nombre de reconductions possibles. Si l'information n'est pas précisée ou qu'il n'y a pas de reconduction, renvoyer null.
             * Si des tranches optionnelles sont précisées : renvoyer la durée de l'ensemble des tranches optionnelles.
                 1. delai_tranche_optionnelle : Trouver la durée de l'ensemble des tranches optionnelles. Si l'information n'est pas précisée ou qu'il n'y a pas de tranches optionnelles, renvoyer null.
                     Exemple : 2 tranches optionnelles de 8 mois, renvoyer 8 + 8 = 16.
