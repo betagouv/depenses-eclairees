@@ -4,6 +4,7 @@ import logging
 import random
 import time
 from collections.abc import Callable
+from copy import deepcopy
 from json import JSONDecodeError
 from typing import TypeVar
 from urllib.parse import urljoin
@@ -196,6 +197,10 @@ class LLMClient:
         """
         max_retries = max(0, max_retries)
         limiter = self._get_limiter(model, rate_per_minute)
+        if not isinstance(messages, list) or not all(isinstance(x, dict) for x in messages):
+            raise ValueError("`messages` should be a list of dicts")
+
+        messages = deepcopy(messages)
 
         def _do_call() -> str:
             try:
@@ -213,7 +218,10 @@ class LLMClient:
             except JSONDecodeError as e:
                 logger.info("Error parsing response: %s", e)
                 code = "JSON_DECODE_ERROR"
-                details = str(e)
+                details = repr(e)
+                # Propagate parse error to the model for next call
+                messages.append({"role": "assistant", "content": response_content})
+                messages.append({"role": "user", "content": f"Complète et corrige le json. Erreur : {repr(e)}"})
                 raise LLMApiError(f"Api Error: {code} - {details}", code=code, details=details) from e
             return result
 

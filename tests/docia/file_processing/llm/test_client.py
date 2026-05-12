@@ -1,4 +1,5 @@
 import base64
+import json
 from unittest import mock
 from unittest.mock import Mock, patch
 
@@ -409,7 +410,7 @@ def test_ask_llm_json_decode_error_retries():
     )
 
     expected_code = "JSON_DECODE_ERROR"
-    expected_message = f"Api Error: {expected_code} - Expecting value: line 1 column 1 (char 0)"
+    expected_message = f"Api Error: {expected_code} - JSONDecodeError('Expecting value: line 1 column 1 (char 0)')"
 
     document_type = "rib"
     response_format = create_response_format(DOC_TYPE_SCHEMA_MAPPING[document_type], document_type)
@@ -440,7 +441,7 @@ def test_ask_llm_json_decode_error_success_on_retry():
         result = client.ask_llm(
             messages=messages,
             model="test-model",
-            response_format={"type": "json_object"},
+            response_format={"type": "json_object"},  # Dummy schema
             max_retries=3,
             retry_short_delay=10,
         )
@@ -450,6 +451,20 @@ def test_ask_llm_json_decode_error_success_on_retry():
 
         # Vérifier qu'il y a eu 2 appels (1 initial + 1 retry)
         assert mock_handler.call_count == 2
+        req = mock_handler.call_args_list[1].args[0]
+        req_data = json.loads(req.content)
+        # Le deuxième appel propage l'erreur au modèle
+        assert req_data["messages"][-2:] == [
+            # Feed back the llm response
+            {"content": "Not a valid JSON", "role": "assistant"},
+            # Propagate the parse error
+            {
+                "content": (
+                    "Complète et corrige le json. Erreur : JSONDecodeError('Expecting value: line 1 column 1 (char 0)')"
+                ),
+                "role": "user",
+            },
+        ]
 
         # Vérifier qu'il y a eu 1 appel à sleep
         assert m_sleep.call_count == 1
