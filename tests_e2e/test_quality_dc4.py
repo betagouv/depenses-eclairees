@@ -15,6 +15,7 @@ from tests_e2e.utils import (  # noqa: E402
     PROMPT_OBJECT,
     analyze_content_quality_test,
     check_global_statistics,
+    check_quality_by_error_type,
     check_quality_one_field,
     check_quality_one_row,
     compare_address,
@@ -95,6 +96,8 @@ if __name__ == "__main__":
     ]
 
     comparison_functions = get_comparison_functions()
+
+    check_quality_by_error_type(df_merged, comparison_functions, mode="FP2", included_columns=INCLUDED_COLUMNS)
 
     check_quality_one_field(df_merged, "conserve_avance", comparison_functions, only_errors=True)
 
