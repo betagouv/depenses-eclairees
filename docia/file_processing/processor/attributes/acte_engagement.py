@@ -273,7 +273,7 @@ Règles d’extraction :
         Format : un json sous format suivant {"duree_initiale": "nombre entier de mois", "duree_reconduction": "nombre entier de mois", "nb_reconductions": "nombre entier de reconductions possibles", "delai_tranche_optionnelle": "nombre entier de mois"}
     """,
         "schema": {
-            "type": ["object","null"],
+            "type": "object",
             "properties": {
                 "duree_initiale": {"type": ["integer", "null"]},
                 "duree_reconduction": {"type": ["integer", "null"]},

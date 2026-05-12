@@ -176,7 +176,7 @@ CCAP_ATTRIBUTES = {
         Format : un json sous format suivant {"duree_initiale": "nombre entier de mois", "duree_reconduction": "nombre entier de mois", "nb_reconductions": "nombre entier de reconductions possibles", "delai_tranche_optionnelle": "nombre entier de mois"}
     """,
         "schema": {
-            "type": ["object", "null"],
+            "type": "object",
             "properties": {
                 "duree_initiale": {"type": ["integer", "null"]},
                 "duree_reconduction": {"type": ["integer", "null"]},
@@ -237,14 +237,15 @@ CCAP_ATTRIBUTES = {
      - Dans la section spécifique des montants du marché, ou dans la forme du marché.
      - Si le marché est alloti, ne rien renvoyer.
      - montant_ht_maximum : renvoyer le montant maximum hors taxes au format "XXXX.XX" (2 décimales, sans espaces séparateurs de milliers)
-     - type_montant : renvoyer "annuel" si le montant est annuel, "total" si le montant est global. Si plusieurs possibilités, renovyer le montant hors taxes annuel.
+     - type_montant : renvoyer "annuel" si le montant est annuel, "total" si le montant est global. Si plusieurs possibilités, renvoyer le montant hors taxes global.
      - S'il n'y a pas d'informations disponibles sur le montant maximum hors taxes, renvoyer null.
+     - Ne pas confondre avec le montant des pénalités. Le montant attendu est un montant souvent supérieur à 10000€.
      Format : un json {"montant_ht_maximum": "XXXX.XX", "type_montant": "annuel" ou "total"}.
 """,
         "schema": {
             "type": ["object", "null"],
             "properties": {
-                "montant_ht_maximum": {"type": "string"},
+                "montant_ht_maximum": {"type": ["string", "null"]},
                 "type_montant": {"type": "string", "enum": ["annuel", "total"]},
             },
             "required": ["montant_ht_maximum", "type_montant"],
@@ -281,11 +282,17 @@ CCAP_ATTRIBUTES = {
      Indices : 
      - Dans le corps du document, ou en dernier paragraphe dans les dérogations au CCAG.
      - Souvent cité par la forme "CCAG-XXXX". Le XXXX est l'acronyme du CCAG de référence : renvoyer XXXX.
-     - Si le CCAG spécifique est cité en toutes lettres, renvoyer seulement l'acronyme : Exemple : "CCAG de prestations intellectuelles" renvoyer "PI".
+     - Si le CCAG spécifique est cité en toutes lettres, renvoyer parmi les valeurs suivantes : 
+       * "CCAG de fournitures courantes et services" renvoyer "FCS".
+       * "CCAG de prestations intellectuelles" renvoyer "PI".
+       * "CCAG de travaux" renvoyer "Travaux".
+       * "CCAG de marchés industriels" renvoyer "MI".
+       * "CCAG de techniques de l'information et de la communication" renvoyer "TIC".
+       * "CCAG de matrise d'oeuvre" renvoyer "MOE".
      - Si un CCAG est mentionné, mais sans préciser lequel (acronyme ou en toutes lettres), renvoyer null.
      - Si aucun CCAG n'est mentionné, renvoyer null.
-     Format : un acronyme de quelques lettres ou null.
 """,
+        "schema": {"type": ["string", "null"], "enum": ["FCS", "PI", "Travaux", "MI", "TIC", "MOE", None]},
     },
     "formule_revision_prix": {
         "consigne": """
