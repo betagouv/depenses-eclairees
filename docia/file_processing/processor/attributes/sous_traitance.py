@@ -149,7 +149,7 @@ SOUS_TRAITANCE_ATTRIBUTES = {
     },
     "date_signature": {
         "consigne": """
-      Définition : Date de signature du document par une des parties.  
+      Définition : Date de dernière signature du document par une des parties.  
       Indices : 
       - Repérer les expressions comme "Signé le", "Fait à ...", ou des dates en bas du document associées à une signature.
       - Ignorer les dates d'émission ou de création du document, en général en haut du document
