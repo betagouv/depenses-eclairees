@@ -15,7 +15,7 @@ from django.db.models.functions import RowNumber
 
 import pandas as pd
 
-from docia.models import DataEngagement, Document
+from docia.models import Document, Engagement
 
 
 class _JsonFilledKeyCount(Func):
@@ -28,9 +28,11 @@ class _JsonFilledKeyCount(Func):
     function = ""
     # Pas de to_jsonb(''::text) : les quotes cassent le SQL généré ; ``#>> '{}'`` suffit pour les scalaires chaîne.
     template = (
-        "(SELECT count(*)::integer FROM jsonb_each(COALESCE((%(expressions)s)::jsonb, '{}'::jsonb)) AS kv "
+        "(SELECT CASE WHEN jsonb_typeof(COALESCE((%(expressions)s)::jsonb, '{}'::jsonb)) = 'object' "
+        "THEN (SELECT count(*)::integer FROM jsonb_each(COALESCE((%(expressions)s)::jsonb, '{}'::jsonb)) AS kv "
         "WHERE kv.value IS DISTINCT FROM 'null'::jsonb "
-        "AND (jsonb_typeof(kv.value) != 'string' OR (kv.value #>> '{}') IS DISTINCT FROM ''))"
+        "AND (jsonb_typeof(kv.value) != 'string' OR (kv.value #>> '{}') IS DISTINCT FROM '')) "
+        "ELSE 0 END)"
     )
     output_field = IntegerField()
 
@@ -73,7 +75,7 @@ __all__ = [
     "apply_synthesis_fields",
 ]
 
-# Colonnes ``apply_synthesis_fields`` → attributs ``DataEngagement`` (table ``engagements``).
+# Colonnes ``apply_synthesis_fields`` → attributs ``Engagement`` (table ``engagements``).
 SYNTHESIS_TO_ENGAGEMENT_FIELDS: dict[str, str] = {
     "objet": "designation",
     "description_prestations": "descriptif_prestations",
@@ -120,7 +122,7 @@ def _parse_structured_data(value: Any) -> dict | None:
 
 def get_documents_from_engagements(num_ej_list: list[Any]) -> pd.DataFrame:
     """
-    Filtre les documents liés aux num_ej donnés (M2M via DataEngagement.num_ej).
+    Filtre les documents liés aux num_ej donnés (M2M via Engagement.num_ej).
     Retourne un DataFrame avec une colonne ``engagements`` (ex-``engagements__num_ej``).
 
     Sous PostgreSQL, ne retourne qu’**une PJ par couple** (engagement, classification) :
@@ -418,7 +420,7 @@ _ENGAGEMENT_FIELDS_TO_UPDATE: tuple[str, ...] = tuple(SYNTHESIS_TO_ENGAGEMENT_FI
 
 
 def _value_for_engagement_attr(attr: str, raw: Any) -> Any:
-    """Convertit une valeur issue du DataFrame vers le type attendu par ``DataEngagement``."""
+    """Convertit une valeur issue du DataFrame vers le type attendu par ``Engagement``."""
     if raw is None:
         return None
     if isinstance(raw, float) and pd.isna(raw):
@@ -429,7 +431,7 @@ def _value_for_engagement_attr(attr: str, raw: Any) -> Any:
         s = str(raw).strip()
         if not s or s.lower() == "nan":
             return None
-        return s[: DataEngagement._meta.get_field("siret").max_length]
+        return s[: Engagement._meta.get_field("siret").max_length]
     s = str(raw).strip()
     if not s or s.lower() == "nan":
         return None
@@ -443,7 +445,7 @@ def sync_synthesis_to_engagements(
     duplicate_num_ej: str = "last",
 ) -> tuple[int, int]:
     """
-    Met à jour les lignes existantes de la table ``engagements`` (modèle ``DataEngagement``)
+    Met à jour les lignes existantes de la table ``engagements`` (modèle ``Engagement``)
     à partir d'un DataFrame produit par ``apply_synthesis_fields``.
 
     Remplit ``designation``, ``descriptif_prestations``, ``date``, ``prestataire``,
@@ -473,8 +475,8 @@ def sync_synthesis_to_engagements(
     if not keys:
         return 0, 0
 
-    existing = DataEngagement.objects.filter(num_ej__in=keys).in_bulk(field_name="num_ej")
-    to_update: list[DataEngagement] = []
+    existing = Engagement.objects.filter(num_ej__in=keys).in_bulk(field_name="num_ej")
+    to_update: list[Engagement] = []
     missing = 0
 
     for _, row in dedup.iterrows():
@@ -495,7 +497,7 @@ def sync_synthesis_to_engagements(
         to_update.append(obj)
 
     if to_update:
-        DataEngagement.objects.bulk_update(
+        Engagement.objects.bulk_update(
             to_update,
             fields=list(_ENGAGEMENT_FIELDS_TO_UPDATE),
             batch_size=batch_size,

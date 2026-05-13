@@ -21,8 +21,8 @@ logger = logging.getLogger("docia." + __name__)
 
 PROJECT_PATH = settings.BASE_DIR
 CSV_DIR_PATH = (PROJECT_PATH / ".." / "data" / "test").resolve()
-EJ_DB = CSV_DIR_PATH / "ej_db_2025.csv"
-EJ_DB_ANALYSE = CSV_DIR_PATH / "ej_db_2025_analyse.csv"
+EJ_DB = CSV_DIR_PATH / "EJ_DB_COM.csv"
+EJ_DB_ANALYSE = CSV_DIR_PATH / "EJ_DB_COM_analyse.csv"
 
 _CHAMPS_SYNTHESE = tuple(c for c in SYNTHESIS_OUTPUT_COLUMNS if c not in ("num_ej", "contrat", "source_et_conflits"))
 
@@ -33,7 +33,7 @@ def _cellule_remplie(x) -> bool:
     try:
         if pd.isna(x):
             return False
-    except TypeError:
+    except (TypeError, ValueError):
         pass
     if isinstance(x, str) and not x.strip():
         return False

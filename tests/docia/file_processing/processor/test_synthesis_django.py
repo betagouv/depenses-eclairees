@@ -13,13 +13,13 @@ import pytest
 import pandas as pd
 
 from docia.file_processing.processor import synthesis as syn
-from docia.models import DataEngagement
-from tests.factories.data import DataEngagementFactory, DocumentFactory
+from docia.models import Engagement
+from tests.factories.data import DocumentFactory, EngagementFactory
 
 
 @pytest.mark.django_db
 def test_sync_synthesis_to_engagements_updates_row():
-    ej = DataEngagementFactory(num_ej="1111111111")
+    ej = EngagementFactory(num_ej="1111111111")
 
     df = pd.DataFrame(
         {
@@ -49,7 +49,7 @@ def test_sync_synthesis_to_engagements_updates_row():
 
 @pytest.mark.django_db
 def test_sync_synthesis_to_engagements_counts_missing_num_ej():
-    DataEngagementFactory(num_ej="2222222222")
+    EngagementFactory(num_ej="2222222222")
     import pandas as pd
 
     df = pd.DataFrame(
@@ -72,7 +72,7 @@ def test_sync_synthesis_to_engagements_counts_missing_num_ej():
 
 @pytest.mark.django_db
 def test_sync_synthesis_to_engagements_duplicate_num_ej_keeps_last():
-    ej = DataEngagementFactory(num_ej="3333333333")
+    ej = EngagementFactory(num_ej="3333333333")
 
     df = pd.DataFrame(
         {
@@ -94,7 +94,7 @@ def test_sync_synthesis_to_engagements_duplicate_num_ej_keeps_last():
 
 @pytest.mark.django_db
 def test_sync_synthesis_to_engagements_truncates_siret():
-    ej = DataEngagementFactory(num_ej="4444444444")
+    ej = EngagementFactory(num_ej="4444444444")
     long_siret = "1" * 30
 
     df = pd.DataFrame(
@@ -112,7 +112,7 @@ def test_sync_synthesis_to_engagements_truncates_siret():
     )
     syn.sync_synthesis_to_engagements(df)
     ej.refresh_from_db()
-    assert len(ej.siret) == DataEngagement._meta.get_field("siret").max_length
+    assert len(ej.siret) == Engagement._meta.get_field("siret").max_length
 
 
 @pytest.mark.django_db
@@ -120,7 +120,7 @@ def test_get_documents_from_engagements_returns_rows_linked_to_ej():
     if connection.vendor != "postgresql":
         pytest.skip("Requête synthesis ORM avec jsonb + Window (PostgreSQL uniquement)")
 
-    ej = DataEngagementFactory(num_ej="4242424242")
+    ej = EngagementFactory(num_ej="4242424242")
     doc = DocumentFactory(
         classification="devis",
         structured_data={"objet": "D", "x": 1},
