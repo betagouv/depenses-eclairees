@@ -202,6 +202,7 @@ Règles d’extraction :
         * 'cle_rib' : clé du RIB à 2 chiffres (espaces non compris)
      - S'il n'y a que le RIB du mandataire, renvoyer [].
      - S'il n'y a pas d'informations sur le compte bancaire pour une entreprise (ni IBAN, ni informations RIB), ne pas inclure cette entreprise dans la liste.
+     - Si un seul numéro à 11 chiffres est fourni, il s'agit souvent du numero de compte seul. Renvoyer le numéro de compte seul.
      Format : 
      - 1er cas (prioritaire) : [{"societe": "nom de la société", "rib": {"banque": "nom de la banque", "iban": "IBAN avec espaces tous les 4 caractères"}}]
      - 2ème cas (secondaire - uniquement s'il n'y a pas d'IBAN) : [{"societe": "nom de la société", "rib": {"banque": "nom de la banque", "code_banque": "...", "code_guichet": "...", "numero_compte": "...", "cle_rib": "..."}}]
@@ -320,11 +321,12 @@ Règles d’extraction :
       Définition : Date de notification du marché aux mandataires. 
       Indices : 
       - Parfois en début du document, ou en toute fin de document.
-      - Après la mention "Date de notification" ou "Date de début du marché".
+      - Après la mention "Date de notification" mais ce n'est pas la date de début prévisionnelle "Date de début du marché".
       - S'il y a un doute sur la lecture de la date, prendre la date la plus proche postérieure à la signature par l'administration si disponible.
       - Peut aussi être la date d'un courrier de notification ou d'un mail en annexe du document.
       - S'il n'y a pas de date de notification explicite, ne rien renvoyer.
       - Attention à ne pas confondre la date de notification avec la date de signature.
+      - Pour un marché subséquent, ne pas confondre avec la date de notification du marché (parent).
      Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
 """,
     },
@@ -342,6 +344,10 @@ Règles d’extraction :
         - Si la phrase est "Je souhaite BENEFICIER de l'avance" : Oui = Conserve -> Renvoyer "conserve", Non = Renonce -> Renvoyer "renonce"
         - Uniquement si le paragraphe est totalement absent ou si aucune mention ([X], [x], X ou x n'est présente) -> Renvoyer null
 """,
+        "schema": {
+            "type": "string",
+            "enum": ["conserve", "renonce", ""],
+        },
     },
     "montants_en_annexe": {
         "consigne": """
@@ -387,7 +393,7 @@ Règles d’extraction :
         Indices :
         - Rechercher la mention de TVA ou de "taux de TVA". Le montant est souvent sous la forme d'un pourcentage.
         - Convertir le pourcentage en chiffre décimal entre 0 et 1.
-        - Ne rien renvoyer si aucun montant de TVA trouvé.
+        - Ne rien renvoyer si aucun montant de TVA trouvé. Ne pas calculer le taux entre deux montants HT et TTC.
         Format : exprimé en décimales (ex: 0.20, 0.055), pas en pourcentage.
         """,
     },
