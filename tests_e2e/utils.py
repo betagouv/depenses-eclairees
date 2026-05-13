@@ -271,7 +271,7 @@ def compare_with_llm(
         result = llm_env.ask_llm(
             messages=messages, model=llm_model, response_format={"type": "json_object"}, temperature=0
         )
-        return bool(result.get("sont_equivalentes", False))
+        return bool(result.content.get("sont_equivalentes", False))
     except Exception as e:
         logger.error(f"Error calling LLM for compare_with_llm: {e}")
         return False
@@ -316,7 +316,7 @@ def df_analyze_content(
 
         try:
             out = analyze_file_text(**kwargs)
-            result = {"llm_response": out["llm_response"], "structured_data": out["structured_data"], "error": None}
+            result = {"llm_response": out.llm_response, "structured_data": out.structured_data, "error": None}
         except Exception as e:
             logger.exception(f"Erreur lors de l'analyse du fichier {filename}: {e}")
             result = {"llm_response": None, "structured_data": None, "error": f"Erreur lors de l'analyse: {str(e)}"}

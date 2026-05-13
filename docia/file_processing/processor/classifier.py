@@ -1,13 +1,20 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 
 import tqdm
 
 import pandas as pd
 
-from docia.file_processing.llm.client import LLMClient
+from docia.file_processing.llm.client import LLMClient, LLMUsage
 
 logger = logging.getLogger("docia." + __name__)
+
+
+@dataclass
+class ClassifyResult:
+    classification: str
+    usage: LLMUsage
 
 
 def create_classification_prompt(filename: str, text: str, list_classification: dict) -> str:
@@ -42,7 +49,7 @@ def create_classification_prompt(filename: str, text: str, list_classification: 
 
 def classify_file_with_llm(
     filename: str, text: str, list_classification: dict, llm_model: str = "openweight-medium"
-) -> str:
+) -> ClassifyResult:
     """
     Classifie un fichier en fonction de son contenu en utilisant un LLM.
 
@@ -72,20 +79,26 @@ def classify_file_with_llm(
 
     messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
 
-    response = llm_env.ask_llm(messages=messages, model=llm_model, response_format=response_format)
+    ask_response = llm_env.ask_llm(messages=messages, model=llm_model, response_format=response_format)
+    response = ask_response.content
+    usage = ask_response.usage
 
     # Convertir la (nouvelle) réponse (list) en clé de classification (on prend la première catégorie trouvée)
     if not response or not isinstance(response, list):
-        return "Non classifié"
+        classification = "Non classifié"
+    else:
+        reversed_classification_ref = {value["nom_complet"]: key for key, value in list_classification.items()}
+        result_classif_keys = []
+        for classif in response:
+            key_classif = reversed_classification_ref.get(classif)
+            if key_classif:
+                result_classif_keys.append(key_classif)
 
-    reversed_classification_ref = {value["nom_complet"]: key for key, value in list_classification.items()}
-    result_classif_keys = []
-    for classif in response:
-        key_classif = reversed_classification_ref.get(classif)
-        if key_classif:
-            result_classif_keys.append(key_classif)
-
-    return result_classif_keys[0] if len(result_classif_keys) > 0 else "Non classifié"
+        if len(result_classif_keys) > 0:
+            classification = result_classif_keys[0]
+        else:
+            classification = "Non classifié"
+    return ClassifyResult(classification=classification, usage=usage)
 
 
 def classify_files(
@@ -112,7 +125,7 @@ def classify_files(
         row = dfFilesClassified.loc[idx]
         filename = row["filename"]
 
-        result = {"classification": None}
+        result = {"classification": "Non classifié"}
 
         text = row["text"]
         try:
@@ -121,8 +134,7 @@ def classify_files(
             )
         except Exception as e:
             logger.exception("Erreur lors de la classification LLM de %r: %s", filename, e)
-            response_classif = ["Non classifié"]
-        result["classification"] = response_classif
+        result["classification"] = response_classif.classification
 
         return idx, result
 

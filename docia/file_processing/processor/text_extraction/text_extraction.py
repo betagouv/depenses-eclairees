@@ -12,7 +12,7 @@ import tiktoken
 
 from . import text_extract_document as document
 from . import text_extract_excel as excel
-from .data import ProcessFileResult
+from .data import TextExtractionResult
 
 logger = logging.getLogger("docia." + __name__)
 
@@ -118,7 +118,7 @@ def process_file(
     extension: str,
     word_threshold: int = 50,
     ocr_tool: str = "mistral-ocr",
-) -> ProcessFileResult:
+) -> TextExtractionResult:
     """
     Extrait le texte d'un fichier (chemin + extension).
 
@@ -137,7 +137,7 @@ def process_file(
     nb_words = count_words(text)
     nb_tokens = count_tokens(text)
 
-    return ProcessFileResult(
+    return TextExtractionResult(
         text=text,
         is_ocr=is_ocr,
         nb_words=nb_words,

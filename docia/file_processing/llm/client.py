@@ -5,6 +5,7 @@ import random
 import time
 from collections.abc import Callable
 from copy import deepcopy
+from dataclasses import dataclass
 from json import JSONDecodeError
 from typing import TypeVar
 from urllib.parse import urljoin
@@ -13,6 +14,7 @@ from django.conf import settings
 
 import httpx
 from openai import APIError, APIStatusError, OpenAI
+from pydantic import BaseModel
 
 from docia.file_processing.llm.rategate.gate import RateGate
 
@@ -81,6 +83,17 @@ class LLMApiError(Exception):
             code=code,
             details=details,
         )
+
+
+class LLMUsage(BaseModel):
+    prompt_tokens: int
+    completion_tokens: int
+
+
+@dataclass
+class LLMAskResult:
+    content: str | dict
+    usage: LLMUsage
 
 
 class LLMClient:
@@ -172,7 +185,8 @@ class LLMClient:
         max_retries: int = 3,
         retry_delay: float = 60,
         retry_short_delay: float = 10,
-    ) -> str | dict:
+        return_raw: bool = False,
+    ) -> LLMAskResult:
         """
         Interroge le LLM avec un prompt système et utilisateur.
         En cas d'erreur de rate limiting (429), attend et réessaye automatiquement.
@@ -202,7 +216,8 @@ class LLMClient:
 
         messages = deepcopy(messages)
 
-        def _do_call() -> str:
+        def _do_call() -> LLMAskResult:
+            # Call the model
             try:
                 response = self.client.chat.completions.create(
                     model=model,
@@ -212,6 +227,12 @@ class LLMClient:
                 )
             except APIError as e:
                 raise LLMApiError.from_api_error(e) from e
+
+            # If return raw is set, return the response
+            if return_raw:
+                return response
+
+            # Else, parse the result
             response_content = response.choices[0].message.content.strip()
             try:
                 result = json.loads(response_content) if response_format else response_content
@@ -223,7 +244,12 @@ class LLMClient:
                 messages.append({"role": "assistant", "content": response_content})
                 messages.append({"role": "user", "content": f"Complète et corrige le json. Erreur : {repr(e)}"})
                 raise LLMApiError(f"Api Error: {code} - {details}", code=code, details=details) from e
-            return result
+
+            usage = LLMUsage(**response.usage.model_dump())
+            return LLMAskResult(
+                content=result,
+                usage=usage,
+            )
 
         return self._api_call(
             _do_call,
@@ -243,6 +269,7 @@ class LLMClient:
         retry_short_delay: float = 10,
         offset_pages: int | None = None,
         total_pages: int | None = None,
+        return_raw: bool = False,
     ) -> tuple[str, int]:
         """
         Envoie le contenu d'un PDF à l'API OCR et retourne le texte extrait (markdown) et nombre de pages.
@@ -273,9 +300,12 @@ class LLMClient:
                     details=str(e),
                 ) from e
             if response.is_success:
-                return _extract_markdown_from_ocr_response(
-                    response.json(), offset_pages=offset_pages, total_pages=total_pages
-                )
+                if return_raw:
+                    return response
+                else:
+                    return _extract_markdown_from_ocr_response(
+                        response.json(), offset_pages=offset_pages, total_pages=total_pages
+                    )
             raise LLMApiError(
                 f"OCR API error: {response.status_code} - {response.text}",
                 code=f"HTTP_{response.status_code}",

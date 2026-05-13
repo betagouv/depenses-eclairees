@@ -4,12 +4,20 @@ Contexte = parfois tout le texte extrait, parfois seulement une liste de chunks 
 """
 
 import logging
+from dataclasses import dataclass
 
-from ..llm.client import LLMClient
+from ..llm.client import LLMClient, LLMUsage
 from .attributes_query import DOC_TYPE_ATTRIBUTES_MAPPING, DOC_TYPE_SCHEMA_MAPPING
 from .post_processing_llm import clean_llm_response
 
 logger = logging.getLogger("docia." + __name__)
+
+
+@dataclass
+class AnalyzeResult:
+    llm_response: dict
+    structured_data: dict
+    usage: LLMUsage
 
 
 # Fonction pour générer le prompt à partir des attributs à chercher
@@ -42,7 +50,9 @@ def create_response_format(doc_schema, classification):
     }
 
 
-def analyze_file_text(text: str, document_type: str, llm_model: str = "mistral-medium-2508", temperature: float = 0.0):
+def analyze_file_text(
+    text: str, document_type: str, llm_model: str = "mistral-medium-2508", temperature: float = 0.0
+) -> AnalyzeResult:
     """
     Analyse le texte pour extraire des informations.
 
@@ -55,18 +65,19 @@ def analyze_file_text(text: str, document_type: str, llm_model: str = "mistral-m
         Réponse du LLM à la question posée
     """
 
-    response = analyze_file_text_llm(text, document_type, llm_model, temperature)
+    response, usage = analyze_file_text_llm(text, document_type, llm_model, temperature)
     data = clean_llm_response(document_type, response)
 
-    return {
-        "llm_response": response,
-        "structured_data": data,
-    }
+    return AnalyzeResult(
+        llm_response=response,
+        structured_data=data,
+        usage=usage,
+    )
 
 
 def analyze_file_text_llm(
     text: str, document_type: str, llm_model: str = "mistral-medium-2508", temperature: float = 0.0
-):
+) -> tuple[dict, LLMUsage]:
     llm_env = LLMClient()
 
     question = get_question(DOC_TYPE_ATTRIBUTES_MAPPING[document_type])
@@ -82,4 +93,7 @@ def analyze_file_text_llm(
 
     response = llm_env.ask_llm(messages, model=llm_model, response_format=response_format, temperature=temperature)
 
-    return response
+    # Force typing to dict
+    dict_content: dict = response.content
+
+    return dict_content, response.usage

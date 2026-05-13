@@ -12,7 +12,7 @@ from docia.file_processing.processor.text_extraction import (
     extract_text_from_txt,
     process_file,
 )
-from docia.file_processing.processor.text_extraction.data import ProcessFileResult
+from docia.file_processing.processor.text_extraction.data import TextExtractionResult
 
 from .utils import ASSETS_DIR, assert_similar_text
 
@@ -74,7 +74,7 @@ def test_process_file():
     with default_storage.open(file_path, "w") as f:
         f.write("Hello World")
     result = process_file("test.txt", "txt")
-    assert result == ProcessFileResult(
+    assert result == TextExtractionResult(
         text="Hello World",
         is_ocr=False,
         nb_words=2,

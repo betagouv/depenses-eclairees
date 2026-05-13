@@ -1,18 +1,27 @@
 from contextlib import contextmanager
+from datetime import timedelta
 from unittest.mock import patch
 
+import freezegun
 import pytest
 
 from docia.file_processing.models import ProcessDocumentStepType, ProcessingStatus
 from docia.file_processing.pipeline.steps.text_extraction import task_extract_text
 from docia.file_processing.processor.text_extraction import UnsupportedFileType
+from docia.file_processing.processor.text_extraction.data import TextExtractionResult
 from tests.factories.file_processing import ProcessDocumentStepFactory
 
 
 @contextmanager
 def patch_extract_text():
     with patch("docia.file_processing.processor.text_extraction.process_file", autospec=True) as m:
-        m.return_value = ("Hello World", False, 2, 1)
+        m.return_value = TextExtractionResult(
+            text="Hello World",
+            is_ocr=False,
+            nb_words=2,
+            nb_pages=1,
+            nb_tokens=2,
+        )
         yield m
 
 
@@ -20,8 +29,10 @@ def patch_extract_text():
 def test_task_extract_info():
     step = ProcessDocumentStepFactory(step_type=ProcessDocumentStepType.TEXT_EXTRACTION)
     last_updated_at = step.job.document.updated_at
-    with patch_extract_text():
-        task_extract_text(step.id)
+    frozen_time = last_updated_at + timedelta(days=30)
+    with freezegun.freeze_time(frozen_time):
+        with patch_extract_text():
+            task_extract_text(step.id)
     step.refresh_from_db()
     assert step.status == ProcessingStatus.SUCCESS
     assert step.error == ""
@@ -29,7 +40,9 @@ def test_task_extract_info():
     assert not step.job.document.is_ocr
     assert step.job.document.nb_mot == 2
     assert step.job.document.nb_pages == 1
-    assert step.job.document.updated_at > last_updated_at
+    assert step.job.document.text_extracted_at == frozen_time
+    assert step.job.document.text_tokens_count == 2
+    assert step.job.document.updated_at == frozen_time
 
 
 @pytest.mark.django_db
@@ -49,6 +62,8 @@ def test_skip_unsuported_file_type():
     assert step.job.document.is_ocr is None
     assert step.job.document.nb_mot is None
     assert step.job.document.nb_pages is None
+    assert step.job.document.text_extracted_at is None
+    assert step.job.document.text_tokens_count is None
 
     # next step should be marked as skipped aswell
     step2.refresh_from_db()
@@ -63,7 +78,7 @@ def test_empty_text_extracted():
         job=step.job,
     )
     with patch_extract_text() as m:
-        m.return_value = ("", False, 0, 0)
+        m.return_value = TextExtractionResult(text="", is_ocr=False, nb_words=0, nb_pages=0, nb_tokens=0)
         task_extract_text(step.id)
     step.refresh_from_db()
     assert step.status == ProcessingStatus.FAILURE
@@ -72,6 +87,8 @@ def test_empty_text_extracted():
     assert step.job.document.is_ocr is None
     assert step.job.document.nb_mot is None
     assert step.job.document.nb_pages is None
+    assert step.job.document.text_extracted_at is None
+    assert step.job.document.text_tokens_count is None
 
     # next step should be marked as skipped
     step2.refresh_from_db()

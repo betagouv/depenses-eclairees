@@ -43,10 +43,20 @@ class AnalyzeContentStepRunner(AbstractStepRunner):
             document.relevant_content or document.text,
             document.classification,
         )
-        document.llm_response = result["llm_response"]
-        document.structured_data = result["structured_data"]
+        document.llm_response = result.llm_response
+        document.structured_data = result.structured_data
         document.analyzed_at = timezone.now()
-        document.save(update_fields=["llm_response", "structured_data", "analyzed_at"])
+        document.analyze_prompt_tokens_count = result.usage.prompt_tokens
+        document.analyze_completion_tokens_count = result.usage.completion_tokens
+        document.save(
+            update_fields=[
+                "llm_response",
+                "structured_data",
+                "analyzed_at",
+                "analyze_prompt_tokens_count",
+                "analyze_completion_tokens_count",
+            ]
+        )
 
 
 @shared_task(name="docia.analyse_content")

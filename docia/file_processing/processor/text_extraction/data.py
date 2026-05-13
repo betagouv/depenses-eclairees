@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class ProcessFileResult:
+class TextExtractionResult:
     text: str
     is_ocr: bool
     nb_words: int
