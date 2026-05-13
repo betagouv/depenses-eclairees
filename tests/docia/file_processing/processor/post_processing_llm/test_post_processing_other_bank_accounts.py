@@ -86,7 +86,7 @@ def test_post_processing_other_bank_accounts_missing_societe():
     other_accounts = [{"societe": "", "rib": {"banque": "Crédit Agricole", "iban": "FR1420041010050500013M02606"}}]
     result = post_processing_other_bank_accounts(other_accounts)
     assert len(result) == 1
-    assert result[0]["societe"] == ""
+    assert result[0]["societe"] is None
 
 
 def test_post_processing_other_bank_accounts_all_invalid():
@@ -122,7 +122,7 @@ def test_post_processing_other_bank_accounts_missing_societe_key():
     ]
     result = post_processing_other_bank_accounts(other_accounts)
     assert len(result) == 1
-    assert result[0]["societe"] == ""  # .get('societe', '') retourne ''
+    assert result[0]["societe"] is None  # .get('societe', '') retourne ''
 
 
 def test_post_processing_other_bank_accounts_rib_missing_banque():
