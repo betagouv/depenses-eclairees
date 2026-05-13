@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from docia.documents.models import DataEngagement
+from docia.documents.models import Engagement
 from docia.file_processing.models import ProcessDocumentStep, ProcessDocumentStepType, ProcessingStatus
 from docia.file_processing.pipeline.pipeline import (
     _init_and_launch_batch,
@@ -17,7 +17,7 @@ from docia.file_processing.pipeline.pipeline import (
     sync_and_analyze_ej_list,
 )
 from docia.models import Document
-from tests.factories.data import DataEngagementFactory, DocumentFactory
+from tests.factories.data import DocumentFactory, EngagementFactory
 from tests.factories.file_processing import (
     ProcessDocumentBatchFactory,
     ProcessDocumentJobFactory,
@@ -297,7 +297,7 @@ def test_sync_and_analyze_ej_list():
 
         # Assertions
         inserted_ejs = list(
-            DataEngagement.objects.filter(num_ej__in=num_ejs).order_by("num_ej").values_list("num_ej", flat=True)
+            Engagement.objects.filter(num_ej__in=num_ejs).order_by("num_ej").values_list("num_ej", flat=True)
         )
         assert inserted_ejs == num_ejs
         mock_sync_docs.assert_called_once_with(num_ejs)
@@ -311,8 +311,8 @@ def test_init_and_launch_batch():
     num_ejs = ["ej1", "ej2"]
 
     # Create DataEngagement objects and documents
-    ej1 = DataEngagementFactory(num_ej="ej1")
-    ej2 = DataEngagementFactory(num_ej="ej2")
+    ej1 = EngagementFactory(num_ej="ej1")
+    ej2 = EngagementFactory(num_ej="ej2")
     doc1 = DocumentFactory()
     doc1.engagements.add(ej1)
     doc2 = DocumentFactory()

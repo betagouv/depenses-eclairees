@@ -5,22 +5,22 @@ import string
 import factory
 
 from docia.documents.models import EngagementScope
-from docia.models import DataBatch, DataEngagement, Document
+from docia.models import Document, Engagement, EngagementTag
 
 
-class DataEngagementFactory(factory.django.DjangoModelFactory):
+class EngagementFactory(factory.django.DjangoModelFactory):
     class Meta:
-        model = DataEngagement
+        model = Engagement
 
     num_ej = factory.Sequence(lambda n: f"{n:0>10}")
 
 
-class DataBatchFactory(factory.django.DjangoModelFactory):
+class EngagementTagFactory(factory.django.DjangoModelFactory):
     class Meta:
-        model = DataBatch
+        model = EngagementTag
 
-    batch = factory.Sequence(lambda n: f"Batch_{n:0>3}")
-    ej = factory.SubFactory(DataEngagementFactory)
+    name = factory.Sequence(lambda n: f"Batch_{n:0>3}")
+    ej = factory.SubFactory(EngagementFactory)
 
 
 class DocumentFactory(factory.django.DjangoModelFactory):

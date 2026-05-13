@@ -16,7 +16,7 @@ from django.utils import timezone
 from celery import chain, group, shared_task
 from celery.result import GroupResult
 
-from docia.documents.models import DataEngagement
+from docia.documents.models import Engagement
 from docia.file_processing.models import (
     BATCH_STUCK_TIMEOUT,
     ProcessDocumentBatch,
@@ -266,8 +266,8 @@ def sync_and_analyze_ej_list(num_ejs: list[str], force_analyze: bool = False) ->
     """
     logger.info("Start sync and analyze (by ej list)")
     logger.info("Create or update all EJs")
-    ejs = DataEngagement.objects.bulk_create(
-        (DataEngagement(num_ej=num_ej) for num_ej in set(num_ejs)),
+    ejs = Engagement.objects.bulk_create(
+        (Engagement(num_ej=num_ej) for num_ej in set(num_ejs)),
         ignore_conflicts=True,
     )
     logger.info("Successfully updated EJs (%s)", len(ejs))

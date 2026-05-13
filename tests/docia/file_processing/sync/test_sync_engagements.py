@@ -3,9 +3,9 @@ from unittest.mock import patch
 
 import pytest
 
-from docia.documents.models import DataEngagement
+from docia.documents.models import Engagement
 from docia.file_processing.sync.sync_engagements import EngagementsSync
-from tests.factories.data import DataEngagementFactory, EngagementScopeFactory
+from tests.factories.data import EngagementFactory, EngagementScopeFactory
 from tests.factories.file_processing import ApiEngagementActivityFactory
 from tests.utils import bind_arguments
 
@@ -57,7 +57,7 @@ def test_sync(syncer):
     # Asserts the EJ and scope are inserted
     inserted = sorted(
         list(
-            DataEngagement.objects.order_by("num_ej").values(
+            Engagement.objects.order_by("num_ej").values(
                 "num_ej",
                 "external_updated_at",
                 "scopes__purchase_organization",
@@ -95,7 +95,7 @@ def test_sync_update_ej(syncer):
 
     # Existing EJ with existing scope
     num_ej = "1234567890"
-    ej = DataEngagementFactory(num_ej=num_ej, external_updated_at=datetime(2026, 1, 7))
+    ej = EngagementFactory(num_ej=num_ej, external_updated_at=datetime(2026, 1, 7))
     ej_initial_updated_at = ej.updated_at
     scope = EngagementScopeFactory()
     ej.scopes.add(scope)
@@ -123,7 +123,7 @@ def test_sync_update_ej(syncer):
     #   - the previous scope is kept
     #   - the new scope is added
     inserted = list(
-        DataEngagement.objects.order_by("scopes__created_at").values(
+        Engagement.objects.order_by("scopes__created_at").values(
             "id",
             "num_ej",
             "external_updated_at",
@@ -167,7 +167,7 @@ def test_sync_preserve_newer_external_updated_at(syncer):
     # Existing EJ with newer external_updated_at
     num_ej = "1234567890"
     newer_date = datetime(2026, 4, 1, tzinfo=timezone.utc)
-    ej = DataEngagementFactory(num_ej=num_ej, external_updated_at=newer_date)
+    ej = EngagementFactory(num_ej=num_ej, external_updated_at=newer_date)
     ej_initial_updated_at = ej.updated_at
     scope = EngagementScopeFactory()
     ej.scopes.add(scope)
@@ -192,7 +192,7 @@ def test_sync_preserve_newer_external_updated_at(syncer):
     assert sorted(synced_num_ejs) == sorted(expected_synced_num_ejs)
 
     # Assert that the newer external_updated_at is preserved
-    updated_ej = DataEngagement.objects.get(num_ej=num_ej)
+    updated_ej = Engagement.objects.get(num_ej=num_ej)
     assert updated_ej.external_updated_at == newer_date
 
     # Assert that the new scope was still added
@@ -215,7 +215,7 @@ def test_sync_update_engagement_with_null_external_updated_at(syncer):
 
     # Existing EJ with external_updated_at = None
     num_ej = "1234567890"
-    ej = DataEngagementFactory(num_ej=num_ej, external_updated_at=None)
+    ej = EngagementFactory(num_ej=num_ej, external_updated_at=None)
     ej_initial_updated_at = ej.updated_at
     scope = EngagementScopeFactory()
     ej.scopes.add(scope)
@@ -240,7 +240,7 @@ def test_sync_update_engagement_with_null_external_updated_at(syncer):
     assert sorted(synced_num_ejs) == sorted(expected_synced_num_ejs)
 
     # Assert that the external_updated_at is updated from None to the API date
-    updated_ej = DataEngagement.objects.get(num_ej=num_ej)
+    updated_ej = Engagement.objects.get(num_ej=num_ej)
     assert updated_ej.external_updated_at == api_date
 
     # Assert that the new scope was added
@@ -309,11 +309,11 @@ def test_sync_handles_duplicate_engagements(syncer):
     assert synced_num_ejs == expected_synced_num_ejs
 
     # Assert the engagement has the newest timestamp
-    created = list(DataEngagement.objects.values_list("num_ej", "external_updated_at"))
+    created = list(Engagement.objects.values_list("num_ej", "external_updated_at"))
     assert created == [(num_ej, newer_activity.received_at)]
 
     # Assert the engagement is linked to all scopes (both oa1/ga2 and oa2/ga2)
-    created_ej = DataEngagement.objects.get()
+    created_ej = Engagement.objects.get()
     created_scopes = sorted(list(created_ej.scopes.values_list("purchase_organization", "purchase_group")))
     expected_scopes = [("oa1", "ga1"), ("oa2", "ga2")]
     assert created_scopes == expected_scopes

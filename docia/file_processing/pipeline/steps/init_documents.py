@@ -9,7 +9,7 @@ from celery import group, shared_task
 
 from docia.file_processing.models import ExternalLinkDocumentOrder, FileInfo
 from docia.file_processing.processor.cleaner import extract_num_EJ, get_file_initial_info
-from docia.models import DataBatch, DataEngagement, Document
+from docia.models import Document, Engagement, EngagementTag
 
 logger = logging.getLogger(__name__)
 
@@ -59,12 +59,12 @@ def get_files_info(folder: str, chunk_number: int = 0, chunk_size: int | None = 
 
 def bulk_create_engagements(num_ejs):
     engagements = [
-        DataEngagement(
+        Engagement(
             num_ej=num_ej,
         )
         for num_ej in num_ejs
     ]
-    DataEngagement.objects.bulk_create(engagements, batch_size=200, ignore_conflicts=True)
+    Engagement.objects.bulk_create(engagements, batch_size=200, ignore_conflicts=True)
 
 
 def bulk_create_documents(file_infos: list[FileInfo]):
@@ -94,13 +94,13 @@ def bulk_create_links_document_engagement_using_filenames(files_info: list[FileI
     doc_id_by_hash = dict(Document.objects.filter(hash__in=hashes).values_list("hash", "id"))
     # Get engagements by num_ej
     num_ejs = set(extract_num_EJ(file_info.filename) for file_info in files_info)
-    engagements_by_num_ej = dict(DataEngagement.objects.filter(num_ej__in=num_ejs).values_list("num_ej", "id"))
+    engagements_by_num_ej = dict(Engagement.objects.filter(num_ej__in=num_ejs).values_list("num_ej", "id"))
 
     # Build the links
     links_doc_engagement = [
         DocumentEngagement(
             document_id=doc_id_by_hash[fi.hash],
-            dataengagement_id=engagements_by_num_ej[extract_num_EJ(fi.filename)],
+            engagement_id=engagements_by_num_ej[extract_num_EJ(fi.filename)],
         )
         for fi in files_info
     ]
@@ -121,7 +121,7 @@ def bulk_create_links_document_engagement_using_external_data(file_infos: list[F
     FROM docia_document doc
     INNER JOIN docia_fileinfo fi ON fi.hash = doc.hash
     INNER JOIN docia_externallinkdocumentorder link ON link.external_document_id = fi.root_external_id
-    INNER JOIN engagements ej ON ej.num_ej = link.order_id
+    INNER JOIN docia_engagement ej ON ej.num_ej = link.order_id
     WHERE doc.hash = ANY(%s)
     """
     with connection.cursor() as cursor:
@@ -132,7 +132,7 @@ def bulk_create_links_document_engagement_using_external_data(file_infos: list[F
     links_doc_engagement = [
         DocumentEngagement(
             document_id=doc_id,
-            dataengagement_id=ej_id,
+            engagement_id=ej_id,
         )
         for doc_id, ej_id in links
     ]
@@ -141,15 +141,15 @@ def bulk_create_links_document_engagement_using_external_data(file_infos: list[F
     DocumentEngagement.objects.bulk_create(links_doc_engagement, batch_size=200, ignore_conflicts=True)
 
 
-def bulk_create_batches(num_ejs, batch):
-    batches = [
-        DataBatch(
-            batch=batch,
+def bulk_create_ej_tags(num_ejs, tag):
+    tags = [
+        EngagementTag(
+            name=tag,
             ej_id=num_ej,
         )
         for num_ej in num_ejs
     ]
-    DataBatch.objects.bulk_create(batches, batch_size=200, ignore_conflicts=True)
+    EngagementTag.objects.bulk_create(tags, batch_size=200, ignore_conflicts=True)
 
 
 def remove_duplicates(file_infos: list[FileInfo]):
@@ -182,7 +182,7 @@ def init_documents_from_external_filter_by_num_ejs(num_ejs: list[str], batch_nam
     num_ejs = sorted(num_ejs)
     with atomic():
         bulk_create_engagements(num_ejs)
-        bulk_create_batches(num_ejs, batch_name)
+        bulk_create_ej_tags(num_ejs, batch_name)
         bulk_create_documents(fileinfos)
         bulk_create_links_document_engagement_using_external_data(fileinfos)
 
@@ -216,6 +216,6 @@ def task_chunk_init_documents(batch: str, folder: str, *, chunk_number: int = 0,
     num_ejs = sorted(set(extract_num_EJ(info.filename) for info in files_info))
     with atomic():
         bulk_create_engagements(num_ejs)
-        bulk_create_batches(num_ejs, batch)
+        bulk_create_ej_tags(num_ejs, batch)
         bulk_create_documents(files_info)
         bulk_create_links_document_engagement_using_filenames(files_info)

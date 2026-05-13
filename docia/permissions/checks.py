@@ -1,7 +1,7 @@
 from django.db.models import Q
 
 from docia.documents.models import EngagementScope
-from docia.models import DataEngagement
+from docia.models import Engagement
 from docia.permissions.models import GroupScope
 
 
@@ -14,7 +14,7 @@ def get_user_allowed_ej_qs(user):
         else:
             q |= Q(purchase_organization=scope.purchase_organization) & Q(purchase_group=scope.purchase_group)
     ej_scopes = list(EngagementScope.objects.filter(q).values_list("id", flat=True).distinct())
-    return DataEngagement.objects.filter(scopes__in=ej_scopes).distinct()
+    return Engagement.objects.filter(scopes__in=ej_scopes).distinct()
 
 
 def user_can_view_ej(user, num_ej: str):

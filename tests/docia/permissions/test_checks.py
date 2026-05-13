@@ -4,7 +4,7 @@ import pytest
 
 from docia.permissions.checks import get_user_allowed_ej_qs, user_can_view_ej
 from docia.permissions.models import GroupScope
-from tests.factories.data import DataEngagementFactory, EngagementScopeFactory
+from tests.factories.data import EngagementFactory, EngagementScopeFactory
 from tests.factories.users import GroupFactory, UserFactory
 from tests.utils import assert_queryset_equal
 
@@ -25,7 +25,7 @@ class TestGetUserAllowedEj:
         group.user_set.add(user)
 
         # Create engagements and scopes
-        ej1, ej2, ej3, _ej4 = DataEngagementFactory.create_batch(4)
+        ej1, ej2, ej3, _ej4 = EngagementFactory.create_batch(4)
 
         scope1 = EngagementScopeFactory(purchase_organization="OA_1", purchase_group="GA_1")
         scope1.engagements.add(ej1, ej2)
@@ -49,7 +49,7 @@ class TestGetUserAllowedEj:
         group.user_set.add(user)
 
         # Create engagements
-        ej1, ej2, ej3 = DataEngagementFactory.create_batch(3)
+        ej1, ej2, ej3 = EngagementFactory.create_batch(3)
 
         # Create scope with wildcard group (organization only)
         scope1 = EngagementScopeFactory(purchase_organization="OA_1", purchase_group="*")
@@ -76,9 +76,9 @@ class TestGetUserAllowedEj:
         group2.user_set.add(user)
 
         # Create engagements and scopes
-        ej1 = DataEngagementFactory(num_ej="EJ001")
-        ej2 = DataEngagementFactory(num_ej="EJ002")
-        ej3 = DataEngagementFactory(num_ej="EJ003")
+        ej1 = EngagementFactory(num_ej="EJ001")
+        ej2 = EngagementFactory(num_ej="EJ002")
+        ej3 = EngagementFactory(num_ej="EJ003")
 
         scope1 = EngagementScopeFactory(purchase_organization="OA_1", purchase_group="GA_1")
         scope1.engagements.add(ej1)
@@ -101,10 +101,10 @@ class TestGetUserAllowedEj:
         group.user_set.add(user)
 
         # Create engagements
-        ej1 = DataEngagementFactory(num_ej="EJ001")
-        ej2 = DataEngagementFactory(num_ej="EJ002")
-        ej3 = DataEngagementFactory(num_ej="EJ003")
-        ej4 = DataEngagementFactory(num_ej="EJ004")
+        ej1 = EngagementFactory(num_ej="EJ001")
+        ej2 = EngagementFactory(num_ej="EJ002")
+        ej3 = EngagementFactory(num_ej="EJ003")
+        ej4 = EngagementFactory(num_ej="EJ004")
 
         # Create wildcard scope for OA_1
         scope1 = EngagementScopeFactory(purchase_organization="OA_1", purchase_group="*")
@@ -133,8 +133,8 @@ class TestGetUserAllowedEj:
         group = GroupFactory()
         group.user_set.add(user)
 
-        ej1 = DataEngagementFactory(num_ej="EJ001")
-        ej2 = DataEngagementFactory(num_ej="EJ002")
+        ej1 = EngagementFactory(num_ej="EJ001")
+        ej2 = EngagementFactory(num_ej="EJ002")
 
         # Create two scopes that both include ej1
         scope1 = EngagementScopeFactory(purchase_organization="OA_1", purchase_group="GA_1")
@@ -172,7 +172,7 @@ class TestUserCanViewEj:
     def test_superuser(self):
         """Test that superusers can view any EJ."""
         user = UserFactory(is_superuser=True)
-        ej = DataEngagementFactory()
+        ej = EngagementFactory()
 
         result = user_can_view_ej(user, ej.num_ej)
         assert result is True
@@ -181,7 +181,7 @@ class TestUserCanViewEj:
     def test_no_permission_no_scope(self):
         """Test that user without permission and without scope cannot view EJ."""
         user = UserFactory()
-        ej = DataEngagementFactory()
+        ej = EngagementFactory()
 
         result = user_can_view_ej(user, ej.num_ej)
         assert result is False
@@ -190,7 +190,7 @@ class TestUserCanViewEj:
     def test_with_permission_no_scope(self):
         """Test that user with permission but without scope cannot view EJ."""
         user = UserFactory()
-        ej = DataEngagementFactory()
+        ej = EngagementFactory()
         self._add_permission(user)
 
         result = user_can_view_ej(user, ej.num_ej)
@@ -200,7 +200,7 @@ class TestUserCanViewEj:
     def test_no_permission_with_scope(self):
         """Test that user without permission but with scope cannot view EJ."""
         user = UserFactory()
-        ej = DataEngagementFactory()
+        ej = EngagementFactory()
         self._add_scope(user, ej)
 
         result = user_can_view_ej(user, ej.num_ej)
@@ -210,7 +210,7 @@ class TestUserCanViewEj:
     def test_with_permission_and_scope(self):
         """Test that user with both permission and scope can view EJ."""
         user = UserFactory()
-        ej = DataEngagementFactory()
+        ej = EngagementFactory()
         self._add_permission(user)
         self._add_scope(user, ej)
 
@@ -221,8 +221,8 @@ class TestUserCanViewEj:
     def test_wrong_ej(self):
         """Test that user with permission and scope cannot view different EJ."""
         user = UserFactory()
-        ej_allowed = DataEngagementFactory(num_ej="EJ001")
-        ej_not_allowed = DataEngagementFactory(num_ej="EJ002")
+        ej_allowed = EngagementFactory(num_ej="EJ001")
+        ej_not_allowed = EngagementFactory(num_ej="EJ002")
         self._add_permission(user)
         self._add_scope(user, ej_allowed)
 
@@ -238,9 +238,9 @@ class TestUserCanViewEj:
     def test_multiple_scopes(self):
         """Test that user can view EJ from any of their scopes."""
         user = UserFactory()
-        ej1 = DataEngagementFactory(num_ej="EJ001")
-        ej2 = DataEngagementFactory(num_ej="EJ002")
-        ej3 = DataEngagementFactory(num_ej="EJ003")
+        ej1 = EngagementFactory(num_ej="EJ001")
+        ej2 = EngagementFactory(num_ej="EJ002")
+        ej3 = EngagementFactory(num_ej="EJ003")
         self._add_permission(user)
         self._add_scope(user, ej1)
         self._add_scope(user, ej2)
@@ -254,7 +254,7 @@ class TestUserCanViewEj:
     def test_nonexistent_ej(self):
         """Test that user cannot view non-existent EJ."""
         user = UserFactory()
-        ej = DataEngagementFactory(num_ej="EJ001")
+        ej = EngagementFactory(num_ej="EJ001")
         self._add_permission(user)
         self._add_scope(user, ej)
 
@@ -265,8 +265,8 @@ class TestUserCanViewEj:
     def test_with_permission_and_wildcard_scope(self):
         """Test that user with permission and wildcard scope can view EJ."""
         user = UserFactory()
-        ej_allowed = DataEngagementFactory(num_ej="EJ001")
-        ej_not_allowed = DataEngagementFactory(num_ej="EJ002")
+        ej_allowed = EngagementFactory(num_ej="EJ001")
+        ej_not_allowed = EngagementFactory(num_ej="EJ002")
 
         # Add permission
         self._add_permission(user)

@@ -9,7 +9,7 @@ from docia.file_processing.sync.workflow import (
     sync_documents,
     sync_engagements,
 )
-from tests.factories.data import DataEngagementFactory
+from tests.factories.data import EngagementFactory
 from tests.factories.file_processing import (
     ExternalDocumentMetadataFactory,
 )
@@ -44,10 +44,10 @@ def test_sync_documents():
     """Test that sync_documents fetches engagements and calls DocumentMetadataSync.sync"""
 
     # Create test engagements
-    ej1 = DataEngagementFactory(external_updated_at=datetime(2024, 3, 2, tzinfo=timezone.utc))
-    ej2 = DataEngagementFactory(external_updated_at=datetime(2024, 3, 3, tzinfo=timezone.utc))
+    ej1 = EngagementFactory(external_updated_at=datetime(2024, 3, 2, tzinfo=timezone.utc))
+    ej2 = EngagementFactory(external_updated_at=datetime(2024, 3, 3, tzinfo=timezone.utc))
     # This engagement should not be included (updated before start date)
-    DataEngagementFactory(external_updated_at=datetime(2024, 2, 28, tzinfo=timezone.utc))
+    EngagementFactory(external_updated_at=datetime(2024, 2, 28, tzinfo=timezone.utc))
 
     with patch("docia.file_processing.sync.workflow.DocumentMetadataSync") as MockDocumentMetadataSync:
         # Create a mock instance
