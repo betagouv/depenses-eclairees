@@ -17,19 +17,20 @@ class ExtractTextStepRunner(AbstractStepRunner):
         document = step.job.document
         file_path = document.file.name
         try:
-            text, is_ocr, nb_words, nb_pages = processor.process_file(file_path, document.extension)
+            result = processor.process_file(file_path, document.extension)
         except UnsupportedFileType as e:
             raise SkipStepException(str(e))
         except FileSizeLimitException as e:
             raise SkipStepException(str(e))
 
-        if not text:
+        if not result.text:
             raise Exception(f"Failed to extract text - empty result - {file_path}")
 
-        document.text = text
-        document.is_ocr = is_ocr
-        document.nb_mot = nb_words
-        document.nb_pages = nb_pages
+        document.text = result.text
+        document.is_ocr = result.is_ocr
+        document.nb_mot = result.nb_words
+        document.nb_pages = result.nb_pages
+        document.nb_tokens = result.nb_tokens
         document.save(update_fields=["text", "is_ocr", "nb_mot", "nb_pages"])
 
 
