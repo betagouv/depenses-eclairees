@@ -90,61 +90,43 @@ def post_processing_bank_account(bank_account_input: dict[str, str]) -> dict[str
     if not bank_account_input:
         return None
 
-    # Vérifie que rib contient la clé 'banque'
-    # Si la clé banque est absente, c'est souvent qu'il n'y a en fait pas de RIB dans le document.
-    # Pas de banque, mais un iban -> souvent une hallucination du LLM.
-    if "banque" not in bank_account_input:
-        raise ValueError("Le paramètre 'rib' doit contenir la clé 'banque'")
-
     bank_name = bank_account_input.get("banque", None)
 
     # Si 'iban' est présent, on prend l'iban
-    if "iban" in bank_account_input:
-        iban = bank_account_input.get("iban", None)
+    if bank_account_input.get("iban", None):
+        iban = bank_account_input["iban"]
+        if not check_consistency_iban(iban):
+            iban = try_correct_false_iban(iban)
 
-    # Si on a les 4 champs numériques mais pas d'iban, on construit l'iban
-    elif all(k in bank_account_input for k in ["code_banque", "code_guichet", "numero_compte", "cle_rib"]):
-        bank_code = bank_account_input.get("code_banque", "")
-        bank_guichet = bank_account_input.get("code_guichet", "")
-        account_number = bank_account_input.get("numero_compte", "")
-        check_digit = bank_account_input.get("cle_rib", "")
-        if bank_code and bank_guichet and account_number and check_digit:
-            try:
-                iban = str(IBAN.generate("FR", bank_code=bank_code + bank_guichet, account_code=account_number))
-            except SchwiftyException:
+    # Si on a les 3 champs numériques mais pas d'iban, on construit l'iban et on vérifie la clé RIB
+    elif all(bank_account_input.get(k) for k in ("code_banque", "code_guichet", "numero_compte", "cle_rib")):
+        bank_code = bank_account_input["code_banque"]
+        bank_guichet = bank_account_input["code_guichet"]
+        account_number = bank_account_input["numero_compte"]
+        check_digit = bank_account_input["cle_rib"]
+        try:
+            iban = str(IBAN.generate("FR", bank_code=bank_code + bank_guichet, account_code=account_number))
+            if not iban.endswith(check_digit):
                 iban = None
-        else:
+        except SchwiftyException:
             iban = None
 
     # Nouveau cas : seulement le numero_compte
-    elif "numero_compte" in bank_account_input:
-        account_number = bank_account_input.get("numero_compte", "")
-        if account_number:
-            # On ne connait pas les autres champs, donc on met des X pour compléter
-            # "FR76" + "XXXXXXXXXX" + numero_compte + "XX"
-            iban = "FR76" + "X" * 10 + account_number + "X" * 2
-        else:
-            iban = None
+    elif bank_account_input.get("numero_compte", None) and len(bank_account_input["numero_compte"]) == 11:
+        account_number = bank_account_input["numero_compte"]
+        iban = "X" * 14 + account_number + "X" * 2
 
-    # Si pas d'iban et pas les 4 champs, on renvoie une erreur.
+    # Si pas d'iban et pas les 4 champs, on renvoie None.
     else:
-        logger.warning(
-            "Le RIB doit contenir soit un IBAN, soit les champs code_banque, code_guichet, numero_compte et cle_rib."
-        )
         return None
 
     if iban:
         iban = re.sub(r"\s+", "", iban).upper()  # Suppression des espaces et mise en majuscule
-    else:
-        iban = None
-
-    if not iban and not bank_name:
-        return None
-    if not check_consistency_iban(iban):
-        iban = try_correct_false_iban(iban)
-    if not iban:
+        return {"banque": bank_name, "iban": iban}
+    elif bank_name:
         return {"banque": bank_name, "iban": None}
-    return {"banque": bank_name, "iban": iban}
+    else:
+        return None
 
 
 def post_processing_amount(amount: str) -> str:

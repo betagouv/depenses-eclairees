@@ -1,5 +1,3 @@
-import pytest
-
 from docia.file_processing.processor.post_processing_llm import post_processing_other_bank_accounts
 
 
@@ -66,19 +64,17 @@ def test_post_processing_other_bank_accounts_no_iban_no_banque():
 
 
 def test_post_processing_other_bank_accounts_only_banque():
-    """Test avec seulement banque (sans IBAN valide)."""
+    """Test avec seulement banque (sans IBAN ni composants RIB) : compte exclu."""
     other_accounts = [
         {
             "societe": "Entreprise A",
             "rib": {
                 "banque": "Crédit Agricole",
-                "iban": "",  # Pas d'IBAN
+                "iban": "",
             },
         }
     ]
-    result = post_processing_other_bank_accounts(other_accounts)
-    assert result[0]["societe"] == "Entreprise A"
-    assert result[0]["rib"] == {"banque": "Crédit Agricole", "iban": None}
+    assert post_processing_other_bank_accounts(other_accounts) is None
 
 
 def test_post_processing_other_bank_accounts_missing_societe():
@@ -126,33 +122,29 @@ def test_post_processing_other_bank_accounts_missing_societe_key():
 
 
 def test_post_processing_other_bank_accounts_rib_missing_banque():
-    """Test avec RIB sans clé 'banque' (doit lever ValueError)."""
+    """Test avec RIB sans banque mais avec IBAN valide."""
     other_accounts = [
         {
             "societe": "Entreprise A",
             "rib": {
-                "iban": "FR1420041010050500013M02606"
-                # Pas de clé 'banque'
+                "iban": "FR1420041010050500013M02606",
             },
         }
     ]
-    with pytest.raises(ValueError, match="doit contenir la clé 'banque'"):
-        post_processing_other_bank_accounts(other_accounts)
+    result = post_processing_other_bank_accounts(other_accounts)
+    assert len(result) == 1
+    assert result[0]["rib"] == {"banque": None, "iban": "FR1420041010050500013M02606"}
 
 
 def test_post_processing_other_bank_accounts_rib_wrong_keys():
-    """Test avec RIB ayant de mauvaises clés (doit lever ValueError)."""
+    """Test avec RIB ayant de mauvaises clés : compte exclu."""
     other_accounts = [
         {
             "societe": "Entreprise A",
             "rib": {
-                "bank_name": "Crédit Agricole",  # Mauvaise clé
-                "account_number": "FR1420041010050500013M02606",  # Mauvaise clé
+                "bank_name": "Crédit Agricole",
+                "account_number": "FR1420041010050500013M02606",
             },
         }
     ]
-    with pytest.raises(ValueError):
-        post_processing_other_bank_accounts(other_accounts)
-
-
-print(0)
+    assert post_processing_other_bank_accounts(other_accounts) is None
