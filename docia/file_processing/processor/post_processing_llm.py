@@ -211,7 +211,8 @@ def post_processing_co_contractors(co_contractors: list[dict[str, str]]) -> list
 
         # On ajoute à la liste seulement si le nom est bien défini
         if co_contractor["nom"]:
-            clean_co_contractors_list.append({"nom": co_contractor["nom"], "siret": clean_siret})
+            clean_co_contractor = post_processing_societe_principale(co_contractor["nom"])
+            clean_co_contractors_list.append({"nom": clean_co_contractor, "siret": clean_siret})
     # On retourne la liste nettoyée des cotraitants
     return clean_co_contractors_list if clean_co_contractors_list else None
 
@@ -231,7 +232,8 @@ def post_processing_subcontractors(subcontractors_list: list[dict[str, str]]) ->
         clean_siret = post_processing_siret(subcontractor["siret"])
 
         if subcontractor["nom"] and clean_siret:
-            clean_subcontractors_list.append({"nom": subcontractor["nom"], "siret": clean_siret})
+            clean_subcontractor = post_processing_societe_principale(subcontractor["nom"])
+            clean_subcontractors_list.append({"nom": clean_subcontractor, "siret": clean_siret})
     # On retourne la liste nettoyée des sous-traitants
     return clean_subcontractors_list if clean_subcontractors_list else None
 
@@ -374,11 +376,12 @@ def post_processing_other_bank_accounts(
         partner_name = account_entry.get("societe", "")
         account_data = account_entry.get("rib", None)
 
+        clean_partner_name = post_processing_societe_principale(partner_name)
         processed_account = post_processing_bank_account(account_data)
 
         # Ajouter à la liste seulement si le compte est valide (non vide)
         if processed_account and (processed_account.get("iban", None) or processed_account.get("banque", None)):
-            clean_bank_accounts.append({"societe": partner_name, "rib": processed_account})
+            clean_bank_accounts.append({"societe": clean_partner_name, "rib": processed_account})
 
     # Retourner la liste nettoyée des comptes bancaires
     return clean_bank_accounts if clean_bank_accounts else None

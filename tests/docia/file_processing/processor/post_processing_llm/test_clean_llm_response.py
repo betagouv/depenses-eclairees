@@ -60,7 +60,7 @@ def test_clean_llm_response_acte_engagement():
         },
         "rib_autres": [
             {
-                "societe": "Société test",
+                "societe": "test",
                 "rib": {"banque": "Banque test", "iban": _IBAN_AUTRE},
             }
         ],
