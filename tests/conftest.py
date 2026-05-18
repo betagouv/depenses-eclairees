@@ -4,9 +4,20 @@ from django.test import Client
 
 import boto3
 import pytest
+import responses
+import tiktoken
 from moto import mock_aws
 
 from tests.factories.users import UserFactory
+
+
+@pytest.fixture(scope="session", autouse=True)
+def tiktoken_init():
+    """Initialize tiktoken encoding before running tests."""
+    # First call will download the encoder, do it before running tests
+    with responses.RequestsMock() as rsps:
+        rsps.add_passthru("https://openaipublic.blob.core.windows.net")
+        tiktoken.get_encoding("o200k_base")
 
 
 @pytest.fixture(scope="session", autouse=True)
