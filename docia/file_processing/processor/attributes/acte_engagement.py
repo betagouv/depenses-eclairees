@@ -30,8 +30,9 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
      * Si le document précise que ce marché est un marché subséquent ou fait partie d'un marché à marchés subséquents, renvoyer true.
      * Sinon, renvoyer false.
    - Pour le champ marche_parent :
-     * Rechercher l'identifiant du marché parent (souvent mentionné comme "accord-cadre", "contrat-cadre", "marché global", etc.).
-     * L'identifiant peut être un numéro de marché, un code, un numéro de consultation ou toute référence unique au marché parent.
+     * Rechercher l'identifiant du marché parent (souvent mentionné après "accord-cadre", "contrat-cadre", "marché global", etc.).
+     * L'identifiant peut être un numéro de marché, un code, un numéro de consultation ou toute référence unique au marché parent. Exemple 22_BAM_035, ou SIG_AOO_2021_07
+     * Ne pas inclure ATTRI1, n°Chorus, 1300000000 ou 2025.1000000000, uniquement le numéro (pas de parenthèses de précision). Pas de reformulation.
      * Si aucun marché parent n'est mentionné ou si son identifiant n'est pas disponible, renvoyer null.
    Format : 
    - Un objet JSON avec les trois champs suivants au même niveau :
@@ -123,6 +124,7 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
         * 'numero_compte' : numéro de compte français à 11 chiffres (espaces non compris)
         * 'cle_rib' : clé du RIB à 2 chiffres (espaces non compris)
      - Si aucune information bancaire trouvée pour le mandataire (ni IBAN, ni informations seules), renvoyer {}
+     - Si un seul numéro à 11 chiffres est fourni, il s'agit souvent du numero de compte seul. Renvoyer le numéro de compte seul.
      Format : 
      - 1er cas (prioritaire) : un json sous format suivant {"banque": "nom de la banque", "iban": "IBAN avec espaces tous les 4 caractères"}
      - 2ème cas (secondaire - uniquement s'il n'y a pas d'IBAN) : un json sous format suivant {"banque": "nom de la banque", "code_banque": "code de la banque à 5 chiffres", "code_guichet": "code du guichet à 5 chiffres", "numero_compte": "numéro de compte à 11 chiffres", "cle_rib": "clé du RIB à 2 chiffres"}
@@ -200,6 +202,7 @@ Règles d’extraction :
         * 'cle_rib' : clé du RIB à 2 chiffres (espaces non compris)
      - S'il n'y a que le RIB du mandataire, renvoyer [].
      - S'il n'y a pas d'informations sur le compte bancaire pour une entreprise (ni IBAN, ni informations RIB), ne pas inclure cette entreprise dans la liste.
+     - Si un seul numéro à 11 chiffres est fourni, il s'agit souvent du numero de compte seul. Renvoyer le numéro de compte seul.
      Format : 
      - 1er cas (prioritaire) : [{"societe": "nom de la société", "rib": {"banque": "nom de la banque", "iban": "IBAN avec espaces tous les 4 caractères"}}]
      - 2ème cas (secondaire - uniquement s'il n'y a pas d'IBAN) : [{"societe": "nom de la société", "rib": {"banque": "nom de la banque", "code_banque": "...", "code_guichet": "...", "numero_compte": "...", "cle_rib": "..."}}]
@@ -233,7 +236,7 @@ Règles d’extraction :
      - Rechercher les mentions "hors taxes", "HT", "sans TVA", "hors TVA" ou équivalent. 
      - Extraire le montant exprimé en euros ou en écriture littérale, et mets le en chiffres en euros.
      - Cas particuliers :
-        * Pour un marché en plusieurs lots (cf champ lot_concerne), ne renvoyer que le montant du lot concerné.
+        * Pour un marché en plusieurs lots (cf champ lot_concerne), ne renvoyer que le montant (maximum) du lot concerné.
         * Pour un marché en plusieurs tranches, renvoyer la somme des montants de toutes les tranches.
      - Ne rien envoyer si aucun montant HT trouvé.
      Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
@@ -259,15 +262,13 @@ Règles d’extraction :
         Indices :
         - Chercher dans le paragraphe indiquant la durée du marché ou le délai d'exécution des prestations.
         - Durée initiale : la durée du marché ferme (sans reconduction ou tranches optionnelles), en nombre de mois.
-            * En l'absence de précisions sur la durée ferme, renvoyer duree_initiale: null
+            * En l'absence de précisions sur la durée ferme, par exemple s'il y a seulement des dates de début et de fin, renvoyer duree_initiale: null
             * Exemple : une durée de 1 an, renvoyer 12.
-            * Pour une durée entre des dates clés, par exemple "jusqu'à la réunion de conclusion 6 mois après le lancement" : renvoyer 6 mois.
-                -> Attention : si ces dates clés sont insuffisamment documentées, renvoyer duree_initiale: null
         - Extension de durée possible : extenion maximale en nombre de mois.
             * En l'absence d'informations claires, renvoyer duree_reconduction: null
             * Si des reconductions sont précisées (ne pas confondre avec des tranches optionnelles qui sont gérées ci-dessous) :
                 1. duree_reconduction : Trouver la durée d'une reconduction (en nombre de mois). Si l'information n'est pas précisée ou qu'il n'y a pas de reconduction, renvoyer null.
-                2. nb_reconductions : Trouver le nombre de reconductions possibles (éventuellement 0). Si l'information n'est pas précisée ou qu'il n'y a pas de reconduction, renvoyer null.
+                2. nb_reconductions : Trouver le nombre de reconductions possibles. Si l'information n'est pas précisée ou qu'il n'y a pas de reconduction, renvoyer null.
             * Si des tranches optionnelles sont précisées : renvoyer la durée de l'ensemble des tranches optionnelles.
                 1. delai_tranche_optionnelle : Trouver la durée de l'ensemble des tranches optionnelles. Si l'information n'est pas précisée ou qu'il n'y a pas de tranches optionnelles, renvoyer null.
                     Exemple : 2 tranches optionnelles de 8 mois, renvoyer 8 + 8 = 16.
@@ -320,11 +321,12 @@ Règles d’extraction :
       Définition : Date de notification du marché aux mandataires. 
       Indices : 
       - Parfois en début du document, ou en toute fin de document.
-      - Après la mention "Date de notification" ou "Date de début du marché".
+      - Après la mention "Date de notification" mais ce n'est pas la date de début prévisionnelle "Date de début du marché".
       - S'il y a un doute sur la lecture de la date, prendre la date la plus proche postérieure à la signature par l'administration si disponible.
       - Peut aussi être la date d'un courrier de notification ou d'un mail en annexe du document.
       - S'il n'y a pas de date de notification explicite, ne rien renvoyer.
       - Attention à ne pas confondre la date de notification avec la date de signature.
+      - Pour un marché subséquent, ne pas confondre avec la date de notification du marché (parent).
      Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
 """,
     },
@@ -342,6 +344,10 @@ Règles d’extraction :
         - Si la phrase est "Je souhaite BENEFICIER de l'avance" : Oui = Conserve -> Renvoyer "conserve", Non = Renonce -> Renvoyer "renonce"
         - Uniquement si le paragraphe est totalement absent ou si aucune mention ([X], [x], X ou x n'est présente) -> Renvoyer null
 """,
+        "schema": {
+            "type": "string",
+            "enum": ["conserve", "renonce", ""],
+        },
     },
     "montants_en_annexe": {
         "consigne": """
@@ -387,8 +393,8 @@ Règles d’extraction :
         Indices :
         - Rechercher la mention de TVA ou de "taux de TVA". Le montant est souvent sous la forme d'un pourcentage.
         - Convertir le pourcentage en chiffre décimal entre 0 et 1.
-        - Ne rien renvoyer si aucun montant de TVA trouvé.
-        Format : en "0.XX" avec deux décimales (ex. 0.20 pour 20%).
+        - Ne rien renvoyer si aucun montant de TVA trouvé. Ne pas calculer le taux entre deux montants HT et TTC.
+        Format : exprimé en décimales (ex: 0.20, 0.055), pas en pourcentage.
         """,
     },
     "mode_consultation": {

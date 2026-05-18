@@ -163,27 +163,25 @@ CCAP_ATTRIBUTES = {
         Indices :
         - Chercher dans le paragraphe indiquant la durée du marché ou le délai d'exécution des prestations.
         - Durée initiale : la durée du marché ferme (sans reconduction ou tranches optionnelles), en nombre de mois.
-            * En l'absence de précisions sur la durée ferme, renvoyer ''
+            * En l'absence de précisions sur la durée ferme, par exemple s'il y a seulement des dates de début et de fin, renvoyer duree_initiale: null
             * Exemple : une durée de 1 an, renvoyer 12.
-            * Pour une durée entre des dates clés, par exemple "jusqu'à la réunion de conclusion 6 mois après le lancement" : renvoyer 6 mois.
-                -> Attention : si ces dates clés sont insuffisamment documentées, renvoyer ''
         - Extension de durée possible : extenion maximale en nombre de mois.
-            * En l'absence d'informations claires, renvoyer ''
+            * En l'absence d'informations claires, renvoyer null
             * Si des reconductions sont précisées (ne pas confondre avec des tranches optionnelles qui sont gérées ci-dessous) :
-                1. duree_reconduction : Trouver la durée d'une reconduction (en nombre de mois). Si l'information n'est pas précisée, renvoyer ''.
-                2. nb_reconductions : Trouver le nombre de reconductions possibles. Si l'information n'est pas précisée, renvoyer ''.
+                1. duree_reconduction : Trouver la durée d'une reconduction (en nombre de mois). Si l'information n'est pas précisée, renvoyer null.
+                2. nb_reconductions : Trouver le nombre de reconductions possibles. Si l'information n'est pas précisée, renvoyer null.
             * Si des tranches optionnelles sont précisées : renvoyer la durée de l'ensemble des tranches optionnelles.
                 1. delai_tranche_optionnelle : Trouver la durée de l'ensemble des tranches optionnelles.
                     Exemple : 2 tranches optionnelles de 8 mois, renvoyer 8 + 8 = 16.
         Format : un json sous format suivant {"duree_initiale": "nombre entier de mois", "duree_reconduction": "nombre entier de mois", "nb_reconductions": "nombre entier de reconductions possibles", "delai_tranche_optionnelle": "nombre entier de mois"}
     """,
         "schema": {
-            "type": ["object", "null"],
+            "type": "object",
             "properties": {
-                "duree_initiale": {"type": "integer"},
-                "duree_reconduction": {"type": "integer"},
-                "nb_reconductions": {"type": "integer"},
-                "delai_tranche_optionnelle": {"type": "integer"},
+                "duree_initiale": {"type": ["integer", "null"]},
+                "duree_reconduction": {"type": ["integer", "null"]},
+                "nb_reconductions": {"type": ["integer", "null"]},
+                "delai_tranche_optionnelle": {"type": ["integer", "null"]},
             },
             "required": ["duree_initiale", "duree_reconduction", "nb_reconductions", "delai_tranche_optionnelle"],
         },
@@ -210,12 +208,12 @@ CCAP_ATTRIBUTES = {
                         "oneOf": [
                             {"type": "string", "enum": ["identique à la durée du marché"]},
                             {
-                                "type": "object",
+                                "type": ["object", "null"],
                                 "properties": {
-                                    "duree_initiale": {"type": "integer"},
-                                    "duree_reconduction": {"type": "integer"},
-                                    "nb_reconductions": {"type": "integer"},
-                                    "delai_tranche_optionnelle": {"type": "integer"},
+                                    "duree_initiale": {"type": ["integer", "null"]},
+                                    "duree_reconduction": {"type": ["integer", "null"]},
+                                    "nb_reconductions": {"type": ["integer", "null"]},
+                                    "delai_tranche_optionnelle": {"type": ["integer", "null"]},
                                 },
                                 "required": [
                                     "duree_initiale",
@@ -239,14 +237,15 @@ CCAP_ATTRIBUTES = {
      - Dans la section spécifique des montants du marché, ou dans la forme du marché.
      - Si le marché est alloti, ne rien renvoyer.
      - montant_ht_maximum : renvoyer le montant maximum hors taxes au format "XXXX.XX" (2 décimales, sans espaces séparateurs de milliers)
-     - type_montant : renvoyer "annuel" si le montant est annuel, "total" si le montant est global. Si plusieurs possibilités, renovyer le montant hors taxes annuel.
+     - type_montant : renvoyer "annuel" si le montant est annuel, "total" si le montant est global. Si plusieurs possibilités, renvoyer le montant hors taxes global.
      - S'il n'y a pas d'informations disponibles sur le montant maximum hors taxes, renvoyer null.
+     - Ne pas confondre avec le montant des pénalités. Le montant attendu est un montant souvent supérieur à 10000€.
      Format : un json {"montant_ht_maximum": "XXXX.XX", "type_montant": "annuel" ou "total"}.
 """,
         "schema": {
             "type": ["object", "null"],
             "properties": {
-                "montant_ht_maximum": {"type": "string"},
+                "montant_ht_maximum": {"type": ["string", "null"]},
                 "type_montant": {"type": "string", "enum": ["annuel", "total"]},
             },
             "required": ["montant_ht_maximum", "type_montant"],
@@ -283,11 +282,17 @@ CCAP_ATTRIBUTES = {
      Indices : 
      - Dans le corps du document, ou en dernier paragraphe dans les dérogations au CCAG.
      - Souvent cité par la forme "CCAG-XXXX". Le XXXX est l'acronyme du CCAG de référence : renvoyer XXXX.
-     - Si le CCAG spécifique est cité en toutes lettres, renvoyer seulement l'acronyme : Exemple : "CCAG de prestations intellectuelles" renvoyer "PI".
+     - Si le CCAG spécifique est cité en toutes lettres, renvoyer parmi les valeurs suivantes : 
+       * "CCAG de fournitures courantes et services" renvoyer "FCS".
+       * "CCAG de prestations intellectuelles" renvoyer "PI".
+       * "CCAG de travaux" renvoyer "Travaux".
+       * "CCAG de marchés industriels" renvoyer "MI".
+       * "CCAG de techniques de l'information et de la communication" renvoyer "TIC".
+       * "CCAG de matrise d'oeuvre" renvoyer "MOE".
      - Si un CCAG est mentionné, mais sans préciser lequel (acronyme ou en toutes lettres), renvoyer null.
      - Si aucun CCAG n'est mentionné, renvoyer null.
-     Format : un acronyme de quelques lettres ou null.
 """,
+        "schema": {"type": ["string", "null"], "enum": ["FCS", "PI", "Travaux", "MI", "TIC", "MOE", None]},
     },
     "formule_revision_prix": {
         "consigne": """

@@ -64,8 +64,14 @@ SOUS_TRAITANCE_ATTRIBUTES = {
         "consigne": """
    Définition : Numéro SIRET du titulaire principal du marché, composé de 14 chiffres.  
    Indices :
-   - Peut être mentionné comme "SIRET", "numéro d'immatriculation" ou "SIRET du titulaire"
-   - Rechercher dans la section du titulaire principal du marché
+   - Peut être mentionné comme "SIRET", "numéro d'immatriculation" ou "SIRET du titulaire".
+   - Rechercher dans la section du titulaire principal du marché.
+   - Favoriser les numéros de SIRET indiqués dans l'identification du titulaire, plutôt qu'en signature du document.
+   - Si plusieurs SIRET sont disponibles pour une même entreprise, avec différentes terminaisons (5 derniers chiffres) :
+        * Prendre le numéro de l'établissement concerné (pas le siège social) pour renvoyer le SIRET.
+        * S'il n'y a pas de précisions sur l'établissement concerné, renvoyer le SIRET le plus élevé.
+            -> Exemple : 123 456 789 00001 et 123 456 789 00020, renvoyer 12345678900020 (car 00020 > 00001).
+   - Si le numéro de SIRET ne contient pas suffisamment de caractères, ne pas compléter : renvoyer tel quel.
    Format : un numéro composé de 14 chiffres, sans espaces.  
 """,
     },
@@ -110,8 +116,14 @@ SOUS_TRAITANCE_ATTRIBUTES = {
         "consigne": """
    Définition : Numéro SIRET du sous-traitant, composé de 14 chiffres.  
    Indices :
-   - Peut être mentionné comme "SIRET", "numéro d'immatriculation" ou "SIRET du sous-traitant"
-   - Rechercher dans la section du sous-traitant
+   - Peut être mentionné comme "SIRET", "numéro d'immatriculation" ou "SIRET du sous-traitant".
+   - Rechercher dans la section du sous-traitant.
+   - Favoriser les numéros de SIRET indiqués dans l'identification du sous-traitant, plutôt qu'en signature du document.
+   - Si plusieurs SIRET sont disponibles pour une même entreprise, avec différentes terminaisons (5 derniers chiffres) :
+        * Prendre le numéro de l'établissement concerné (pas le siège social) pour renvoyer le SIRET.
+        * S'il n'y a pas de précisions sur l'établissement concerné, renvoyer le SIRET le plus élevé.
+            -> Exemple : 123 456 789 00001 et 123 456 789 00020, renvoyer 12345678900020 (car 00020 > 00001).
+   - Si le numéro de SIRET ne contient pas suffisamment de caractères, ne pas compléter : renvoyer tel quel.
    Format : un numéro composé de 14 chiffres, sans espaces.  
 """,
     },
@@ -121,6 +133,7 @@ SOUS_TRAITANCE_ATTRIBUTES = {
      Indices : 
      - Rechercher les mentions "hors taxes", "HT", "sans TVA" ou équivalent dans la section sous-traitance. 
      - Extraire le montant exprimé en euros ou en écriture littérale, et mets le en chiffres en euros.
+     - Si plusieurs montants sont mentionnés pour DGPF et BPU, renvoyer le montant HT correspondant au DGPF.
      - Ne rien envoyer si aucun montant trouvé.
      Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
      """,
@@ -131,6 +144,7 @@ SOUS_TRAITANCE_ATTRIBUTES = {
      Indices : 
      - Rechercher les expressions "TTC", "TVA incluse", "TVA comprise" dans la section sous-traitance. 
      - Extraire le montant exprimé en euros ou en écriture littérale, et mets le en chiffres en euros.
+     - Si plusieurs montants sont mentionnés pour DGPF et BPU, renvoyer le montant TTC correspondant au DGPF.
      - Ignorer les montants HT (hors taxes) et le montant de TVA seule
      - Ne rien envoyer si aucun montant trouvé.
      Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
@@ -195,6 +209,7 @@ SOUS_TRAITANCE_ATTRIBUTES = {
         * 'numero_compte' : numéro de compte français à 11 chiffres (espaces non compris)
         * 'cle_rib' : clé du RIB à 2 chiffres (espaces non compris)
      - Si aucune information bancaire trouvée pour le sous-traitant (ni IBAN, ni informations seules), renvoyer {}.
+     - Si un seul numéro à 11 chiffres est fourni, il s'agit souvent du numero de compte seul. Renvoyer le numéro de compte seul.
      Format :
      - 1er cas (prioritaire) : un json sous format suivant {"banque": "nom de la banque", "iban": "IBAN avec espaces tous les 4 caractères"}
      - 2ème cas (secondaire - uniquement s'il n'y a pas d'IBAN) : un json sous format suivant {"banque": "nom de la banque", "code_banque": "code de la banque à 5 chiffres", "code_guichet": "code du guichet à 5 chiffres", "numero_compte": "numéro de compte à 11 chiffres", "cle_rib": "clé du RIB à 2 chiffres"}
