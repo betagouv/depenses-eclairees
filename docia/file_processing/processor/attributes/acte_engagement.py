@@ -124,7 +124,7 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
         * 'numero_compte' : numéro de compte français à 11 chiffres (espaces non compris)
         * 'cle_rib' : clé du RIB à 2 chiffres (espaces non compris)
      - Si aucune information bancaire trouvée pour le mandataire (ni IBAN, ni informations seules), renvoyer {}
-     - Si un seul numéro à 11 chiffres est fourni, il s'agit souvent du numero de compte seul. Renvoyer le numéro de compte seul.
+     - Si un seul numéro à 11 chiffres est fourni, il s'agit souvent du numero de compte. Exemple: Numéro de compte: 12345678901. Renvoyer le numéro de compte seul.
      Format : 
      - 1er cas (prioritaire) : un json sous format suivant {"banque": "nom de la banque", "iban": "IBAN avec espaces tous les 4 caractères"}
      - 2ème cas (secondaire - uniquement s'il n'y a pas d'IBAN) : un json sous format suivant {"banque": "nom de la banque", "code_banque": "code de la banque à 5 chiffres", "code_guichet": "code du guichet à 5 chiffres", "numero_compte": "numéro de compte à 11 chiffres", "cle_rib": "clé du RIB à 2 chiffres"}
@@ -202,7 +202,7 @@ Règles d’extraction :
         * 'cle_rib' : clé du RIB à 2 chiffres (espaces non compris)
      - S'il n'y a que le RIB du mandataire, renvoyer [].
      - S'il n'y a pas d'informations sur le compte bancaire pour une entreprise (ni IBAN, ni informations RIB), ne pas inclure cette entreprise dans la liste.
-     - Si un seul numéro à 11 chiffres est fourni, il s'agit souvent du numero de compte seul. Renvoyer le numéro de compte seul.
+     - Si un seul numéro à 11 chiffres est fourni, il s'agit souvent du numero de compte. Exemple: Numéro de compte: 12345678901. Renvoyer le numéro de compte seul.
      Format : 
      - 1er cas (prioritaire) : [{"societe": "nom de la société", "rib": {"banque": "nom de la banque", "iban": "IBAN avec espaces tous les 4 caractères"}}]
      - 2ème cas (secondaire - uniquement s'il n'y a pas d'IBAN) : [{"societe": "nom de la société", "rib": {"banque": "nom de la banque", "code_banque": "...", "code_guichet": "...", "numero_compte": "...", "cle_rib": "..."}}]
