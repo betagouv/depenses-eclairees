@@ -2,21 +2,21 @@
 Définitions des attributs à extraire pour les documents de type "acte_engagement".
 """
 
+from .common import (
+    ADMINISTRATION_BENEFICIAIRE,
+    CONSERVE_AVANCE,
+    MONTANT_HT,
+    MONTANT_TTC,
+    MONTANT_TVA,
+    OBJET_MARCHE,
+    SCHEMA_DUREE,
+    SCHEMA_LISTE_ENTREPRISE_SIRET,
+    SCHEMA_RIB,
+    SOCIETE_PRINCIPALE,
+)
+
 ACTE_ENGAGEMENT_ATTRIBUTES = {
-    "objet_marche": {
-        "consigne": """
-   Définition : l'objet du marché, c'est-à-dire ce qui a été acheté, ou le service fourni.
-   Indices :
-   - Chercher après les mentions "Objet :", ou autre mention similaire.
-   - Généralement en début de document ou après les coordonnées.
-   - Dans tous les cas, l'objet du marché doit avoir du sens pour une personne extérieure, et permettre de comprendre l'achat.
-   - Ne rien renvoyer si aucun objet trouvé
-   Format : 
-   - En bon Français
-   - Attention, ne pas inclure le type de document dans l'objet : "Devis pour ..." enlever "Devis pour" / "Avenant pour ..." enlever "Avenant pour".
-   - Si l'objet de la commande est incompréhensible, proposer un objet simple qui reflète le contenu de la commande.
-""",
-    },
+    "objet_marche": OBJET_MARCHE,
     "forme_marche": {
         "consigne": """
    Définition : Informations sur la forme du marché concernant les lots, les marchés subséquents et les marchés parents.
@@ -57,32 +57,8 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
             "required": ["lot_concerne", "marche_subsequent", "marche_parent"],
         },
     },
-    "administration_beneficiaire": {
-        "consigne": """
-     Définition : Structure administrative ou publique qui bénéficie de la commande, ou qui achète la prestation.
-     Indices :
-     - Rechercher les mentions d'achateurs, de pouvoir adjudicateur, ou d'autorité contractante. Le résultat est souvent une direction ou un service au sein d'une administration.
-     - Si aucune information n'est trouvée sur l'administration bénéficiaire : renvoyer ''.
-     - Si possible, inclure le nom de l'administration jusqu'à deux sous-niveaux organisationnels.
-        * Exemple de bon résultat : Ministère de la culture (MDC) - Secrétariat général (SG) - Direction des musées de France (DMF)
-        * Exemple de résultat trop général : Ministère de la culture (MC)
-        * Exemple de résultat insuffisant : Direction des musées de France (DMF)
-        * Exemple de résultat trop détaillé : Ministère de la culture (MC) - Secrétariat général (SG) - Direction des musées de France (DMF) - Service des musées d'artisanat (SMA)
-     - S'il est seulement précisé les rôles ou les postes de persones, déduire la direction / le service / l'administration bénéficiaire.
-        * Exemple : le préfet de la région Île-de-France -> Préfecture de la région Île-de-France
-     Format : les différents niveaux de l'administration bénéficiaire en minuscule correctement écrit (et leurs acronymes entre parenthèses si disponibles), séparés par des tirets, . 
-""",
-    },
-    "societe_principale": {
-        "consigne": """
-     Définition : Société principale contractante (titulaire). Si un groupement est mentionné, extraire la société mandataire ou représentante.  
-     Indices : 
-     - Rechercher les mentions de société, entreprise, titulaire, mandataire, contractant.
-     - En général, l'autre nom de personne morale que l'administration acheteuse.
-     - Les noms de domaine des adresses mails peuvent donner des indices sur la bonne orthographe.
-     Format : renvoyer le nom de la société.
-""",
-    },
+    "administration_beneficiaire": ADMINISTRATION_BENEFICIAIRE,
+    "societe_principale": SOCIETE_PRINCIPALE,
     "siret_mandataire": {
         "consigne": """
    Définition : Numéro SIRET de la société principale, composé de 14 chiffres.  
@@ -129,17 +105,7 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
      - 1er cas (prioritaire) : un json sous format suivant {"banque": "nom de la banque", "iban": "IBAN avec espaces tous les 4 caractères"}
      - 2ème cas (secondaire - uniquement s'il n'y a pas d'IBAN) : un json sous format suivant {"banque": "nom de la banque", "code_banque": "code de la banque à 5 chiffres", "code_guichet": "code du guichet à 5 chiffres", "numero_compte": "numéro de compte à 11 chiffres", "cle_rib": "clé du RIB à 2 chiffres"}
 """,
-        "schema": {
-            "type": "object",
-            "properties": {
-                "banque": {"type": ["string", "null"]},
-                "iban": {"type": ["string", "null"]},
-                "code_banque": {"type": ["string", "null"]},
-                "code_guichet": {"type": ["string", "null"]},
-                "numero_compte": {"type": ["string", "null"]},
-                "cle_rib": {"type": ["string", "null"]},
-            },
-        },
+        "schema": SCHEMA_RIB,
     },
     "cotraitants": {
         "consigne": """
@@ -158,14 +124,7 @@ Règles d’extraction :
     * une liste JSON : [{"nom": "...", "siret": "..."}]
     * Si aucun cotraitant valide n’est trouvé, renvoyer exactement : []
 """,
-        "schema": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {"nom": {"type": "string"}, "siret": {"type": "string"}},
-                "required": ["nom", "siret"],
-            },
-        },
+        "schema": SCHEMA_LISTE_ENTREPRISE_SIRET,
     },
     "sous_traitants": {
         "consigne": """
@@ -176,14 +135,7 @@ Règles d’extraction :
      - Ne rien renvoyer si aucun sous-traitant trouvé.
      Format : une liste de dictionnaires sous format [{"nom": "nom de la société", "siret": "siret de la société"}]
 """,
-        "schema": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {"nom": {"type": "string"}, "siret": {"type": "string"}},
-                "required": ["nom", "siret"],
-            },
-        },
+        "schema": SCHEMA_LISTE_ENTREPRISE_SIRET,
     },
     "rib_autres": {
         "consigne": """
@@ -229,33 +181,8 @@ Règles d’extraction :
             },
         },
     },
-    "montant_ht": {
-        "consigne": """
-     Définition : Montant du marché hors taxes (également hors TVA).  
-     Indices : 
-     - Rechercher les mentions "hors taxes", "HT", "sans TVA", "hors TVA" ou équivalent. 
-     - Extraire le montant exprimé en euros ou en écriture littérale, et mets le en chiffres en euros.
-     - Cas particuliers :
-        * Pour un marché en plusieurs lots (cf champ lot_concerne), ne renvoyer que le montant (maximum) du lot concerné.
-        * Pour un marché en plusieurs tranches, renvoyer la somme des montants de toutes les tranches.
-     - Ne rien envoyer si aucun montant HT trouvé.
-     Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
-""",
-    },
-    "montant_ttc": {
-        "consigne": """
-     Définition : Montant du marché toutes taxes comprises (avec TVA incluse).  
-     Indices : 
-     - Rechercher les expressions "TTC", "TVA incluse", "TVA comprise".
-     - Ignorer les montants HT (hors taxes) et le montant de TVA seule
-     - Le montant TTC peut être le même que le montant HT, s'il n'y a pas de TVA.
-     - Cas particuliers :
-        * Pour un marché en plusieurs lots (cf champ lot_concerne), ne renvoyer que le montant du lot concerné.
-        * Pour un marché en plusieurs tranches, renvoyer la somme des montants de toutes les tranches.
-     - Ne rien envoyer si aucun montant TTC trouvé, ou si le montant a plus de chance d'être en HT que en TTC.
-     Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
-""",
-    },
+    "montant_ht": MONTANT_HT,
+    "montant_ttc": MONTANT_TTC,
     "duree": {
         "consigne": """
         Définition : Durée du marché totale exprimée en mois et extension possible.
@@ -274,16 +201,7 @@ Règles d’extraction :
                     Exemple : 2 tranches optionnelles de 8 mois, renvoyer 8 + 8 = 16.
         Format : un json sous format suivant {"duree_initiale": "nombre entier de mois", "duree_reconduction": "nombre entier de mois", "nb_reconductions": "nombre entier de reconductions possibles", "delai_tranche_optionnelle": "nombre entier de mois"}
     """,
-        "schema": {
-            "type": "object",
-            "properties": {
-                "duree_initiale": {"type": ["integer", "null"]},
-                "duree_reconduction": {"type": ["integer", "null"]},
-                "nb_reconductions": {"type": ["integer", "null"]},
-                "delai_tranche_optionnelle": {"type": ["integer", "null"]},
-            },
-            "required": ["duree_initiale", "duree_reconduction", "nb_reconductions", "delai_tranche_optionnelle"],
-        },
+        "schema": SCHEMA_DUREE,
     },
     "date_signature_mandataire": {
         "consigne": """
@@ -330,25 +248,7 @@ Règles d’extraction :
      Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
 """,
     },
-    "conserve_avance": {
-        "consigne": """
-        Définition : Information sur la volonté du titulaire de conserver ou de renoncer au bénéfice de l'avance.
-        Indices :
-        Le texte présente souvent une phrase de type "Je renonce au bénéfice de l'avance" suivie de deux options : [ ] Non et [ ] Oui.
-        1. Identifie quelle case est cochée (représentée par [X], [x], X, x, ☒ ou autre équivalent) et quelle case ne l'est pas (représentée par [ ], un espace ou autre équivalent).
-        - La coche appartient à l’option (NON ou OUI) la plus proche spatialement.
-        - Si la coche est située entre "NON" et "OUI", elle est associée à l’option située immédiatement à droite.
-        2. Analyse le sens : 
-        - Si "Renonce" est associé à "NON" (coché) -> L'utilisateur VEUT l'avance -> Renvoyer "conserve"
-        - Si "Renonce" est associé à "OUI" (coché) -> L'utilisateur REFUSE l'avance -> Renvoyer "renonce"
-        - Si la phrase est "Je souhaite BENEFICIER de l'avance" : Oui = Conserve -> Renvoyer "conserve", Non = Renonce -> Renvoyer "renonce"
-        - Uniquement si le paragraphe est totalement absent ou si aucune mention ([X], [x], X ou x n'est présente) -> Renvoyer null
-""",
-        "schema": {
-            "type": "string",
-            "enum": ["conserve", "renonce", ""],
-        },
-    },
+    "conserve_avance": CONSERVE_AVANCE,
     "montants_en_annexe": {
         "consigne": """
      Définition : Indique si les montants sont précisés dans un autre document en annexe (uniquement ou en complément).
@@ -387,16 +287,7 @@ Règles d’extraction :
         Si plusieurs : priorité au CPV principal, sinon tous séparés par des ";" 
         Format : "XXXXXXXX-X Intitulé" ou "XXXXXXXX Intitulé". Sinon null.""",
     },
-    "montant_tva": {
-        "consigne": """
-        Définition : Montant de la TVA.
-        Indices :
-        - Rechercher la mention de TVA ou de "taux de TVA". Le montant est souvent sous la forme d'un pourcentage.
-        - Convertir le pourcentage en chiffre décimal entre 0 et 1.
-        - Ne rien renvoyer si aucun montant de TVA trouvé. Ne pas calculer le taux entre deux montants HT et TTC.
-        Format : exprimé en décimales (ex: 0.20, 0.055), pas en pourcentage.
-        """,
-    },
+    "montant_tva": MONTANT_TVA,
     "mode_consultation": {
         "consigne": """
         Définition : Mode de passation du marché (procédure adaptée, appel d'offres, MAPA, etc.).
