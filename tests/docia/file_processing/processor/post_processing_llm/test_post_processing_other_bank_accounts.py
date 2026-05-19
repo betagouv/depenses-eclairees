@@ -64,7 +64,7 @@ def test_post_processing_other_bank_accounts_no_iban_no_banque():
 
 
 def test_post_processing_other_bank_accounts_only_banque():
-    """Test avec seulement banque (sans IBAN ni composants RIB) : compte exclu."""
+    """Test avec seulement banque (sans IBAN ni composants RIB) : banque conservée."""
     other_accounts = [
         {
             "societe": "Entreprise A",
@@ -74,7 +74,10 @@ def test_post_processing_other_bank_accounts_only_banque():
             },
         }
     ]
-    assert post_processing_other_bank_accounts(other_accounts) is None
+    result = post_processing_other_bank_accounts(other_accounts)
+    assert len(result) == 1
+    assert result[0]["societe"] == "Entreprise A"
+    assert result[0]["rib"] == {"banque": "Crédit Agricole", "iban": None}
 
 
 def test_post_processing_other_bank_accounts_missing_societe():

@@ -38,19 +38,19 @@ def test_post_processing_bank_account_missing_banque():
 
 
 def test_post_processing_bank_account_no_iban_no_rib():
-    """Test avec banque seule, sans IBAN ni composants RIB exploitables."""
+    """Test avec banque seule : la banque est conservée, IBAN à null."""
     bank_account = {"banque": "Crédit Agricole"}
-    assert post_processing_bank_account(bank_account) is None
+    assert post_processing_bank_account(bank_account) == {"banque": "Crédit Agricole", "iban": None}
 
 
 def test_post_processing_bank_account_incomplete_rib():
-    """Test avec seulement quelques champs RIB : pas assez pour reconstruire l'IBAN."""
+    """Test avec seulement quelques champs RIB : banque conservée, IBAN non reconstruit."""
     bank_account = {
         "banque": "Banque de France",
         "code_banque": "30001",
         "code_guichet": "00794",
     }
-    assert post_processing_bank_account(bank_account) is None
+    assert post_processing_bank_account(bank_account) == {"banque": "Banque de France", "iban": None}
 
 
 def test_post_processing_bank_account_invalid_iban():
@@ -77,7 +77,7 @@ def test_post_processing_bank_account_iban_with_spaces():
 
 
 def test_post_processing_bank_account_rib_fields_with_none():
-    """Test avec les 4 champs RIB à null : aucun composant exploitable."""
+    """Test avec les 4 champs RIB à null : banque conservée."""
     bank_account = {
         "banque": "Banque de France",
         "code_banque": None,
@@ -85,11 +85,11 @@ def test_post_processing_bank_account_rib_fields_with_none():
         "numero_compte": None,
         "cle_rib": None,
     }
-    assert post_processing_bank_account(bank_account) is None
+    assert post_processing_bank_account(bank_account) == {"banque": "Banque de France", "iban": None}
 
 
 def test_post_processing_bank_account_rib_fields_with_empty_strings():
-    """Test avec les 4 champs RIB vides : aucun composant exploitable."""
+    """Test avec les 4 champs RIB vides : banque conservée."""
     bank_account = {
         "banque": "Banque de France",
         "code_banque": "",
@@ -97,7 +97,7 @@ def test_post_processing_bank_account_rib_fields_with_empty_strings():
         "numero_compte": "",
         "cle_rib": "",
     }
-    assert post_processing_bank_account(bank_account) is None
+    assert post_processing_bank_account(bank_account) == {"banque": "Banque de France", "iban": None}
 
 
 def test_post_processing_bank_account_rib_fields_wrong_check_digit():
@@ -127,9 +127,9 @@ def test_post_processing_bank_account_numero_compte_only():
 
 
 def test_post_processing_bank_account_numero_compte_wrong_length():
-    """Test avec numéro de compte trop court : pas de reconstruction partielle."""
+    """Test avec numéro de compte trop court : banque conservée, pas d'IBAN partiel."""
     bank_account = {
         "banque": "Crédit Agricole",
         "numero_compte": "1234567890",
     }
-    assert post_processing_bank_account(bank_account) is None
+    assert post_processing_bank_account(bank_account) == {"banque": "Crédit Agricole", "iban": None}

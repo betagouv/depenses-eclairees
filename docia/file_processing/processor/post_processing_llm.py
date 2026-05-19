@@ -116,9 +116,9 @@ def post_processing_bank_account(bank_account_input: dict[str, str]) -> dict[str
         account_number = bank_account_input["numero_compte"]
         iban = "X" * 14 + account_number + "X" * 2
 
-    # Si pas d'iban et pas les 4 champs, on renvoie None.
+    # Si pas d'iban et pas les 4 champs.
     else:
-        return None
+        iban = None
 
     if iban:
         iban = re.sub(r"\s+", "", iban).upper()  # Suppression des espaces et mise en majuscule
