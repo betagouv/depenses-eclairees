@@ -410,6 +410,58 @@ def test_rib(client):
 
 
 @pytest.mark.django_db
+def test_avenant(client):
+    """Vérifie l'affichage minimaliste d'un document avenant (2 blocs, sans accordéon)."""
+    ej, doc = create_ej_and_document()
+    doc.classification = "avenant"
+    doc.structured_data = {
+        "numero_avenant": "2",
+        "objet_avenant": "[[objet_avenant]]",
+        "incidence_financiere": {"ht": "10000.00", "taux_tva": "0.20", "tva": "2000.00", "ttc": "12000.00"},
+        "incidence_duree": {"prolongation": 6, "date_fin_execution": "31/12/2027"},
+        "date_derniere_signature": "15/03/2026",
+        "objet_marche": "[[objet_marche]]",
+        "administration_beneficiaire": "[[administration_beneficiaire]]",
+        "societe_principale": "[[societe_principale]]",
+        "date_marche": {
+            "duree_execution": 48,
+            "date_notification": "01/01/2024",
+            "date_fin_execution": "31/12/2027",
+        },
+        "montant_initial": {"ht": "50000.00", "taux_tva": "0.20", "tva": "10000.00", "ttc": "60000.00"},
+    }
+    doc.save()
+    user = UserFactory(is_superuser=True)
+    client.force_login(user)
+    response = client.get(f"/?num_ej={ej.num_ej}")
+    assert response.status_code == 200
+    text = response.text
+
+    assert "Avenant n°2" in text
+    assert "[[objet_avenant]]" in text
+    assert "Incidence financière HT" in text
+    assert "10\u00a0000,00 €" in text
+    assert "Prolongation" in text
+    assert "6 mois" in text
+    assert "Nouvelle date de fin" in text
+    assert "31/12/2027" in text
+    assert "Date de dernière signature" in text
+    assert "15/03/2026" in text
+    assert "Objet du marché" in text
+    assert "[[objet_marche]]" in text
+    assert "Administration bénéficiaire" in text
+    assert "[[administration_beneficiaire]]" in text
+    assert "Société principale" in text
+    assert "[[societe_principale]]" in text
+    assert "Durée d'exécution" in text
+    assert "48 mois" in text
+    assert "Date de notification" in text
+    assert "01/01/2024" in text
+    assert "Montant initial HT" in text
+    assert "50\u00a0000,00 €" in text
+
+
+@pytest.mark.django_db
 def test_fiche_navette(client):
     """Vérifie l'affichage des champs du document fiche navette (parties, accord-cadre, prix, imputations)."""
     ej, doc = create_ej_and_document()

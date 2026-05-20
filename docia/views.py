@@ -20,6 +20,7 @@ CLASSIFICATIONS_AFFICHEES = frozenset(
         "rib",
         "fiche_navette",
         "sous_traitance",
+        "avenant",
     }
 )
 
@@ -29,6 +30,7 @@ ORDER_CLASSIFICATIONS = (
     "ccp_vae",
     "ccap",
     "ccp_simple",
+    "avenant",
     "sous_traitance",
     "rib",
     "fiche_navette",

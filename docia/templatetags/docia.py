@@ -4,6 +4,24 @@ from django.utils.safestring import mark_safe
 register = template.Library()
 
 
+def _is_nonempty(value) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, (dict, list)):
+        return bool(value)
+    return True
+
+
+@register.filter
+def dict_has_values(value):
+    """True si dict avec au moins une valeur non vide (None, '', {}, [])."""
+    if not value or not isinstance(value, dict):
+        return False
+    return any(_is_nonempty(v) for v in value.values())
+
+
 @register.filter
 def get_item(dictionary, key):
     if not dictionary:
