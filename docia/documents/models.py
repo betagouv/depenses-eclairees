@@ -57,7 +57,20 @@ class Document(BaseModel):
     taille = models.IntegerField(null=True, blank=True)  # noqa: DJ001
     hash = models.CharField(unique=True)
     classification = models.CharField(max_length=255, null=True, blank=True)  # noqa: DJ001
+
+    # Metadata text extraction
+    text_tokens_count = models.IntegerField(null=True, blank=True)
+    text_extracted_at = models.DateTimeField(null=True, blank=True)
+
+    # Metadata classification
     classification_type = models.CharField(max_length=255, null=True, blank=True)  # noqa: DJ001
+    classification_prompt_tokens_count = models.IntegerField(null=True, blank=True)
+    classification_completion_tokens_count = models.IntegerField(null=True, blank=True)
+    classified_at = models.DateTimeField(null=True, blank=True)
+
+    # Metadata analyze
+    analyze_prompt_tokens_count = models.IntegerField(null=True, blank=True)
+    analyze_completion_tokens_count = models.IntegerField(null=True, blank=True)
     analyzed_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):

@@ -8,8 +8,11 @@ import re
 
 from django.core.files.storage import default_storage
 
+import tiktoken
+
 from . import text_extract_document as document
 from . import text_extract_excel as excel
+from .data import TextExtractionResult
 
 logger = logging.getLogger("docia." + __name__)
 
@@ -41,6 +44,14 @@ def count_words(text):
         return 0
     words = re.findall(r"\w+", text)
     return len(words)
+
+
+def count_tokens(text):
+    """Compte le nombre de tokens dans un texte"""
+    if not text:
+        return 0
+    encoding = tiktoken.get_encoding("o200k_base")
+    return len(encoding.encode(text))
 
 
 def clean_nul_bytes(text: str) -> str:
@@ -107,12 +118,9 @@ def process_file(
     extension: str,
     word_threshold: int = 50,
     ocr_tool: str = "mistral-ocr",
-):
+) -> TextExtractionResult:
     """
     Extrait le texte d'un fichier (chemin + extension).
-
-    Returns:
-        tuple: (texte, is_ocr, nb_mots, nb_pages)
 
     Raises:
         UnsupportedFileType: si l'extension n'est pas supportée.
@@ -127,4 +135,12 @@ def process_file(
     text, is_ocr, nb_pages = extract_text(file_content, file_path, extension, word_threshold, ocr_tool=ocr_tool)
 
     nb_words = count_words(text)
-    return text, is_ocr, nb_words, nb_pages
+    nb_tokens = count_tokens(text)
+
+    return TextExtractionResult(
+        text=text,
+        is_ocr=is_ocr,
+        nb_words=nb_words,
+        nb_pages=nb_pages,
+        nb_tokens=nb_tokens,
+    )

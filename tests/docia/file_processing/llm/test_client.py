@@ -426,7 +426,13 @@ def test_ask_llm_json_decode_error_success_on_retry():
     mock_handler = Mock(
         side_effect=[
             httpx.Response(status_code=200, json={"choices": [{"message": {"content": "Not a valid JSON"}}]}),
-            httpx.Response(status_code=200, json={"choices": [{"message": {"content": '{"valid": true}'}}]}),
+            httpx.Response(
+                status_code=200,
+                json={
+                    "choices": [{"message": {"content": '{"valid": true}'}}],
+                    "usage": {"prompt_tokens": 0, "completion_tokens": 0},
+                },
+            ),
         ]
     )
 
@@ -447,7 +453,7 @@ def test_ask_llm_json_decode_error_success_on_retry():
         )
 
         # Vérifier le résultat
-        assert result == {"valid": True}
+        assert result.content == {"valid": True}
 
         # Vérifier qu'il y a eu 2 appels (1 initial + 1 retry)
         assert mock_handler.call_count == 2

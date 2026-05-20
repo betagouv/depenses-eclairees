@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
-from docia.file_processing.processor.analyze_content import analyze_file_text
+from docia.file_processing.llm.client import LLMAskResult, LLMUsage
+from docia.file_processing.processor.analyze_content import AnalyzeResult, analyze_file_text
 
 
 def test_analyze_file_text():
@@ -11,9 +12,11 @@ def test_analyze_file_text():
             "activite_principale": "Acivité test",
             "adresse_postale_insee": "1 rue du chocolat",
         }
-        m.return_value = data
+        usage = LLMUsage(prompt_tokens=0, completion_tokens=0)
+        m.return_value = LLMAskResult(content=data, usage=usage)
         r = analyze_file_text("Hello World", document_type="kbis")
-        assert r == {
-            "llm_response": data,
-            "structured_data": data,
-        }
+        assert r == AnalyzeResult(
+            llm_response=data,
+            structured_data=data,
+            usage=usage,
+        )
