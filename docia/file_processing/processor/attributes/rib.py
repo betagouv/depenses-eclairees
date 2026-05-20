@@ -2,6 +2,8 @@
 Définitions des attributs à extraire pour les documents de type "rib".
 """
 
+from .common import ADRESSE_POSTALE_TITULAIRE
+
 RIB_ATTRIBUTES = {
     "iban": {
         "consigne": """
@@ -79,35 +81,7 @@ RIB_ATTRIBUTES = {
      - Ne rien renvoyer si aucun nom de titulaire trouvé.
 """,
     },
-    "adresse_postale_titulaire": {
-        "consigne": """
-     Définition : Adresse postale de la société titulaire principale du marché (json).
-     Indices : 
-     - Rechercher l'adresse postale indiquée sur ce RIB. 
-     - Attention, on cherche l'adresse du titulaire du compte, pas celle de la banque.
-     - Extraire tous les éléments disponibles :
-        * le numéro de voie
-        * le nom de la voie
-        * le complément d'adresse éventuel (bâtiment, étage, BP, etc.)
-        * le code postal
-        * la ville
-        * le pays (indiquer 'France' si le pays n'est pas mentionné mais implicite)
-     - Si aucune adresse trouvée pour le titulaire du compte, renvoyer ''
-     Format : un json sous format suivant : {'numero_voie': 'le numéro de voie', 'nom_voie': 'le nom de la voie', 'complement_adresse': 'le complément d'adresse éventuel', 'code_postal': 'le code postal', 'ville': 'la ville','pays': 'le pays'}
-""",
-        "schema": {
-            "type": "object",
-            "properties": {
-                "numero_voie": {"type": "string"},
-                "nom_voie": {"type": "string"},
-                "complement_adresse": {"type": "string"},
-                "code_postal": {"type": "string"},
-                "ville": {"type": "string"},
-                "pays": {"type": "string"},
-            },
-            "required": ["numero_voie", "nom_voie", "complement_adresse", "code_postal", "ville", "pays"],
-        },
-    },
+    "adresse_postale_titulaire": ADRESSE_POSTALE_TITULAIRE,
     "domiciliation": {
         "consigne": """
      Définition : Domiciliation du compte bancaire (si effectuée).

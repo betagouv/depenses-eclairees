@@ -2,49 +2,18 @@
 Définitions des attributs à extraire pour les documents de type "att_sirene".
 """
 
+from .common import (
+    ACTIVITE_PRINCIPALE,
+    ADRESSE_POSTALE_INSEE,
+    DENOMINATION,
+    SIREN,
+    SIRET,
+)
+
 ATT_SIRENE_ATTRIBUTES = {
-    "siret": {
-        "consigne": """
-   Définition : Numéro SIRET de la société principale, composé de 14 chiffres.  
-   Indices :
-   - Peut être mentionné comme "SIRET", ou "numéro d'immatriculation"
-   Format : un numéro composé de 14 chiffres, sans espaces.  
-""",
-    },
-    "siren": {
-        "consigne": """
-   Définition : numéro de SIREN du prestataire / du titulaire principal, composé de 9 chiffres
-   Indices :
-   - Après la mention SIREN au début ou à la fin du document.
-   - A partir d'un numéro de SIRET : les 9 premiers chiffres d'un SIRET de 14 chiffres.
-   - A partir d'un numéro RCS : les 9 chiffres du numéro RCS (après "RCS" ou "N° RCS")
-   - A partir d'un numéro de TVA : les 9 derniers chiffres du numéro de TVA (après l'identifiant du pays et du département ex : FR12)
-   - Ne rien renvoyer si aucun SIREN trouvé
-   Format : un numéro composé de 9 chiffres, sans espaces ni caractères spéciaux
-""",
-    },
-    "denomination": {
-        "consigne": """
-     Définition : Dénomination de la société dans le répertoire SIRENE.
-     Indices : 
-     - Rechercher la dénomination de la société dans le répertoire SIRENE.
-     - Ne rien renvoyer si aucune dénomination trouvée.
-""",
-    },
-    "activite_principale": {
-        "consigne": """
-     Définition : Activité principale exercée (APE) de la société dans le répertoire SIRENE.
-     Indices : 
-     - Rechercher l'activité principale de la société dans le répertoire SIRENE.
-     - Ne rien renvoyer si aucune activité principale trouvée.
-""",
-    },
-    "adresse_postale_insee": {
-        "consigne": """
-     Définition : Adresse postale de la société dans le répertoire SIRENE.
-     Indices : 
-     - Rechercher l'adresse postale de la société dans le répertoire SIRENE.
-     - Ne rien renvoyer si aucune adresse postale trouvée.
-""",
-    },
+    "siret": SIRET,
+    "siren": SIREN,
+    "denomination": DENOMINATION,
+    "activite_principale": ACTIVITE_PRINCIPALE,
+    "adresse_postale_insee": ADRESSE_POSTALE_INSEE,
 }

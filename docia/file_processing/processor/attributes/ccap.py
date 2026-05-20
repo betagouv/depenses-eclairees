@@ -2,6 +2,8 @@
 Définitions des attributs à extraire pour les documents de type "ccap".
 """
 
+from .common import OBJET_MARCHE, SCHEMA_DUREE
+
 CCAP_ATTRIBUTES = {
     "intro": {
         "consigne": """
@@ -13,19 +15,7 @@ CCAP_ATTRIBUTES = {
 """,
         "schema": {"type": "null"},
     },
-    "objet_marche": {
-        "consigne": """
-    Définition : Formulation synthétique de l'objet du marché.
-    Indices : 
-    - L'objet du marché peut être dans le titre directement, ou plus généralement dans une section dédiée.
-    - Identifier les formules comme "Objet du marché", "Le marché a pour objet", ou toute expression indiquant l'intitulé de la mission.
-    Format : 
-    - En bon Français
-    - Attention, ne pas inclure le type de document dans l'objet : "Cahier des charges pour ..." enlever "Cahier des charges pour", ou "Marché pour ..." enlever "Marché pour".
-    - Si l'objet de la commande est incompréhensible, proposer un objet simple qui reflète le contenu de la commande.
- 
-""",
-    },
+    "objet_marche": OBJET_MARCHE,
     "id_marche": {
         "consigne": """
     Définition : Identifiant unique du marché.
@@ -175,16 +165,7 @@ CCAP_ATTRIBUTES = {
                     Exemple : 2 tranches optionnelles de 8 mois, renvoyer 8 + 8 = 16.
         Format : un json sous format suivant {"duree_initiale": "nombre entier de mois", "duree_reconduction": "nombre entier de mois", "nb_reconductions": "nombre entier de reconductions possibles", "delai_tranche_optionnelle": "nombre entier de mois"}
     """,
-        "schema": {
-            "type": "object",
-            "properties": {
-                "duree_initiale": {"type": ["integer", "null"]},
-                "duree_reconduction": {"type": ["integer", "null"]},
-                "nb_reconductions": {"type": ["integer", "null"]},
-                "delai_tranche_optionnelle": {"type": ["integer", "null"]},
-            },
-            "required": ["duree_initiale", "duree_reconduction", "nb_reconductions", "delai_tranche_optionnelle"],
-        },
+        "schema": SCHEMA_DUREE,
     },
     "duree_lots": {
         "consigne": """

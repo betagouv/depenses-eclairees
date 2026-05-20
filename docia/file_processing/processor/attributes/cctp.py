@@ -2,6 +2,8 @@
 Définitions des attributs à extraire pour les documents de type "cctp".
 """
 
+from .common import OBJET_MARCHE
+
 CCTP_ATTRIBUTES = {
     "titre": {
         "consigne": """
@@ -12,14 +14,7 @@ CCTP_ATTRIBUTES = {
    - Ne commence pas ta réponse par "Le titre est" ou "Titre:".        
 """,
     },
-    "objet_marche": {
-        "consigne": """
-     Définition : Formulation synthétique de l'objet du marché.
-     Indices : 
-     - L'objet du marché peut être dans le titre directement, ou plus généralement dans une section dédiée.
-     - Identifier les formules comme "Objet du marché", "Le marché a pour objet", ou toute expression indiquant l'intitulé de la mission.  
-""",
-    },
+    "objet_marche": OBJET_MARCHE,
     "prestations": {
         "consigne": """
    - Crée un résumé CONCIS des prestations techniques attendues dans le cadre de ce marché.
