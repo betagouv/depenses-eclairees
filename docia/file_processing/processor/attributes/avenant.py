@@ -2,111 +2,178 @@
 Définitions des attributs à extraire pour les documents de type "avenant".
 """
 
+from .common import (
+    ADMINISTRATION_BENEFICIAIRE,
+    COTRAITANTS,
+    ID_MARCHE,
+    OBJET_MARCHE,
+    SCHEMA_MONEY_BLOCK,
+    SIREN_MANDATAIRE,
+    SIRET_MANDATAIRE,
+    SOCIETE_PRINCIPALE,
+)
+
 AVENANT_ATTRIBUTES = {
-    "objet": {
+    "numero_avenant": {
         "consigne": """
-   Définition : l'objet de la commande ou du marché, c'est-à-dire ce qui a été acheté, ou le service fourni.
+   Définition : clé d'identification de l'avenant, comptant le nombre de modifications apportées au contrat (1er avenant, 2e avenant, etc.) ou la désignation explicite du numéro d'avenant dans le document.
    Indices :
-   - Chercher après les mentions "Objet :", ou autre mention similaire.
-   - Généralement en début de document ou après les coordonnées.
-   - Dans tous les cas, l'objet de la commande doit avoir du sens pour une personne extérieure, et permettre de comprendre l'achat.
-   - Ne rien renvoyer si aucun objet trouvé
-   Format : 
-   - En bon Français
-   - Attention, ne pas inclure le type de document dans l'objet : "Devis pour ..." enlever "Devis pour" / "Avenant pour ..." enlever "Avenant pour".
-   - Si l'objet de la commande est incompréhensible, proposer un objet simple qui reflète le contenu de la commande.
+   - Rechercher « avenant n° », « 1er avenant », « avenant unique », titres ou mentions en tête d'acte.
+   - Ne pas confondre avec l'identifiant du marché (référence administrative du contrat).
+   Format : chaîne ou entier cohérent avec le document (ex. "1", "2"). Renvoyer une chaîne vide si absent.
 """,
     },
-    "type_document": {
+    "administration_beneficiaire": ADMINISTRATION_BENEFICIAIRE,
+    "societe_principale": SOCIETE_PRINCIPALE,
+    "siret_mandataire": SIRET_MANDATAIRE,
+    "siren_mandataire": SIREN_MANDATAIRE,
+    "cotraitants": COTRAITANTS,
+    "objet_marche": OBJET_MARCHE,
+    "id_marche": ID_MARCHE,
+    "date_marche": {
         "consigne": """
-   Définition : catégorie juridique ou administrative du document.
+   Définition : éléments de calendrier du marché initial (notification, durée d'exécution, fin d'exécution) tels que rappelés ou applicables dans l'avenant.
    Indices :
-   - Le type de document est souvent mentionné au début du document dans le titre ou le sous-titre.
-   - Exemples de types de documents : devis, acte d'engagement, avenant, bon de commande, cachier des charges, ...
-   - Ne rien renvoyer si aucun type de document trouvé
-   Format : en minuscule, sans accent, sans espace (ex: "devis", "acte_engagement", "bon_de_commande")
+   - Date de notification, durée d'exécution en mois, date de fin d'exécution, mentions « à compter du », « pour une durée de ».
+   - duree_execution : durée en nombre de mois explicitement mentionnée dans le document. Renvoyer null si absent. 
+   - Rechercher la durée avant avenant. Si 12 mois reconductible 3 fois 12 mois, renvoyer 12+3*12 = 48
+   - date_notification, date_fin_execution : format strict JJ/MM/AAAA ; null si absent.
+   - Ne pas reprendre la date d'un avenant intermédiaire, uniquement la date du marché initial.
+   - Ne pas calculer la durée entre deux dates, renvoyer la durée explicitement mentionnée dans le document.
+   Format : un objet JSON strict :
+   {"duree_execution": "<chaîne>", "date_notification": "<chaîne JJ/MM/AAAA>", "date_fin_execution": "<chaîne JJ/MM/AAAA>"}
 """,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "duree_execution": {"type": ["integer", "null"]},
+                "date_notification": {"type": ["string", "null"]},
+                "date_fin_execution": {"type": ["string", "null"]},
+            },
+            "required": ["duree_execution", "date_notification", "date_fin_execution"],
+        },
     },
-    "montant_ht": {
+    "montant_initial": {
         "consigne": """
-     Définition : Montant du marché hors taxes (également hors TVA).  
-     Indices : 
-     - Rechercher les mentions "hors taxes", "HT", "sans TVA" ou équivalent. 
-     - Extraire le montant exprimé en euros ou en écriture littérale, et mets le en chiffres en euros.
-     - Ne rien envoyer si aucun montant trouvé.
-     Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
-     """,
-    },
-    "montant_ttc": {
-        "consigne": """
-     Définition : Montant du marché toutes taxes comprises (ou avec TVA incluse).  
-     Indices : 
-     - Rechercher les expressions "TTC", "TVA incluse", "TVA comprise". 
-     - Extraire le montant exprimé en euros ou en écriture littérale, et mets le en chiffres en euros.
-     - Ignorer les montants HT (hors taxes) et le montant de TVA seule
-     - Ne rien envoyer si aucun montant trouvé.
-     Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
-""",
-    },
-    "administration_beneficiaire": {
-        "consigne": """
-     Définition : Structure administrative ou publique qui bénéficie de la commande, ou qui achète la prestation.
-     Indices :
-     - Rechercher les mentions d'achateurs, de pouvoir adjudicateur, ou d'autorité contractante.
-     - Le résultat est souvent une direction, un service, ou une administration.
-     - S'il est seulement précisé les rôles ou les postes de persones (ex : le préfet de la région Île-de-France), déduire la direction / le service / l'administration bénéficiaire (ex : la préfecture de la région Île-de-France).
-     Format : le nom de l'administration bénéficiaire en toutes lettres (pas d'acronymes si possible). 
-""",
-    },
-    "description_prestations": {
-        "consigne": """
-   Définition : Description des prestations de la commande ou du marché, structurée et compréhensible.
-   Indices : 
-   - Un texte décrivant le contenu de la prestation, des services attendus ou réalisés, et du matériel utilisé ou acheté.
-   - Des précisions si disponibles sur la date ou la période, le lieu de la prestation, les quantités sont bienvenues.
-   - Attention à ne pas renvoyer de données personnelles (nom, prénom, adresse postales ou coordonnées).
-   - Attention à ne pas renvoyer de détails de prix.
-   Format : en bon Français, reformulé si besoin.
-   """,
-    },
-    "societe_principale": {
-        "consigne": """
-     Définition : Société principale contractante avec l'administration publique ou ses représentants. Si un groupement est mentionné, extraire la société mandataire ou représentante.  
-     Indices : 
-     - Rechercher les mentions de société, entreprise, titulaire, mandataire, contractant.
-     - En général, l'autre nom de personne morale que l'administration acheteuse.
-     - Le nom de la société est souvent cohérent avec le nom de domaine du site interne.
-     Format : renvoyer le nom de la société telle qu'écrit dans le document.
-""",
-    },
-    "siret": {
-        "consigne": """
-   Définition : Numéro SIRET de la société principale, composé de 14 chiffres.  
+   Définition : montants du marché initial, avant tous les avenants — montant de base du contrat à l'origine (notification / acte initial).
    Indices :
-   - Peut être mentionné comme "SIRET", ou "numéro d'immatriculation"
-   Format : un numéro composé de 14 chiffres, sans espaces.  
+   - Rechercher les montants HT, TVA, TTC, taux de TVA rappelés comme « montant initial », « montant du marché initial », « montant à la notification », « montant du contrat initial ».
+   - Ne pas confondre avec l'incidence financière de l'avenant (delta), le montant après le dernier avenant (champ montant_marche) ni le montant d'un avenant intermédiaire seul.
+   - Renvoyer toutes les valeurs à null si aucun montant initial n'est mentionné dans le document.
+   - Les montants doivent être exprimés en "XXXX.XX" (sans séparateur de milliers, avec 2 décimales)
+   - "taux_tva" doit être exprimé en ratio (ex: 0.20, 0.085), pas en pourcentage.
+   Format : objet JSON {"ht": ..., "taux_tva": ..., "tva": ..., "ttc": ...} avec null pour chaque clé non mentionnée, ou null pour l'objet entier si absent.
 """,
+        "schema": SCHEMA_MONEY_BLOCK,
     },
-    "siren": {
+    "montant_marche": {
         "consigne": """
-   Définition : numéro de SIREN du prestataire / du titulaire principal, composé de 9 chiffres
+   Définition : montants du marché avant application du présent avenant — état contractuel courant avant incidence financière de l'avenant.
    Indices :
-   - Après la mention SIREN au début ou à la fin du document.
-   - A partir d'un numéro de SIRET : les 9 premiers chiffres d'un SIRET de 14 chiffres.
-   - A partir d'un numéro RCS : les 9 chiffres du numéro RCS (après "RCS" ou "N° RCS")
-   - A partir d'un numéro de TVA : les 9 derniers chiffres du numéro de TVA (après l'identifiant du pays et du département ex : FR12)
-   - Ne rien renvoyer si aucun SIREN trouvé
-   Format : un numéro composé de 9 chiffres, sans espaces ni caractères spéciaux
+   - Renvoyer la même valeur que montant_initial s'il n'y a que le montant initial mentionné dans le document.      
+   - Rechercher le « nouveau montant », « montant révisé », montants HT/TTC/TVA du marché avant application de l'incidence financière de l'avenant.
+   - Ne pas confondre avec montant_initial (avant tous les avenants) ni avec incidence_financiere (seul delta de l'avenant) 
+   - Ne pas renvoyer le montant actualisé après application du présent avenant, renvoyer le montant avant application de l'incidence financière de l'avenant.
+   - Les montants doivent être exprimés en "XXXX.XX" (sans séparateur de milliers, avec 2 décimales)
+   - "taux_tva" doit être exprimé en ratio (ex: 0.20, 0.085), pas en pourcentage.
+   Format : objet JSON {"ht": ..., "taux_tva": ..., "tva": ..., "ttc": ...} avec null pour chaque clé non mentionnée.
+""",
+        "schema": SCHEMA_MONEY_BLOCK,
+    },
+    "objet_avenant": {
+        "consigne": """
+    Définition : formulation synthétique de la portée de cet avenant uniquement (ce que modifie ou complète l'avenant par rapport au marché initial).
+    Indices :
+    - Sections « objet de l'avenant », « il a été convenu », modifications contractuelles, liste de clauses modifiées résumée de façon concise.
+    Format :
+    - En bon français.
+    - Ne pas inclure de préfixe de type de document inutile.
+    - Chaîne vide si non identifiable.
 """,
     },
-    "date_signature": {
+    "incidence_signataires": {
         "consigne": """
-      Définition : Date de signature du document par une des parties.  
-      Indices : 
-      - Repérer les expressions comme "Signé le", "Fait à ...", ou des dates en bas du document associées à une signature.
-      - Ignorer les dates d'émission ou de création du document, en général en haut du document
-      - Ne rien renvoyer si aucune date de signature trouvée
-     Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine  
+   Définition : incidence de l'avenant sur les signataires ou dénominations (administration ou société) — remplacements de libellés, changement de ministère, de raison sociale, etc.
+   Indices :
+   - Articles modifiant les mentions de parties, « X est remplacé par Y », tableaux de correspondance.
+   Format : objet JSON {"administration_principale": "<texte ou vide>", "societe_principale": "<texte ou vide>"}. Renseigner uniquement ce qui change ; chaîne vide si pas d'incidence pour ce volet.
+""",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "administration_principale": {"type": ["string", "null"]},
+                "societe_principale": {"type": ["string", "null"]},
+            },
+            "required": ["administration_principale", "societe_principale"],
+        },
+    },
+    "incidence_revision": {
+        "consigne": """
+   Définition : incidence de l'avenant sur la révision des prix (nouvelle formule, nouvelle base, maintien, suppression, etc.).
+   Indices :
+   - Clauses de révision, indexation, formules M0, dates anniversaires, références aux conditions économiques.
+   Format : objet JSON {"revision": "<texte descriptif ou null>"}.
+""",
+        "schema": {
+            "type": "object",
+            "properties": {"revision": {"type": ["string", "null"]}},
+            "required": ["revision"],
+        },
+    },
+    "incidence_bpu": {
+        "consigne": """
+   Définition : l'avenant a-t-il une incidence sur le bordereau des prix unitaires (BPU) ?
+   Indices :
+   - Mentions de BPU, de prix unitaires, de bordereau annexé modifié, actualisation des prix unitaires.
+   Format : booléen true si oui, false si non ou si le document exclut explicitement une telle incidence.
+""",
+        "schema": {"type": "boolean"},
+    },
+    "incidence_duree": {
+        "consigne": """
+   Définition : incidence de l'avenant sur la durée du marché (prolongation en mois, report de date de fin, etc.).
+   Indices :
+   - « prorogé », « prolongation de X mois », nouvelle date de fin d'exécution.
+   Important : prolongation et date_fin_execution sont des chaînes uniquement (pas de type date) ; date_fin_execution au format texte présent dans le document
+   Format : objet JSON {"prolongation": "<nombre de mois>", "date_fin_execution": "<date JJ/MM/AAAA>"}.
+""",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "prolongation": {"type": ["integer", "null"]},
+                "date_fin_execution": {"type": ["string", "null"]},
+            },
+            "required": ["prolongation", "date_fin_execution"],
+        },
+    },
+    "incidence_financiere": {
+        "consigne": """
+   Définition : variation financière induite par cet avenant uniquement, exprimée en delta (hausse ou baisse) par rapport au montant avant cet avenant — pas le montant total du marché.
+   Indices :
+   - Montants « supplémentaires », « augmentation », « variation », tableaux de delta HT/TTC.
+   - Ne pas confondre avec montant_initial (total avant tous les avenants) ni montant_marche (total après le dernier avenant).
+   - Si aucune incidence financière : renvoyer null pour l'objet entier ; dans ce cas montant_marche doit reprendre montant_initial.
+   - Les montants doivent être exprimés en "XXXX.XX" (sans séparateur de milliers, avec 2 décimales)
+   - "taux_tva" doit être exprimé en ratio (ex: 0.20, 0.085), pas en pourcentage.
+   Format : même structure que montant_initial : {"ht": ..., "taux_tva": ..., "tva": ..., "ttc": ...} avec null pour chaque clé non applicable.
+""",
+        "schema": SCHEMA_MONEY_BLOCK,
+    },
+    "incidence_autre": {
+        "consigne": """
+   Définition : description libre d'une autre incidence de l'avenant qui ne relève pas des champs dédiés (financière, signataires, révision des prix, BPU, durée).
+   Indices :
+   - Modifications contractuelles, clauses ou impacts non couverts par les autres champs d'incidence.
+   - Ne pas dupliquer le contenu déjà attendu dans incidence_financiere, incidence_signataires, incidence_revision, incidence_bpu ou incidence_duree.
+   Format : texte libre en bon français ; chaîne vide si aucune autre incidence identifiable.
+""",
+    },
+    "date_derniere_signature": {
+        "consigne": """
+   Définition : date du dernier signataire de l'avenant — en général la date la plus récente parmi les blocs de signature (cachets, « fait le », signatures des parties).
+   Indices :
+   - Bas de document, pages de signature, ordre chronologique des dates manuscrites ou mentionnées.
+   Important : renvoyer uniquement une chaîne de caractères (pas de type date) ; conserver le format texte cohérent avec le document et avec Grist (ex. JJ/MM/AAAA). Chaîne vide si aucune date fiable.
 """,
     },
 }

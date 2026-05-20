@@ -1,5 +1,5 @@
 """
-Prompts et schémas partagés entre types de documents (hors avenant).
+Prompts et schémas partagés entre types de documents.
 """
 
 SCHEMA_ADRESSE_POSTALE = {
@@ -52,6 +52,17 @@ SCHEMA_LISTE_ENTREPRISE_SIRET = {
     },
 }
 
+SCHEMA_MONEY_BLOCK = {
+    "type": "object",
+    "properties": {
+        "ht": {"type": ["string", "null"]},
+        "taux_tva": {"type": ["string", "null"]},
+        "tva": {"type": ["string", "null"]},
+        "ttc": {"type": ["string", "null"]},
+    },
+    "required": ["ht", "taux_tva", "tva", "ttc"],
+}
+
 ACTIVITE_PRINCIPALE = {
     "consigne": """
      Définition : Activité principale exercée (APE) de la société dans le répertoire SIRENE.
@@ -97,6 +108,68 @@ SIRET = {
    Indices :
    - Peut être mentionné comme "SIRET", ou "numéro d'immatriculation"
    Format : un numéro composé de 14 chiffres, sans espaces.  
+""",
+}
+
+SIRET_MANDATAIRE = {
+    "consigne": """
+   Définition : Numéro SIRET de la société principale, composé de 14 chiffres.  
+   Indices :
+   - Peut être mentionné comme "SIRET", ou "numéro d'immatriculation".
+   - Favoriser les numéros de SIRET indiqués dans l'identification du titulaire, plutôt qu'en signature du document.
+   - Si plusieurs SIRET sont disponibles pour une même entreprise, avec différentes terminaisons (5 derniers chiffres) :
+        * Prendre le numéro de l'établissement concerné (pas le siège social) pour renvoyer le SIRET.
+        * S'il n'y a pas de précisions sur l'établissement concerné, renvoyer le SIRET le plus élevé.
+            -> Exemple : 123 456 789 00001 et 123 456 789 00020, renvoyer 12345678900020 (car 00020 > 00001).
+   - Si le numéro de SIRET ne contient pas suffisamment de caractères, ne pas compléter : renvoyer tel quel.
+   Format : un numéro composé de 14 chiffres, sans espaces.  
+""",
+}
+
+SIREN_MANDATAIRE = {
+    "consigne": """
+   Définition : numéro de SIREN du prestataire / du titulaire principal, composé de 9 chiffres
+   Indices :
+   - Après la mention SIREN au début ou à la fin du document.
+   - A partir d'un numéro de SIRET : les 9 premiers chiffres d'un SIRET de 14 chiffres.
+   - A partir d'un numéro RCS : les 9 chiffres du numéro RCS (après "RCS" ou "N° RCS")
+   - A partir d'un numéro de TVA : les 9 derniers chiffres du numéro de TVA (après l'identifiant du pays et du département ex : FR12)
+   - Ne rien renvoyer si aucun SIREN trouvé
+   Format : un numéro composé de 9 chiffres, sans espaces ni caractères spéciaux
+""",
+}
+
+COTRAITANTS = {
+    "consigne": """
+Objectif : Extraire uniquement les entreprises réellement mentionnées comme cotraitantes (hors mandataire).
+Règles d'extraction :
+- Ne retenir qu'une entreprise explicitement décrite comme cotraitante dans le texte.
+- Ignorer totalement les entreprises mentionnées comme sous-traitantes.
+- Ignorer toute mention générique contenant le mot « cotraitant » (ex. « Cotraitant », « cotraitant1 », « cotraitant2 ») : ce ne sont pas des entreprises.
+- Une entreprise n'est retenue que si au moins l'un des éléments suivants apparaît dans le texte : un nom réel d'entreprise, un numéro SIRET (14 chiffres) ou SIREN (9 chiffres) valide.
+- Pour le nom (champ "nom") : en cas de choix, préférer la raison sociale plutôt que le nom commercial.
+- Pour le SIRET (champ "siret") : si plusieurs SIRET sont disponibles pour une même entreprise :
+    * Prendre le numéro de l'établissement concerné (pas le siège social) pour renvoyer le SIRET.
+    * S'il n'y a pas de précisions sur l'établissement concerné, renvoyer le SIRET le plus élevé.
+- Si aucun cotraitant réel n'est identifié dans le texte, renvoyer []
+- Format attendu :
+    * une liste JSON : [{"nom": "...", "siret": "..."}]
+    * Si aucun cotraitant valide n'est trouvé, renvoyer exactement : []
+""",
+    "schema": SCHEMA_LISTE_ENTREPRISE_SIRET,
+}
+
+ID_MARCHE = {
+    "consigne": """
+    Définition : Identifiant unique du marché (contrat initial), équivalent au champ marche_parent de la forme du marché dans l'acte d'engagement.
+    Indices :
+    - Chercher dans le titre ou l'en-tête, références au marché, numéro de consultation, code marché.
+    - Rechercher l'identifiant du marché (souvent mentionné après « accord-cadre », « contrat-cadre », « marché global », etc.).
+    - L'identifiant peut être un numéro de marché, un code, un numéro de consultation ou toute référence unique. Exemple 22_BAM_035, ou SIG_AOO_2021_07
+    - Ne pas inclure ATTRI1, n°Chorus, 1300000000 ou 2025.1000000000, uniquement le numéro (pas de parenthèses de précision). Pas de reformulation.
+    - Ne pas confondre avec le numéro de l'engagement juridique (EJ) à 10 chiffres. Exemple 1302945678.
+    - Si aucun identifiant trouvé, renvoyer null.
+    Format : un identifiant unique tel qu'indiqué dans le document sans précisions supplémentaires.
 """,
 }
 
