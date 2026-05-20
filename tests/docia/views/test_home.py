@@ -411,7 +411,7 @@ def test_rib(client):
 
 @pytest.mark.django_db
 def test_avenant(client):
-    """Vérifie l'affichage minimaliste d'un document avenant (2 blocs, sans accordéon)."""
+    """Vérifie l'affichage d'un document avenant (bloc avenant + accordéon Informations Marché)."""
     ej, doc = create_ej_and_document()
     doc.classification = "avenant"
     doc.structured_data = {
@@ -419,6 +419,7 @@ def test_avenant(client):
         "objet_avenant": "[[objet_avenant]]",
         "incidence_financiere": {"ht": "10000.00", "taux_tva": "0.20", "tva": "2000.00", "ttc": "12000.00"},
         "incidence_duree": {"prolongation": 6, "date_fin_execution": "31/12/2027"},
+        "incidence_bpu": True,
         "date_derniere_signature": "15/03/2026",
         "objet_marche": "[[objet_marche]]",
         "administration_beneficiaire": "[[administration_beneficiaire]]",
@@ -439,14 +440,16 @@ def test_avenant(client):
 
     assert "Avenant n°2" in text
     assert "[[objet_avenant]]" in text
-    assert "Incidence financière HT" in text
-    assert "10\u00a0000,00 €" in text
-    assert "Prolongation" in text
-    assert "6 mois" in text
-    assert "Nouvelle date de fin" in text
-    assert "31/12/2027" in text
+    assert "Incidence financière" in text
+    assert "10\u00a0000,00 € HT" in text
+    assert "12\u00a0000,00 € TTC" in text
+    assert "Incidence durée" in text
+    assert "Prolongation 6 mois" in text
+    assert "Fin 31/12/2027" in text
+    assert "Incidence BPU" in text
     assert "Date de dernière signature" in text
     assert "15/03/2026" in text
+    assert "Informations Marché" in text
     assert "Objet du marché" in text
     assert "[[objet_marche]]" in text
     assert "Administration bénéficiaire" in text
@@ -457,8 +460,8 @@ def test_avenant(client):
     assert "48 mois" in text
     assert "Date de notification" in text
     assert "01/01/2024" in text
-    assert "Montant initial HT" in text
-    assert "50\u00a0000,00 €" in text
+    assert "Montant initial" in text
+    assert "50\u00a0000,00 € HT" in text
 
 
 @pytest.mark.django_db
