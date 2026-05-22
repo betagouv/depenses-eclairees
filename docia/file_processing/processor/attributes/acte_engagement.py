@@ -5,6 +5,7 @@ Définitions des attributs à extraire pour les documents de type "acte_engageme
 from .common import (
     ADMINISTRATION_BENEFICIAIRE,
     CONSERVE_AVANCE,
+    COTRAITANTS,
     MONTANT_HT,
     MONTANT_TTC,
     MONTANT_TVA,
@@ -12,6 +13,8 @@ from .common import (
     SCHEMA_DUREE,
     SCHEMA_LISTE_ENTREPRISE_SIRET,
     SCHEMA_RIB,
+    SIREN_MANDATAIRE,
+    SIRET_MANDATAIRE,
     SOCIETE_PRINCIPALE,
 )
 
@@ -59,32 +62,8 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
     },
     "administration_beneficiaire": ADMINISTRATION_BENEFICIAIRE,
     "societe_principale": SOCIETE_PRINCIPALE,
-    "siret_mandataire": {
-        "consigne": """
-   Définition : Numéro SIRET de la société principale, composé de 14 chiffres.  
-   Indices :
-   - Peut être mentionné comme "SIRET", ou "numéro d'immatriculation".
-   - Favoriser les numéros de SIRET indiqués dans l'identification du titulaire, plutôt qu'en signature du document.
-   - Si plusieurs SIRET sont disponibles pour une même entreprise, avec différentes terminaisons (5 derniers chiffres) :
-        * Prendre le numéro de l'établissement concerné (pas le siège social) pour renvoyer le SIRET.
-        * S'il n'y a pas de précisions sur l'établissement concerné, renvoyer le SIRET le plus élevé.
-            -> Exemple : 123 456 789 00001 et 123 456 789 00020, renvoyer 12345678900020 (car 00020 > 00001).
-   - Si le numéro de SIRET ne contient pas suffisamment de caractères, ne pas compléter : renvoyer tel quel.
-   Format : un numéro composé de 14 chiffres, sans espaces.  
-""",
-    },
-    "siren_mandataire": {
-        "consigne": """
-   Définition : numéro de SIREN du prestataire / du titulaire principal, composé de 9 chiffres
-   Indices :
-   - Après la mention SIREN au début ou à la fin du document.
-   - A partir d'un numéro de SIRET : les 9 premiers chiffres d'un SIRET de 14 chiffres.
-   - A partir d'un numéro RCS : les 9 chiffres du numéro RCS (après "RCS" ou "N° RCS")
-   - A partir d'un numéro de TVA : les 9 derniers chiffres du numéro de TVA (après l'identifiant du pays et du département ex : FR12)
-   - Ne rien renvoyer si aucun SIREN trouvé
-   Format : un numéro composé de 9 chiffres, sans espaces ni caractères spéciaux
-""",
-    },
+    "siret_mandataire": SIRET_MANDATAIRE,
+    "siren_mandataire": SIREN_MANDATAIRE,
     "rib_mandataire": {
         "consigne": """
      Définition : Informations bancaires (IBAN en priorité) du compte à créditer indiqué dans l'acte d'engagement.
@@ -107,25 +86,7 @@ ACTE_ENGAGEMENT_ATTRIBUTES = {
 """,
         "schema": SCHEMA_RIB,
     },
-    "cotraitants": {
-        "consigne": """
-Objectif : Extraire uniquement les entreprises réellement mentionnées comme cotraitantes (hors mandataire).
-Règles d’extraction :
-- Ne retenir qu’une entreprise explicitement décrite comme cotraitante dans le texte.
-- Ignorer totalement les entreprises mentionnées comme sous-traitantes.
-- Ignorer toute mention générique contenant le mot “cotraitant” (ex. “Cotraitant”, “cotraitant1”, “cotraitant2”) : ce ne sont pas des entreprises.
-- Une entreprise n’est retenue que si au moins l’un des éléments suivants apparaît dans le texte : un nom réel d’entreprise, un numéro SIRET (14 chiffres) ou SIREN (9 chiffres) valide.
-- Pour le nom (champ "nom") : en cas de choix, préférer la raison sociale plutôt que le nom commercial.
-- Pour le SIRET (champ "siret") : si plusieurs SIRET sont disponibles pour une même entreprise :
-    * Prendre le numéro de l’établissement concerné (pas le siège social) pour renvoyer le SIRET.
-    * S'il n’y a pas de précisions sur l’établissement concerné, renvoyer le SIRET le plus élevé.
-- Si aucun cotraitant réel n’est identifié dans le texte, renvoyer []
-- Format attendu : 
-    * une liste JSON : [{"nom": "...", "siret": "..."}]
-    * Si aucun cotraitant valide n’est trouvé, renvoyer exactement : []
-""",
-        "schema": SCHEMA_LISTE_ENTREPRISE_SIRET,
-    },
+    "cotraitants": COTRAITANTS,
     "sous_traitants": {
         "consigne": """
      Définition : Liste des sous-traitants du mandataire, s'il y en a.

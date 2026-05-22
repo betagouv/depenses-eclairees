@@ -666,6 +666,13 @@ CLEAN_FUNCTIONS = {
             "societe_sous_traitant": post_processing_societe_principale,
         },
     },
+    "avenant": {
+        "fields": {
+            "cotraitants": post_processing_co_contractors,
+            "societe_principale": post_processing_societe_principale,
+            "siret_mandataire": post_processing_siret,
+        },
+    },
 }
 
 
