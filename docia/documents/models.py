@@ -20,6 +20,7 @@ class Engagement(BaseModel):
     sources_et_conflits = models.JSONField(null=True, blank=True)
     date_creation = models.DateField(null=True, blank=True)
     external_updated_at = models.DateTimeField(null=True, blank=True)
+    external_created_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Engagement Juridique"

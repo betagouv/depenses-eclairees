@@ -4,6 +4,7 @@ from unittest.mock import patch
 import pytest
 
 from docia.documents.models import Engagement
+from docia.file_processing.sync.client import ApiEngagementActivity
 from docia.file_processing.sync.sync_engagements import EngagementsSync
 from tests.factories.data import EngagementFactory, EngagementScopeFactory
 from tests.factories.file_processing import ApiEngagementActivityFactory
@@ -28,8 +29,12 @@ def test_sync(syncer):
     """
 
     api_activities = [
-        ApiEngagementActivityFactory(purchase_organization="oa1", purchase_group="ga1"),
-        ApiEngagementActivityFactory(purchase_organization="oa1", purchase_group="ga1"),
+        ApiEngagementActivityFactory(
+            purchase_organization="oa1", purchase_group="ga1", type=ApiEngagementActivity.Type.CREATE
+        ),
+        ApiEngagementActivityFactory(
+            purchase_organization="oa1", purchase_group="ga1", type=ApiEngagementActivity.Type.UPDATE
+        ),
         ApiEngagementActivityFactory(purchase_organization="oa1", purchase_group="ga2"),
         ApiEngagementActivityFactory(purchase_organization="oa1", purchase_group="ga2"),
         ApiEngagementActivityFactory(purchase_organization="oa1", purchase_group="ga4"),  # Should not be inserted
@@ -60,6 +65,7 @@ def test_sync(syncer):
             Engagement.objects.order_by("num_ej").values(
                 "num_ej",
                 "external_updated_at",
+                "external_created_at",
                 "scopes__purchase_organization",
                 "scopes__purchase_group",
             )
@@ -70,6 +76,9 @@ def test_sync(syncer):
         [
             {
                 "external_updated_at": activity.received_at,
+                "external_created_at": activity.received_at
+                if activity.type == ApiEngagementActivity.Type.CREATE
+                else None,
                 "num_ej": activity.num_ej,
                 "scopes__purchase_organization": activity.purchase_organization,
                 "scopes__purchase_group": activity.purchase_group,
@@ -83,7 +92,11 @@ def test_sync(syncer):
 
 
 @pytest.mark.django_db
-def test_sync_update_ej(syncer):
+@pytest.mark.parametrize(
+    "activity_type",
+    [ApiEngagementActivity.Type.CREATE, ApiEngagementActivity.Type.UPDATE],
+)
+def test_sync_update_ej(syncer: EngagementsSync, activity_type: ApiEngagementActivity.Type):
     """Test that syncing updates an existing engagement with a new scope.
 
     This test verifies that:
@@ -103,6 +116,7 @@ def test_sync_update_ej(syncer):
     # Same EJ, different scope, received_at later
     api_activity = ApiEngagementActivityFactory(
         num_ej=num_ej,
+        type=activity_type,
         purchase_organization="oa",
         purchase_group="ga",
         received_at=datetime(2026, 3, 2, tzinfo=timezone.utc),
@@ -127,14 +141,17 @@ def test_sync_update_ej(syncer):
             "id",
             "num_ej",
             "external_updated_at",
+            "external_created_at",
             "scopes__purchase_organization",
             "scopes__purchase_group",
         )
     )
+    external_created_at = api_activity.received_at if activity_type == ApiEngagementActivity.Type.CREATE else None
     expected = [
         {
             "id": ej.id,
             "external_updated_at": api_activity.received_at,
+            "external_created_at": external_created_at,
             "num_ej": ej.num_ej,
             "scopes__purchase_organization": scope.purchase_organization,
             "scopes__purchase_group": scope.purchase_group,
@@ -142,6 +159,7 @@ def test_sync_update_ej(syncer):
         {
             "id": ej.id,
             "external_updated_at": api_activity.received_at,
+            "external_created_at": external_created_at,
             "num_ej": ej.num_ej,
             "scopes__purchase_organization": "oa",
             "scopes__purchase_group": "ga",
@@ -176,6 +194,7 @@ def test_sync_preserve_newer_external_updated_at(syncer):
     older_date = datetime(2026, 1, 1, tzinfo=timezone.utc)
     api_activity = ApiEngagementActivityFactory(
         num_ej=num_ej,
+        type=ApiEngagementActivity.Type.UPDATE,
         purchase_organization="oa",
         purchase_group="ga",
         received_at=older_date,

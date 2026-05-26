@@ -94,18 +94,28 @@ class EngagementsSync:
                 existing_engagement = existing_engagements_dict.get(activity.num_ej)
                 if existing_engagement:
                     # Only update if the new date is newer
+                    should_update = False
                     if (
                         not existing_engagement.external_updated_at
                         or activity.received_at > existing_engagement.external_updated_at
                     ):
                         existing_engagement.external_updated_at = activity.received_at
+                        should_update = True
+                    if (
+                        not existing_engagement.external_created_at
+                        and activity.type == ApiEngagementActivity.Type.CREATE
+                    ):
+                        existing_engagement.external_created_at = activity.received_at
+                        should_update = True
+                    if should_update:
                         existing_engagement.updated_at = timezone.now()
                         engagements_to_update.append(existing_engagement)
                 else:
                     # Engagements to add
-                    engagements_to_add.append(
-                        Engagement(num_ej=activity.num_ej, external_updated_at=activity.received_at)
-                    )
+                    ej = Engagement(num_ej=activity.num_ej, external_updated_at=activity.received_at)
+                    if activity.type == ApiEngagementActivity.Type.CREATE:
+                        ej.external_created_at = activity.received_at
+                    engagements_to_add.append(ej)
 
             # Bulk create engagements to add
             if engagements_to_add:
@@ -114,7 +124,9 @@ class EngagementsSync:
             # Bulk update existing engagements that need updating
             if engagements_to_update:
                 Engagement.objects.bulk_update(
-                    engagements_to_update, fields=["external_updated_at", "updated_at"], batch_size=1000
+                    engagements_to_update,
+                    fields=["external_updated_at", "external_created_at", "updated_at"],
+                    batch_size=1000,
                 )
 
             # Link all engagements to the scope
