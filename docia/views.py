@@ -20,6 +20,7 @@ CLASSIFICATIONS_AFFICHEES = frozenset(
         "rib",
         "fiche_navette",
         "sous_traitance",
+        "avenant",
     }
 )
 
@@ -29,6 +30,7 @@ ORDER_CLASSIFICATIONS = (
     "ccp_vae",
     "ccap",
     "ccp_simple",
+    "avenant",
     "sous_traitance",
     "rib",
     "fiche_navette",
@@ -115,6 +117,8 @@ def home(request):
                         short_classification = get_short_classification(db_doc.classification)
                         if db_doc.classification in ("acte_engagement", "ccp_vae"):
                             document_data = enrich_acte_engagement_display(document_data_raw)
+                        elif db_doc.classification == "avenant":
+                            document_data = enrich_avenant_display(document_data_raw)
                         else:
                             document_data = document_data_raw
                         doc = {
@@ -196,6 +200,23 @@ def get_short_classification(classification: str) -> str:
 
 def format_ratio_to_percent(value: float) -> str:
     return f"{value * 100:.0f}%"
+
+
+def _coerce_truthy_bool(value) -> bool:
+    if value is True:
+        return True
+    if isinstance(value, str):
+        return value.strip().lower() in ("true", "oui", "yes", "1")
+    return value in (1,)
+
+
+def enrich_avenant_display(data: dict) -> dict:
+    """Normalise les champs avenant pour l'affichage (incidence_bpu en booléen)."""
+    if not data:
+        return data
+    if "incidence_bpu" in data:
+        data["incidence_bpu"] = _coerce_truthy_bool(data["incidence_bpu"])
+    return data
 
 
 def enrich_acte_engagement_display(data: dict) -> dict:

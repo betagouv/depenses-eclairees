@@ -1,0 +1,75 @@
+{% load dsfr_tags static docia %}
+{% with id_prefix=doc.filename|add:"_" %}
+
+<div class="fr-mb-2w">
+  <p class="fr-mb-1w">
+    <strong>Avenant n°{{ data.numero_avenant|default:"[Non trouvé]" }}</strong>
+  </p>
+  {% if data.objet_avenant %}
+    <p class="fr-mb-1w">{{ data.objet_avenant }}</p>
+  {% endif %}
+  {% if data.incidence_financiere|dict_has_values %}
+    {% with value=data.incidence_financiere|format_money_block_line copy_value=value %}
+      {% include "docia/details_ej/blocks/attribute.html" with title="Incidence financière" id=id_prefix|add:"incidence_financiere" %}
+    {% endwith %}
+  {% endif %}
+  {% if data.incidence_duree|dict_has_values %}
+    {% with value=data.incidence_duree|format_incidence_duree_line copy_value=value %}
+      {% include "docia/details_ej/blocks/attribute.html" with title="Incidence durée" id=id_prefix|add:"incidence_duree" %}
+    {% endwith %}
+  {% endif %}
+  {% if data.incidence_bpu %}
+    {% with value="Oui" copy_value="true" %}
+      {% include "docia/details_ej/blocks/attribute.html" with title="Incidence BPU" id=id_prefix|add:"incidence_bpu" %}
+    {% endwith %}
+  {% endif %}
+  {% with value=data.date_derniere_signature copy_value=data.date_derniere_signature %}
+    {% include "docia/details_ej/blocks/attribute.html" with title="Date de dernière signature" id=id_prefix|add:"date_derniere_signature" %}
+  {% endwith %}
+</div>
+
+<section class="fr-accordion fr-mt-2w" data-fr-js-accordion="true">
+  <h3 class="fr-accordion__title">
+    <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_informations_marche" data-fr-js-collapse-button="true">
+      Informations Marché
+    </button>
+  </h3>
+  <div class="fr-collapse" id="{{ doc.id }}_informations_marche" data-fr-js-collapse="true" style="--collapse: -48px;">
+    <ul class="fr-list">
+      {% with value=data.objet_marche copy_value=data.objet_marche %}
+        {% include "docia/details_ej/blocks/attribute.html" with title="Objet du marché" id=id_prefix|add:"objet_marche" %}
+      {% endwith %}
+      {% with value=data.administration_beneficiaire copy_value=data.administration_beneficiaire %}
+        {% include "docia/details_ej/blocks/attribute.html" with title="Administration bénéficiaire" id=id_prefix|add:"administration_beneficiaire" %}
+      {% endwith %}
+      {% with value=data.societe_principale copy_value=data.societe_principale %}
+        {% include "docia/details_ej/blocks/attribute.html" with title="Société principale" id=id_prefix|add:"societe_principale" %}
+      {% endwith %}
+      {% if data.date_marche|dict_has_values %}
+        {% with dm=data.date_marche %}
+          {% if dm.duree_execution %}
+            {% with value=dm.duree_execution copy_value=dm.duree_execution %}
+              {% include "docia/details_ej/blocks/attribute.html" with title="Durée d'exécution" id=id_prefix|add:"date_marche_duree" suffix=" mois" %}
+            {% endwith %}
+          {% endif %}
+          {% if dm.date_notification %}
+            {% with value=dm.date_notification copy_value=dm.date_notification %}
+              {% include "docia/details_ej/blocks/attribute.html" with title="Date de notification" id=id_prefix|add:"date_marche_notification" %}
+            {% endwith %}
+          {% endif %}
+          {% if dm.date_fin_execution %}
+            {% with value=dm.date_fin_execution copy_value=dm.date_fin_execution %}
+              {% include "docia/details_ej/blocks/attribute.html" with title="Date de fin d'exécution" id=id_prefix|add:"date_marche_fin" %}
+            {% endwith %}
+          {% endif %}
+        {% endwith %}
+      {% endif %}
+      {% if data.montant_initial|dict_has_values %}
+        {% with value=data.montant_initial|format_money_block_line copy_value=value %}
+          {% include "docia/details_ej/blocks/attribute.html" with title="Montant initial" id=id_prefix|add:"montant_initial" %}
+        {% endwith %}
+      {% endif %}
+    </ul>
+  </div>
+</section>
+{% endwith %}
