@@ -15,16 +15,6 @@ def _is_nonempty(value) -> bool:
 
 
 @register.filter
-def is_true(value):
-    """True pour booléen vrai ou chaînes équivalentes (true, oui, yes, 1)."""
-    if value is True:
-        return True
-    if isinstance(value, str):
-        return value.strip().lower() in ("true", "oui", "yes", "1")
-    return value in (1,)
-
-
-@register.filter
 def dict_has_values(value):
     """True si dict avec au moins une valeur non vide (None, '', {}, [])."""
     if not value or not isinstance(value, dict):

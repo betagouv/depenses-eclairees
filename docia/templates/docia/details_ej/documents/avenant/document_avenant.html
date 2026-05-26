@@ -18,7 +18,7 @@
       {% include "docia/details_ej/blocks/attribute.html" with title="Incidence durée" id=id_prefix|add:"incidence_duree" %}
     {% endwith %}
   {% endif %}
-  {% if data.incidence_bpu|is_true %}
+  {% if data.incidence_bpu %}
     {% with value="Oui" copy_value="true" %}
       {% include "docia/details_ej/blocks/attribute.html" with title="Incidence BPU" id=id_prefix|add:"incidence_bpu" %}
     {% endwith %}
