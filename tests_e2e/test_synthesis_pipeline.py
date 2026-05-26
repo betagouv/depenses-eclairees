@@ -22,8 +22,8 @@ logger = logging.getLogger("docia." + __name__)
 
 PROJECT_PATH = settings.BASE_DIR
 CSV_DIR_PATH = (PROJECT_PATH / ".." / "data" / "test").resolve()
-EJ_DB = CSV_DIR_PATH / "EJ_DB_COM.csv"
-EJ_DB_ANALYSE = CSV_DIR_PATH / "EJ_DB_COM_analyse.csv"
+EJ_DB = CSV_DIR_PATH / "test.csv"
+EJ_DB_ANALYSE = CSV_DIR_PATH / "test_analyse.csv"
 
 _CHAMPS_SYNTHESE = tuple(c for c in SYNTHESIS_OUTPUT_COLUMNS if c not in ("num_ej", "contrat", "source_et_conflits"))
 

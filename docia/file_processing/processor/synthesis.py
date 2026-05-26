@@ -4,8 +4,9 @@ extraction de champs avec sources.
 
 Requiert Django configuré (django.setup() ou exécution via manage.py).
 
-Pour chaque ligne CSV (num_ej; contrat), les PJ sont chargées séparément sur l'EJ et le
-marché (contrat). La meilleure PJ par classification est retenue (plus de champs remplis).
+Pour chaque ligne CSV (num_ej; contrat), les PJ sont chargées en une requête pour toutes
+les clés du fichier, puis réparties par EJ et marché (contrat). La meilleure PJ par
+classification est retenue (plus de champs remplis).
 L'extraction parcourt d'abord toutes les sources scope ``ej``, puis le repli ``contrat``.
 """
 
@@ -272,32 +273,66 @@ def read_ej_contrat_csv(path: str) -> list[EjContratRow]:
     return rows
 
 
-def _fetch_pieces_for_key(num_key: str) -> list[PieceJointe]:
+def _fetch_pieces_by_keys(keys: set[str]) -> dict[str, list[PieceJointe]]:
+    """
+    Charge en une requête les PJ liées aux ``num_ej`` donnés, groupées par clé d'engagement.
+    """
+    if not keys:
+        return {}
+
+    by_key: dict[str, list[PieceJointe]] = {k: [] for k in keys}
+    seen: dict[str, set[tuple[str, str]]] = {k: set() for k in keys}
+
     qs = (
         Document.objects.filter(
-            engagements__num_ej=num_key,
+            engagements__num_ej__in=keys,
             structured_data__isnull=False,
         )
-        .values("filename", "classification", "structured_data", "hash")
+        .values(
+            "filename",
+            "classification",
+            "structured_data",
+            "hash",
+            "engagements__num_ej",
+        )
         .distinct()
     )
-    pieces: list[PieceJointe] = []
+
     for raw in qs:
+        num_key = _normalize_key(raw.get("engagements__num_ej"))
+        if not num_key or num_key not in by_key:
+            continue
         pj = _row_from_raw(raw)
-        if pj is not None:
-            pieces.append(pj)
-    return pieces
+        if pj is None:
+            continue
+        dedup_key = (pj.hash, pj.filename)
+        if dedup_key in seen[num_key]:
+            continue
+        seen[num_key].add(dedup_key)
+        by_key[num_key].append(pj)
+
+    return by_key
+
+
+def _attachments_for_row(row: EjContratRow, pieces_by_key: dict[str, list[PieceJointe]]) -> AttachmentsByScope:
+    contrat_pieces: list[PieceJointe] = []
+    if row.contrat and row.contrat != row.num_ej:
+        contrat_pieces = pieces_by_key.get(row.contrat, [])
+    return AttachmentsByScope(
+        ej=pieces_by_key.get(row.num_ej, []),
+        contrat=contrat_pieces,
+    )
 
 
 def load_attachments(num_ej: str, contrat: str | None) -> AttachmentsByScope:
     """
     Charge les PJ avec ``structured_data`` non vide pour l'EJ et, si renseigné, le contrat.
     """
-    ej = _fetch_pieces_for_key(num_ej)
-    contrat_pieces: list[PieceJointe] = []
+    keys = {num_ej}
     if contrat and contrat != num_ej:
-        contrat_pieces = _fetch_pieces_for_key(contrat)
-    return AttachmentsByScope(ej=ej, contrat=contrat_pieces)
+        keys.add(contrat)
+    by_key = _fetch_pieces_by_keys(keys)
+    return _attachments_for_row(EjContratRow(num_ej=num_ej, contrat=contrat), by_key)
 
 
 def best_pj_per_classification(pjs: list[PieceJointe]) -> dict[str, PieceJointe]:
@@ -393,11 +428,18 @@ def synthesize_row(row: EjContratRow, attachments: AttachmentsByScope) -> Synthe
 
 def run_synthesis_pipeline(csv_path: str) -> list[SynthesisRow]:
     """Lit le CSV EJ/contrat et produit une synthèse par ligne."""
-    results: list[SynthesisRow] = []
-    for row in read_ej_contrat_csv(csv_path):
-        attachments = load_attachments(row.num_ej, row.contrat)
-        results.append(synthesize_row(row, attachments))
-    return results
+    rows = read_ej_contrat_csv(csv_path)
+    if not rows:
+        return []
+
+    keys: set[str] = set()
+    for row in rows:
+        keys.add(row.num_ej)
+        if row.contrat:
+            keys.add(row.contrat)
+
+    pieces_by_key = _fetch_pieces_by_keys(keys)
+    return [synthesize_row(row, _attachments_for_row(row, pieces_by_key)) for row in rows]
 
 
 def _value_for_engagement_attr(attr: str, raw: Any) -> Any:

@@ -6,6 +6,9 @@ Lancer par exemple : ``pytest tests/docia/file_processing/processor/test_synthes
 
 from __future__ import annotations
 
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
+
 import pytest
 
 from docia.file_processing.processor import synthesis as syn
@@ -107,6 +110,36 @@ def test_load_attachments_returns_linked_document():
     assert len(attachments.ej) == 1
     assert attachments.ej[0].classification == "devis"
     assert attachments.ej[0].structured_data["objet"] == "D"
+
+
+@pytest.mark.django_db
+def test_run_synthesis_pipeline_fetches_attachments_in_one_query(tmp_path):
+    ej1 = EngagementFactory(num_ej="1000000001")
+    ej2 = EngagementFactory(num_ej="2000000002")
+    doc = DocumentFactory(classification="devis", structured_data={"objet": "X"})
+    doc.engagements.add(ej1)
+    doc.engagements.add(ej2)
+
+    csv_path = tmp_path / "ej.csv"
+    csv_path.write_text(
+        "num_ej;contrat\n1000000001;\n1000000001;\n2000000002;1000000001\n",
+        encoding="utf-8",
+    )
+
+    with CaptureQueriesContext(connection) as ctx:
+        results = syn.run_synthesis_pipeline(str(csv_path))
+
+    assert len(results) == 3
+    assert results[0].objet == "X"
+
+    fetch_queries = [
+        q["sql"]
+        for q in ctx.captured_queries
+        if "docia_document" in q["sql"].lower()
+        and "structured_data" in q["sql"].lower()
+        and "engagements" in q["sql"].lower()
+    ]
+    assert len(fetch_queries) == 1
 
 
 @pytest.mark.django_db
