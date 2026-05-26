@@ -9,6 +9,7 @@ from docia.file_processing.llm.client import LLMUsage
 from docia.file_processing.models import ProcessDocumentStepType, ProcessingStatus
 from docia.file_processing.pipeline.steps.content_analysis import task_analyze_content
 from docia.file_processing.processor.analyze_content import AnalyzeResult
+from docia.file_processing.processor.constants import DEFAULT_ANALYZE_MODEL
 from tests.factories.file_processing import ProcessDocumentStepFactory
 
 
@@ -18,6 +19,7 @@ def patch_analyze_content():
         m.return_value = AnalyzeResult(
             llm_response={"nom": "Toto  ."},
             structured_data={"nom": "Toto"},
+            model=DEFAULT_ANALYZE_MODEL,
             usage=LLMUsage(prompt_tokens=17, completion_tokens=11),
         )
         yield m
@@ -43,6 +45,7 @@ def test_task_analyze_content():
     assert step.job.document.analyzed_at == frozen_time
     assert step.job.document.analyze_prompt_tokens_count == 17
     assert step.job.document.analyze_completion_tokens_count == 11
+    assert step.job.document.analyze_model == DEFAULT_ANALYZE_MODEL
     assert step.job.document.updated_at == frozen_time
 
 
@@ -67,6 +70,7 @@ def test_do_process_based_on_classification():
     assert step.job.document.analyzed_at == frozen_time
     assert step.job.document.analyze_prompt_tokens_count == 17
     assert step.job.document.analyze_completion_tokens_count == 11
+    assert step.job.document.analyze_model == DEFAULT_ANALYZE_MODEL
 
 
 @pytest.mark.django_db
@@ -87,6 +91,7 @@ def test_skip_based_on_classification():
     assert step.job.document.analyzed_at is None
     assert step.job.document.analyze_prompt_tokens_count is None
     assert step.job.document.analyze_completion_tokens_count is None
+    assert step.job.document.analyze_model is None
 
 
 @pytest.mark.django_db
@@ -104,6 +109,7 @@ def test_skip_do_not_override_previous_results():
     step.job.document.analyzed_at = analyzed_at
     step.job.document.analyze_prompt_tokens_count = 42
     step.job.document.analyze_completion_tokens_count = 43
+    step.job.document.analyze_model = "my-model"
     step.job.document.save()
     with patch_analyze_content():
         task_analyze_content(step.id)
@@ -116,3 +122,4 @@ def test_skip_do_not_override_previous_results():
     assert step.job.document.analyzed_at == analyzed_at
     assert step.job.document.analyze_prompt_tokens_count == 42
     assert step.job.document.analyze_completion_tokens_count == 43
+    assert step.job.document.analyze_model == "my-model"

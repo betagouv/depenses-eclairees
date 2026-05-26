@@ -7,6 +7,7 @@ import pytest
 
 from docia.file_processing.models import ProcessDocumentStepType, ProcessingStatus
 from docia.file_processing.pipeline.steps.text_extraction import task_extract_text
+from docia.file_processing.processor.constants import DEFAULT_OCR_MODEL
 from docia.file_processing.processor.text_extraction import UnsupportedFileType
 from docia.file_processing.processor.text_extraction.data import TextExtractionResult
 from tests.factories.file_processing import ProcessDocumentStepFactory
@@ -17,7 +18,8 @@ def patch_extract_text():
     with patch("docia.file_processing.processor.text_extraction.process_file", autospec=True) as m:
         m.return_value = TextExtractionResult(
             text="Hello World",
-            is_ocr=False,
+            is_ocr=True,
+            model=DEFAULT_OCR_MODEL,
             nb_words=2,
             nb_pages=1,
             nb_tokens=2,
@@ -37,7 +39,8 @@ def test_task_extract_info():
     assert step.status == ProcessingStatus.SUCCESS
     assert step.error == ""
     assert step.job.document.text == "Hello World"
-    assert not step.job.document.is_ocr
+    assert step.job.document.is_ocr
+    assert step.job.document.ocr_model == DEFAULT_OCR_MODEL
     assert step.job.document.nb_mot == 2
     assert step.job.document.nb_pages == 1
     assert step.job.document.text_extracted_at == frozen_time
@@ -60,6 +63,7 @@ def test_skip_unsuported_file_type():
     assert step.error == ""
     assert step.job.document.text is None
     assert step.job.document.is_ocr is None
+    assert step.job.document.ocr_model is None
     assert step.job.document.nb_mot is None
     assert step.job.document.nb_pages is None
     assert step.job.document.text_extracted_at is None
@@ -78,13 +82,14 @@ def test_empty_text_extracted():
         job=step.job,
     )
     with patch_extract_text() as m:
-        m.return_value = TextExtractionResult(text="", is_ocr=False, nb_words=0, nb_pages=0, nb_tokens=0)
+        m.return_value = TextExtractionResult(text="", is_ocr=False, model=None, nb_words=0, nb_pages=0, nb_tokens=0)
         task_extract_text(step.id)
     step.refresh_from_db()
     assert step.status == ProcessingStatus.FAILURE
     assert step.error == f"Failed to extract text - empty result - {step.job.document.file.name}"
     assert step.job.document.text is None
     assert step.job.document.is_ocr is None
+    assert step.job.document.ocr_model is None
     assert step.job.document.nb_mot is None
     assert step.job.document.nb_pages is None
     assert step.job.document.text_extracted_at is None

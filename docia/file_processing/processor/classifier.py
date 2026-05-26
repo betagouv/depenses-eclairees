@@ -7,6 +7,7 @@ import tqdm
 import pandas as pd
 
 from docia.file_processing.llm.client import LLMClient, LLMUsage
+from docia.file_processing.processor.constants import DEFAULT_CLASSIFICATION_MODEL
 
 logger = logging.getLogger("docia." + __name__)
 
@@ -15,6 +16,7 @@ logger = logging.getLogger("docia." + __name__)
 class ClassifyResult:
     classification: str
     usage: LLMUsage
+    model: str
 
 
 def create_classification_prompt(filename: str, text: str, list_classification: dict) -> str:
@@ -48,7 +50,7 @@ def create_classification_prompt(filename: str, text: str, list_classification: 
 
 
 def classify_file_with_llm(
-    filename: str, text: str, list_classification: dict, llm_model: str = "openweight-medium"
+    filename: str, text: str, list_classification: dict, llm_model: str = DEFAULT_CLASSIFICATION_MODEL
 ) -> ClassifyResult:
     """
     Classifie un fichier en fonction de son contenu en utilisant un LLM.
@@ -98,7 +100,7 @@ def classify_file_with_llm(
             classification = result_classif_keys[0]
         else:
             classification = "Non classifié"
-    return ClassifyResult(classification=classification, usage=usage)
+    return ClassifyResult(classification=classification, usage=usage, model=llm_model)
 
 
 def classify_files(

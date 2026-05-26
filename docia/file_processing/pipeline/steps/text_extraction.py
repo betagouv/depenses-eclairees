@@ -30,11 +30,22 @@ class ExtractTextStepRunner(AbstractStepRunner):
 
         document.text = result.text
         document.is_ocr = result.is_ocr
+        document.ocr_model = result.model
         document.nb_mot = result.nb_words
         document.nb_pages = result.nb_pages
         document.text_tokens_count = result.nb_tokens
         document.text_extracted_at = timezone.now()
-        document.save(update_fields=["text", "is_ocr", "nb_mot", "nb_pages", "text_tokens_count", "text_extracted_at"])
+        document.save(
+            update_fields=[
+                "text",
+                "is_ocr",
+                "ocr_model",
+                "nb_mot",
+                "nb_pages",
+                "text_tokens_count",
+                "text_extracted_at",
+            ]
+        )
 
 
 @shared_task(name="docia.extract_text", queue="ocr")

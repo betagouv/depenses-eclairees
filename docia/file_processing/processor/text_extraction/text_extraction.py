@@ -10,6 +10,7 @@ from django.core.files.storage import default_storage
 
 import tiktoken
 
+from ..constants import DEFAULT_OCR_MODEL
 from . import text_extract_document as document
 from . import text_extract_excel as excel
 from .data import TextExtractionResult
@@ -78,11 +79,11 @@ def extract_text(
     """
 
     if not file_content:
-        return "", False, None
+        return "", False, None, None
 
     if file_type == "unknown":
         logger.warning(f"Unknown file type for {file_path} (type={file_type!r})")
-        return "", False, None
+        return "", False, None, None
 
     nb_pages = None
 
@@ -140,6 +141,7 @@ def process_file(
     return TextExtractionResult(
         text=text,
         is_ocr=is_ocr,
+        model=DEFAULT_OCR_MODEL if is_ocr else None,
         nb_words=nb_words,
         nb_pages=nb_pages,
         nb_tokens=nb_tokens,
