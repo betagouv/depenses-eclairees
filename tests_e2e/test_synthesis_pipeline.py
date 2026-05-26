@@ -1,6 +1,8 @@
+import json
 import logging
 import os
 import sys
+import time
 
 import django
 from django.conf import settings
@@ -13,8 +15,7 @@ django.setup()
 
 from docia.file_processing.processor.synthesis import (  # noqa: E402
     SYNTHESIS_OUTPUT_COLUMNS,
-    apply_synthesis_fields,
-    build_merged_documents_table,
+    run_synthesis_pipeline,
 )
 
 logger = logging.getLogger("docia." + __name__)
@@ -30,60 +31,59 @@ _CHAMPS_SYNTHESE = tuple(c for c in SYNTHESIS_OUTPUT_COLUMNS if c not in ("num_e
 def _cellule_remplie(x) -> bool:
     if x is None:
         return False
-    try:
-        if pd.isna(x):
-            return False
-    except (TypeError, ValueError):
-        pass
     if isinstance(x, str) and not x.strip():
         return False
     return True
 
 
-def afficher_resume_resultats(df: pd.DataFrame) -> None:
-    """
-    Affiche uniquement en console : volumétrie EJ / contrats et décompte des champs
-    métier renseignés (hors usage dans le module synthesis).
-    """
-    n_lignes = len(df)
-    n_ej_distincts = int(df["num_ej"].nunique()) if "num_ej" in df.columns else 0
+def _rows_to_dataframe(rows: list) -> pd.DataFrame:
+    records = []
+    for row in rows:
+        data = row.to_dict()
+        conflicts = data.get("source_et_conflits")
+        if conflicts is not None:
+            data["source_et_conflits"] = json.dumps(conflicts, ensure_ascii=False)
+        records.append(data)
+    return pd.DataFrame(records, columns=list(SYNTHESIS_OUTPUT_COLUMNS))
 
-    if "contrat" in df.columns:
-        s = df["contrat"]
-        masque = s.notna()
-        masque &= s.astype(str).str.strip().ne("")
-        masque &= s.astype(str).str.lower().ne("nan")
-        n_lignes_avec_contrat = int(masque.sum())
-        contrats_non_vides = s.loc[masque].astype(str).str.strip()
-        n_contrats_distincts = int(contrats_non_vides.nunique()) if len(contrats_non_vides) else 0
-    else:
-        n_lignes_avec_contrat = 0
-        n_contrats_distincts = 0
+
+def _prepare_dataframe_for_csv(df: pd.DataFrame) -> pd.DataFrame:
+    """Nettoie les cellules avant export CSV (sauts de ligne, retours chariot)."""
+    return df.apply(lambda col: col.astype(str).str.replace("\n", " ", regex=False).str.replace("\r", "r", regex=False))
+
+
+def afficher_resume_resultats(rows: list, *, elapsed_s: float) -> None:
+    """Affiche en console volumétrie EJ / contrats et décompte des champs métier renseignés."""
+    n_lignes = len(rows)
+    num_ejs = {r.num_ej for r in rows}
+    n_ej_distincts = len(num_ejs)
+
+    contrats_non_vides = [r.contrat for r in rows if r.contrat]
+    n_lignes_avec_contrat = len(contrats_non_vides)
+    n_contrats_distincts = len(set(contrats_non_vides))
 
     print("--- Résumé synthèse ---")
+    print(f"Temps de traitement: {elapsed_s:.2f} s ({n_lignes} lignes)")
+    if n_lignes:
+        print(f"  · {elapsed_s / n_lignes:.3f} s par ligne")
     print(f"Lignes (une par entrée du CSV lié EJ): {n_lignes}")
     print(f"Numéros d'EJ distincts: {n_ej_distincts}")
     print(f"Lignes avec colonne « contrat » renseignée: {n_lignes_avec_contrat}")
     print(f"Valeurs distinctes de contrat (non vides): {n_contrats_distincts}")
 
-    if "source_et_conflits" in df.columns:
-        n_avec_sources = int(df["source_et_conflits"].apply(lambda x: x is not None).sum())
-        print(f"Lignes avec source_et_conflits (non None): {n_avec_sources}")
+    n_avec_sources = sum(1 for r in rows if r.source_et_conflits is not None)
+    print(f"Lignes avec source_et_conflits (non None): {n_avec_sources}")
 
     print("Champs métier renseignés (nombre de lignes avec valeur):")
     total_champs = 0
     for col in _CHAMPS_SYNTHESE:
-        if col not in df.columns:
-            continue
-        n = int(df[col].apply(_cellule_remplie).sum())
+        n = sum(1 for r in rows if _cellule_remplie(getattr(r, col, None)))
         total_champs += n
         print(f"  · {col}: {n}")
     print(f"Somme des remplissages (toutes colonnes métier): {total_champs}")
 
-    champs_dispo = [c for c in _CHAMPS_SYNTHESE if c in df.columns]
-    if champs_dispo:
-        au_moins_un = df[champs_dispo].apply(lambda row: any(_cellule_remplie(v) for v in row), axis=1)
-        print(f"Lignes avec au moins un champ métier renseigné: {int(au_moins_un.sum())}")
+    au_moins_un = sum(1 for r in rows if any(_cellule_remplie(getattr(r, col, None)) for col in _CHAMPS_SYNTHESE))
+    print(f"Lignes avec au moins un champ métier renseigné: {au_moins_un}")
 
 
 if __name__ == "__main__":
@@ -91,9 +91,20 @@ if __name__ == "__main__":
         logger.error(f"Fichier introuvable: {EJ_DB}")
         sys.exit(1)
 
-    df = apply_synthesis_fields(build_merged_documents_table(str(EJ_DB)))
-    EJ_DB_ANALYSE.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(EJ_DB_ANALYSE, sep=";", encoding="utf-8", index=False)
-    logger.info(f"Export CSV : {EJ_DB_ANALYSE}")
+    t0 = time.perf_counter()
+    rows = run_synthesis_pipeline(str(EJ_DB))
+    elapsed = time.perf_counter() - t0
 
-    afficher_resume_resultats(df)
+    EJ_DB_ANALYSE.parent.mkdir(parents=True, exist_ok=True)
+    df = _prepare_dataframe_for_csv(_rows_to_dataframe(rows))
+    df.to_csv(
+        EJ_DB_ANALYSE,
+        sep=";",
+        encoding="utf-8",
+        quotechar='"',
+        index=False,
+        quoting=1,
+    )
+    logger.info(f"Export CSV : {EJ_DB_ANALYSE} ({elapsed:.2f} s)")
+
+    afficher_resume_resultats(rows, elapsed_s=elapsed)
