@@ -1,3 +1,4 @@
+import datetime
 from unittest import mock
 from unittest.mock import patch
 
@@ -492,6 +493,66 @@ def test_bulk_create_documents_ignore_duplicates():
     bulk_create_documents([file_info])
     # Assert only one inserted
     assert_documents_equals_files_info(Document.objects.all(), [file_info])
+
+
+@pytest.mark.django_db
+def test_bulk_create_documents_propagates_date():
+    """Test that date is propagated from FileInfo.created_date to Document.date."""
+    file_info = FileInfoFactory(created_date=datetime.date(2025, 6, 15))
+    bulk_create_documents([file_info])
+
+    doc = Document.objects.get(hash=file_info.hash)
+    assert doc.date == datetime.date(2025, 6, 15)
+
+
+@pytest.mark.django_db
+def test_bulk_create_documents_keeps_most_recent_date_on_duplicate_file_infos():
+    """Test that when multiple FileInfos have the same hash, the most recent date is kept."""
+    file_info_1 = FileInfoFactory(created_date=datetime.date(2025, 1, 1), hash="test_hash")
+    file_info_2 = FileInfoFactory(created_date=datetime.date(2025, 6, 15), hash="test_hash")
+
+    bulk_create_documents([file_info_1, file_info_2])
+
+    doc = Document.objects.get(hash="test_hash")
+    assert doc.date == datetime.date(2025, 6, 15)
+
+
+@pytest.mark.django_db
+def test_bulk_create_documents_updates_existing_with_newer_date():
+    """Test that existing Documents are updated with newer date from FileInfo."""
+    existing_doc = DocumentFactory(date=datetime.date(2025, 1, 1), hash="existing_hash")
+    file_info = FileInfoFactory(created_date=datetime.date(2025, 6, 15), hash="existing_hash")
+
+    bulk_create_documents([file_info])
+
+    existing_doc.refresh_from_db()
+    assert existing_doc.date == datetime.date(2025, 6, 15)
+
+
+@pytest.mark.django_db
+def test_bulk_create_documents_keeps_existing_date_if_newer():
+    """Test that existing Document date is kept if it's newer than FileInfo date."""
+    existing_doc = DocumentFactory(date=datetime.date(2025, 6, 15), hash="existing_hash")
+    file_info = FileInfoFactory(created_date=datetime.date(2025, 1, 1), hash="existing_hash")
+
+    bulk_create_documents([file_info])
+
+    existing_doc.refresh_from_db()
+    assert existing_doc.date == datetime.date(2025, 6, 15)
+
+
+@pytest.mark.django_db
+def test_bulk_create_documents_updates_existing_with_date_if_none():
+    """Test that existing Documents with null date are updated with FileInfo date."""
+    import datetime
+
+    existing_doc = DocumentFactory(date=None, hash="existing_hash")
+    file_info = FileInfoFactory(created_date=datetime.date(2025, 6, 15), hash="existing_hash")
+
+    bulk_create_documents([file_info])
+
+    existing_doc.refresh_from_db()
+    assert existing_doc.date == datetime.date(2025, 6, 15)
 
 
 @pytest.mark.django_db

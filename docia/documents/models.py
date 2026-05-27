@@ -40,6 +40,7 @@ class Document(BaseModel):
     file = models.FileField(max_length=1000, unique=True)
     extension = models.CharField(null=True, blank=True)  # noqa: DJ001
     dossier = models.CharField()
+    date = models.DateField(null=True, blank=True)
     engagements = models.ManyToManyField(
         Engagement,
         related_name="documents",
