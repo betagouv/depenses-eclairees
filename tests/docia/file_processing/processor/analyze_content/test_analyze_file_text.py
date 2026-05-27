@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 from docia.file_processing.llm.client import LLMAskResult, LLMUsage
 from docia.file_processing.processor.analyze_content import AnalyzeResult, analyze_file_text
+from docia.file_processing.processor.constants import DEFAULT_ANALYZE_MODEL
 
 
 def test_analyze_file_text():
@@ -19,4 +20,5 @@ def test_analyze_file_text():
             llm_response=data,
             structured_data=data,
             usage=usage,
+            model=DEFAULT_ANALYZE_MODEL,
         )

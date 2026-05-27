@@ -77,6 +77,7 @@ def test_process_file():
     assert result == TextExtractionResult(
         text="Hello World",
         is_ocr=False,
+        model=None,
         nb_words=2,
         nb_pages=None,
         nb_tokens=2,

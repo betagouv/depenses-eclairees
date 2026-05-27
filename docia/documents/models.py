@@ -47,6 +47,7 @@ class Document(BaseModel):
     )
     text = models.TextField(null=True, blank=True)  # noqa: DJ001
     is_ocr = models.BooleanField(null=True, blank=True)
+    ocr_model = models.CharField(null=True, blank=True)  # noqa: DJ001
     nb_mot = models.IntegerField(null=True, blank=True)
     nb_pages = models.IntegerField(null=True, blank=True)
     relevant_content = models.TextField(null=True, blank=True)  # noqa: DJ001
@@ -67,11 +68,13 @@ class Document(BaseModel):
     classification_type = models.CharField(max_length=255, null=True, blank=True)  # noqa: DJ001
     classification_prompt_tokens_count = models.IntegerField(null=True, blank=True)
     classification_completion_tokens_count = models.IntegerField(null=True, blank=True)
+    classification_model = models.CharField(null=True, blank=True)  # noqa: DJ001
     classified_at = models.DateTimeField(null=True, blank=True)
 
     # Metadata analyze
     analyze_prompt_tokens_count = models.IntegerField(null=True, blank=True)
     analyze_completion_tokens_count = models.IntegerField(null=True, blank=True)
+    analyze_model = models.CharField(null=True, blank=True)  # noqa: DJ001
     analyzed_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):

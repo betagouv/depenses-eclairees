@@ -48,6 +48,7 @@ class AnalyzeContentStepRunner(AbstractStepRunner):
         document.analyzed_at = timezone.now()
         document.analyze_prompt_tokens_count = result.usage.prompt_tokens
         document.analyze_completion_tokens_count = result.usage.completion_tokens
+        document.analyze_model = result.model
         document.save(
             update_fields=[
                 "llm_response",
@@ -55,6 +56,7 @@ class AnalyzeContentStepRunner(AbstractStepRunner):
                 "analyzed_at",
                 "analyze_prompt_tokens_count",
                 "analyze_completion_tokens_count",
+                "analyze_model",
             ]
         )
 

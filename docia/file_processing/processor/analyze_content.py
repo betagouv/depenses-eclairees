@@ -8,6 +8,7 @@ from dataclasses import dataclass
 
 from ..llm.client import LLMClient, LLMUsage
 from .attributes_query import DOC_TYPE_ATTRIBUTES_MAPPING, DOC_TYPE_SCHEMA_MAPPING
+from .constants import DEFAULT_ANALYZE_MODEL
 from .post_processing_llm import clean_llm_response
 
 logger = logging.getLogger("docia." + __name__)
@@ -17,6 +18,7 @@ logger = logging.getLogger("docia." + __name__)
 class AnalyzeResult:
     llm_response: dict
     structured_data: dict
+    model: str | None
     usage: LLMUsage
 
 
@@ -51,7 +53,7 @@ def create_response_format(doc_schema, classification):
 
 
 def analyze_file_text(
-    text: str, document_type: str, llm_model: str = "mistral-medium-2508", temperature: float = 0.0
+    text: str, document_type: str, llm_model: str = DEFAULT_ANALYZE_MODEL, temperature: float = 0.0
 ) -> AnalyzeResult:
     """
     Analyse le texte pour extraire des informations.
@@ -72,6 +74,7 @@ def analyze_file_text(
         llm_response=response,
         structured_data=data,
         usage=usage,
+        model=llm_model,
     )
 
 

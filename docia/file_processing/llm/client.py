@@ -17,6 +17,7 @@ from openai import APIError, APIStatusError, OpenAI
 from pydantic import BaseModel
 
 from docia.file_processing.llm.rategate.gate import RateGate
+from docia.file_processing.processor.constants import DEFAULT_OCR_MODEL
 
 logger = logging.getLogger(__name__)
 T = TypeVar("T")
@@ -262,7 +263,7 @@ class LLMClient:
     def ocr_pdf(
         self,
         pdf_content: bytes,
-        model: str = "mistral-ocr-2512",
+        model: str = DEFAULT_OCR_MODEL,
         rate_per_minute: int | None = None,
         max_retries: int = 3,
         retry_delay: float = 60,

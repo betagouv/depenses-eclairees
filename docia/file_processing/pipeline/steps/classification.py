@@ -26,6 +26,7 @@ class ClassifyStepRunner(AbstractStepRunner):
         document.classified_at = timezone.now()
         document.classification_prompt_tokens_count = result.usage.prompt_tokens
         document.classification_completion_tokens_count = result.usage.completion_tokens
+        document.classification_model = result.model
         document.save(
             update_fields=[
                 "classification",
@@ -33,6 +34,7 @@ class ClassifyStepRunner(AbstractStepRunner):
                 "classified_at",
                 "classification_prompt_tokens_count",
                 "classification_completion_tokens_count",
+                "classification_model",
             ]
         )
 
