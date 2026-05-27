@@ -66,7 +66,7 @@ def download_documents(doc_ids: list[str]):
         logger.info("Start download %s %s %sMo", doc.external_id, doc.name, doc.size_mo)
         max_retries = 2 if doc.size_mo < 21 else 0
         try:
-            downloader.download_document(doc.external_id, doc.name, max_retries=max_retries)
+            downloader.download_document(doc.external_id, doc.name, document_date=doc.date, max_retries=max_retries)
         except Exception as exc:
             doc.error_set.create(message=str(exc))
             raise

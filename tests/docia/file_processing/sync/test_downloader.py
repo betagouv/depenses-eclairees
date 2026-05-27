@@ -1,5 +1,6 @@
 import io
 import zipfile
+from datetime import datetime
 from unittest.mock import patch
 
 from django.core.files.storage import default_storage
@@ -35,7 +36,8 @@ def test_generic_file_handling(downloader):
         name = "simple_file.txt"
 
         # Call the download method
-        downloader.download_document(external_id, name)
+        doc_date = datetime.fromisoformat("2024-01-01T12:00:00")
+        downloader.download_document(external_id, name, document_date=doc_date)
 
         # Check that the file was stored
         file_infos = FileInfo.objects.filter(external_id=external_id)
@@ -44,6 +46,9 @@ def test_generic_file_handling(downloader):
         assert len(file_infos) == 1
 
         file_info = file_infos[0]
+
+        # Check that the created_date is set from document_date
+        assert file_info.created_date == doc_date.date()
 
         # Check the file content
         with default_storage.open(file_info.file.name, "rb") as f:
@@ -84,13 +89,17 @@ def test_empty_file_handling(downloader):
         name = "empty_file.txt"
 
         # Call the download method
-        downloader.download_document(external_id, name)
+        doc_date = datetime.fromisoformat("2024-01-01T12:00:00")
+        downloader.download_document(external_id, name, document_date=doc_date)
 
         # Check that the metadata was stored in database
         file_infos = FileInfo.objects.filter(external_id=external_id)
         assert len(file_infos) == 1
 
         file_info = file_infos[0]
+
+        # Check that the created_date is set from document_date
+        assert file_info.created_date == doc_date.date()
 
         # Check that file was stored in S3
         assert default_storage.exists(file_info.file.name)
@@ -129,7 +138,7 @@ def test_existing_fileinfo_skip_processing(downloader, caplog):
         )
 
         # Call the download method
-        downloader.download_document(external_id, name)
+        downloader.download_document(external_id, name, document_date=datetime.fromisoformat("2024-01-01T12:00:00"))
 
         # Check that download_document was NOT called (file already exists)
         m_client_download.assert_not_called()
@@ -159,7 +168,7 @@ def test_invalid_zip_file_handling(downloader, caplog):
 
         with pytest.raises(zipfile.BadZipFile):
             # Call the download method
-            downloader.download_document(external_id, name)
+            downloader.download_document(external_id, name, document_date=datetime.fromisoformat("2024-01-01T12:00:00"))
 
         # Check that nothing is stored
         assert not FileInfo.objects.filter(external_id=external_id).exists()
@@ -196,9 +205,10 @@ def test_zip_file_with_nested_structure(downloader):
         # Test data
         external_id = "test_external_id"
         name = "archive.zip"
+        doc_date = datetime.fromisoformat("2024-01-01T12:00:00")
 
         # Call the download method
-        downloader.download_document(external_id, name)
+        downloader.download_document(external_id, name, document_date=doc_date)
 
         # Check that the zip file and its contents were stored
         files_info = FileInfo.objects.order_by("file")
@@ -238,6 +248,7 @@ def test_zip_file_with_nested_structure(downloader):
         # Check that all files have the correct root_external_id
         for file_info in files_info:
             assert file_info.root_external_id == external_id
+            assert file_info.created_date == doc_date.date()
 
 
 def test_clean_filename_basic(downloader):
@@ -334,9 +345,10 @@ def test_zip_file_with_macOSX_directories(downloader):
         # Test data
         external_id = "test_external_id_macOSX"
         name = "archive_with_macOSX.zip"
+        doc_date = datetime.fromisoformat("2024-01-01T12:00:00")
 
         # Call the download method
-        downloader.download_document(external_id, name)
+        downloader.download_document(external_id, name, document_date=doc_date)
 
         # Check that files were stored
         files_info = FileInfo.objects.order_by("file")

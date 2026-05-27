@@ -22,12 +22,12 @@ from docia.file_processing.sync.client import (
 
 
 @pytest.fixture
-def client():
+def client() -> SyncClient:
     """Create a SyncClient instance for testing using from_settings"""
     return SyncClient.from_settings()
 
 
-def test_authenticate_success(client):
+def test_authenticate_success(client: SyncClient):
     """Test successful authentication"""
     # Mock successful authentication
     responses.add(
@@ -45,7 +45,7 @@ def test_authenticate_success(client):
     assert client.session.headers["Authorization"] == "Bearer test_token_123"
 
 
-def test_list_documents_for_ej_success(client):
+def test_list_documents_for_ej_success(client: SyncClient):
     """Test successful document listing"""
 
     # Mock the document listing response
@@ -84,7 +84,7 @@ def test_list_documents_for_ej_success(client):
     ]
 
 
-def test_list_documents_for_ej_validation_error(client, caplog):
+def test_list_documents_for_ej_validation_error(client: SyncClient, caplog):
     """Test validation error handling"""
 
     # Mock invalid response (missing required fields)
@@ -113,7 +113,7 @@ def test_list_documents_for_ej_validation_error(client, caplog):
     assert "Validation error for document" in caplog.text
 
 
-def test_list_documents_for_ej_invalid_size(client, caplog):
+def test_list_documents_for_ej_invalid_size(client: SyncClient, caplog):
     """Test handling of invalid size_pj values"""
 
     # Mock response with invalid size_pj (not an integer)
@@ -148,7 +148,7 @@ def test_list_documents_for_ej_invalid_size(client, caplog):
     assert "defaulting to -1" in caplog.text
 
 
-def test_list_documents_for_ej_deduplication(client):
+def test_list_documents_for_ej_deduplication(client: SyncClient):
     """Test that duplicate documents are properly removed"""
 
     doc_data = {
@@ -215,7 +215,7 @@ def test_list_documents_for_ej_deduplication(client):
         {"num_ej": "EJ2023-002"},
     ],
 )
-def test_list_documents_for_ej_invalid_duplicate(client, dict_overwrite):
+def test_list_documents_for_ej_invalid_duplicate(client: SyncClient, dict_overwrite):
     """Test that invalid duplicates (different metadata) raise an error"""
 
     # Mock response with invalid duplicate (same ID but different metadata)
@@ -250,7 +250,7 @@ def test_list_documents_for_ej_invalid_duplicate(client, dict_overwrite):
     assert "Invalid duplicate" in str(exc_info.value)
 
 
-def test_download_document_success(client):
+def test_download_document_success(client: SyncClient):
     """Test successful document download"""
 
     # Mock document content
@@ -269,7 +269,7 @@ def test_download_document_success(client):
     assert content == test_content
 
 
-def test_list_ej_place_success(client):
+def test_list_ej_place_success(client: SyncClient):
     """Test successful listing of engagement activities"""
 
     # Mock the engagement activity listing response
@@ -325,7 +325,7 @@ def test_list_ej_place_success(client):
     assert activities[1].received_at == datetime(2023, 1, 2, tzinfo=timezone.utc)
 
 
-def test_list_ej_place_validation_error(client, caplog):
+def test_list_ej_place_validation_error(client: SyncClient, caplog):
     """Test validation error handling for engagement activities"""
 
     # Mock invalid response (missing required fields)
@@ -358,7 +358,7 @@ def test_list_ej_place_validation_error(client, caplog):
     assert "Validation error for object" in caplog.text
 
 
-def test_token_expired(client, caplog):
+def test_token_expired(client: SyncClient, caplog):
     """Test that token expiration (401) triggers re-authentication and retry in _retry_call"""
 
     with (
@@ -399,7 +399,7 @@ def test_token_expired(client, caplog):
     assert " before retry (1/1)" in caplog.text
 
 
-def test_download_document_api_error(client, caplog):
+def test_download_document_api_error(client: SyncClient, caplog):
     """Test that download_document handles API errors and implements retry logic"""
 
     # Track call count to return different responses
@@ -447,7 +447,7 @@ def test_download_document_api_error(client, caplog):
     assert " before retry" in caplog.text
 
 
-def test_download_document_api_error_exhausted_retries(client, caplog):
+def test_download_document_api_error_exhausted_retries(client: SyncClient, caplog):
     """Test that download_document raises exception after exhausting all retries"""
 
     # Mock API calls that always return 429 (rate limited)
