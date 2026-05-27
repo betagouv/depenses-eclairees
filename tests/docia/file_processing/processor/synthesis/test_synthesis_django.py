@@ -1,7 +1,7 @@
 """
 Tests Django / ORM pour ``synthesis`` (nécessitent pytest-django et une base de test).
 
-Lancer par exemple : ``pytest tests/docia/file_processing/processor/test_synthesis_django.py``
+Lancer par exemple : ``pytest tests/docia/file_processing/processor/synthesis/``
 """
 
 from __future__ import annotations

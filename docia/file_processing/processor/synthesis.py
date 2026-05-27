@@ -10,8 +10,6 @@ classification est retenue (plus de champs remplis).
 L'extraction parcourt d'abord toutes les sources scope ``ej``, puis le repli ``contrat``.
 """
 
-from __future__ import annotations
-
 import csv
 import json
 from dataclasses import asdict, dataclass, field
