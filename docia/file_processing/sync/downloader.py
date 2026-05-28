@@ -101,7 +101,7 @@ class DocumentDownloader:
             extension=extension,
             size=size,
             hash=hash,
-            created_date=document_date.date(),
+            date=document_date,
             original_filename=original_filename,
         )
 

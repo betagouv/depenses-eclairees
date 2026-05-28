@@ -149,7 +149,7 @@ class FileInfo(BaseModel):
     extension = models.CharField(max_length=10)
     size = models.PositiveIntegerField()
     hash = models.CharField()
-    created_date = models.DateField()
+    date = models.DateTimeField()
     original_filename = models.CharField(max_length=1000, blank=True, default="")
 
     def __str__(self):

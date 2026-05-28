@@ -45,7 +45,7 @@ def get_files_info(folder: str, chunk_number: int = 0, chunk_size: int | None = 
             info = dict(**info)
             info["folder"] = info.pop("dossier")
             info["size"] = info.pop("taille")
-            info["created_date"] = info.pop("date_creation")
+            info["date"] = info.pop("date_creation")
             file_info = FileInfo(**info)
             file_info.file = os.path.join(folder, filename)
             to_create.append(file_info)
@@ -70,7 +70,7 @@ def bulk_create_engagements(num_ejs):
 def bulk_create_documents(file_infos: list[FileInfo]):
     """
     Creates Documents from FileInfos, propagating the date field.
-    Handles conflicts by keeping the most recent date when the same hash appears 
+    Handles conflicts by keeping the most recent date when the same hash appears
     multiple times in file_infos or already exists in the database.
     """
     # Get all unique hashes from file_infos
@@ -88,7 +88,7 @@ def bulk_create_documents(file_infos: list[FileInfo]):
             items_by_hash[info.hash] = info
         else:
             # Keep the one with the most recent date
-            if info.created_date and (not existing_info.created_date or info.created_date > existing_info.created_date):
+            if info.date and (not existing_info.date or info.date > existing_info.date):
                 items_by_hash[info.hash] = info
     
     # Separate into documents to create and documents to update
@@ -99,7 +99,7 @@ def bulk_create_documents(file_infos: list[FileInfo]):
         existing_doc = existing_by_hash.get(hash)
         if existing_doc is not None:
             # Existing document - update date if new date is more recent
-            new_date = info.created_date
+            new_date = info.date
             if existing_doc.date is None or (new_date and new_date > existing_doc.date):
                 existing_doc.date = new_date
                 docs_to_update.append(existing_doc)
@@ -112,7 +112,7 @@ def bulk_create_documents(file_infos: list[FileInfo]):
                 taille=info.size,
                 hash=info.hash,
                 file=info.file,
-                date=info.created_date,
+                date=info.date,
             )
             docs_to_create.append(doc)
     

@@ -61,7 +61,7 @@ class FileInfoFactory(factory.django.DjangoModelFactory):
     extension = factory.lazy_attribute(lambda i: i.filename.split(".")[-1])
     size = 1042
     hash = factory.lazy_attribute(lambda i: hashlib.md5(i.file.encode()).hexdigest())
-    created_date = factory.fuzzy.FuzzyDate(start_date=datetime.date(2025, 1, 1))
+    date = factory.fuzzy.FuzzyDateTime(start_dt=datetime.datetime(2025, 1, 1, tzinfo=timezone.get_current_timezone()))
 
 
 class SubFileInfoFactory(FileInfoFactory):
