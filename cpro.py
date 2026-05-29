@@ -20,6 +20,9 @@ def parse_args():
     parser.add_option("--end", dest="end", help="End date in ISO format (YYYY-MM-DD)")
     parser.add_option("--scope", dest="scope", help="Scope code")
     parser.add_option("--headed", action="store_true", default=False, help="Run in headed mode")
+    parser.add_option("--provider-name", dest="provider_name", help="Provider name (required if provider is specified)")
+    parser.add_option("--provider-siret", dest="provider_siret", help="Provider SIRET (mutually exclusive with --provider-siren)")
+    parser.add_option("--provider-siren", dest="provider_siren", help="Provider SIREN (mutually exclusive with --provider-siret)")
     options, args = parser.parse_args()
     return options
 
@@ -52,6 +55,52 @@ def init_search_page(page, scope: str):
     page.click("#selection0")
     page.select_option("select[name='listeResultats.critere.etatCourant']", value="MISE_EN_PAIEMENT")
     logger.info("Search page initialized.")
+
+
+def fill_provider(page, provider_name: str, provider_siret: str = None, provider_siren: str = None):
+    """Fill the provider search field. Requires either siret or siren (but not both) and a name.
+    
+    Args:
+        page: The Playwright page object
+        provider_name: The name of the provider (required)
+        provider_siret: The SIRET of the provider (optional, mutually exclusive with provider_siren)
+        provider_siren: The SIREN of the provider (optional, mutually exclusive with provider_siret)
+    """
+    if provider_siret and provider_siren:
+        raise ValueError("Cannot provide both siret and siren. Please provide only one.")
+    if not provider_siret and not provider_siren:
+        raise ValueError("Must provide either siret or siren.")
+    
+    identifier = provider_siret or provider_siren
+    logger.info(f"Filling provider: name={provider_name}, identifier={identifier}")
+    
+    # Click on the provider select2 container to open the dropdown
+    page.click("#select2-GFR_RechercheFacturesRecues_Criteres_StructureFournisseurGFR_RechercheFacturesRecues-container")
+    
+    # Type the siret or siren
+    page.keyboard.type(identifier)
+    
+    # Wait for results and click the first one
+    page.click("#select2-GFR_RechercheFacturesRecues_Criteres_StructureFournisseurGFR_RechercheFacturesRecues-results li:first-child")
+    
+    # If siren is provided, check if SIREN checkbox is disabled and enable it if needed
+    if provider_siren:
+        siren_checkbox = page.locator("#TRA_Recherche_Factures_Coche_SIREN")
+        is_disabled = siren_checkbox.get_attribute("disabled")
+        if is_disabled:
+            logger.info("SIREN checkbox is disabled, enabling it...")
+            page.evaluate("""() => {
+                const el = document.getElementById('TRA_Recherche_Factures_Coche_SIREN');
+                if (el) el.disabled = false;
+            }""")
+        # Click the label to select SIREN
+        page.click("label[for='TRA_Recherche_Factures_Coche_SIREN']")
+    
+        # Assert that SIREN checkbox is checked
+        assert page.locator("#TRA_Recherche_Factures_Coche_SIREN").is_checked(), "SIREN checkbox should be checked"
+        assert page.input_value("input[name='rechercheParSiren']") == "true", "rechercheParSiren should be true"
+    
+    logger.info(f"Provider filled successfully: {provider_name}")
 
 
 def load_date(page, date: date) -> bool:
@@ -96,14 +145,26 @@ def go_next_page(page) -> bool:
     return True
 
 
-def download_items(page, date: date, scope: str):
-    """Select all items on the current page and trigger bulk download."""
+def download_items(page, date: date, scope: str, provider_name: str = None):
+    """Select all items on the current page and trigger bulk download.
+    
+    Args:
+        page: The Playwright page object
+        date: The date being processed
+        scope: The scope code
+        provider_name: Optional provider name to include in filename
+    """
     # Get current page number from value attribute of the active page button
     page_button = page.locator("li.paginate__page.paginate__page_active button[name='listeResultats.page']")
     page_number = page_button.get_attribute("value")
     
     date_file = date.strftime("%Y%m%d")
-    filename = f"{scope}_{date_file}_{page_number}.zip"
+    if provider_name:
+        # Sanitize provider name for filename (remove special characters and spaces)
+        safe_provider = "".join(c if c.isalnum() else "_" for c in provider_name)
+        filename = f"{scope}_{safe_provider}_{date_file}_{page_number}.zip"
+    else:
+        filename = f"{scope}_{date_file}_{page_number}.zip"
     filepath = f"../downloads/{filename}"
     
     if os.path.exists(filepath):
@@ -136,11 +197,30 @@ if __name__ == "__main__":
     end_date = date.fromisoformat(options.end)
     scope = options.scope
     
+    # Parse provider options
+    provider_name = options.provider_name
+    provider_siret = options.provider_siret
+    provider_siren = options.provider_siren
+    
+    # Validate provider options
+    has_provider = provider_name or provider_siret or provider_siren
+    if has_provider:
+        if not provider_name:
+            raise ValueError("Provider name is required when specifying a provider. Use --provider-name.")
+        if not provider_siret and not provider_siren:
+            raise ValueError("Must provide either --provider-siret or --provider-siren when specifying a provider.")
+        if provider_siret and provider_siren:
+            raise ValueError("Cannot provide both --provider-siret and --provider-siren. Please provide only one.")
+    
     try:
         ctx, page = init_context(headless=not options.headed)
         
         # Initialize search page once
         init_search_page(page, scope)
+        
+        # Fill provider if specified
+        if has_provider:
+            fill_provider(page, provider_name, provider_siret, provider_siren)
         
         # Loop through all dates from start to end (inclusive)
         current_date = start_date
@@ -154,7 +234,7 @@ if __name__ == "__main__":
             
             # Download all pages for this date
             while True:
-                download_items(page, current_date, scope)
+                download_items(page, current_date, scope, provider_name)
                 if not go_next_page(page):
                     break
             
