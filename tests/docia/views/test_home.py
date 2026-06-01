@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from datetime import datetime
 from unittest.mock import patch
 
 import pytest
@@ -7,7 +8,7 @@ from docia.tracking.models import TrackingEvent
 from docia.views import (
     compute_ratio_data_extraction,
     format_ratio_to_percent,
-    sort_by_order_and_field,
+    sort_documents,
 )
 from tests.factories.data import DocumentFactory, EngagementFactory
 from tests.factories.users import UserFactory
@@ -161,56 +162,83 @@ def test_format_ratio_to_percent():
     assert format_ratio_to_percent(0.001) == "0%"  # Rounds to 0
 
 
-def test_sort_by_order_and_field():
-    """Test sort_by_order_and_field : tri par liste de valeurs puis par champ optionnel."""
-    order = ("a", "b", "c")
+def test_sort_documents():
+    """Test sort_documents : tri par ORDER_CLASSIFICATIONS, date décroissante, puis ratio_extracted décroissant."""
 
-    # Tri par ordre uniquement (order_key)
-    items = [{"k": "c"}, {"k": "a"}, {"k": "b"}]
-    sort_by_order_and_field(items, order, "k")
-    assert [x["k"] for x in items] == ["a", "b", "c"]
-
-    # Valeurs hors liste vont à la fin
-    items = [{"k": "z"}, {"k": "a"}, {"k": "x"}]
-    sort_by_order_and_field(items, order, "k")
-    assert [x["k"] for x in items] == ["a", "z", "x"]
-
-    # Tri secondaire décroissant (défaut)
+    # Tri par classification selon ORDER_CLASSIFICATIONS
     items = [
-        {"k": "b", "score": 10},
-        {"k": "b", "score": 30},
-        {"k": "a", "score": 5},
-        {"k": "b", "score": 20},
+        {"classification": "fiche_navette", "date": datetime(2024, 1, 1), "ratio_extracted": 0.5},
+        {"classification": "acte_engagement", "date": datetime(2024, 1, 1), "ratio_extracted": 0.5},
+        {"classification": "ccp_vae", "date": datetime(2024, 1, 1), "ratio_extracted": 0.5},
     ]
-    sort_by_order_and_field(items, order, "k", then_by_field="score", then_descending=True)
-    assert [x["score"] for x in items] == [5, 30, 20, 10]
+    sort_documents(items)
+    assert [x["classification"] for x in items] == ["acte_engagement", "ccp_vae", "fiche_navette"]
 
-    # Tri secondaire croissant
+    # Classifications hors ORDER_CLASSIFICATIONS vont à la fin
     items = [
-        {"k": "a", "score": 100},
-        {"k": "a", "score": 10},
+        {"classification": "autre", "date": datetime(2024, 1, 1), "ratio_extracted": 0.5},
+        {"classification": "acte_engagement", "date": datetime(2024, 1, 1), "ratio_extracted": 0.5},
+        {"classification": "ccp_vae", "date": datetime(2024, 1, 1), "ratio_extracted": 0.5},
     ]
-    sort_by_order_and_field(items, order, "k", then_by_field="score", then_descending=False)
-    assert [x["score"] for x in items] == [10, 100]
+    sort_documents(items)
+    assert [x["classification"] for x in items] == ["acte_engagement", "ccp_vae", "autre"]
 
-    # Sans tri secondaire
-    items = [{"k": "c"}, {"k": "a"}]
-    sort_by_order_and_field(items, order, "k")
-    assert [x["k"] for x in items] == ["a", "c"]
+    # Tri par date décroissante dans même classification
+    items = [
+        {"classification": "acte_engagement", "date": datetime(2024, 1, 1), "ratio_extracted": 0.5},
+        {"classification": "acte_engagement", "date": datetime(2024, 6, 15), "ratio_extracted": 0.5},
+        {"classification": "acte_engagement", "date": datetime(2024, 3, 1), "ratio_extracted": 0.5},
+    ]
+    sort_documents(items)
+    assert [x["date"] for x in items] == [datetime(2024, 6, 15), datetime(2024, 3, 1), datetime(2024, 1, 1)]
+
+    # Tri par ratio_extracted décroissant pour même classification et date
+    date_fixed = datetime(2024, 1, 1)
+    items = [
+        {"classification": "acte_engagement", "date": date_fixed, "ratio_extracted": 0.3},
+        {"classification": "acte_engagement", "date": date_fixed, "ratio_extracted": 0.9},
+        {"classification": "acte_engagement", "date": date_fixed, "ratio_extracted": 0.6},
+    ]
+    sort_documents(items)
+    assert [x["ratio_extracted"] for x in items] == [0.9, 0.6, 0.3]
+
+    # Documents sans date vont à la fin du groupe
+    date_fixed = datetime(2024, 1, 1)
+    items = [
+        {"classification": "acte_engagement", "date": date_fixed, "ratio_extracted": 0.5},
+        {"classification": "acte_engagement", "date": None, "ratio_extracted": 0.8},
+        {"classification": "acte_engagement", "date": date_fixed, "ratio_extracted": 0.5},
+    ]
+    sort_documents(items)
+    # Les documents avec date viennent en premier (même date), puis celui sans date
+    assert items[0]["date"] == date_fixed
+    assert items[1]["date"] == date_fixed
+    assert items[2]["date"] is None
+
+    # Tri complet : classification, puis date, puis ratio
+    items = [
+        {"classification": "ccp_vae", "date": datetime(2024, 1, 1), "ratio_extracted": 0.3},
+        {"classification": "acte_engagement", "date": datetime(2024, 1, 1), "ratio_extracted": 0.9},
+        {"classification": "acte_engagement", "date": datetime(2024, 6, 1), "ratio_extracted": 0.5},
+        {"classification": "ccp_vae", "date": datetime(2024, 1, 1), "ratio_extracted": 0.8},
+    ]
+    sort_documents(items)
+    # acte_engagement d'abord (ordre 0), puis ccp_vae (ordre 1)
+    assert items[0]["classification"] == "acte_engagement"
+    assert items[1]["classification"] == "acte_engagement"
+    assert items[2]["classification"] == "ccp_vae"
+    assert items[3]["classification"] == "ccp_vae"
+    # Dans acte_engagement : date 2024-06-01 avant 2024-01-01
+    assert items[0]["date"] == datetime(2024, 6, 1)
+    assert items[1]["date"] == datetime(2024, 1, 1)
+    # Dans ccp_vae : ratio 0.8 avant 0.3
+    assert items[2]["ratio_extracted"] == 0.8
+    assert items[3]["ratio_extracted"] == 0.3
 
     # Liste vide
     items = []
-    sort_by_order_and_field(items, order, "k", then_by_field="score")
+    sort_documents(items)
     assert items == []
-
-    # Valeur secondaire manquante (None) : en fin de groupe en mode décroissant
-    items = [
-        {"k": "a", "score": 50},
-        {"k": "a", "score": None},
-        {"k": "a", "score": 80},
-    ]
-    sort_by_order_and_field(items, order, "k", then_by_field="score", then_descending=True)
-    assert [x["score"] for x in items] == [80, 50, None]
 
 
 @pytest.mark.django_db
