@@ -5,9 +5,9 @@ import os
 import posixpath
 import re
 import zipfile
+from datetime import datetime
 
 from django.core.files.storage import default_storage
-from django.utils import timezone
 
 from unidecode import unidecode
 
@@ -22,7 +22,7 @@ class DocumentDownloader:
     def __init__(self):
         self.client = SyncClient.from_settings()
 
-    def download_document(self, external_id: str, name: str, *, max_retries=0):
+    def download_document(self, external_id: str, name: str, *, document_date: datetime, max_retries=0):
         """Download a document from the API and store it in S3 + database (metadata)."""
 
         assert not name.startswith("."), f"File name invalid {name!r}"
@@ -38,7 +38,9 @@ class DocumentDownloader:
         # Download the document
         file_content = self.client.download_document(external_id, max_retries=max_retries)
 
-        self._store_file(external_id, name, file_content=file_content, folder=f"docs/{external_id}")
+        self._store_file(
+            external_id, name, file_content=file_content, folder=f"docs/{external_id}", document_date=document_date
+        )
 
     def _compute_hash(self, file_content: bytes):
         hash_sha256 = hashlib.sha256()
@@ -50,8 +52,10 @@ class DocumentDownloader:
         self,
         external_id: str | None,
         name: str,
+        *,
         file_content: bytes,
         folder: str,
+        document_date: datetime,
         db_save: bool = True,
         parent: FileInfo | None = None,
     ):
@@ -97,13 +101,15 @@ class DocumentDownloader:
             extension=extension,
             size=size,
             hash=hash,
-            created_date=timezone.now().date(),
+            date=document_date,
             original_filename=original_filename,
         )
 
         # Unzip files recursively and store them with the original_name as prefix
         if extension == "zip":
-            sub_files_info = self._store_sub_zip_file(f"{folder}/{filename}_", file_content, parent=file_info)
+            sub_files_info = self._store_sub_zip_file(
+                f"{folder}/{filename}_", file_content, parent=file_info, document_date=document_date
+            )
         else:
             sub_files_info = []
 
@@ -113,7 +119,7 @@ class DocumentDownloader:
 
         return files_info
 
-    def _store_sub_zip_file(self, folder: str, file_content: bytes, parent: FileInfo):
+    def _store_sub_zip_file(self, folder: str, file_content: bytes, parent: FileInfo, document_date: datetime):
         """
         Extract the files inside a zip and store them, works reccursively in case of nested zips.
 
@@ -146,12 +152,13 @@ class DocumentDownloader:
                     filename = self.clean_filename(filename)
                     filefolder = posixpath.join(folder, subfolder).rstrip("/")
 
-                    # Store the inner file
+                    # Store the inner file with the same document_date
                     sub_files_info = self._store_file(
                         external_id=None,
                         name=filename,
-                        folder=filefolder,
                         file_content=file_content,
+                        folder=filefolder,
+                        document_date=document_date,
                         db_save=False,
                         parent=parent,
                     )

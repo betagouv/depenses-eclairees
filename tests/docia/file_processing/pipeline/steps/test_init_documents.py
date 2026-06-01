@@ -19,6 +19,7 @@ from docia.file_processing.pipeline.steps.init_documents import (
 from docia.models import Document, Engagement, EngagementTag
 from tests.factories.data import DocumentFactory, EngagementFactory, EngagementTagFactory
 from tests.factories.file_processing import ExternalLinkDocumentOrderFactory, FileInfoFactory, SubFileInfoFactory
+from tests.utils import tz_datetime
 
 
 @pytest.mark.django_db
@@ -74,10 +75,16 @@ def test_init_documents_in_folder_complex_case():
         num_ej2 = "2234567890"
         m_listdir.return_value = ([], [f"{num_ej1}_doc1.pdf", f"{num_ej2}_doc2.pdf"])
         file_info_1 = FileInfoFactory(external_id=None, filename=f"{num_ej1}_doc1.pdf", folder="folder")
-        file_info_2 = FileInfoFactory(external_id=None, filename=f"{num_ej2}_doc2.pdf", folder="folder")
+        file_info_2 = FileInfoFactory(
+            external_id=None, filename=f"{num_ej2}_doc2.pdf", folder="folder", date="2026-03-04"
+        )
         # Duplicate handling (on FileInfo)
         file_info_2_dup = FileInfoFactory(
-            external_id=None, hash=file_info_2.hash, filename=f"{num_ej2}_doc2_2.pdf", folder="folder"
+            external_id=None,
+            hash=file_info_2.hash,
+            filename=f"{num_ej2}_doc2_2.pdf",
+            folder="folder",
+            date="2026-03-02",
         )
         # Duplicate handling (on Document)
         file_info_3 = FileInfoFactory(external_id=None, filename=f"{num_ej2}_doc3.pdf", folder="folder")
@@ -358,7 +365,7 @@ def test_get_files_info():
             "filename": i.filename,
             "dossier": i.folder,
             "extension": i.extension,
-            "date_creation": i.created_date,
+            "date_creation": i.date,
             "taille": i.size,
             "hash": i.hash,
         }
@@ -371,14 +378,14 @@ def test_get_files_info():
         assert files_info[0].folder == gen_data_infos[0]["dossier"]
         assert files_info[0].file.name == "folder/0123456789_doc1.pdf"
         assert files_info[0].extension == gen_data_infos[0]["extension"]
-        assert files_info[0].created_date == gen_data_infos[0]["date_creation"]
+        assert files_info[0].date == gen_data_infos[0]["date_creation"]
         assert files_info[0].size == gen_data_infos[0]["taille"]
         assert files_info[0].hash == gen_data_infos[0]["hash"]
         assert files_info[1].filename == "0987654321_doc2.pdf"
         assert files_info[1].folder == gen_data_infos[1]["dossier"]
         assert files_info[1].file.name == "folder/0987654321_doc2.pdf"
         assert files_info[1].extension == gen_data_infos[1]["extension"]
-        assert files_info[1].created_date == gen_data_infos[1]["date_creation"]
+        assert files_info[1].date == gen_data_infos[1]["date_creation"]
         assert files_info[1].size == gen_data_infos[1]["taille"]
         assert files_info[1].hash == gen_data_infos[1]["hash"]
 
@@ -492,6 +499,67 @@ def test_bulk_create_documents_ignore_duplicates():
     bulk_create_documents([file_info])
     # Assert only one inserted
     assert_documents_equals_files_info(Document.objects.all(), [file_info])
+
+
+@pytest.mark.django_db
+def test_bulk_create_documents_propagates_date():
+    """Test that date is propagated from FileInfo.date to Document.date."""
+    file_info = FileInfoFactory()
+    bulk_create_documents([file_info])
+
+    doc = Document.objects.get(hash=file_info.hash)
+    assert doc.date == file_info.date
+
+
+@pytest.mark.django_db
+def test_bulk_create_documents_keeps_most_recent_date_on_duplicate_file_infos():
+    """Test that when multiple FileInfos have the same hash, the most recent date is kept."""
+    file_info_1 = FileInfoFactory(date=tz_datetime("2025-01-01"), hash="test_hash")
+    file_info_2 = FileInfoFactory(date=tz_datetime("2025-06-15"), hash="test_hash")
+
+    bulk_create_documents([file_info_1, file_info_2])
+
+    doc = Document.objects.get(hash="test_hash")
+    assert doc.date == file_info_2.date
+
+
+@pytest.mark.django_db
+def test_bulk_create_documents_updates_existing_with_newer_date():
+    """Test that existing Documents are updated with newer date from FileInfo."""
+    existing_date = tz_datetime("2025-03-14")
+    existing_doc = DocumentFactory(date=existing_date, hash="existing_hash")
+    file_info = FileInfoFactory(hash="existing_hash")
+
+    bulk_create_documents([file_info])
+
+    existing_doc.refresh_from_db()
+    assert existing_doc.date == file_info.date
+
+
+@pytest.mark.django_db
+def test_bulk_create_documents_keeps_existing_date_if_newer():
+    """Test that existing Document date is kept if it's newer than FileInfo date."""
+    existing_date = tz_datetime("2025-06-15")
+    older_date = tz_datetime("2025-01-01")
+    existing_doc = DocumentFactory(date=existing_date, hash="existing_hash")
+    file_info = FileInfoFactory(date=older_date, hash="existing_hash")
+
+    bulk_create_documents([file_info])
+
+    existing_doc.refresh_from_db()
+    assert existing_doc.date == existing_date
+
+
+@pytest.mark.django_db
+def test_bulk_create_documents_updates_existing_with_date_if_none():
+    """Test that existing Documents with null date are updated with FileInfo date."""
+    existing_doc = DocumentFactory(date=None, hash="existing_hash")
+    file_info = FileInfoFactory(date=tz_datetime("2026-06-15"), hash="existing_hash")
+
+    bulk_create_documents([file_info])
+
+    existing_doc.refresh_from_db()
+    assert existing_doc.date == file_info.date
 
 
 @pytest.mark.django_db

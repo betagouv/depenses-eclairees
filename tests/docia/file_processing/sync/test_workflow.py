@@ -83,7 +83,7 @@ def test_download_documents():
         calls = [(c.args[1:], c.kwargs) for c in m_download_document.call_args_list]
         assert sorted(calls) == sorted(
             [
-                ((doc1.external_id, doc1.name), dict(max_retries=0)),
-                ((doc2.external_id, doc2.name), dict(max_retries=2)),
+                ((doc1.external_id, doc1.name), dict(max_retries=0, document_date=doc1.date)),
+                ((doc2.external_id, doc2.name), dict(max_retries=2, document_date=doc2.date)),
             ]
         )

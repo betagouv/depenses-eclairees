@@ -45,7 +45,7 @@ def get_files_info(folder: str, chunk_number: int = 0, chunk_size: int | None = 
             info = dict(**info)
             info["folder"] = info.pop("dossier")
             info["size"] = info.pop("taille")
-            info["created_date"] = info.pop("date_creation")
+            info["date"] = info.pop("date_creation")
             file_info = FileInfo(**info)
             file_info.file = os.path.join(folder, filename)
             to_create.append(file_info)
@@ -68,20 +68,61 @@ def bulk_create_engagements(num_ejs):
 
 
 def bulk_create_documents(file_infos: list[FileInfo]):
-    file_infos = remove_duplicates(file_infos)
-    # Filters out duplicate files
-    attachments = [
-        Document(
-            filename=row.filename,
-            extension=row.extension,
-            dossier=row.folder,
-            taille=row.size,
-            hash=row.hash,
-            file=row.file,
-        )
-        for row in file_infos
-    ]
-    Document.objects.bulk_create(attachments, batch_size=200, ignore_conflicts=True)
+    """
+    Creates Documents from FileInfos, propagating the date field.
+    Handles conflicts by keeping the most recent date when the same hash appears
+    multiple times in file_infos or already exists in the database.
+    """
+    # Get all unique hashes from file_infos
+    all_hashes = list({info.hash for info in file_infos})
+
+    # Get existing documents' hash -> Document mapping, only loading hash and date fields
+    existing_docs = Document.objects.filter(hash__in=all_hashes).only("hash", "date")
+    existing_by_hash = {d.hash: d for d in existing_docs}
+
+    # Deduplicate file_infos: group by hash, keep the one with most recent date
+    items_by_hash = {}
+    for info in file_infos:
+        existing_info = items_by_hash.get(info.hash)
+        if existing_info is None:
+            items_by_hash[info.hash] = info
+        else:
+            # Keep the one with the most recent date
+            if info.date and (not existing_info.date or info.date > existing_info.date):
+                items_by_hash[info.hash] = info
+
+    # Separate into documents to create and documents to update
+    docs_to_create = []
+    docs_to_update = []
+
+    for hash, info in items_by_hash.items():
+        existing_doc = existing_by_hash.get(hash)
+        if existing_doc is not None:
+            # Existing document - update date if new date is more recent
+            new_date = info.date
+            if existing_doc.date is None or (new_date and new_date > existing_doc.date):
+                existing_doc.date = new_date
+                docs_to_update.append(existing_doc)
+        else:
+            # New document
+            doc = Document(
+                filename=info.filename,
+                extension=info.extension,
+                dossier=info.folder,
+                taille=info.size,
+                hash=info.hash,
+                file=info.file,
+                date=info.date,
+            )
+            docs_to_create.append(doc)
+
+    # Bulk create new documents
+    if docs_to_create:
+        Document.objects.bulk_create(docs_to_create, batch_size=200, ignore_conflicts=True)
+
+    # Bulk update existing documents with newer dates
+    if docs_to_update:
+        Document.objects.bulk_update(docs_to_update, fields=["date"], batch_size=200)
 
 
 def bulk_create_links_document_engagement_using_filenames(files_info: list[FileInfo]):

@@ -37,42 +37,31 @@ ORDER_CLASSIFICATIONS = (
 )
 
 
-def sort_by_order_and_field(
-    items: list[dict],
-    order_values: tuple | list,
-    order_key: str,
-    *,
-    then_by_field: str | None = None,
-    then_descending: bool = True,
-) -> None:
+def sort_documents(documents: list[dict]) -> None:
     """
-    Trie une liste de dictionnaires en place.
+    Trie une liste de documents en place selon 3 critères :
+    1. ORDER_CLASSIFICATIONS (ordre défini par la constante module)
+    2. date (décroissante - documents récents en premier)
+    3. ratio_extracted (décroissant - taux de remplissage élevé en premier)
 
-    - Premier critère : ordre défini par order_values (valeur de order_key dans chaque item).
-      Les valeurs absentes de order_values sont placées à la fin.
-    - Second critère (optionnel) : champ then_by_field, décroissant si then_descending=True.
+    Les documents sans date sont placés à la fin de leur groupe de classification.
 
-    :param items: Liste de dicts à trier (modifiée en place).
-    :param order_values: Liste ou tuple définissant l'ordre des valeurs pour order_key.
-    :param order_key: Clé du dict utilisée pour le tri principal.
-    :param then_by_field: Clé optionnelle pour le tri secondaire.
-    :param then_descending: Si True, tri secondaire décroissant ; sinon croissant.
+    :param documents: Liste de dicts à trier (modifiée en place).
     """
-    order_index = {v: i for i, v in enumerate(order_values)}
-    default_index = len(order_values)
+    order_index = {v: i for i, v in enumerate(ORDER_CLASSIFICATIONS)}
+    default_index = len(ORDER_CLASSIFICATIONS)
 
-    def sort_key(item):
-        primary = order_index.get(item.get(order_key), default_index)
-        if then_by_field is None:
-            return (primary,)
-        secondary = item.get(then_by_field)
-        if secondary is not None and isinstance(secondary, (int, float)):
-            secondary = -secondary if then_descending else secondary
-        elif then_descending:
-            secondary = float("inf")  # valeurs manquantes en fin de groupe
-        return (primary, secondary)
+    def sort_key(d: dict) -> tuple:
+        classification = order_index.get(d.get("classification"), default_index)
+        doc_date = d.get("date")
+        # Dates récentes d'abord : on utilise le négatif du timestamp
+        # Les documents sans date obtiennent float("inf") pour être à la fin
+        date_key = -doc_date.timestamp() if doc_date else float("inf")
+        # Taux de remplissage décroissant
+        ratio_key = -(d.get("ratio_extracted") or 0)
+        return (classification, date_key, ratio_key)
 
-    items.sort(key=sort_key)
+    documents.sort(key=sort_key)
 
 
 def home(request):
@@ -126,6 +115,7 @@ def home(request):
                             "classification": db_doc.classification,
                             "short_classification": short_classification,
                             "filename": db_doc.filename,
+                            "date": db_doc.date,
                             "data_as_list": sorted([[key, value] for key, value in document_data_raw.items()]),
                             "data": document_data,
                             "url": db_doc.file.url if db_doc.file else "",
@@ -136,14 +126,8 @@ def home(request):
                             documents.append(doc)
                         else:
                             unprocessed.append(doc)
-                    # Trier par catégorie puis par taux de remplissage décroissant
-                    sort_by_order_and_field(
-                        documents,
-                        ORDER_CLASSIFICATIONS,
-                        "classification",
-                        then_by_field="ratio_extracted",
-                        then_descending=True,
-                    )
+                    # Trier les documents
+                    sort_documents(documents)
     else:
         # Create empty form
         form = forms.GetEJDetailsForm()
