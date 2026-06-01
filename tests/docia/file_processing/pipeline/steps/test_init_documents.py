@@ -78,10 +78,10 @@ def test_init_documents_in_folder_complex_case():
         num_ej2 = "2234567890"
         m_listdir.return_value = ([], [f"{num_ej1}_doc1.pdf", f"{num_ej2}_doc2.pdf"])
         file_info_1 = FileInfoFactory(external_id=None, filename=f"{num_ej1}_doc1.pdf", folder="folder")
-        file_info_2 = FileInfoFactory(external_id=None, filename=f"{num_ej2}_doc2.pdf", folder="folder")
+        file_info_2 = FileInfoFactory(external_id=None, filename=f"{num_ej2}_doc2.pdf", folder="folder", date="2026-03-04")
         # Duplicate handling (on FileInfo)
         file_info_2_dup = FileInfoFactory(
-            external_id=None, hash=file_info_2.hash, filename=f"{num_ej2}_doc2_2.pdf", folder="folder"
+            external_id=None, hash=file_info_2.hash, filename=f"{num_ej2}_doc2_2.pdf", folder="folder", date="2026-03-02",
         )
         # Duplicate handling (on Document)
         file_info_3 = FileInfoFactory(external_id=None, filename=f"{num_ej2}_doc3.pdf", folder="folder")
