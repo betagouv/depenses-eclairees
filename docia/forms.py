@@ -6,5 +6,5 @@ from dsfr.forms import DsfrBaseForm
 class GetEJDetailsForm(DsfrBaseForm):
     num_ej = forms.CharField(
         label="Numéro d'EJ",
-        max_length=20,
+        max_length=200,
     )
