@@ -75,11 +75,11 @@ def bulk_create_documents(file_infos: list[FileInfo]):
     """
     # Get all unique hashes from file_infos
     all_hashes = list({info.hash for info in file_infos})
-    
+
     # Get existing documents' hash -> Document mapping, only loading hash and date fields
     existing_docs = Document.objects.filter(hash__in=all_hashes).only("hash", "date")
     existing_by_hash = {d.hash: d for d in existing_docs}
-    
+
     # Deduplicate file_infos: group by hash, keep the one with most recent date
     items_by_hash = {}
     for info in file_infos:
@@ -90,11 +90,11 @@ def bulk_create_documents(file_infos: list[FileInfo]):
             # Keep the one with the most recent date
             if info.date and (not existing_info.date or info.date > existing_info.date):
                 items_by_hash[info.hash] = info
-    
+
     # Separate into documents to create and documents to update
     docs_to_create = []
     docs_to_update = []
-    
+
     for hash, info in items_by_hash.items():
         existing_doc = existing_by_hash.get(hash)
         if existing_doc is not None:
@@ -115,11 +115,11 @@ def bulk_create_documents(file_infos: list[FileInfo]):
                 date=info.date,
             )
             docs_to_create.append(doc)
-    
+
     # Bulk create new documents
     if docs_to_create:
         Document.objects.bulk_create(docs_to_create, batch_size=200, ignore_conflicts=True)
-    
+
     # Bulk update existing documents with newer dates
     if docs_to_update:
         Document.objects.bulk_update(docs_to_update, fields=["date"], batch_size=200)

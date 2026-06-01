@@ -8,11 +8,11 @@ from django.utils import timezone
 
 def tz_datetime(value: str | datetime.date | datetime.datetime = None):
     """Create a timezone-aware datetime using Django's default timezone.
-    
+
     Args:
         value: A datetime.datetime, datetime.date, iso format string, or None.
               If None, returns the current time in the default timezone.
-    
+
     Returns:
         A timezone-aware datetime object.
     """

@@ -1,11 +1,7 @@
-import datetime
-
 from unittest import mock
 from unittest.mock import patch
 
 import pytest
-
-from tests.utils import tz_datetime
 
 from docia.file_processing.models import FileInfo
 from docia.file_processing.pipeline.steps.init_documents import (
@@ -23,6 +19,7 @@ from docia.file_processing.pipeline.steps.init_documents import (
 from docia.models import Document, Engagement, EngagementTag
 from tests.factories.data import DocumentFactory, EngagementFactory, EngagementTagFactory
 from tests.factories.file_processing import ExternalLinkDocumentOrderFactory, FileInfoFactory, SubFileInfoFactory
+from tests.utils import tz_datetime
 
 
 @pytest.mark.django_db
@@ -78,10 +75,16 @@ def test_init_documents_in_folder_complex_case():
         num_ej2 = "2234567890"
         m_listdir.return_value = ([], [f"{num_ej1}_doc1.pdf", f"{num_ej2}_doc2.pdf"])
         file_info_1 = FileInfoFactory(external_id=None, filename=f"{num_ej1}_doc1.pdf", folder="folder")
-        file_info_2 = FileInfoFactory(external_id=None, filename=f"{num_ej2}_doc2.pdf", folder="folder", date="2026-03-04")
+        file_info_2 = FileInfoFactory(
+            external_id=None, filename=f"{num_ej2}_doc2.pdf", folder="folder", date="2026-03-04"
+        )
         # Duplicate handling (on FileInfo)
         file_info_2_dup = FileInfoFactory(
-            external_id=None, hash=file_info_2.hash, filename=f"{num_ej2}_doc2_2.pdf", folder="folder", date="2026-03-02",
+            external_id=None,
+            hash=file_info_2.hash,
+            filename=f"{num_ej2}_doc2_2.pdf",
+            folder="folder",
+            date="2026-03-02",
         )
         # Duplicate handling (on Document)
         file_info_3 = FileInfoFactory(external_id=None, filename=f"{num_ej2}_doc3.pdf", folder="folder")
