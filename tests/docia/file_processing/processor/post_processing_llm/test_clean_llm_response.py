@@ -79,7 +79,7 @@ def test_clean_llm_response_rib_rebuilds_iban_from_rib_fields():
         "numero_compte": "12345678901",
         "cle_rib": "85",
         "bic": "AGRIFRPP",
-        "titulaire_compte": "Entreprise Test",
+        "titulaire_compte": "Entreprise Test (SARL)",
         "adresse_postale_titulaire": {
             "numero_voie": "1",
             "nom_voie": "Rue de la Paix",
@@ -105,6 +105,7 @@ def test_clean_llm_response_rib_rebuilds_iban_from_rib_fields():
 
     assert result["bic"] == "AGRIFRPP"
     assert result["banque"] == "Banque de France"
+    assert result["titulaire_compte"] == "Entreprise Test"
 
 
 def test_clean_llm_response_rib_missing_iban_key_rebuilds():
@@ -124,6 +125,18 @@ def test_clean_llm_response_rib_missing_iban_key_rebuilds():
     assert result["iban"] is not None
     assert result["iban"].startswith("FR76")
     assert len(result["iban"]) == 27
+
+
+def test_clean_llm_response_rib_titulaire_compte_postprocessing():
+    """Le titulaire du compte est nettoyé comme societe_principale (formes juridiques, parenthèses)."""
+    llm_response = {
+        "iban": _IBAN_MANDATAIRE,
+        "titulaire_compte": "La Poste SA",
+    }
+
+    result = clean_llm_response("rib", llm_response)
+
+    assert result["titulaire_compte"] == "La Poste"
 
 
 def test_clean_llm_response_rib_no_iban_and_incomplete_rib_sets_iban_none():

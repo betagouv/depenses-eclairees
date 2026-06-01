@@ -260,19 +260,20 @@ _SOCIETE_PREFIX_STRIP = re.compile(
     r"(?i)^(?:"
     r"société\s+|societe\s+|"
     r"s\.?\s*a\.?\s*s\.?\s*u\.?\s+|sasu\s+|"
-    r"selarl\s+|"
+    r"selas\s+|selarl\s+|"
     r"s\.?\s*a\.?\s*r\.?\s*l\.?\s+|sarl\s+|"
     r"s\.?\s*a\.?\s*s\.?\s+|sas\s+|"
-    r"eurl\s+|sci\s+|snc\s+|scs\s+|sem\s+|"
+    r"eurl\s+|sci\s+|snc\s+|scs\s+|scop\s+|sem\s+|"
+    r"ei\s+|"
     r"s\.?\s*a\.?\s+"
     r")+"
 )
 
 _SOCIETE_SUFFIX_STRIP = re.compile(
     r"(?i)[\s,.-]+("
-    r"SASU|SARL|SAS\b|"
+    r"SASU|SELAS|SELARL|SARL|SAS\b|"
     r"S\.?\s*A\.?\s*S\.?\s*U\.?|S\.?\s*A\.?\s*S\.?|S\.?\s*A\.?\b|"
-    r"SCI|EURL|SCS|SELARL|SEM|SNC|"
+    r"SCI|EURL|SCS|SCOP|SEM|SNC|EI\b|"
     r"SA\s+à\s+directoire|SA\s+a\s+directoire"
     r")\s*$"
 )
@@ -292,7 +293,7 @@ def _strip_parentheses_segments(s: str) -> str:
 def post_processing_societe_principale(name: Any) -> str | None:
     """
     Retire les parenthèses et leur contenu, puis préfixes et suffixes juridiques
-    (SAS, SARL, SA, SASU, Société, etc.) — sans enlever le déterminant « la » / « l’ » en tête.
+    (SAS, SARL, SA, SASU, EI, SCOP, SELAS, Société, etc.) — sans enlever le déterminant « la » / « l’ » en tête.
     """
     if name is None:
         return None
@@ -637,6 +638,7 @@ CLEAN_FUNCTIONS = {
         "fields": {
             "iban": post_processing_iban,
             "bic": post_processing_bic,
+            "titulaire_compte": post_processing_societe_principale,
             "adresse_postale_titulaire": post_processing_postal_address,
         },
         "object": post_processing_rib_document,
