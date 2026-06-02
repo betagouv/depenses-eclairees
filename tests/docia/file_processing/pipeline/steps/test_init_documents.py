@@ -141,10 +141,16 @@ def test_init_documents_in_folder_handle_duplicate_file_info():
     ):
         num_ej1 = "1234567890"
         num_ej2 = "2234567890"
-        file_info_1 = FileInfoFactory(external_id=None, filename=f"{num_ej1}_doc1.pdf", folder="folder")
-        # Duplicate FileInfo
+        file_info_1 = FileInfoFactory(
+            external_id=None, filename=f"{num_ej1}_doc1.pdf", folder="folder", date="2026-03-05"
+        )
+        # Duplicate FileInfo (older, should be dropped)
         file_info_2 = FileInfoFactory(
-            external_id=None, hash=file_info_1.hash, filename=f"{num_ej2}_doc1.pdf", folder="folder"
+            external_id=None,
+            hash=file_info_1.hash,
+            filename=f"{num_ej2}_doc1.pdf",
+            folder="folder",
+            date="2026-03-04",
         )
 
         # Set mock returns

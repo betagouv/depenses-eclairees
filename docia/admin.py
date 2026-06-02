@@ -5,8 +5,10 @@ from django.contrib.auth import admin as auth_admin
 from django.contrib.auth import forms as auth_forms
 from django.contrib.auth import models as auth_models
 from django.db.models import Count, F
+from django.http import HttpResponse
 
 from . import models
+from .documents.transfer.dump import EngagementDumper
 from .permissions.models import GroupScope
 from .tracking.models import TrackingEvent
 
@@ -230,13 +232,14 @@ class EngagementForm(forms.ModelForm):
 
 @admin.register(models.Engagement)
 class EngagementAdmin(admin.ModelAdmin):
-    """Admin class for DataEngagement model"""
+    """Admin class for Engagement model"""
 
     form = EngagementForm
     list_display = ("num_ej", "col_scopes", "external_updated_at", "updated_at")
     search_fields = ("num_ej", "scopes__purchase_organization", "scopes__purchase_group")
     list_filter = ("external_updated_at",)
     readonly_fields = ("id", "external_updated_at", "created_at", "updated_at")
+    actions = ["dump_as_json"]
 
     fieldsets = (
         (None, {"fields": ("id", "num_ej", "scopes")}),
@@ -250,6 +253,26 @@ class EngagementAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).prefetch_related("scopes")
+
+    def dump_as_json(self, request, queryset):
+        """Dump selected Engagements as JSON file."""
+        num_ejs = list(queryset.values_list("num_ej", flat=True))
+
+        if not num_ejs:
+            self.message_user(request, "Aucun engagement sélectionné")
+            return
+
+        dumper = EngagementDumper()
+        json_bytes = dumper.dump_to_json(num_ejs, pretty_print=True)
+
+        # Nom du fichier : num_ej si un seul, sinon engagements.json
+        filename = f"{num_ejs[0]}.json" if len(num_ejs) == 1 else "engagements.json"
+
+        response = HttpResponse(json_bytes, content_type="application/json")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    dump_as_json.short_description = "Dumper les engagements sélectionnés en JSON"
 
 
 @admin.register(models.EngagementScope)

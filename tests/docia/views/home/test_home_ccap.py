@@ -1,6 +1,6 @@
 import pytest
 
-from tests.docia.views.test_home import create_ej_and_document
+from tests.docia.views.home.test_home import create_ej_and_document
 from tests.factories.users import UserFactory
 
 
