@@ -57,8 +57,9 @@
         <section class="fr-accordion" data-fr-js-accordion="true">
           <h3 class="fr-accordion__title">
             <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}" data-fr-js-collapse-button="true">
-              <span class="fr-badge fr-badge--info fr-badge--no-icon">{{ doc.short_classification }}</span>
-              <span class="fr-ml-1w">{{ doc.filename }}</span>
+              <span class="fr-badge fr-badge--info fr-badge--no-icon" style="white-space: nowrap;">{{ doc.short_classification }}</span>
+              <span class="fr-ml-1w fr-mr-1v">{{ doc.filename }}</span>
+              <span class="fr-text--sm" style="font-style: italic;">({{ doc.date|date:"d/m/y" }})</span>
               <span class="fr-badge fr-badge--sm fr-ml-1w">
                 <span class="fr-icon-focus-3-line" aria-hidden="true"></span>&nbsp;{{ doc.percent_data_extraction }} infos remplies
               </span>
@@ -80,8 +81,9 @@
             <ul class="fr-list fr-list--none">
               {% for doc in unprocessed %}
               <li class="fr-list__item fr-my-1w">
-                <span class="fr-badge fr-badge--info fr-badge--no-icon">{{ doc.short_classification }}</span>
-                <span class="fr-ml-1w">{{ doc.filename }}</span>
+                <span class="fr-badge fr-badge--info fr-badge--no-icon" style="white-space: nowrap;">{{ doc.short_classification }}</span>
+                <span class="fr-ml-1w fr-mr-1v">{{ doc.filename }}</span>
+                <span class="fr-text--sm" style="font-style: italic;">({{ doc.date|date:"d/m/y" }})</span>
                 <a href="{{ doc.url }}" target="_blank" class="fr-link fr-ml-1w">voir</a>
               </li>
               {% endfor %}

@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from django.shortcuts import render
 
@@ -36,6 +37,9 @@ ORDER_CLASSIFICATIONS = (
     "fiche_navette",
 )
 
+# Date dans le futur pour le tri des documents sans date
+FUTURE_DATE = datetime(2100, 1, 1)
+
 
 def sort_documents(documents: list[dict]) -> None:
     """
@@ -55,8 +59,8 @@ def sort_documents(documents: list[dict]) -> None:
         classification = order_index.get(d.get("classification"), default_index)
         doc_date = d.get("date")
         # Dates récentes d'abord : on utilise le négatif du timestamp
-        # Les documents sans date obtiennent float("inf") pour être à la fin
-        date_key = -doc_date.timestamp() if doc_date else float("inf")
+        # Les documents sans date obtiennent une date dans le futur pour être à la fin
+        date_key = -doc_date.timestamp() if doc_date else FUTURE_DATE.timestamp()
         # Taux de remplissage décroissant
         ratio_key = -(d.get("ratio_extracted") or 0)
         return (classification, date_key, ratio_key)
