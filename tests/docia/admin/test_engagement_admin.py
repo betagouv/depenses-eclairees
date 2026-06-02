@@ -8,6 +8,7 @@ from django.urls import reverse
 import pytest
 
 from docia.documents.models import Engagement, EngagementScope
+from tests.factories.data import EngagementFactory
 from tests.utils import assert_queryset_equal
 
 
@@ -216,3 +217,52 @@ def test_complete_engagement_lifecycle(admin_client):
 
     # Verify deletion
     assert not Engagement.objects.filter(pk=engagement.pk).exists()
+
+
+@pytest.mark.django_db
+def test_engagement_admin_export_action(admin_client):
+    """Test the export_as_json admin action with two engagements"""
+    import json
+
+    from tests.factories.data import DocumentFactory, EngagementScopeFactory
+
+    # Create scopes
+    scope1 = EngagementScopeFactory()
+    scope2 = EngagementScopeFactory()
+
+    # Create two engagements with scopes and documents
+    engagement1 = EngagementFactory(num_ej="EJ_EXPORT_1")
+    engagement1.scopes.add(scope1)
+    doc1 = DocumentFactory()
+    doc1.engagements.add(engagement1)
+
+    engagement2 = EngagementFactory(num_ej="EJ_EXPORT_2")
+    engagement2.scopes.add(scope2)
+    doc2 = DocumentFactory()
+    doc2.engagements.add(engagement2)
+
+    # Get the engagement list URL with export action
+    list_url = reverse("admin:docia_engagement_changelist")
+
+    # Post to the export action with both engagements selected
+    response = admin_client.post(
+        list_url,
+        {
+            "action": "export_as_json",
+            "_selected_action": [str(engagement1.pk), str(engagement2.pk)],
+        },
+    )
+
+    # Check response is successful
+    assert response.status_code == 200
+    assert response["Content-Type"] == "application/json"
+    assert "attachment" in response["Content-Disposition"]
+
+    # Parse JSON content
+    content = json.loads(response.content)
+
+    # Check that both num_ej are present in the JSON
+    assert "engagements" in content
+    num_ejs = [e["num_ej"] for e in content["engagements"]]
+    assert "EJ_EXPORT_1" in num_ejs
+    assert "EJ_EXPORT_2" in num_ejs
