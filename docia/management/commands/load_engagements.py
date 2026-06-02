@@ -2,7 +2,7 @@ import os
 
 from django.core.management.base import BaseCommand, CommandError
 
-from docia.documents.importer import EngagementImporter
+from docia.documents.transfer.importer import EngagementImporter
 
 
 class Command(BaseCommand):

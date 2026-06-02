@@ -4,10 +4,8 @@ import io
 
 from rest_framework.parsers import JSONParser
 
-from docia.documents.exporter import (
-    DocumentSerializer,
-)
 from docia.documents.models import Document, Engagement, EngagementScope
+from docia.documents.transfer.serializers import DocumentSerializer
 
 
 class ScopeImporter:

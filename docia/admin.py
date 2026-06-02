@@ -8,7 +8,7 @@ from django.db.models import Count, F
 from django.http import HttpResponse
 
 from . import models
-from .documents.exporter import EngagementExporter
+from .documents.transfer.exporter import EngagementExporter
 from .permissions.models import GroupScope
 from .tracking.models import TrackingEvent
 
