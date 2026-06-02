@@ -2,7 +2,7 @@ import os
 
 from django.core.management.base import BaseCommand, CommandError
 
-from docia.documents.transfer.exporter import EngagementExporter
+from docia.documents.transfer.dump import EngagementDumper
 from docia.documents.models import Engagement
 
 
@@ -43,9 +43,9 @@ class Command(BaseCommand):
 
         self.stdout.write(f"Found {len(num_ejs)} Engagement(s): {', '.join(num_ejs)}")
 
-        # Export using exporter
-        exporter = EngagementExporter()
-        json_bytes = exporter.export_to_json(num_ejs, pretty_print=pretty_print)
+        # Dump using dumper
+        dumper = EngagementDumper()
+        json_bytes = dumper.dump_to_json(num_ejs, pretty_print=pretty_print)
         json_str = json_bytes.decode("utf-8")
 
         # Generate output path if not provided

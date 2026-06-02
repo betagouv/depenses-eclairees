@@ -6,7 +6,7 @@ from docia.documents.models import Engagement
 from docia.documents.transfer.serializers import EngagementSerializer
 
 
-class EngagementExporter:
+class EngagementDumper:
     """Handles serialization of Engagement and related objects to JSON."""
 
     def serialize_engagement(self, engagement: Engagement) -> dict:
@@ -22,16 +22,16 @@ class EngagementExporter:
         ser = EngagementSerializer(engagements, many=True)
         return ser.data
 
-    def export_engagements(self, num_ejs: list[str]) -> dict:
+    def dump_engagements(self, num_ejs: list[str]) -> dict:
         """
-        Export documents of a list of engagements.
+        Dump documents of a list of engagements.
         Will keep num_ej, document (full) and engagement scopes.
 
         Args:
             num_ejs: List of num_ej
 
         Returns:
-            dict: The exported data
+            dict: The dumped data
         """
         data = {
             "version": "1.0",
@@ -40,8 +40,8 @@ class EngagementExporter:
         }
         return data
 
-    def export_to_json(self, num_ejs: list[str], pretty_print=True) -> bytes:
-        data = self.export_engagements(num_ejs)
+    def dump_to_json(self, num_ejs: list[str], pretty_print=True) -> bytes:
+        data = self.dump_engagements(num_ejs)
         renderer = JSONRenderer()
         renderer_context = {} if not pretty_print else {"indent": 2}
         return renderer.render(data, renderer_context=renderer_context)

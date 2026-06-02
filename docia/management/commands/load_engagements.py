@@ -2,7 +2,7 @@ import os
 
 from django.core.management.base import BaseCommand, CommandError
 
-from docia.documents.transfer.importer import EngagementImporter
+from docia.documents.transfer.load import EngagementLoader
 
 
 class Command(BaseCommand):
@@ -30,9 +30,9 @@ class Command(BaseCommand):
         with open(input_path, "rb") as f:
             json_data = f.read()
 
-        # Import using importer
-        importer = EngagementImporter()
-        engagements = importer.import_from_json(json_data)
+        # Load using loader
+        loader = EngagementLoader()
+        engagements = loader.load_from_json(json_data)
 
         self.stdout.write(
             self.style.SUCCESS(f"Successfully imported {len(engagements)} engagement(s)")

@@ -1,10 +1,10 @@
 import pytest
 from rest_framework.renderers import JSONRenderer
 
-from docia.documents.transfer.importer import (
-    DocumentImporter,
-    EngagementImporter,
-    ScopeImporter,
+from docia.documents.transfer.load import (
+    DocumentLoader,
+    EngagementLoader,
+    ScopeLoader,
 )
 from docia.documents.transfer.serializers import (
     DocumentSerializer,
@@ -20,18 +20,18 @@ from tests.factories.data import (
 
 
 @pytest.mark.django_db
-class TestScopeImporter:
-    """Tests for ScopeImporter class."""
+class TestScopeLoader:
+    """Tests for ScopeLoader class."""
 
-    def test_import_one_creates_scope(self):
-        """Test creating a new scope via importer."""
-        importer = ScopeImporter()
+    def test_load_one_creates_scope(self):
+        """Test creating a new scope via loader."""
+        loader = ScopeLoader()
         data = {
             "purchase_organization": "OA_TEST_1",
             "purchase_group": "GA_TEST_1",
         }
 
-        scope = importer.import_one(data)
+        scope = loader.load_one(data)
 
         assert scope.purchase_organization == "OA_TEST_1"
         assert scope.purchase_group == "GA_TEST_1"
@@ -39,21 +39,21 @@ class TestScopeImporter:
         assert db_scope.purchase_organization == "OA_TEST_1"
         assert db_scope.purchase_group == "GA_TEST_1"
 
-    def test_import_one_returns_existing_scope(self):
-        """Test that importing existing scope returns the same instance."""
+    def test_load_one_returns_existing_scope(self):
+        """Test that loading existing scope returns the same instance."""
         # Create existing scope
         existing = EngagementScopeFactory(
             purchase_organization="OA_EXISTING",
             purchase_group="GA_EXISTING",
         )
 
-        importer = ScopeImporter()
+        loader = ScopeLoader()
         data = {
             "purchase_organization": "OA_EXISTING",
             "purchase_group": "GA_EXISTING",
         }
 
-        scope = importer.import_one(data)
+        scope = loader.load_one(data)
 
         assert scope.id == existing.id
         db_scope = EngagementScope.objects.get()  # Only one scope should be present in DB
@@ -61,24 +61,24 @@ class TestScopeImporter:
 
 
 @pytest.mark.django_db
-class TestDocumentImporter:
-    """Tests for DocumentImporter class."""
+class TestDocumentLoader:
+    """Tests for DocumentLoader class."""
 
-    def test_import_one_creates_document(self):
-        """Test creating a new document via importer."""
-        importer = DocumentImporter()
+    def test_load_one_creates_document(self):
+        """Test creating a new document via loader."""
+        loader = DocumentLoader()
         input_doc = DocumentFactory.build()
         input_data = DocumentSerializer(input_doc).data
 
-        doc = importer.import_one(input_data)
+        doc = loader.load_one(input_data)
 
         db_doc = Document.objects.get()  # Only one doc should be present in DB
         assert db_doc.id == doc.id
         db_data = DocumentSerializer(doc).data
         assert db_data == input_data
 
-    def test_import_one_updates_existing_document(self):
-        """Test that importing existing document updates its fields."""
+    def test_load_one_updates_existing_document(self):
+        """Test that loading existing document updates its fields."""
         input_doc = DocumentFactory.build(
             filename="new_name.txt",
             dossier="new/folder",
@@ -86,8 +86,8 @@ class TestDocumentImporter:
         input_data = DocumentSerializer(input_doc).data
         DocumentFactory(hash=input_data["hash"])
 
-        importer = DocumentImporter()
-        doc = importer.import_one(input_data)
+        loader = DocumentLoader()
+        doc = loader.load_one(input_data)
 
         db_doc = Document.objects.get()  # Only one doc should be present in DB
         assert db_doc.id == doc.id
@@ -96,11 +96,11 @@ class TestDocumentImporter:
 
 
 @pytest.mark.django_db
-class TestEngagementImporter:
-    """Tests for EngagementImporter class."""
+class TestEngagementLoader:
+    """Tests for EngagementLoader class."""
 
-    def test_import_from_json(self):
-        """Test nominal case: import multiple engagements (2 new + 1 existing) from JSON."""
+    def test_load_from_json(self):
+        """Test nominal case: load multiple engagements (2 new + 1 existing) from JSON."""
 
         # Build input data
         input_engagement_1 = EngagementFactory.build(num_ej="NEW_EJ_1")
@@ -130,11 +130,11 @@ class TestEngagementImporter:
         input_data["engagements"][1]["documents"].append(DocumentSerializer(doc2).data)
         input_data["engagements"][2]["documents"].append(DocumentSerializer(doc3).data)
 
-        importer = EngagementImporter()
+        loader = EngagementLoader()
         renderer = JSONRenderer()
         json_data = renderer.render(input_data)
 
-        engagements = importer.import_from_json(json_data)
+        engagements = loader.load_from_json(json_data)
 
         # Check num_ejs
         expected_num_ejs = {"NEW_EJ_1", "NEW_EJ_2", "EXISTING_EJ"}
