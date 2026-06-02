@@ -50,4 +50,3 @@ def test_format_ratio_to_percent():
     # Small values are rounded properly
     assert format_ratio_to_percent(0.01) == "1%"
     assert format_ratio_to_percent(0.001) == "0%"  # Rounds to 0
-

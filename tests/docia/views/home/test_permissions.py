@@ -26,7 +26,6 @@ def test_restrict_unauthenticated(client):
     assert "Se connecter" in response.text
 
 
-
 @pytest.mark.django_db
 def test_restrict_no_permission(client):
     ej, doc = create_ej_and_document()
@@ -57,4 +56,3 @@ def test_admin_can_see_anything(client):
     client.force_login(user)
     response = client.get(f"/?num_ej={ej.num_ej}")
     assert doc.filename in response.text
-

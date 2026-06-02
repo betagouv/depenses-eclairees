@@ -34,10 +34,12 @@ class Command(BaseCommand):
         loader = EngagementLoader()
         engagements = loader.load_from_json(json_data)
 
-        self.stdout.write(
-            self.style.SUCCESS(f"Successfully imported {len(engagements)} engagement(s)")
-        )
+        self.stdout.write(self.style.SUCCESS(f"Successfully imported {len(engagements)} engagement(s)"))
 
         # Display summary
         for engagement in engagements:
-            self.stdout.write(f"  - {engagement.num_ej} (scopes: {engagement.scopes.count()}, documents: {engagement.documents.count()})")
+            self.stdout.write(
+                f"  - {engagement.num_ej} "
+                f"(scopes: {engagement.scopes.count()}, "
+                f"documents: {engagement.documents.count()})"
+            )

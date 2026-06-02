@@ -1,6 +1,7 @@
 import pytest
 from rest_framework.renderers import JSONRenderer
 
+from docia.documents.models import Document, Engagement, EngagementScope
 from docia.documents.transfer.load import (
     DocumentLoader,
     EngagementLoader,
@@ -11,7 +12,6 @@ from docia.documents.transfer.serializers import (
     EngagementSerializer,
     ScopeSerializer,
 )
-from docia.documents.models import Document, Engagement, EngagementScope
 from tests.factories.data import (
     DocumentFactory,
     EngagementFactory,

@@ -2,8 +2,8 @@ import os
 
 from django.core.management.base import BaseCommand, CommandError
 
-from docia.documents.transfer.dump import EngagementDumper
 from docia.documents.models import Engagement
+from docia.documents.transfer.dump import EngagementDumper
 
 
 class Command(BaseCommand):

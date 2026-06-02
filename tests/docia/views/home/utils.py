@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from unittest.mock import patch
 
-from tests.factories.data import EngagementFactory, DocumentFactory
+from tests.factories.data import DocumentFactory, EngagementFactory
 
 
 def create_ej_and_document(**kwargs):

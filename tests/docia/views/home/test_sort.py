@@ -89,4 +89,3 @@ def test_sort_documents():
     items = []
     sort_documents(items)
     assert items == []
-

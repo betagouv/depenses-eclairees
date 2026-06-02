@@ -4,7 +4,6 @@ from tests.docia.views.home.utils import create_ej_and_document
 from tests.factories.users import UserFactory
 
 
-
 @pytest.mark.django_db
 def test_acte_engagement(client):
     """Vérifie l'affichage des champs acte_engagement."""

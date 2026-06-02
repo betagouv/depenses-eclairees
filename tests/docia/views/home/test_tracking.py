@@ -32,4 +32,3 @@ def test_home_search_creates_tracking_event(client):
     assert tracking_event.user_id == user.id
     assert tracking_event.user_agent == user_agent
     assert tracking_event.page_url.startswith(f"http://testserver/?num_ej={ej.num_ej}")
-
