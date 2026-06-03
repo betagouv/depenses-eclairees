@@ -135,8 +135,9 @@ def fill_date(page, date: date):
     page.keyboard.type(str_date)
 
 
-def load(page):
+def submit_form(page) -> bool:
     """Submit the search form by clicking the search button.
+    Returns True if results were found, False otherwise.
     
     Args:
         page: The Playwright page object
@@ -145,6 +146,12 @@ def load(page):
     page.click("#GFR_RechercheFactureEtatAcompteRecus_Criteres_BoutonRechercher")
     page.wait_for_load_state("load")
     logger.info("Search form submitted.")
+    
+    # Check if table with "Résultats de la recherche" caption exists (indicates results were found)
+    if page.query_selector("table caption:has-text('Résultats de la recherche')") is None:
+        logger.info("No results found.")
+        return False
+    return True
 
 
 def check_form_arguments(page, str_date: str):
@@ -164,14 +171,10 @@ def load_date(page, date: date) -> bool:
     str_date = date.strftime("%d/%m/%Y")
     logger.info(f"Loading data for date={date}")
     fill_date(page, date)
-    load(page)
-    check_form_arguments(page, str_date)
-    
-    # Check if table with "Résultats de la recherche" caption exists (indicates results were found)
-    if page.query_selector("table caption:has-text('Résultats de la recherche')") is None:
-        logger.info("No results found for this date.")
-        return False
-    return True
+    result = submit_form(page)
+    if result:
+        check_form_arguments(page, str_date)
+    return result
 
 
 def go_next_page(page) -> bool:
@@ -189,36 +192,67 @@ def go_next_page(page) -> bool:
     return True
 
 
-def download_items(page, date: date, scope: str, provider_name: str = None):
+def build_filename(scope: str, provider_siret: str = None, provider_siren: str = None, num_ej: str = None, date: date = None, page_number: str = None):
+    """Build a filename based on the provided parameters.
+    Order: scope -> provider (siret/siren) -> num_ej -> date -> page_number
+    
+    Args:
+        scope: The scope code (required)
+        provider_siret: Optional provider SIRET
+        provider_siren: Optional provider SIREN
+        num_ej: Optional numéro EJ
+        date: Optional date for the file
+        page_number: Optional page number
+    
+    Returns:
+        A sanitized filename string
+    """
+    parts = [scope]
+    
+    # Provider identifier (prefer siret, fallback to siren)
+    provider_id = provider_siret or provider_siren
+    if provider_id:
+        parts.append(provider_id)
+    
+    if num_ej:
+        parts.append(num_ej)
+    
+    if date:
+        parts.append(date.strftime("%Y%m%d"))
+    
+    if page_number:
+        parts.append(page_number)
+    
+    return "_".join(parts) + ".zip"
+
+
+def download_items(page, scope: str, provider_siret: str = None, provider_siren: str = None, num_ej: str = None, date: date = None):
     """Select all items on the current page and trigger bulk download.
     
     Args:
         page: The Playwright page object
-        date: The date being processed
         scope: The scope code
-        provider_name: Optional provider name to include in filename
+        provider_siret: Optional provider SIRET to include in filename
+        provider_siren: Optional provider SIREN to include in filename
+        num_ej: Optional numéro EJ to include in filename
+        date: Optional date to include in filename
     """
     # Get current page number from value attribute of the active page button
     page_button = page.locator("li.paginate__page.paginate__page_active button[name='listeResultats.page']")
     page_number = page_button.get_attribute("value")
     
-    date_file = date.strftime("%Y%m%d")
-    if provider_name:
-        # Sanitize provider name for filename (remove special characters and spaces)
-        safe_provider = "".join(c if c.isalnum() else "_" for c in provider_name)
-        filename = f"{scope}_{safe_provider}_{date_file}_{page_number}.zip"
-    else:
-        filename = f"{scope}_{date_file}_{page_number}.zip"
+    filename = build_filename(scope, provider_siret, provider_siren, num_ej, date, page_number)
     filepath = f"../downloads/{filename}"
     
     if os.path.exists(filepath):
         logger.info(f"File {filename} already exists, skipping download for scope={scope}, date={date}, page={page_number}")
         return
     
-    # Verify date fields have the expected values
-    str_date = date.strftime("%d/%m/%Y")
-    assert page.input_value("input[name='listeResultats.critere.dateHeureEtatCourantDebut']") == str_date
-    assert page.input_value("input[name='listeResultats.critere.dateHeureEtatCourantFin']") == str_date
+    # Verify date fields have the expected values (only if date is provided)
+    if date:
+        str_date = date.strftime("%d/%m/%Y")
+        assert page.input_value("input[name='listeResultats.critere.dateHeureEtatCourantDebut']") == str_date
+        assert page.input_value("input[name='listeResultats.critere.dateHeureEtatCourantFin']") == str_date
     
     logger.info(f"Downloading items for scope={scope}, date={date}, page={page_number}")
 
@@ -237,14 +271,13 @@ def download_items(page, date: date, scope: str, provider_name: str = None):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     options = parse_args()
-    start_date = date.fromisoformat(options.start)
-    end_date = date.fromisoformat(options.end)
     scope = options.scope
     
     # Parse provider options
     provider_name = options.provider_name
     provider_siret = options.provider_siret
     provider_siren = options.provider_siren
+    num_ej = options.num_ej
     
     # Validate provider options
     has_provider = provider_name or provider_siret or provider_siren
@@ -255,6 +288,16 @@ if __name__ == "__main__":
             raise ValueError("Must provide either --provider-siret or --provider-siren when specifying a provider.")
         if provider_siret and provider_siren:
             raise ValueError("Cannot provide both --provider-siret and --provider-siren. Please provide only one.")
+    
+    # Parse optional date range
+    start_date = date.fromisoformat(options.start) if options.start else None
+    end_date = date.fromisoformat(options.end) if options.end else None
+    
+    # If dates are provided, validate them
+    if start_date and not end_date:
+        end_date = start_date
+    if end_date and not start_date:
+        start_date = end_date
     
     try:
         ctx, page = init_context(headless=not options.headed)
@@ -267,26 +310,38 @@ if __name__ == "__main__":
             fill_provider(page, provider_name, provider_siret, provider_siren)
         
         # Fill numéro EJ if specified
-        if options.num_ej:
-            fill_num_ej(page, options.num_ej)
+        if num_ej:
+            fill_num_ej(page, num_ej)
         
-        # Loop through all dates from start to end (inclusive)
-        current_date = start_date
-        while current_date <= end_date:
-            logger.info(f"Starting download for scope={scope}, date={current_date}")
-            
-            if not load_date(page, current_date):
-                logger.info(f"Skipping date {current_date} - no results found.")
+        # If dates are provided, loop through the date range
+        if start_date and end_date:
+            current_date = start_date
+            while current_date <= end_date:
+                logger.info(f"Starting download for scope={scope}, date={current_date}")
+                
+                if not load_date(page, current_date):
+                    logger.info(f"Skipping date {current_date} - no results found.")
+                    current_date += timedelta(days=1)
+                    continue
+                
+                # Download all pages for this date
+                while True:
+                    download_items(page, scope, provider_siret, provider_siren, num_ej, current_date)
+                    if not go_next_page(page):
+                        break
+                
                 current_date += timedelta(days=1)
-                continue
-            
-            # Download all pages for this date
-            while True:
-                download_items(page, current_date, scope, provider_name)
-                if not go_next_page(page):
-                    break
-            
-            current_date += timedelta(days=1)
+        else:
+            # No dates provided - do a single search without date filtering
+            logger.info(f"Starting download for scope={scope} (no date filter)")
+            if not submit_form(page):
+                logger.info("No results found.")
+            else:
+                # Download all pages
+                while True:
+                    download_items(page, scope, provider_siret, provider_siren, num_ej)
+                    if not go_next_page(page):
+                        break
         
         input(">>")
     except KeyboardInterrupt:
