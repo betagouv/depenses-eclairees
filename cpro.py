@@ -23,6 +23,7 @@ def parse_args():
     parser.add_option("--provider-name", dest="provider_name", help="Provider name (required if provider is specified)")
     parser.add_option("--provider-siret", dest="provider_siret", help="Provider SIRET (mutually exclusive with --provider-siren)")
     parser.add_option("--provider-siren", dest="provider_siren", help="Provider SIREN (mutually exclusive with --provider-siret)")
+    parser.add_option("--num-ej", dest="num_ej", help="Numéro EJ (Bon de commande)")
     options, args = parser.parse_args()
     return options
 
@@ -103,11 +104,27 @@ def fill_provider(page, provider_name: str, provider_siret: str = None, provider
     logger.info(f"Provider filled successfully: {provider_name}")
 
 
-def load_date(page, date: date) -> bool:
-    """Fill the date fields and trigger search for a specific date.
-    Returns False if no results found, True otherwise."""
+def fill_num_ej(page, num_ej: str):
+    """Fill the numéro bon de commande (EJ) field.
+    
+    Args:
+        page: The Playwright page object
+        num_ej: The numéro EJ (bon de commande) to fill
+    """
+    logger.info(f"Filling numéro EJ: {num_ej}")
+    page.fill("input[name='listeResultats.critere.numeroBonDeCommande']", num_ej)
+    logger.info(f"Numéro EJ filled successfully: {num_ej}")
+
+
+def fill_date(page, date: date):
+    """Fill the date fields with the specified date.
+    
+    Args:
+        page: The Playwright page object
+        date: The date to fill in the form
+    """
     str_date = date.strftime("%d/%m/%Y")
-    logger.info(f"Loading data for date={date}")
+    logger.info(f"Filling date: {date}")
     page.click("[data-target='#GDP_RechercheFacture_CriteresPanneau_Body']")
     page.locator("#GFR_RechercheFactureEtatAcompteRecus_Criteres_BoutonRechercher").scroll_into_view_if_needed()
     page.click("input[name='listeResultats.critere.dateHeureEtatCourantDebut']")
@@ -116,12 +133,39 @@ def load_date(page, date: date) -> bool:
     page.click("input[name='listeResultats.critere.dateHeureEtatCourantFin']")
     page.keyboard.press(f"{SELECT_ALL_MODIFIER}+a")
     page.keyboard.type(str_date)
+
+
+def load(page):
+    """Submit the search form by clicking the search button.
+    
+    Args:
+        page: The Playwright page object
+    """
+    logger.info("Submitting search form...")
     page.click("#GFR_RechercheFactureEtatAcompteRecus_Criteres_BoutonRechercher")
     page.wait_for_load_state("load")
-    
-    # Verify date fields have the expected values
+    logger.info("Search form submitted.")
+
+
+def check_form_arguments(page, str_date: str):
+    """Verify that the form fields have the expected values.
+
+    Args:
+        page: The Playwright page object
+        str_date: The date string in DD/MM/YYYY format
+    """
     assert page.input_value("input[name='listeResultats.critere.dateHeureEtatCourantDebut']") == str_date
     assert page.input_value("input[name='listeResultats.critere.dateHeureEtatCourantFin']") == str_date
+
+
+def load_date(page, date: date) -> bool:
+    """Fill the date fields and trigger search for a specific date.
+    Returns False if no results found, True otherwise."""
+    str_date = date.strftime("%d/%m/%Y")
+    logger.info(f"Loading data for date={date}")
+    fill_date(page, date)
+    load(page)
+    check_form_arguments(page, str_date)
     
     # Check if table with "Résultats de la recherche" caption exists (indicates results were found)
     if page.query_selector("table caption:has-text('Résultats de la recherche')") is None:
@@ -221,6 +265,10 @@ if __name__ == "__main__":
         # Fill provider if specified
         if has_provider:
             fill_provider(page, provider_name, provider_siret, provider_siren)
+        
+        # Fill numéro EJ if specified
+        if options.num_ej:
+            fill_num_ej(page, options.num_ej)
         
         # Loop through all dates from start to end (inclusive)
         current_date = start_date
