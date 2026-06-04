@@ -61,7 +61,6 @@ def init_search_page(page):
 def open_advanced_search_section(page):
     expander = page.locator("[data-target='#GDP_RechercheFacture_CriteresPanneau_Body']")
     is_expanded = expander.get_attribute("aria-expanded") == "true"
-    input(f'open advanced search {is_expanded} {expander.get_attribute("aria-expanded")}>>')
     if not is_expanded:
         expander.click()
     page.locator("#GFR_RechercheFactureEtatAcompteRecus_Criteres_BoutonRechercher").scroll_into_view_if_needed()
@@ -237,7 +236,7 @@ def build_filename(scope: str, provider_siret: str = None, provider_siren: str =
     return "_".join(parts) + ".zip"
 
 
-def download_items(page, scope: str, provider_siret: str = None, provider_siren: str = None, num_ej: str = None, start_date: date = None, end_date: date = None):
+def download_items_bulk(page, scope: str, provider_siret: str = None, provider_siren: str = None, num_ej: str = None, start_date: date = None, end_date: date = None):
     """Select all items on the current page and trigger bulk download.
     
     Args:
@@ -253,20 +252,18 @@ def download_items(page, scope: str, provider_siret: str = None, provider_siren:
     page_button = page.locator("li.paginate__page.paginate__page_active button[name='listeResultats.page']")
     page_number = page_button.get_attribute("value")
     
-    filename = build_filename(scope, provider_siret, provider_siren, num_ej, date, page_number)
+    filename = build_filename(scope, provider_siret, provider_siren, num_ej, start_date, end_date, page_number)
     filepath = f"../downloads/{filename}"
     
     if os.path.exists(filepath):
-        logger.info(f"File {filename} already exists, skipping download for scope={scope}, date={date}, page={page_number}")
+        logger.info(f"File {filename} already exists, skipping download for scope={scope}, start_date={start_date}, end_date={end_date}, page={page_number}")
         return
     
-    # Verify date fields have the expected values (only if date is provided)
-    if date:
-        str_date = date.strftime("%d/%m/%Y")
-        assert page.input_value("input[name='listeResultats.critere.dateHeureEtatCourantDebut']") == str_date
-        assert page.input_value("input[name='listeResultats.critere.dateHeureEtatCourantFin']") == str_date
+    # Verify date fields have the expected values (only if start_date and end_date are provided)
+    if start_date and end_date:
+        check_form_arguments(page, start_date, end_date)
     
-    logger.info(f"Downloading items for scope={scope}, date={date}, page={page_number}")
+    logger.info(f"Downloading items for scope={scope}, start_date={start_date}, end_date={end_date}, page={page_number}")
 
     checkbox = page.locator("#actualiserDEFAULT-1")
     checkbox.locator("xpath=ancestor::span").click()
@@ -278,6 +275,60 @@ def download_items(page, scope: str, provider_siret: str = None, provider_siren:
     assert download_info.is_done(), "Download should be done."
     download.save_as(filepath)
     logger.info(f"Saved as {filename}")
+
+
+def download_items(page):
+    """Download items one by one from the current page.
+    
+    Iterates over all buttons with name='Synthese_Btn_TelechargerUnitaire',
+    extracts the data-value attribute (id_chorus), clicks the button,
+    and saves the download as facture_<id_chorus>.zip.
+    
+    Args:
+        page: The Playwright page object
+    """
+    # Find all individual download buttons
+    download_buttons = page.locator("button[name='Synthese_Btn_TelechargerUnitaire']")
+    
+    # Get the count of buttons
+    button_count = download_buttons.count()
+    logger.info(f"Found {button_count} items to download individually")
+
+    stats = {"files": button_count, "download": 0, "skip": 0, "error": 0}
+    # Iterate over each button
+    for i in range(button_count):
+        # Get the i-th button
+        button = download_buttons.nth(i)
+        
+        # Get the data-value attribute which contains the id_chorus
+        id_chorus = button.get_attribute("data-value")
+        if not id_chorus:
+            logger.warning(f"Button {i} has no data-value attribute, skipping")
+            stats["error"] += 1
+            continue
+        
+        filename = f"facture_{id_chorus}.zip"
+        filepath = f"../downloads/factures/{filename}"
+        
+        if os.path.exists(filepath):
+            logger.info(f"File {filename} already exists, skipping download for id_chorus={id_chorus}")
+            stats["skip"] += 1
+            continue
+        
+        logger.info(f"Downloading item {i+1}/{button_count} with id_chorus={id_chorus}")
+        
+        # Click the button to trigger download
+        button.click()
+        with page.expect_download(timeout=5 * 60 * 1000) as download_info:
+            page.click("#GDP_Telechargementfacture_BoutonTelecharger")
+
+        download = download_info.value
+        assert download_info.is_done(), "Download should be done."
+        download.save_as(filepath)
+        logger.info(f"Saved as {filename}")
+        stats["download"] += 1
+
+    return stats
 
 
 if __name__ == "__main__":
@@ -334,15 +385,8 @@ if __name__ == "__main__":
         else:
             # Download all pages
             while True:
-                download_items(
-                    page,
-                    scope=scope,
-                    provider_siret=provider_siret,
-                    provider_siren=provider_siren,
-                    num_ej=num_ej,
-                    start_date=start_date,
-                    end_date=end_date,
-                )
+                stats = download_items(page)
+                logger.info("Downloads: %s", stats)
                 if not go_next_page(page):
                     break
         input(">>")
