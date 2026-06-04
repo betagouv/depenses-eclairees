@@ -58,6 +58,7 @@ def parse_args():
     parser.add_option("--num-ej", dest="num_ej", help="Numéro EJ (Bon de commande)")
     parser.add_option("--input-file", dest="input_file", help="Input file containing EJ and SERVICES columns (space-separated services). Not compatible with --service or --num-ej")
     parser.add_option("--log-dir", dest="log_dir", help="Directory to save log files (format: log_yyyymmdd_hhmmss.txt)")
+    parser.add_option("--skip-pairs", dest="skip_pairs", type="int", default=0, help="Number of initial pairs to skip (for resuming interrupted processing)")
     options, args = parser.parse_args()
     return options
 
@@ -508,7 +509,7 @@ def read_input_file(input_file: str) -> list[tuple[str, str]]:
             # Create a pair for each service
             for service in services:
                 service = service.strip()
-                if service and service != "WFBATCH":
+                if service and service not in ("WFBATCH", "AIFEMNT"):
                     pairs.append((ej, service))
                     logger.debug(f"Added pair: EJ={ej}, Service={service}")
     
@@ -662,6 +663,10 @@ if __name__ == "__main__":
     # Handle input file mode
     use_input_file = options.input_file is not None
     
+    # Validate skip_pairs
+    if options.skip_pairs < 0:
+        raise ValueError("--skip-pairs must be a non-negative integer")
+    
     # Validate compatibility: --input-file is not compatible with --service or --num-ej
     if use_input_file:
         if options.service:
@@ -685,7 +690,15 @@ if __name__ == "__main__":
         
         # Process each (num_ej, service) pair
         total_pairs = len(pairs)
+        skip_count = options.skip_pairs
+        if skip_count > 0:
+            logger.info(f"Skipping first {skip_count} pairs as requested")
+        
         for idx, (num_ej, service) in enumerate(pairs, 1):
+            if idx <= skip_count:
+                logger.debug(f"Skipping pair {idx}/{total_pairs}: EJ={num_ej}, Service={service}")
+                continue
+            
             logger.info(f"Processing pair: EJ={num_ej}, Service={service} ({idx}/{total_pairs})")
             
             # Create search parameters for this pair
