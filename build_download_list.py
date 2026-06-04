@@ -136,5 +136,9 @@ with timer("Save results to csv"):
     # Load
     # df_merged = pd.read_csv('mon_fichier.csv', dtype={key_ej: 'str', 'EJ': 'str', 'Domaine': 'str'}, parse_dates=['Date notification (E)', 'Date fin de marché (E)'])
     # Liste de travail
-    df = pd.DataFrame(list(df_merged[['EJ', 'SEDP']].dropna().value_counts().keys()), columns=['EJ', 'SERVICES'])
+    df = df_merged[[key_ej, "SEDP"]]
+    df = df.rename(columns={key_ej: "EJ"})
+    df = df[df["EJ"] != "#"]  # Retire les lignes avec EJ = "#"
+    df = df.dropna()  # Supprime toutes les lignes avec SEDP vide
+    df = pd.DataFrame(list(df.value_counts().keys()), columns=['EJ', 'SERVICES'])
     df.to_csv('liste_telechargement.csv', index=False, header=True)
