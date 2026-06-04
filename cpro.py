@@ -697,12 +697,21 @@ if __name__ == "__main__":
                 end_date=end_date,
             )
             
-            # Search and download using the new function
-            start_time = time.perf_counter()
-            search_and_download(page, params)
-            duration = time.perf_counter() - start_time
-            logger.info(f"Processing completed in {duration:.2f}s for EJ={num_ej}, Service={service} ({idx}/{total_pairs}) {params.to_log_string()}")
-        
+            # Search and download with retry logic (3 attempts max)
+            for attempt in range(3):
+                try:
+                    start_time = time.perf_counter()
+                    search_and_download(page, params)
+                    duration = time.perf_counter() - start_time
+                    logger.info(
+                        f"Processing completed in {duration:.2f}s for EJ={num_ej}, Service={service} ({idx}/{total_pairs}) {params.to_log_string()}")
+                    break
+                except PlaywrightTimeoutError as e:
+                    duration = time.perf_counter() - start_time
+                    logger.warning(f"search_and_download attempt {attempt + 1}/3 failed in {duration:.2f} for EJ={num_ej}, Service={service}: {e} {params.to_log_string()}")
+                    if attempt < 2:
+                        logger.info(f"Retrying search_and_download...")
+
         input(">>")
     except KeyboardInterrupt:
         logger.info("Interrupted by user.")
