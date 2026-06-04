@@ -1,7 +1,12 @@
 import time
 from contextlib import contextmanager
+import sys
 
 import pandas as pd
+
+
+oda_filepath = sys.argv[1]
+chorus_filepath = sys.argv[2]
 
 
 @contextmanager
@@ -16,14 +21,21 @@ def timer(message):
 
 key_ej = 'Numéro EJ référencé facture'
 
-with timer("Load ODA xlsx"):
-    # df1 = pd.read_excel('../data/gestion_eclairee/ODA_2025_Complet.xlsx', dtype={key_ej: 'str'})
-    df1 = pd.read_csv('../data/gestion_eclairee/ODA_2025_Complet.csv', dtype={key_ej: 'str', 'Domaine': 'str'}, parse_dates=['Date notification (E)', 'Date fin de marché (E)'])
-print("Lignes ODA:", df1.shape[0])
+with timer("Load ODA"):
+    dtype_oda = {key_ej: 'str', 'Domaine': 'str'}
+    if oda_filepath.endswith('.csv'):
+        df_oda = pd.read_csv(oda_filepath, dtype=dtype_oda, parse_dates=['Date notification (E)', 'Date fin de marché (E)'])
+    elif oda_filepath.endswith('.xlsx'):
+        df_oda = pd.read_excel(oda_filepath, dtype=dtype_oda)
+    else:
+        print(f"Unsupported file format {oda_filepath}")
+        exit(1)
+print("Lignes ODA:", df_oda.shape[0])
 
-with timer("Load csv"):
-    df2 = pd.read_csv(
-        '../data/gestion_eclairee/export_33_budat_2024_2025_2026.csv',
+
+with timer("Load Chorus"):
+    df_chorus = pd.read_csv(
+        chorus_filepath,
         sep=';',
         decimal=',',
         thousands=None,
@@ -33,7 +45,7 @@ with timer("Load csv"):
             'REFERENCE': 'str', 'MONTANT': 'float64', 'SEDP': 'str',
         }
     )
-print("Lignes csv:", df2.shape[0])
+print("Lignes csv:", df_chorus.shape[0])
 
 
 # Aggregation
@@ -42,7 +54,7 @@ with timer("Do agg"):
     agg_data = {}
 
     # Parcourir chaque ligne de df2
-    for _, row in df2.iterrows():
+    for _, row in df_chorus.iterrows():
         ej = row['EJ']
         sedp = row['SEDP']
         facture = row['FACTURE']
@@ -88,11 +100,11 @@ with timer("Do agg"):
 
 
 df_merged = pd.merge(
-    df1,
+    df_oda,
     df2_agg,
-    left_on='Numéro EJ référencé facture',
+    left_on=key_ej,
     right_on='EJ',
-    how='left'  # Garde toutes les lignes de df1, même sans correspondance
+    how='left'  # Garde toutes les lignes de df_oda, même sans correspondance
 )
 
 
@@ -104,30 +116,25 @@ df_ok = df_merged[
     (~df_merged['SEDP'].isna()) &
     (df_merged[key_ej] != '#')
 ]
-print("EJs OK:", df_ok.shape[0])
+print("Lignes OK:", df_ok.shape[0])
 
 # Filtrer les lignes où SEDP est NaN (pas de correspondance dans df2) et EJ n'est pas '#'
 df_missing_sedp = df_merged[
     (df_merged['SEDP'].isna()) &
     (df_merged[key_ej] != '#')
 ]
-print("EJs sans correspondance:", df_missing_sedp.shape[0])
+print("Lignes sans correspondance:", df_missing_sedp.shape[0])
 
 df_missing_ej = df_merged[
     (df_merged[key_ej] == '#')
 ]
-print("EJs absents ODA (#):", df_missing_ej.shape[0])
+print("Lignes EJ absent ODA (#):", df_missing_ej.shape[0])
 
 
 with timer("Save results to csv"):
-    #df_merged.to_excel(
-    #    'mon_fichier.xlsx',
-    #    index=False,
-    #    sheet_name='Résultats',
-    #    header=True,         # Inclut les noms de colonnes
-    #    freeze_panes=(1, 0)  # Figé la 1ère ligne (en-têtes)
-    #)
-    df_merged.to_csv('mon_fichier.csv', index=False, header=True)
+    df_merged.to_csv('fusion.csv', index=False, header=True)
     # Load
     # df_merged = pd.read_csv('mon_fichier.csv', dtype={key_ej: 'str', 'EJ': 'str', 'Domaine': 'str'}, parse_dates=['Date notification (E)', 'Date fin de marché (E)'])
-
+    # Liste de travail
+    df = pd.DataFrame(list(df_merged[['EJ', 'SEDP']].dropna().value_counts().keys()), columns=['EJ', 'SERVICES'])
+    df.to_csv('liste_telechargement.csv', index=False, header=True)
