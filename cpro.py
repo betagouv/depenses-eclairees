@@ -3,9 +3,10 @@ import logging
 import optparse
 import os
 import platform
+import sys
 import zipfile
 from dataclasses import dataclass
-from datetime import date
+from datetime import datetime, date
 from typing import Optional
 
 from cloakbrowser import launch_context
@@ -35,6 +36,7 @@ def parse_args():
     parser.add_option("--provider", dest="provider", help="Provider identifier (SIREN=9 digits or SIRET=14 digits)")
     parser.add_option("--num-ej", dest="num_ej", help="Numéro EJ (Bon de commande)")
     parser.add_option("--input-file", dest="input_file", help="Input file containing EJ and SERVICES columns (space-separated services). Not compatible with --service or --num-ej")
+    parser.add_option("--log-dir", dest="log_dir", help="Directory to save log files (format: log_yyyymmdd_hhmmss.txt)")
     options, args = parser.parse_args()
     return options
 
@@ -589,8 +591,31 @@ def search_and_download(page, params: SearchParams):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     options = parse_args()
+    
+    # Setup logging
+    log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    log_level = logging.INFO
+    
+    # Create log file handler if --log-dir is specified
+    file_handler = None
+    if options.log_dir:
+        os.makedirs(options.log_dir, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_filename = f"log_{timestamp}.txt"
+        log_filepath = os.path.join(options.log_dir, log_filename)
+        file_handler = logging.FileHandler(log_filepath, encoding='utf-8')
+        file_handler.setLevel(log_level)
+        file_handler.setFormatter(logging.Formatter(log_format))
+    
+    # Configure basic logging (stdout)
+    logging.basicConfig(
+        level=log_level,
+        format=log_format,
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+        ] + ([file_handler] if file_handler else [])
+    )
     
     # Parse optional date range
     start_date = date.fromisoformat(options.start) if options.start else None
