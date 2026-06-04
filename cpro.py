@@ -4,6 +4,7 @@ import optparse
 import os
 import platform
 import sys
+import time
 import zipfile
 from dataclasses import dataclass
 from datetime import datetime, date
@@ -697,7 +698,10 @@ if __name__ == "__main__":
             )
             
             # Search and download using the new function
+            start_time = time.perf_counter()
             search_and_download(page, params)
+            duration = time.perf_counter() - start_time
+            logger.info(f"Processing completed in {duration:.2f}s for EJ={num_ej}, Service={service} ({idx}/{total_pairs}) {params.to_log_string()}")
         
         input(">>")
     except KeyboardInterrupt:
