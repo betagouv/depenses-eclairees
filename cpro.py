@@ -21,8 +21,7 @@ class SearchParams:
     """Parameters for searching invoices on CPRO."""
     service: Optional[str] = None
     provider_name: Optional[str] = None
-    provider_siret: Optional[str] = None
-    provider_siren: Optional[str] = None
+    provider: Optional[str] = None
     num_ej: Optional[str] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
@@ -35,8 +34,7 @@ def parse_args():
     parser.add_option("--service", dest="service", help="Service code")
     parser.add_option("--headed", action="store_true", default=False, help="Run in headed mode")
     parser.add_option("--provider-name", dest="provider_name", help="Provider name (required if provider is specified)")
-    parser.add_option("--provider-siret", dest="provider_siret", help="Provider SIRET (mutually exclusive with --provider-siren)")
-    parser.add_option("--provider-siren", dest="provider_siren", help="Provider SIREN (mutually exclusive with --provider-siret)")
+    parser.add_option("--provider", dest="provider", help="Provider identifier (SIREN=9 digits or SIRET=14 digits)")
     parser.add_option("--num-ej", dest="num_ej", help="Numéro EJ (Bon de commande)")
     options, args = parser.parse_args()
     return options
@@ -89,34 +87,38 @@ def fill_service(page, service: str):
     page.click("#selection0")
 
 
-def fill_provider(page, provider_name: str, provider_siret: str = None, provider_siren: str = None):
-    """Fill the provider search field. Requires either siret or siren (but not both) and a name.
+def fill_provider(page, provider_name: str, provider: str):
+    """Fill the provider search field.
     
     Args:
         page: The Playwright page object
         provider_name: The name of the provider (required)
-        provider_siret: The SIRET of the provider (optional, mutually exclusive with provider_siren)
-        provider_siren: The SIREN of the provider (optional, mutually exclusive with provider_siret)
+        provider: The provider identifier (SIREN=9 digits or SIRET=14 digits)
     """
-    if provider_siret and provider_siren:
-        raise ValueError("Cannot provide both siret and siren. Please provide only one.")
-    if not provider_siret and not provider_siren:
-        raise ValueError("Must provide either siret or siren.")
+    if not provider:
+        raise ValueError("Must provide a provider identifier (SIREN or SIRET).")
     
-    identifier = provider_siret or provider_siren
-    logger.info(f"Filling provider: name={provider_name}, identifier={identifier}")
+    # Determine if it's SIREN (9 digits) or SIRET (14 digits)
+    provider = provider.strip()
+    is_siren = len(provider) == 9
+    is_siret = len(provider) == 14
+    
+    if not (is_siren or is_siret):
+        raise ValueError(f"Provider identifier must be 9 digits (SIREN) or 14 digits (SIRET), got {len(provider)} digits: {provider}")
+    
+    logger.info(f"Filling provider: name={provider_name}, identifier={provider}, type={'SIREN' if is_siren else 'SIRET'}")
     
     # Click on the provider select2 container to open the dropdown
     page.click("#select2-GFR_RechercheFacturesRecues_Criteres_StructureFournisseurGFR_RechercheFacturesRecues-container")
     
-    # Type the siret or siren
-    page.keyboard.type(identifier)
+    # Type the identifier
+    page.keyboard.type(provider)
     
     # Wait for results and click the first one
     page.click("#select2-GFR_RechercheFacturesRecues_Criteres_StructureFournisseurGFR_RechercheFacturesRecues-results li:first-child")
     
-    # If siren is provided, check if SIREN checkbox is disabled and enable it if needed
-    if provider_siren:
+    # If SIREN, check if SIREN checkbox is disabled and enable it if needed
+    if is_siren:
         siren_checkbox = page.locator("#TRA_Recherche_Factures_Coche_SIREN")
         is_disabled = siren_checkbox.get_attribute("disabled")
         if is_disabled:
@@ -362,8 +364,8 @@ def search_and_download(page, params: SearchParams):
         fill_service(page, params.service)
     
     # Fill provider if specified
-    if params.provider_name and (params.provider_siret or params.provider_siren):
-        fill_provider(page, params.provider_name, params.provider_siret, params.provider_siren)
+    if params.provider_name and params.provider:
+        fill_provider(page, params.provider_name, params.provider)
     
     # Fill numéro EJ if specified
     if params.num_ej:
@@ -398,22 +400,19 @@ if __name__ == "__main__":
     params = SearchParams(
         service=options.service,
         provider_name=options.provider_name,
-        provider_siret=options.provider_siret,
-        provider_siren=options.provider_siren,
+        provider=options.provider,
         num_ej=options.num_ej,
         start_date=start_date,
         end_date=end_date,
     )
     
     # Validate provider options
-    has_provider = params.provider_name or params.provider_siret or params.provider_siren
+    has_provider = params.provider_name or params.provider
     if has_provider:
         if not params.provider_name:
             raise ValueError("Provider name is required when specifying a provider. Use --provider-name.")
-        if not params.provider_siret and not params.provider_siren:
-            raise ValueError("Must provide either --provider-siret or --provider-siren when specifying a provider.")
-        if params.provider_siret and params.provider_siren:
-            raise ValueError("Cannot provide both --provider-siret and --provider-siren. Please provide only one.")
+        if not params.provider:
+            raise ValueError("Must provide --provider identifier (SIREN or SIRET) when specifying a provider.")
 
     ctx = None
     try:
