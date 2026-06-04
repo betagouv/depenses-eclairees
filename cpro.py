@@ -1,3 +1,4 @@
+import csv
 import logging
 import optparse
 import os
@@ -20,7 +21,6 @@ SELECT_ALL_MODIFIER = "Meta" if platform.system() == "Darwin" else "Control"
 class SearchParams:
     """Parameters for searching invoices on CPRO."""
     service: Optional[str] = None
-    provider_name: Optional[str] = None
     provider: Optional[str] = None
     num_ej: Optional[str] = None
     start_date: Optional[date] = None
@@ -33,9 +33,9 @@ def parse_args():
     parser.add_option("--end", dest="end", help="End date in ISO format (YYYY-MM-DD)")
     parser.add_option("--service", dest="service", help="Service code")
     parser.add_option("--headed", action="store_true", default=False, help="Run in headed mode")
-    parser.add_option("--provider-name", dest="provider_name", help="Provider name (required if provider is specified)")
     parser.add_option("--provider", dest="provider", help="Provider identifier (SIREN=9 digits or SIRET=14 digits)")
     parser.add_option("--num-ej", dest="num_ej", help="Numéro EJ (Bon de commande)")
+    parser.add_option("--input-file", dest="input_file", help="Input file containing EJ and SERVICES columns (space-separated services). Not compatible with --service or --num-ej")
     options, args = parser.parse_args()
     return options
 
@@ -87,12 +87,11 @@ def fill_service(page, service: str):
     page.click("#selection0")
 
 
-def fill_provider(page, provider_name: str, provider: str):
+def fill_provider(page, provider: str):
     """Fill the provider search field.
     
     Args:
         page: The Playwright page object
-        provider_name: The name of the provider (required)
         provider: The provider identifier (SIREN=9 digits or SIRET=14 digits)
     """
     if not provider:
@@ -106,7 +105,7 @@ def fill_provider(page, provider_name: str, provider: str):
     if not (is_siren or is_siret):
         raise ValueError(f"Provider identifier must be 9 digits (SIREN) or 14 digits (SIRET), got {len(provider)} digits: {provider}")
     
-    logger.info(f"Filling provider: name={provider_name}, identifier={provider}, type={'SIREN' if is_siren else 'SIRET'}")
+    logger.info(f"Filling provider: identifier={provider}, type={"SIREN" if is_siren else "SIRET"}")
     
     # Click on the provider select2 container to open the dropdown
     page.click("#select2-GFR_RechercheFacturesRecues_Criteres_StructureFournisseurGFR_RechercheFacturesRecues-container")
@@ -134,7 +133,7 @@ def fill_provider(page, provider_name: str, provider: str):
         assert page.locator("#TRA_Recherche_Factures_Coche_SIREN").is_checked(), "SIREN checkbox should be checked"
         assert page.input_value("input[name='rechercheParSiren']") == "true", "rechercheParSiren should be true"
     
-    logger.info(f"Provider filled successfully: {provider_name}")
+    logger.info(f"Provider filled successfully: {provider}")
 
 
 def fill_num_ej(page, num_ej: str):
@@ -347,6 +346,48 @@ def download_items(page):
     return stats
 
 
+def read_input_file(input_file: str) -> list[tuple[str, str]]:
+    """Read input file with EJ and SERVICES columns.
+    
+    Args:
+        input_file: Path to the input file (CSV format expected)
+        
+    Returns:
+        List of tuples (ej, service) extracted from the file
+    """
+    logger.info(f"Reading input file: {input_file}")
+    
+    pairs = []
+    with open(input_file, "r", newline="", encoding="utf-8") as csvfile:
+        reader = csv.DictReader(csvfile)
+        
+        # Check required columns exist
+        if "EJ" not in reader.fieldnames:
+            raise ValueError(f"Input file must contain 'EJ' column. Available columns: {reader.fieldnames}")
+        if "SERVICES" not in reader.fieldnames:
+            raise ValueError(f"Input file must contain 'SERVICES' column. Available columns: {reader.fieldnames}")
+        
+        for row in reader:
+            ej = row["EJ"].strip()
+            services_str = row["SERVICES"].strip()
+            
+            assert ej, f"row with empty EJ: {row}"
+            assert services_str, f"Row with empty SERVICES: {row}"
+
+            # Split services by space
+            services = services_str.split()
+            
+            # Create a pair for each service
+            for service in services:
+                service = service.strip()
+                if service:
+                    pairs.append((ej, service))
+                    logger.debug(f"Added pair: EJ={ej}, Service={service}")
+    
+    logger.info(f"Extracted {len(pairs)} (EJ, service) pairs from input file")
+    return pairs
+
+
 def build_export_filename(params: SearchParams) -> str:
     """Build export CSV filename based on search parameters.
     
@@ -432,8 +473,8 @@ def search_and_download(page, params: SearchParams):
         fill_service(page, params.service)
     
     # Fill provider if specified
-    if params.provider_name and params.provider:
-        fill_provider(page, params.provider_name, params.provider)
+    if params.provider:
+        fill_provider(page, params.provider)
     
     # Fill numéro EJ if specified
     if params.num_ej:
@@ -467,30 +508,45 @@ if __name__ == "__main__":
     start_date = date.fromisoformat(options.start) if options.start else None
     end_date = date.fromisoformat(options.end) if options.end else None
     
-    # Create search parameters
-    params = SearchParams(
-        service=options.service,
-        provider_name=options.provider_name,
-        provider=options.provider,
-        num_ej=options.num_ej,
-        start_date=start_date,
-        end_date=end_date,
-    )
+    # Handle input file mode
+    use_input_file = options.input_file is not None
     
-    # Validate provider options
-    has_provider = params.provider_name or params.provider
-    if has_provider:
-        if not params.provider_name:
-            raise ValueError("Provider name is required when specifying a provider. Use --provider-name.")
-        if not params.provider:
-            raise ValueError("Must provide --provider identifier (SIREN or SIRET) when specifying a provider.")
+    # Validate compatibility: --input-file is not compatible with --service or --num-ej
+    if use_input_file:
+        if options.service:
+            raise ValueError("--input-file is not compatible with --service. Use either --input-file or --service/--num-ej, not both.")
+        if options.num_ej:
+            raise ValueError("--input-file is not compatible with --num-ej. Use either --input-file or --service/--num-ej, not both.")
+        
+        # Read pairs from input file
+        pairs = read_input_file(options.input_file)
+        if not pairs:
+            raise ValueError("No valid (EJ, service) pairs found in input file.")
+    else:
+        # Single mode: create a single pair from provided options
+        # If service is provided, pair it with num_ej (which may be None)
+        # If only num_ej is provided, pair it with None service
+        pairs = [(options.num_ej, options.service)]
 
     ctx = None
     try:
         ctx, page = init_context(headless=not options.headed)
         
-        # Search and download using the new function
-        search_and_download(page, params)
+        # Process each (num_ej, service) pair
+        for num_ej, service in pairs:
+            logger.info(f"Processing pair: EJ={num_ej}, Service={service}")
+            
+            # Create search parameters for this pair
+            params = SearchParams(
+                service=service,
+                provider=options.provider,
+                num_ej=num_ej,
+                start_date=start_date,
+                end_date=end_date,
+            )
+            
+            # Search and download using the new function
+            search_and_download(page, params)
         
         input(">>")
     except KeyboardInterrupt:
