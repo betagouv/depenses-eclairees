@@ -3,13 +3,12 @@ import logging
 import optparse
 import os
 import platform
-import sys
-import time
+import zipfile
 from dataclasses import dataclass
-from datetime import datetime, timedelta, date
+from datetime import date
 from typing import Optional
 
-from cloakbrowser import launch, launch_context
+from cloakbrowser import launch_context
 
 logger = logging.getLogger(__name__)
 
@@ -212,8 +211,15 @@ def go_next_page(page) -> bool:
     logger.info("Navigating to next page...")
     next_button.click()
     page.wait_for_load_state("load")
-    logger.info("Next page loaded.")
+    page_number = get_current_page_number(page)
+    logger.info("Next page loaded (%s).", page_number)
     return True
+
+
+def get_current_page_number(page):
+    page_button = page.locator("li.paginate__page.paginate__page_active button[name='listeResultats.page']")
+    page_number = page_button.get_attribute("value")
+    return page_number
 
 
 def build_filename(service: str, provider_siret: str = None, provider_siren: str = None, num_ej: str = None, start_date: date = None, end_date: date = None, page_number: str = None):
@@ -264,11 +270,10 @@ def download_items_bulk(page, service: str, provider_siret: str = None, provider
         end_date: Optional end date to include in filename
     """
     # Get current page number from value attribute of the active page button
-    page_button = page.locator("li.paginate__page.paginate__page_active button[name='listeResultats.page']")
-    page_number = page_button.get_attribute("value")
+    page_number = get_current_page_number(page)
     
     filename = build_filename(service, provider_siret, provider_siren, num_ej, start_date, end_date, page_number)
-    filepath = f"../downloads/{filename}"
+    filepath = f"../downloads/bulk/{filename}"
     
     if os.path.exists(filepath):
         logger.info(f"File {filename} already exists, skipping download for service={service}, start_date={start_date}, end_date={end_date}, page={page_number}")
@@ -290,6 +295,84 @@ def download_items_bulk(page, service: str, provider_siret: str = None, provider
     assert download_info.is_done(), "Download should be done."
     download.save_as(filepath)
     logger.info(f"Saved as {filename}")
+
+
+def verify_download_integrity(filepath: str) -> bool:
+    """Verify that a downloaded zip file is not corrupted by checking IdCPRO in PivotS.xml.
+    
+    Opens the zip file, finds PivotS.xml inside, and reads it until finding
+    the IdCPRO value by searching for <IdCPRO> and </IdCPRO> markers.
+    The expected id_chorus is extracted from the filename (facture_<idchorus>.zip).
+    
+    Args:
+        filepath: Path to the downloaded zip file
+        
+    Returns:
+        True if the IdCPRO matches the id_chorus from filename, False otherwise
+    """
+    # Extract id chorus from filename (facture_<idchorus>.zip)
+    filename = os.path.split(filepath)[-1]
+    expected_id_chorus = os.path.splitext(filename)[0].split("_")[-1]
+    try:
+        with zipfile.ZipFile(filepath, 'r') as zip_ref:
+            # Find PivotS.xml in the zip
+            pivot_file = None
+            for filename in zip_ref.namelist():
+                if filename.endswith('PivotS.xml'):
+                    pivot_file = filename
+                    break
+            
+            if pivot_file is None:
+                logger.error(f"PivotS.xml not found in {filepath}")
+                return False
+            
+            # Read PivotS.xml in text mode and search for IdCPRO
+            with zip_ref.open(pivot_file) as xml_file:
+                # Read in chunks until we find </IdCPRO>
+                chunk_size = 8192
+                buffer = ""
+                start_marker = '<IdCPRO>'
+                end_marker = '</IdCPRO>'
+                
+                while True:
+                    chunk = xml_file.read(chunk_size)
+                    if not chunk:
+                        break
+                    buffer += chunk.decode('utf-8', errors='ignore')
+                    
+                    # Check if we have the end marker
+                    if end_marker in buffer:
+                        break
+                
+                # Find IdCPRO tags in buffer
+                start_idx = buffer.find(start_marker)
+                
+                if start_idx == -1:
+                    logger.error(f"IdCPRO start tag not found in PivotS.xml in {filepath}")
+                    return False
+                
+                start_idx += len(start_marker)
+                end_idx = buffer.find(end_marker, start_idx)
+                
+                if end_idx == -1:
+                    logger.error(f"IdCPRO end tag not found in PivotS.xml in {filepath}")
+                    return False
+                
+                actual_idcpro = buffer[start_idx:end_idx]
+                
+                if actual_idcpro != expected_id_chorus:
+                    logger.error(f"IdCPRO mismatch in {filepath}: expected {expected_id_chorus}, got {actual_idcpro}")
+                    return False
+                
+                logger.debug(f"IdCPRO verification passed for {filepath}: {actual_idcpro}")
+                return True
+                
+    except zipfile.BadZipFile:
+        logger.error(f"File {filepath} is not a valid zip file")
+        return False
+    except Exception as e:
+        logger.error(f"Error verifying download {filepath}: {e}")
+        return False
 
 
 def download_items(page):
@@ -341,6 +424,11 @@ def download_items(page):
         assert download_info.is_done(), "Download should be done."
         download.save_as(filepath)
         logger.info(f"Saved as {filename}")
+        
+        # Verify download integrity
+        if not verify_download_integrity(filepath):
+            logger.warning(f"Download verification failed for {filename}")
+        
         stats["download"] += 1
 
     return stats
@@ -380,7 +468,7 @@ def read_input_file(input_file: str) -> list[tuple[str, str]]:
             # Create a pair for each service
             for service in services:
                 service = service.strip()
-                if service:
+                if service and service != "WFBATCH":
                     pairs.append((ej, service))
                     logger.debug(f"Added pair: EJ={ej}, Service={service}")
     
