@@ -347,6 +347,74 @@ def download_items(page):
     return stats
 
 
+def build_export_filename(params: SearchParams) -> str:
+    """Build export CSV filename based on search parameters.
+    
+    Format: ../downloads/exports/<num_ej>_<service>_<provider>_<start>_<end>.csv
+    
+    Args:
+        params: SearchParams containing all search criteria
+    
+    Returns:
+        A filename string with path
+    """
+    parts = []
+    
+    if params.num_ej:
+        parts.append(params.num_ej)
+    
+    if params.service:
+        parts.append(params.service)
+    
+    if params.provider:
+        parts.append(params.provider)
+    
+    if params.start_date:
+        parts.append(params.start_date.strftime("%Y%m%d"))
+    
+    if params.end_date:
+        parts.append(params.end_date.strftime("%Y%m%d"))
+    
+    filename = "_".join(parts) + ".csv"
+    return f"../downloads/exports/{filename}"
+
+
+def download_export_csv(page, params: SearchParams) -> str:
+    """Download the export CSV file after search.
+    
+    Clicks on the export button and saves the result.
+    
+    Args:
+        page: The Playwright page object
+        params: SearchParams containing all search criteria
+    
+    Returns:
+        The path where the file was saved
+    """
+    logger.info("Downloading export CSV...")
+    
+    # Build filename
+    filepath = build_export_filename(params)
+    
+    # Create exports directory if it doesn't exist
+    os.makedirs("../downloads/exports", exist_ok=True)
+    
+    if os.path.exists(filepath):
+        logger.info(f"Export file {filepath} already exists, skipping download")
+        return filepath
+    
+    # Click the export button and wait for download
+    with page.expect_download(timeout=60 * 1000) as download_info:
+        page.click("#GFR_RechercheFactureEtatAcompteRecus_Resultats_BoutonExporter")
+    
+    download = download_info.value
+    assert download_info.is_done(), "Download should be done."
+    download.save_as(filepath)
+    
+    logger.info(f"Export CSV saved as {filepath}")
+    return filepath
+
+
 def search_and_download(page, params: SearchParams):
     """Search for invoices based on the provided parameters and download all results.
     
@@ -379,6 +447,9 @@ def search_and_download(page, params: SearchParams):
     if not submit_form(page):
         logger.info("No results found.")
         return
+    
+    # Download export CSV
+    download_export_csv(page, params)
     
     # Download all pages
     while True:
