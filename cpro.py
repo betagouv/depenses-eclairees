@@ -4,7 +4,9 @@ import os
 import platform
 import sys
 import time
+from dataclasses import dataclass
 from datetime import datetime, timedelta, date
+from typing import Optional
 
 from cloakbrowser import launch, launch_context
 
@@ -12,6 +14,18 @@ logger = logging.getLogger(__name__)
 
 # Determine select-all keyboard shortcut based on OS
 SELECT_ALL_MODIFIER = "Meta" if platform.system() == "Darwin" else "Control"
+
+
+@dataclass
+class SearchParams:
+    """Parameters for searching invoices on CPRO."""
+    service: Optional[str] = None
+    provider_name: Optional[str] = None
+    provider_siret: Optional[str] = None
+    provider_siren: Optional[str] = None
+    num_ej: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
 
 
 def parse_args():
@@ -331,64 +345,83 @@ def download_items(page):
     return stats
 
 
+def search_and_download(page, params: SearchParams):
+    """Search for invoices based on the provided parameters and download all results.
+    
+    Args:
+        page: The Playwright page object
+        params: SearchParams containing all search criteria
+    """
+    logger.info(f"Starting search and download with params: {params}")
+    
+    # Initialize search page once
+    init_search_page(page)
+    
+    # Fill service
+    if params.service:
+        fill_service(page, params.service)
+    
+    # Fill provider if specified
+    if params.provider_name and (params.provider_siret or params.provider_siren):
+        fill_provider(page, params.provider_name, params.provider_siret, params.provider_siren)
+    
+    # Fill numéro EJ if specified
+    if params.num_ej:
+        fill_num_ej(page, params.num_ej)
+    
+    # Fill date range
+    if params.start_date and params.end_date:
+        fill_date_range(page, params.start_date, params.end_date)
+    
+    logger.info(f"Starting download for service={params.service}, num_ej={params.num_ej}")
+    if not submit_form(page):
+        logger.info("No results found.")
+        return
+    
+    # Download all pages
+    while True:
+        stats = download_items(page)
+        logger.info("Downloads: %s", stats)
+        if not go_next_page(page):
+            break
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     options = parse_args()
-    service = options.service
-    
-    # Parse provider options
-    provider_name = options.provider_name
-    provider_siret = options.provider_siret
-    provider_siren = options.provider_siren
-    num_ej = options.num_ej
-    
-    # Validate provider options
-    has_provider = provider_name or provider_siret or provider_siren
-    if has_provider:
-        if not provider_name:
-            raise ValueError("Provider name is required when specifying a provider. Use --provider-name.")
-        if not provider_siret and not provider_siren:
-            raise ValueError("Must provide either --provider-siret or --provider-siren when specifying a provider.")
-        if provider_siret and provider_siren:
-            raise ValueError("Cannot provide both --provider-siret and --provider-siren. Please provide only one.")
     
     # Parse optional date range
     start_date = date.fromisoformat(options.start) if options.start else None
     end_date = date.fromisoformat(options.end) if options.end else None
+    
+    # Create search parameters
+    params = SearchParams(
+        service=options.service,
+        provider_name=options.provider_name,
+        provider_siret=options.provider_siret,
+        provider_siren=options.provider_siren,
+        num_ej=options.num_ej,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    
+    # Validate provider options
+    has_provider = params.provider_name or params.provider_siret or params.provider_siren
+    if has_provider:
+        if not params.provider_name:
+            raise ValueError("Provider name is required when specifying a provider. Use --provider-name.")
+        if not params.provider_siret and not params.provider_siren:
+            raise ValueError("Must provide either --provider-siret or --provider-siren when specifying a provider.")
+        if params.provider_siret and params.provider_siren:
+            raise ValueError("Cannot provide both --provider-siret and --provider-siren. Please provide only one.")
 
     ctx = None
     try:
         ctx, page = init_context(headless=not options.headed)
         
-        # Initialize search page once
-        init_search_page(page)
-
-        # Fill service
-        if service:
-            fill_service(page, service)
+        # Search and download using the new function
+        search_and_download(page, params)
         
-        # Fill provider if specified
-        if has_provider:
-            fill_provider(page, provider_name, provider_siret, provider_siren)
-        
-        # Fill numéro EJ if specified
-        if num_ej:
-            fill_num_ej(page, num_ej)
-
-        # Fill date range
-        if start_date and end_date:
-            fill_date_range(page, start_date, end_date)
-
-        logger.info(f"Starting download for service={service}, num_ej={num_ej}")
-        if not submit_form(page):
-            logger.info("No results found.")
-        else:
-            # Download all pages
-            while True:
-                stats = download_items(page)
-                logger.info("Downloads: %s", stats)
-                if not go_next_page(page):
-                    break
         input(">>")
     except KeyboardInterrupt:
         logger.info("Interrupted by user.")
