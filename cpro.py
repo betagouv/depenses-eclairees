@@ -45,17 +45,35 @@ def init_context(headless: bool = True):
     return ctx, page
 
 
-def init_search_page(page, scope: str):
+def init_search_page(page):
     """Navigate to the invoice search page and fill the static form criteria."""
-    logger.info(f"Initializing search page for scope={scope}")
+    logger.info(f"Initializing search page")
+
+    # Ouverture de la page
     page.goto("https://cpro.chorus-pro.gouv.fr/cpp/rechercheFactures")
+
+    # Sélection de l'état Mise en paiement
+    page.select_option("select[name='listeResultats.critere.etatCourant']", value="MISE_EN_PAIEMENT")
+
+    logger.info("Search page initialized.")
+
+
+def open_advanced_search_section(page):
+    expander = page.locator("[data-target='#GDP_RechercheFacture_CriteresPanneau_Body']")
+    is_expanded = expander.get_attribute("aria-expanded") == "true"
+    input(f'open advanced search {is_expanded} {expander.get_attribute("aria-expanded")}>>')
+    if not is_expanded:
+        expander.click()
+    page.locator("#GFR_RechercheFactureEtatAcompteRecus_Criteres_BoutonRechercher").scroll_into_view_if_needed()
+
+
+def fill_scope(page, scope: str):
+    # Selection du scope
     page.select_option("select[name='listeResultats.critere.structureDestinataireId']", value="568055")
     page.click("#GFR_RechercheFacturesRecues_Criteres_BtnRechercherService")
     page.fill("input[name='listeServices.critere.code']", scope)
     page.click("button[type='submit']")
     page.click("#selection0")
-    page.select_option("select[name='listeResultats.critere.etatCourant']", value="MISE_EN_PAIEMENT")
-    logger.info("Search page initialized.")
 
 
 def fill_provider(page, provider_name: str, provider_siret: str = None, provider_siren: str = None):
@@ -112,27 +130,29 @@ def fill_num_ej(page, num_ej: str):
         num_ej: The numéro EJ (bon de commande) to fill
     """
     logger.info(f"Filling numéro EJ: {num_ej}")
+    open_advanced_search_section(page)
     page.fill("input[name='listeResultats.critere.numeroBonDeCommande']", num_ej)
     logger.info(f"Numéro EJ filled successfully: {num_ej}")
 
 
-def fill_date(page, date: date):
-    """Fill the date fields with the specified date.
+def fill_date_range(page, start_date: date, end_date: date):
+    """Fill the date range fields with start and end dates.
     
     Args:
         page: The Playwright page object
-        date: The date to fill in the form
+        start_date: The start date to fill in the start field
+        end_date: The end date to fill in the end field
     """
-    str_date = date.strftime("%d/%m/%Y")
-    logger.info(f"Filling date: {date}")
-    page.click("[data-target='#GDP_RechercheFacture_CriteresPanneau_Body']")
-    page.locator("#GFR_RechercheFactureEtatAcompteRecus_Criteres_BoutonRechercher").scroll_into_view_if_needed()
+    open_advanced_search_section(page)
+    str_start = start_date.strftime("%d/%m/%Y")
+    str_end = end_date.strftime("%d/%m/%Y")
+    logger.info(f"Filling date range: {start_date} to {end_date}")
     page.click("input[name='listeResultats.critere.dateHeureEtatCourantDebut']")
     page.keyboard.press(f"{SELECT_ALL_MODIFIER}+a")
-    page.keyboard.type(str_date)
+    page.keyboard.type(str_start)
     page.click("input[name='listeResultats.critere.dateHeureEtatCourantFin']")
     page.keyboard.press(f"{SELECT_ALL_MODIFIER}+a")
-    page.keyboard.type(str_date)
+    page.keyboard.type(str_end)
 
 
 def submit_form(page) -> bool:
@@ -154,27 +174,17 @@ def submit_form(page) -> bool:
     return True
 
 
-def check_form_arguments(page, str_date: str):
+def check_form_arguments(page, start_date: date, end_date: date):
     """Verify that the form fields have the expected values.
 
     Args:
         page: The Playwright page object
         str_date: The date string in DD/MM/YYYY format
     """
-    assert page.input_value("input[name='listeResultats.critere.dateHeureEtatCourantDebut']") == str_date
-    assert page.input_value("input[name='listeResultats.critere.dateHeureEtatCourantFin']") == str_date
-
-
-def load_date(page, date: date) -> bool:
-    """Fill the date fields and trigger search for a specific date.
-    Returns False if no results found, True otherwise."""
-    str_date = date.strftime("%d/%m/%Y")
-    logger.info(f"Loading data for date={date}")
-    fill_date(page, date)
-    result = submit_form(page)
-    if result:
-        check_form_arguments(page, str_date)
-    return result
+    str_start = start_date.strftime("%d/%m/%Y")
+    str_end = end_date.strftime("%d/%m/%Y")
+    assert page.input_value("input[name='listeResultats.critere.dateHeureEtatCourantDebut']") == str_start
+    assert page.input_value("input[name='listeResultats.critere.dateHeureEtatCourantFin']") == str_end
 
 
 def go_next_page(page) -> bool:
@@ -192,16 +202,17 @@ def go_next_page(page) -> bool:
     return True
 
 
-def build_filename(scope: str, provider_siret: str = None, provider_siren: str = None, num_ej: str = None, date: date = None, page_number: str = None):
+def build_filename(scope: str, provider_siret: str = None, provider_siren: str = None, num_ej: str = None, start_date: date = None, end_date: date = None, page_number: str = None):
     """Build a filename based on the provided parameters.
-    Order: scope -> provider (siret/siren) -> num_ej -> date -> page_number
+    Order: num_ej -> scope -> provider (siret/siren) -> num_ej -> date -> page_number
     
     Args:
         scope: The scope code (required)
         provider_siret: Optional provider SIRET
         provider_siren: Optional provider SIREN
         num_ej: Optional numéro EJ
-        date: Optional date for the file
+        start_date: Optional start date for the file
+        end_date: Optional end date for the file
         page_number: Optional page number
     
     Returns:
@@ -226,7 +237,7 @@ def build_filename(scope: str, provider_siret: str = None, provider_siren: str =
     return "_".join(parts) + ".zip"
 
 
-def download_items(page, scope: str, provider_siret: str = None, provider_siren: str = None, num_ej: str = None, date: date = None):
+def download_items(page, scope: str, provider_siret: str = None, provider_siren: str = None, num_ej: str = None, start_date: date = None, end_date: date = None):
     """Select all items on the current page and trigger bulk download.
     
     Args:
@@ -235,7 +246,8 @@ def download_items(page, scope: str, provider_siret: str = None, provider_siren:
         provider_siret: Optional provider SIRET to include in filename
         provider_siren: Optional provider SIREN to include in filename
         num_ej: Optional numéro EJ to include in filename
-        date: Optional date to include in filename
+        start_date: Optional start date to include in filename
+        end_date: Optional end date to include in filename
     """
     # Get current page number from value attribute of the active page button
     page_button = page.locator("li.paginate__page.paginate__page_active button[name='listeResultats.page']")
@@ -292,18 +304,17 @@ if __name__ == "__main__":
     # Parse optional date range
     start_date = date.fromisoformat(options.start) if options.start else None
     end_date = date.fromisoformat(options.end) if options.end else None
-    
-    # If dates are provided, validate them
-    if start_date and not end_date:
-        end_date = start_date
-    if end_date and not start_date:
-        start_date = end_date
-    
+
+    ctx = None
     try:
         ctx, page = init_context(headless=not options.headed)
         
         # Initialize search page once
-        init_search_page(page, scope)
+        init_search_page(page)
+
+        # Fill scope
+        if scope:
+            fill_scope(page, scope)
         
         # Fill provider if specified
         if has_provider:
@@ -312,41 +323,33 @@ if __name__ == "__main__":
         # Fill numéro EJ if specified
         if num_ej:
             fill_num_ej(page, num_ej)
-        
-        # If dates are provided, loop through the date range
+
+        # Fill date range
         if start_date and end_date:
-            current_date = start_date
-            while current_date <= end_date:
-                logger.info(f"Starting download for scope={scope}, date={current_date}")
-                
-                if not load_date(page, current_date):
-                    logger.info(f"Skipping date {current_date} - no results found.")
-                    current_date += timedelta(days=1)
-                    continue
-                
-                # Download all pages for this date
-                while True:
-                    download_items(page, scope, provider_siret, provider_siren, num_ej, current_date)
-                    if not go_next_page(page):
-                        break
-                
-                current_date += timedelta(days=1)
+            fill_date_range(page, start_date, end_date)
+
+        logger.info(f"Starting download for scope={scope}, num_ej={num_ej}")
+        if not submit_form(page):
+            logger.info("No results found.")
         else:
-            # No dates provided - do a single search without date filtering
-            logger.info(f"Starting download for scope={scope} (no date filter)")
-            if not submit_form(page):
-                logger.info("No results found.")
-            else:
-                # Download all pages
-                while True:
-                    download_items(page, scope, provider_siret, provider_siren, num_ej)
-                    if not go_next_page(page):
-                        break
-        
+            # Download all pages
+            while True:
+                download_items(
+                    page,
+                    scope=scope,
+                    provider_siret=provider_siret,
+                    provider_siren=provider_siren,
+                    num_ej=num_ej,
+                    start_date=start_date,
+                    end_date=end_date,
+                )
+                if not go_next_page(page):
+                    break
         input(">>")
     except KeyboardInterrupt:
         logger.info("Interrupted by user.")
     finally:
-        logger.info("Closing context...")
-        ctx.close()
-        logger.info("Context closed.")
+        if ctx is not None:
+            logger.info("Closing context...")
+            ctx.close()
+            logger.info("Context closed.")
