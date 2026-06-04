@@ -18,7 +18,7 @@ def parse_args():
     parser = optparse.OptionParser()
     parser.add_option("--start", dest="start", help="Start date in ISO format (YYYY-MM-DD)")
     parser.add_option("--end", dest="end", help="End date in ISO format (YYYY-MM-DD)")
-    parser.add_option("--scope", dest="scope", help="Scope code")
+    parser.add_option("--service", dest="service", help="Service code")
     parser.add_option("--headed", action="store_true", default=False, help="Run in headed mode")
     parser.add_option("--provider-name", dest="provider_name", help="Provider name (required if provider is specified)")
     parser.add_option("--provider-siret", dest="provider_siret", help="Provider SIRET (mutually exclusive with --provider-siren)")
@@ -66,11 +66,11 @@ def open_advanced_search_section(page):
     page.locator("#GFR_RechercheFactureEtatAcompteRecus_Criteres_BoutonRechercher").scroll_into_view_if_needed()
 
 
-def fill_scope(page, scope: str):
-    # Selection du scope
+def fill_service(page, service: str):
+    # Selection du service
     page.select_option("select[name='listeResultats.critere.structureDestinataireId']", value="568055")
     page.click("#GFR_RechercheFacturesRecues_Criteres_BtnRechercherService")
-    page.fill("input[name='listeServices.critere.code']", scope)
+    page.fill("input[name='listeServices.critere.code']", service)
     page.click("button[type='submit']")
     page.click("#selection0")
 
@@ -201,12 +201,12 @@ def go_next_page(page) -> bool:
     return True
 
 
-def build_filename(scope: str, provider_siret: str = None, provider_siren: str = None, num_ej: str = None, start_date: date = None, end_date: date = None, page_number: str = None):
+def build_filename(service: str, provider_siret: str = None, provider_siren: str = None, num_ej: str = None, start_date: date = None, end_date: date = None, page_number: str = None):
     """Build a filename based on the provided parameters.
-    Order: num_ej -> scope -> provider (siret/siren) -> num_ej -> date -> page_number
+    Order: num_ej -> service -> provider (siret/siren) -> num_ej -> date -> page_number
     
     Args:
-        scope: The scope code (required)
+        service: The service code (required)
         provider_siret: Optional provider SIRET
         provider_siren: Optional provider SIREN
         num_ej: Optional numéro EJ
@@ -217,7 +217,7 @@ def build_filename(scope: str, provider_siret: str = None, provider_siren: str =
     Returns:
         A sanitized filename string
     """
-    parts = [scope]
+    parts = [service]
     
     # Provider identifier (prefer siret, fallback to siren)
     provider_id = provider_siret or provider_siren
@@ -236,12 +236,12 @@ def build_filename(scope: str, provider_siret: str = None, provider_siren: str =
     return "_".join(parts) + ".zip"
 
 
-def download_items_bulk(page, scope: str, provider_siret: str = None, provider_siren: str = None, num_ej: str = None, start_date: date = None, end_date: date = None):
+def download_items_bulk(page, service: str, provider_siret: str = None, provider_siren: str = None, num_ej: str = None, start_date: date = None, end_date: date = None):
     """Select all items on the current page and trigger bulk download.
     
     Args:
         page: The Playwright page object
-        scope: The scope code
+        service: The service code
         provider_siret: Optional provider SIRET to include in filename
         provider_siren: Optional provider SIREN to include in filename
         num_ej: Optional numéro EJ to include in filename
@@ -252,18 +252,18 @@ def download_items_bulk(page, scope: str, provider_siret: str = None, provider_s
     page_button = page.locator("li.paginate__page.paginate__page_active button[name='listeResultats.page']")
     page_number = page_button.get_attribute("value")
     
-    filename = build_filename(scope, provider_siret, provider_siren, num_ej, start_date, end_date, page_number)
+    filename = build_filename(service, provider_siret, provider_siren, num_ej, start_date, end_date, page_number)
     filepath = f"../downloads/{filename}"
     
     if os.path.exists(filepath):
-        logger.info(f"File {filename} already exists, skipping download for scope={scope}, start_date={start_date}, end_date={end_date}, page={page_number}")
+        logger.info(f"File {filename} already exists, skipping download for service={service}, start_date={start_date}, end_date={end_date}, page={page_number}")
         return
     
     # Verify date fields have the expected values (only if start_date and end_date are provided)
     if start_date and end_date:
         check_form_arguments(page, start_date, end_date)
     
-    logger.info(f"Downloading items for scope={scope}, start_date={start_date}, end_date={end_date}, page={page_number}")
+    logger.info(f"Downloading items for service={service}, start_date={start_date}, end_date={end_date}, page={page_number}")
 
     checkbox = page.locator("#actualiserDEFAULT-1")
     checkbox.locator("xpath=ancestor::span").click()
@@ -334,7 +334,7 @@ def download_items(page):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     options = parse_args()
-    scope = options.scope
+    service = options.service
     
     # Parse provider options
     provider_name = options.provider_name
@@ -363,9 +363,9 @@ if __name__ == "__main__":
         # Initialize search page once
         init_search_page(page)
 
-        # Fill scope
-        if scope:
-            fill_scope(page, scope)
+        # Fill service
+        if service:
+            fill_service(page, service)
         
         # Fill provider if specified
         if has_provider:
@@ -379,7 +379,7 @@ if __name__ == "__main__":
         if start_date and end_date:
             fill_date_range(page, start_date, end_date)
 
-        logger.info(f"Starting download for scope={scope}, num_ej={num_ej}")
+        logger.info(f"Starting download for service={service}, num_ej={num_ej}")
         if not submit_form(page):
             logger.info("No results found.")
         else:
