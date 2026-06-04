@@ -8,6 +8,7 @@ import zipfile
 from dataclasses import dataclass
 from datetime import datetime, date
 from typing import Optional
+from playwright._impl._errors import TimeoutError as PlaywrightTimeoutError
 
 from cloakbrowser import launch_context
 
@@ -25,6 +26,25 @@ class SearchParams:
     num_ej: Optional[str] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
+    
+    def to_log_string(self) -> str:
+        """Convert search params to a formatted string for logging.
+        
+        Returns:
+            A string like "[service=ABC, provider=123456789]" or empty string if no params
+        """
+        parts = []
+        if self.service:
+            parts.append(f"service={self.service}")
+        if self.provider:
+            parts.append(f"provider={self.provider}")
+        if self.num_ej:
+            parts.append(f"num_ej={self.num_ej}")
+        if self.start_date:
+            parts.append(f"start_date={self.start_date}")
+        if self.end_date:
+            parts.append(f"end_date={self.end_date}")
+        return f"[{', '.join(parts)}]" if parts else ""
 
 
 def parse_args():
@@ -372,12 +392,9 @@ def verify_download_integrity(filepath: str) -> bool:
     except zipfile.BadZipFile:
         logger.error(f"File {filepath} is not a valid zip file")
         return False
-    except Exception as e:
-        logger.error(f"Error verifying download {filepath}: {e}")
-        return False
 
 
-def download_items(page):
+def download_items(page, params: Optional[SearchParams] = None):
     """Download items one by one from the current page.
     
     Iterates over all buttons with name='Synthese_Btn_TelechargerUnitaire',
@@ -386,12 +403,17 @@ def download_items(page):
     
     Args:
         page: The Playwright page object
+        params: Optional SearchParams for additional logging context
     """
     # Find all individual download buttons
     download_buttons = page.locator("button[name='Synthese_Btn_TelechargerUnitaire']")
     
     # Get the count of buttons
     button_count = download_buttons.count()
+    
+    # Get params string for warning/error logging only
+    params_str = params.to_log_string() if params else ""
+    
     logger.info(f"Found {button_count} items to download individually")
 
     stats = {"files": button_count, "download": 0, "skip": 0, "error": 0}
@@ -403,7 +425,7 @@ def download_items(page):
         # Get the data-value attribute which contains the id_chorus
         id_chorus = button.get_attribute("data-value")
         if not id_chorus:
-            logger.warning(f"Button {i} has no data-value attribute, skipping")
+            logger.warning(f"Button {i} has no data-value attribute, skipping {params_str}")
             stats["error"] += 1
             continue
         
@@ -416,20 +438,35 @@ def download_items(page):
             continue
         
         logger.info(f"Downloading item {i+1}/{button_count} with id_chorus={id_chorus}")
-        
-        # Click the button to trigger download
-        button.click()
-        with page.expect_download(timeout=5 * 60 * 1000) as download_info:
-            page.click("#GDP_Telechargementfacture_BoutonTelecharger")
 
-        download = download_info.value
-        assert download_info.is_done(), "Download should be done."
-        download.save_as(filepath)
-        logger.info(f"Saved as {filename}")
+        # Click the button to trigger download with retry logic (3 attempts max)
+        download_success = False
+        for attempt in range(3):
+            try:
+                button.click()
+                with page.expect_download(timeout=30 * 1000) as download_info:
+                    page.click("#GDP_Telechargementfacture_BoutonTelecharger")
+
+                download = download_info.value
+                assert download_info.is_done(), "Download should be done."
+                download.save_as(filepath)
+                logger.info(f"Saved as {filename}")
+                download_success = True
+                break
+            except PlaywrightTimeoutError as e:
+                logger.warning(f"Download attempt {attempt + 1}/3 failed for {filename}: {e} {params_str}")
+                if attempt < 2:
+                    logger.info(f"Retrying download for {filename}...")
+                else:
+                    logger.error(f"Max retries reached for {filename}, skipping {params_str}")
+        
+        if not download_success:
+            stats["error"] += 1
+            continue
         
         # Verify download integrity
         if not verify_download_integrity(filepath):
-            logger.warning(f"Download verification failed for {filename}")
+            logger.warning(f"Download verification failed for {filename} {params_str}")
         
         stats["download"] += 1
 
@@ -584,7 +621,7 @@ def search_and_download(page, params: SearchParams):
     
     # Download all pages
     while True:
-        stats = download_items(page)
+        stats = download_items(page, params)
         logger.info("Downloads: %s", stats)
         if not go_next_page(page):
             break
@@ -646,8 +683,9 @@ if __name__ == "__main__":
         ctx, page = init_context(headless=not options.headed)
         
         # Process each (num_ej, service) pair
-        for num_ej, service in pairs:
-            logger.info(f"Processing pair: EJ={num_ej}, Service={service}")
+        total_pairs = len(pairs)
+        for idx, (num_ej, service) in enumerate(pairs, 1):
+            logger.info(f"Processing pair: EJ={num_ej}, Service={service} ({idx}/{total_pairs})")
             
             # Create search parameters for this pair
             params = SearchParams(
