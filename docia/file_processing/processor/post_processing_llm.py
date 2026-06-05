@@ -28,23 +28,34 @@ def check_consistency_iban(iban: str) -> bool:
 def try_correct_false_iban(iban: str) -> str | None:
     """
     Tente de corriger un IBAN invalide en supposant une erreur d'un seul caractère
-    (ex. lecture OCR). Teste toutes les possibilités à chaque position ; si une seule
-    correction donne un IBAN cohérent (schwifty), la renvoie, sinon None.
+    (ex. lecture OCR) : substitution, ou retrait d'un caractère en trop.
+    Teste toutes les possibilités ; si une seule correction donne un IBAN cohérent
+    (schwifty), la renvoie, sinon None.
     """
-    if not iban or len(iban) != 27:
+    if not iban or (len(iban) != 27 and iban[:2] == "FR"):
         return None
 
     valid_candidates: set[str] = set()
+    is_french = iban[:2] == "FR"
 
-    for i in range(27):
+    for i in range(len(iban)):
         if i <= 1:
             possible_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        else:
+        elif is_french:
             possible_chars = "0123456789"
+        else:
+            possible_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
         for char in possible_chars:
             if char == iban[i]:
                 continue
             candidate = iban[:i] + char + iban[i + 1 :]
+            if check_consistency_iban(candidate):
+                valid_candidates.add(candidate)
+
+    # Retrait : inutile pour un FR de 27 caractères (donnerait un IBAN de 26 caractères).
+    if not is_french:
+        for i in range(len(iban)):
+            candidate = iban[:i] + iban[i + 1 :]
             if check_consistency_iban(candidate):
                 valid_candidates.add(candidate)
 
@@ -95,8 +106,11 @@ def post_processing_bank_account(bank_account_input: dict[str, str]) -> dict[str
     # Si 'iban' est présent, on prend l'iban
     if bank_account_input.get("iban", None):
         iban = bank_account_input["iban"]
-        if not check_consistency_iban(iban):
-            iban = try_correct_false_iban(iban)
+        clean_iban = re.sub(r"\s+", "", iban).upper()
+        if check_consistency_iban(clean_iban):
+            iban = clean_iban
+        else:
+            iban = try_correct_false_iban(clean_iban)
 
     # Si on a les 3 champs numériques mais pas d'iban, on construit l'iban et on vérifie la clé RIB
     elif all(bank_account_input.get(k) for k in ("code_banque", "code_guichet", "numero_compte", "cle_rib")):
@@ -380,10 +394,12 @@ def post_processing_iban(iban: str) -> str:
     if not iban:
         return None
     clean_iban = re.sub(r"\s+", "", iban).upper()
-    if not check_consistency_iban(clean_iban):
-        corrected = try_correct_false_iban(clean_iban)
-        return corrected
-    return clean_iban if clean_iban else None
+    if not clean_iban:
+        return None
+    if check_consistency_iban(clean_iban):
+        return clean_iban
+    corrected = try_correct_false_iban(clean_iban)
+    return corrected
 
 
 def post_processing_bic(bic: str) -> str:

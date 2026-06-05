@@ -47,3 +47,39 @@ def test_post_processing_iban_empty():
     """Test avec chaîne vide."""
     assert post_processing_iban("") is None
     assert post_processing_iban("   ") is None
+
+
+def test_post_processing_iban_foreign_valid():
+    """Test qu'un IBAN étranger valide est conservé."""
+    foreign_iban = "DE89370400440532013000"
+    result = post_processing_iban(foreign_iban)
+    assert result == foreign_iban
+
+
+def test_post_processing_iban_foreign_with_spaces():
+    """Test qu'un IBAN étranger avec espaces est normalisé et conservé."""
+    foreign_iban = "DE89 3704 0044 0532 0130 00"
+    result = post_processing_iban(foreign_iban)
+    assert result == "DE89370400440532013000"
+
+
+def test_post_processing_iban_foreign_invalid_checksum():
+    """Test qu'un IBAN étranger invalide non corrigeable de façon unique est rejeté."""
+    invalid_foreign_iban = "DE89370400440532013001"
+    assert post_processing_iban(invalid_foreign_iban) is None
+
+
+def test_post_processing_iban_foreign_corrects_one_char_error():
+    """Test qu'un IBAN étranger invalide à un caractère près peut être corrigé."""
+    valid_iban = "BE68539007547034"
+    wrong_iban = "BE68539007547030"
+    result = post_processing_iban(wrong_iban)
+    assert result == valid_iban
+
+
+def test_post_processing_iban_foreign_corrects_extra_char_error():
+    """Test qu'un IBAN étranger avec un caractère en trop peut être corrigé par retrait."""
+    valid_iban = "BE68539007547034"
+    wrong_iban = "BE685390075470034"
+    result = post_processing_iban(wrong_iban)
+    assert result == valid_iban
