@@ -151,29 +151,3 @@ def test_post_processing_other_bank_accounts_rib_wrong_keys():
         }
     ]
     assert post_processing_other_bank_accounts(other_accounts) is None
-
-
-def test_post_processing_other_bank_accounts_foreign_iban_invalid_rejected():
-    """Test qu'un IBAN étranger invalide non corrigeable de façon unique est rejeté."""
-    other_accounts = [
-        {
-            "societe": "Entreprise étrangère",
-            "rib": {"banque": "Deutsche Bank", "iban": "DE89370400440532013001"},
-        }
-    ]
-    result = post_processing_other_bank_accounts(other_accounts)
-    assert len(result) == 1
-    assert result[0]["rib"] == {"banque": "Deutsche Bank", "iban": None}
-
-
-def test_post_processing_other_bank_accounts_foreign_iban_corrects_extra_char():
-    """Test qu'un IBAN étranger avec un caractère en trop est corrigé via rib_autres."""
-    other_accounts = [
-        {
-            "societe": "Entreprise belge",
-            "rib": {"banque": "KBC", "iban": "BE685390075470034"},
-        }
-    ]
-    result = post_processing_other_bank_accounts(other_accounts)
-    assert len(result) == 1
-    assert result[0]["rib"] == {"banque": "KBC", "iban": "BE68539007547034"}

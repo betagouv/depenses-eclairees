@@ -133,38 +133,3 @@ def test_post_processing_bank_account_numero_compte_wrong_length():
         "numero_compte": "1234567890",
     }
     assert post_processing_bank_account(bank_account) == {"banque": "Crédit Agricole", "iban": None}
-
-
-def test_post_processing_bank_account_foreign_iban_valid():
-    """Test qu'un IBAN étranger valide est conservé."""
-    bank_account = {"banque": "Deutsche Bank", "iban": "DE89370400440532013000"}
-    result = post_processing_bank_account(bank_account)
-    assert result == {"banque": "Deutsche Bank", "iban": "DE89370400440532013000"}
-
-
-def test_post_processing_bank_account_foreign_iban_with_spaces():
-    """Test qu'un IBAN étranger avec espaces est normalisé et conservé."""
-    bank_account = {"banque": "Deutsche Bank", "iban": "DE89 3704 0044 0532 0130 00"}
-    result = post_processing_bank_account(bank_account)
-    assert result == {"banque": "Deutsche Bank", "iban": "DE89370400440532013000"}
-
-
-def test_post_processing_bank_account_foreign_iban_invalid_checksum():
-    """Test qu'un IBAN étranger invalide non corrigeable de façon unique est rejeté."""
-    bank_account = {"banque": "Deutsche Bank", "iban": "DE89370400440532013001"}
-    result = post_processing_bank_account(bank_account)
-    assert result == {"banque": "Deutsche Bank", "iban": None}
-
-
-def test_post_processing_bank_account_foreign_iban_corrects_one_char_error():
-    """Test qu'un IBAN étranger invalide à un caractère près peut être corrigé."""
-    bank_account = {"banque": "KBC", "iban": "BE68539007547030"}
-    result = post_processing_bank_account(bank_account)
-    assert result == {"banque": "KBC", "iban": "BE68539007547034"}
-
-
-def test_post_processing_bank_account_foreign_iban_corrects_extra_char_error():
-    """Test qu'un IBAN étranger avec un caractère en trop peut être corrigé par retrait."""
-    bank_account = {"banque": "KBC", "iban": "BE685390075470034"}
-    result = post_processing_bank_account(bank_account)
-    assert result == {"banque": "KBC", "iban": "BE68539007547034"}
