@@ -27,3 +27,10 @@ def test_post_processing_societe_principale_retire_parentheses():
 
 def test_post_processing_societe_principale_coerce_non_str():
     assert post_processing_societe_principale(123) == "123"
+
+
+def test_post_processing_societe_principale_ei_scop_selas():
+    assert post_processing_societe_principale("Dupont Martin EI") == "Dupont Martin"
+    assert post_processing_societe_principale("Ateliers du coin SCOP") == "Ateliers du coin"
+    assert post_processing_societe_principale("Cabinet Médical SELAS") == "Cabinet Médical"
+    assert post_processing_societe_principale("EI Dupont Martin") == "Dupont Martin"
