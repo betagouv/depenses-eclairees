@@ -509,7 +509,7 @@ def read_input_file(input_file: str) -> list[tuple[str, str]]:
             # Create a pair for each service
             for service in services:
                 service = service.strip()
-                if service and service not in ("WFBATCH", "AIFEMNT"):
+                if service and service not in ("WFBATCH", "AIFEMNT093"):
                     pairs.append((ej, service))
                     logger.debug(f"Added pair: EJ={ej}, Service={service}")
     

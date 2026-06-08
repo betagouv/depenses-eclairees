@@ -136,7 +136,14 @@ with timer("Save results to csv"):
     # Load
     # df_merged = pd.read_csv('mon_fichier.csv', dtype={key_ej: 'str', 'EJ': 'str', 'Domaine': 'str'}, parse_dates=['Date notification (E)', 'Date fin de marché (E)'])
     # Liste de travail
-    df = df_merged[[key_ej, "SEDP"]]
+    df = df_merged
+    # SPM
+    # df[(df['Ministère'] == 'SPM') | (df['V_Ministère_Service bénéficaire'] == 'SPM')]
+    # MEFSIN
+    # df[(df['Ministère'] == 'MEFSIN & MTFP') | (df['V_Ministère_Service bénéficaire'] == 'MEFSIN & MTFP')]
+    # MINSOC
+    # df[(df['Ministère'] == 'MINSOC') | (df['V_Ministère_Service bénéficaire'] == 'MINSOC')]
+    df = df[[key_ej, "SEDP"]]
     df = df.rename(columns={key_ej: "EJ"})
     df = df[df["EJ"] != "#"]  # Retire les lignes avec EJ = "#"
     df = df.dropna()  # Supprime toutes les lignes avec SEDP vide
