@@ -27,6 +27,14 @@ FICHE_NAVETTE_ATTRIBUTES = {
 """,
     },
     "montant_ht": MONTANT_HT,
+    "montant_maximum": {
+        "consigne": """
+     Définition : Montant maximum hors taxes du marché.
+     Indices : Repérer les expressions comme "Montant maximum", "Montant maximum HT" ou "Montant maximum hors taxes".
+     Ne rien renvoyer si aucune information trouvée ou si tu trouves "Non renseigné".
+     Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
+""",
+    },
     "reconduction": {
         "consigne": """
      Définition : Reconduction ou de non-reconduction d'un marché public.

@@ -17,6 +17,7 @@ from tests_e2e.utils import (  # noqa: E402
     analyze_content_quality_test,
     check_global_statistics,
     check_quality_by_error_type,
+    check_quality_one_field,
     compare_normalized_string,
     compare_with_llm,
     get_fields_with_comparison_errors,
@@ -42,6 +43,7 @@ def get_comparison_functions():
         "accord_cadre": compare_normalized_string,
         "id_accord_cadre": compare_normalized_string,
         "montant_ht": compare_normalized_string,
+        "montant_maximum": compare_normalized_string,
         "reconduction": compare_normalized_string,
         "taux_tva": compare_normalized_string,
         "centre_cout": compare_normalized_string,
@@ -78,6 +80,7 @@ if __name__ == "__main__":
         "accord_cadre",
         "id_accord_cadre",
         "montant_ht",
+        "montant_maximum",
         "reconduction",
         "taux_tva",
         "centre_cout",
@@ -94,6 +97,8 @@ if __name__ == "__main__":
     ]
 
     comparison_functions = get_comparison_functions()
+
+    check_quality_one_field(df_merged, "montant_maximum", comparison_functions, only_errors=True)
 
     check_quality_by_error_type(df_merged, comparison_functions, mode="FP2", included_columns=INCLUDED_COLUMNS)
 

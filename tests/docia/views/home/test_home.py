@@ -267,6 +267,7 @@ def test_fiche_navette(client):
         "accord_cadre": "[[accord_cadre]]",
         "id_accord_cadre": "[[id_accord_cadre]]",
         "montant_ht": "15000.00",
+        "montant_maximum": "20000.00",
         "reconduction": "Oui",
         "taux_tva": "0.20",
         "centre_cout": "DRIEETR075",
@@ -310,6 +311,8 @@ def test_fiche_navette(client):
     assert "Prix et reconduction" in response.text
     assert "Montant HT" in response.text
     assert "15" in response.text and "000" in response.text  # montant formaté (locale)
+    assert "Montant maximum" in response.text
+    assert "20" in response.text and "000" in response.text
     assert "Taux TVA" in response.text
     assert "20&nbsp;%" in response.text
     assert "Reconduction" in response.text

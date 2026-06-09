@@ -53,7 +53,7 @@
   {% endif %}
 
   {# Prix et TVA #}
-  {% if data.montant_ht or data.taux_tva or data.reconduction %}
+  {% if data.montant_ht or data.montant_maximum or data.taux_tva or data.reconduction %}
     <section class="fr-accordion" data-fr-js-accordion="true">
       <h3 class="fr-accordion__title">
         <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_prix" data-fr-js-collapse-button="true">
@@ -64,6 +64,9 @@
         <ul class="fr-list">
           {% with value=data.montant_ht copy_value=data.montant_ht %}
             {% include "docia/details_ej/blocks/attribute.html" with title="Montant HT" id=id_prefix|add:"montant_ht" suffix=" €" %}
+          {% endwith %}
+          {% with value=data.montant_maximum copy_value=data.montant_maximum %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Montant maximum" id=id_prefix|add:"montant_maximum" suffix=" €" %}
           {% endwith %}
           {% with value=data.taux_tva|as_percentage copy_value=data.taux_tva %}
             {% include "docia/details_ej/blocks/attribute.html" with title="Taux TVA" id=id_prefix|add:"taux_tva" %}

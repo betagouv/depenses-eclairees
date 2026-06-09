@@ -666,6 +666,7 @@ CLEAN_FUNCTIONS = {
     "fiche_navette": {
         "fields": {
             "montant_ht": post_processing_amount,
+            "montant_maximum": post_processing_amount,
             "taux_tva": post_processing_percentage,
         },
     },
