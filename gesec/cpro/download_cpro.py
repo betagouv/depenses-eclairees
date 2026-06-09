@@ -460,7 +460,7 @@ def download_items(page, params: Optional[SearchParams] = None):
                 if attempt < 2:
                     logger.info(f"Retrying download for {filename}...")
                 else:
-                    logger.error(f"Max retries reached for {filename}, skipping {params_str}")
+                    logger.error(f"Max retries reached for download_items, skipping {params_str} filename={filename}")
         
         if not download_success:
             stats["error"] += 1
@@ -724,6 +724,8 @@ if __name__ == "__main__":
                     logger.warning(f"search_and_download attempt {attempt + 1}/3 failed in {duration:.2f} for EJ={num_ej}, Service={service}: {e} {params.to_log_string()}")
                     if attempt < 2:
                         logger.info(f"Retrying search_and_download...")
+                    else:
+                        logger.error(f"Max retries reached for search_and_download, skipping {params.to_log_string()}")
 
         input(">>")
     except KeyboardInterrupt:
