@@ -81,7 +81,7 @@
   {% endif %}
 
   {# Imputations budgétaires et comptables #}
-  {% if data.centre_cout or data.centre_financier or data.activite or data.domaine_fonctionnel or data.localisation_interministerielle or data.groupe_marchandise %}
+  {% if data.centre_cout or data.centre_financier or data.activite or data.domaine_fonctionnel or data.fond or data.localisation_interministerielle or data.groupe_marchandise or data.axe_ministeriel_1 or data.projet_analytique or data.localisation_ministerielle or data.axe_ministeriel_2 %}
     <section class="fr-accordion" data-fr-js-accordion="true">
       <h3 class="fr-accordion__title">
         <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_centres" data-fr-js-collapse-button="true">
@@ -102,11 +102,26 @@
           {% with value=data.domaine_fonctionnel copy_value=data.domaine_fonctionnel %}
             {% include "docia/details_ej/blocks/attribute.html" with title="Domaine fonctionnel" id=id_prefix|add:"domaine_fonctionnel" %}
           {% endwith %}
+          {% with value=data.fond copy_value=data.fond %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Fond" id=id_prefix|add:"fond" %}
+          {% endwith %}
           {% with value=data.localisation_interministerielle copy_value=data.localisation_interministerielle %}
             {% include "docia/details_ej/blocks/attribute.html" with title="Localisation interministérielle" id=id_prefix|add:"localisation_interministerielle" %}
           {% endwith %}
           {% with value=data.groupe_marchandise copy_value=data.groupe_marchandise %}
             {% include "docia/details_ej/blocks/attribute.html" with title="Groupe de marchandise" id=id_prefix|add:"groupe_marchandise" %}
+          {% endwith %}
+          {% with value=data.axe_ministeriel_1 copy_value=data.axe_ministeriel_1 %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Axe ministériel 1" id=id_prefix|add:"axe_ministeriel_1" %}
+          {% endwith %}
+          {% with value=data.projet_analytique copy_value=data.projet_analytique %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Projet analytique" id=id_prefix|add:"projet_analytique" %}
+          {% endwith %}
+          {% with value=data.localisation_ministerielle copy_value=data.localisation_ministerielle %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Localisation ministérielle" id=id_prefix|add:"localisation_ministerielle" %}
+          {% endwith %}
+          {% with value=data.axe_ministeriel_2 copy_value=data.axe_ministeriel_2 %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Axe ministériel 2" id=id_prefix|add:"axe_ministeriel_2" %}
           {% endwith %}
         </ul>
       </div>
@@ -114,6 +129,28 @@
   {% else %}
     <div class="document-section--disabled">
       <span class="document-section--disabled__title">Imputations budgétaires et comptables – Non disponibles dans le document.</span>
+    </div>
+  {% endif %}
+
+  {# Remarque #}
+  {% if data.remarque %}
+    <section class="fr-accordion" data-fr-js-accordion="true">
+      <h3 class="fr-accordion__title">
+        <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_remarque" data-fr-js-collapse-button="true">
+          Remarque
+        </button>
+      </h3>
+      <div class="fr-collapse" id="{{ doc.id }}_remarque" data-fr-js-collapse="true" style="--collapse: -48px;">
+        <ul class="fr-list">
+          {% with value=data.remarque copy_value=data.remarque %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Remarque" id=id_prefix|add:"remarque" %}
+          {% endwith %}
+        </ul>
+      </div>
+    </section>
+  {% else %}
+    <div class="document-section--disabled">
+      <span class="document-section--disabled__title">Remarque – Non disponible dans le document.</span>
     </div>
   {% endif %}
 </div>
