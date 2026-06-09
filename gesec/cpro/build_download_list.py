@@ -143,6 +143,8 @@ with timer("Save results to csv"):
     # df[(df['Ministère'] == 'MEFSIN & MTFP') | (df['V_Ministère_Service bénéficaire'] == 'MEFSIN & MTFP')]
     # MINSOC
     # df[(df['Ministère'] == 'MINSOC') | (df['V_Ministère_Service bénéficaire'] == 'MINSOC')]
+    # MTECT
+    # df[(df['Ministère'] == 'MTECT') | (df['V_Ministère_Service bénéficaire'] == 'MTECT')]
     df = df[[key_ej, "SEDP"]]
     df = df.rename(columns={key_ej: "EJ"})
     df = df[df["EJ"] != "#"]  # Retire les lignes avec EJ = "#"
