@@ -198,6 +198,8 @@ def test_rib(client):
     assert "IBAN" in response.text
     # iban_spaces : espace tous les 4 caractères
     assert "FR76 1234 5678 9012 3456 7890 123" in response.text
+    # Assert the file is renamed on display
+    assert "RIB [[titulaire_compte]].txt" in response.text
 
 
 @pytest.mark.django_db

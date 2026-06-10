@@ -4,6 +4,22 @@ from django.utils.safestring import mark_safe
 register = template.Library()
 
 
+@register.simple_tag
+def url_replace(request, **kwargs):
+    """
+    Permet de modifier des paramètres dans l'URL actuelle.
+    Exemple : {% url_replace request sort='date' %}
+    Conserve tous les paramètres existants et remplace ceux passés en kwargs.
+    """
+    # Récupère les paramètres GET actuels
+    params = request.GET.copy()
+    # Remplace les paramètres (écrase les valeurs existantes)
+    for key, value in kwargs.items():
+        params[key] = value
+    # Reconstruit l'URL avec les paramètres
+    return f"?{params.urlencode()}"
+
+
 def _is_nonempty(value) -> bool:
     if value is None:
         return False

@@ -8,3 +8,7 @@ class GetEJDetailsForm(DsfrBaseForm):
         label="Numéro d'EJ",
         max_length=200,
     )
+    sort = forms.CharField(
+        widget=forms.HiddenInput(),
+        required=False,
+    )

@@ -1,4 +1,5 @@
 import logging
+import os.path
 from datetime import datetime
 
 from django.shortcuts import render
@@ -41,29 +42,33 @@ ORDER_CLASSIFICATIONS = (
 FUTURE_DATE = datetime(2100, 1, 1)
 
 
-def sort_documents(documents: list[dict]) -> None:
+def sort_documents(documents: list[dict], sort_type: str | None = None) -> None:
     """
-    Trie une liste de documents en place selon 3 critères :
-    1. ORDER_CLASSIFICATIONS (ordre défini par la constante module)
-    2. date (décroissante - documents récents en premier)
-    3. ratio_extracted (décroissant - taux de remplissage élevé en premier)
-
-    Les documents sans date sont placés à la fin de leur groupe de classification.
+    Trie une liste de documents en place selon le type de tri spécifié.
+    - "doc_type" (default) : classification/date/ratio
+    - "date" : date/ratio
 
     :param documents: Liste de dicts à trier (modifiée en place).
+    :param sort_type: Type de tri - "doc_type" ou "date"
     """
     order_index = {v: i for i, v in enumerate(ORDER_CLASSIFICATIONS)}
     default_index = len(ORDER_CLASSIFICATIONS)
 
     def sort_key(d: dict) -> tuple:
-        classification = order_index.get(d.get("classification"), default_index)
         doc_date = d.get("date")
         # Dates récentes d'abord : on utilise le négatif du timestamp
         # Les documents sans date obtiennent une date dans le futur pour être à la fin
         date_key = -doc_date.timestamp() if doc_date else FUTURE_DATE.timestamp()
         # Taux de remplissage décroissant
         ratio_key = -(d.get("ratio_extracted") or 0)
-        return (classification, date_key, ratio_key)
+
+        if sort_type == "date":
+            # Tri par date puis ratio uniquement
+            return (date_key, ratio_key)
+        else:
+            # Tri par classification, date puis ratio (comportement par défaut)
+            classification = order_index.get(d.get("classification"), default_index)
+            return (classification, date_key, ratio_key)
 
     documents.sort(key=sort_key)
 
@@ -74,6 +79,7 @@ def home(request):
     is_form_processed = False
     is_ratelimited = False
     num_ej = None
+    sort_type = request.GET.get("sort")  # doc_type (default) or date
     if request.user.is_authenticated and request.GET:
         is_form_processed = True
         # create a form instance and populate it with data from the request:
@@ -114,11 +120,17 @@ def home(request):
                             document_data = enrich_avenant_display(document_data_raw)
                         else:
                             document_data = document_data_raw
+                        filename = db_doc.filename
+                        if db_doc.classification == "rib":
+                            titulaire = db_doc.structured_data.get("titulaire_compte")
+                            if titulaire:
+                                ext = os.path.splitext(db_doc.filename)[-1]
+                                filename = f"RIB {titulaire}" + ext
                         doc = {
                             "id": db_doc.id,
                             "classification": db_doc.classification,
                             "short_classification": short_classification,
-                            "filename": db_doc.filename,
+                            "filename": filename,
                             "date": db_doc.date,
                             "data_as_list": sorted([[key, value] for key, value in document_data_raw.items()]),
                             "data": document_data,
@@ -131,7 +143,7 @@ def home(request):
                         else:
                             unprocessed.append(doc)
                     # Trier les documents
-                    sort_documents(documents)
+                    sort_documents(documents, sort_type=sort_type)
     else:
         # Create empty form
         form = forms.GetEJDetailsForm()
