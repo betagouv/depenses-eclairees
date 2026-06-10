@@ -5,6 +5,10 @@ import logging
 import optparse
 import os
 import sys
+from decimal import Decimal
+
+import pandas as pd
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -140,6 +144,56 @@ def check_csvs_directory(csv_dir: str, downloads_path: str) -> tuple[dict[str, t
     """
     csv_files = list(glob.iglob(os.path.join(csv_dir, "*.csv")))
     return check_csv_files(csv_files, downloads_path)
+
+
+def check_coherence_oda(df_oda: pd.DataFrame, df_cpro: pd.DataFrame):
+    """
+    Vérie la cohérence des montants ODA avec les montants extraits df Chorus Pro.
+
+    df_oda = pd.read_csv("oda.csv", dtype={key_ej: "str", "Dépenses  2025": "str"}, parse_dates=["Date notification (E)", "Date fin de marché (E)"])
+    l = exports_to_db.filter_csv_files("../downloads/exports/")
+    df.exports_to_db.aggregate_csv_files(l)
+    df_result = check_coherence_oda(df_oda, df)
+    """
+
+    key_ej_oda = "Numéro EJ référencé facture"
+    key_ej_cpro = 'numero_du_bon_de_commande'
+
+    stats = {"missing": 0, "ok": 0, "nok": 0}
+
+    df_oda_clean = df_oda[(df_oda[key_ej_oda] != "#")].copy()
+
+    # Cast en Decimal
+    df_oda_clean["Dépenses  2025"] = df_oda_clean["Dépenses  2025"].map(lambda x: Decimal(x))
+
+    # Pré-calculer la somme des montants par EJ
+    ej_to_oda_sum = df_oda_clean.groupby(key_ej_oda)['Dépenses  2025'].sum().to_dict()
+    ej_to_cpro_sum = df_cpro.groupby(key_ej_cpro)['montant_a_payer'].sum().to_dict()
+
+    for idx, row in tqdm(df_oda_clean.iterrows(), total=df_oda_clean.shape[0]):
+        ej = row[key_ej_oda]
+
+        if ej not in ej_to_cpro_sum:
+            stats['missing'] += 1
+            continue
+
+        oda_montant = row["Dépenses  2025"]
+        oda_montant_total_ej = ej_to_oda_sum[ej]
+        cpro_montant_total_ej = ej_to_cpro_sum[ej]
+        montant_cpro_ok = oda_montant == cpro_montant_total_ej or oda_montant_total_ej == cpro_montant_total_ej
+
+        # Ajout des colonnes de résultat
+        df_oda_clean.loc[idx, "oda_ej_total"] = oda_montant_total_ej
+        df_oda_clean.loc[idx, "cpro_ej_total"] = cpro_montant_total_ej
+        df_oda_clean.loc[idx, "montant_cpro_ok"] = 1 if montant_cpro_ok else 0
+
+        if montant_cpro_ok:
+            stats["ok"] += 1
+        else:
+            print(row["Ministère"], row["V_Ministère_Service bénéficaire"], oda_montant, oda_montant_total_ej, cpro_montant_total_ej)
+            stats["nok"] += 1
+    logger.info("Check result: %s", stats)
+    return df_oda_clean
 
 
 def parse_args():
