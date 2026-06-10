@@ -89,3 +89,18 @@ def test_sort_documents():
     items = []
     sort_documents(items)
     assert items == []
+
+
+def test_sort_documents_by_date():
+    """Test sort_documents avec sort_type='date' : tri par date puis ratio uniquement, sans classification."""
+
+    items = [
+        {"id": 3, "classification": "acte_engagement", "date": datetime(2024, 1, 1), "ratio_extracted": 0.9},
+        {"id": 1, "classification": "sous_traitance", "date": datetime(2024, 6, 1), "ratio_extracted": 0.8},
+        {"id": 2, "classification": "acte_engagement", "date": datetime(2024, 6, 1), "ratio_extracted": 0.5},
+        {"id": 5, "classification": "fiche_navette", "date": None, "ratio_extracted": 0.8},
+        {"id": 4, "classification": "sous_traitance", "date": datetime(2024, 1, 1), "ratio_extracted": 0.3},
+    ]
+    sort_documents(items, sort_type="date")
+
+    assert [x["id"] for x in items] == list(range(1, 6))
