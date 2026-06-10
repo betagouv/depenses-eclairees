@@ -1,6 +1,6 @@
 {% extends "docia/base.html" %}
 
-{% load dsfr_tags static %}
+{% load dsfr_tags static docia %}
 
 
 {% block content %}
@@ -26,6 +26,23 @@
     </form>
 
     {% if is_form_processed %}
+      {% if num_ej %}
+        <div class="fr-mt-4w fr-mb-4w">
+          <span class="fr-text--sm">Trier par : </span>
+          <a 
+            href="{% url_replace request sort='doc_type' %}"
+            class="fr-btn fr-btn--sm {% if request.GET.sort == 'doc_type' or not request.GET.sort %}fr-btn--primary{% else %}fr-btn--secondary{% endif %}"
+          >
+            Type de document
+          </a>
+          <a 
+            href="{% url_replace request sort='date' %}"
+            class="fr-btn fr-btn--sm {% if request.GET.sort == 'date' %}fr-btn--primary{% else %}fr-btn--secondary{% endif %}"
+          >
+            Date
+          </a>
+        </div>
+      {% endif %}
       {% if is_ratelimited %}
         Limite de requêtes atteinte. Veuillez réessayer demain.
       {% endif %}
