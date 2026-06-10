@@ -1,4 +1,5 @@
 import logging
+import os.path
 from datetime import datetime
 
 from django.shortcuts import render
@@ -114,11 +115,17 @@ def home(request):
                             document_data = enrich_avenant_display(document_data_raw)
                         else:
                             document_data = document_data_raw
+                        filename = db_doc.filename
+                        if db_doc.classification == "rib":
+                            titulaire = db_doc.structured_data.get("titulaire_compte")
+                            if titulaire:
+                                ext = os.path.splitext(db_doc.filename)[-1]
+                                filename = f"RIB {titulaire}" + ext
                         doc = {
                             "id": db_doc.id,
                             "classification": db_doc.classification,
                             "short_classification": short_classification,
-                            "filename": db_doc.filename,
+                            "filename": filename,
                             "date": db_doc.date,
                             "data_as_list": sorted([[key, value] for key, value in document_data_raw.items()]),
                             "data": document_data,
