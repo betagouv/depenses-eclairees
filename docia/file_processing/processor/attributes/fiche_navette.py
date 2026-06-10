@@ -27,6 +27,14 @@ FICHE_NAVETTE_ATTRIBUTES = {
 """,
     },
     "montant_ht": MONTANT_HT,
+    "montant_maximum": {
+        "consigne": """
+     Définition : Montant maximum hors taxes du marché.
+     Indices : Repérer les expressions comme "Montant maximum", "Montant maximum HT" ou "Montant maximum hors taxes".
+     Ne rien renvoyer si aucune information trouvée ou si tu trouves "Non renseigné".
+     Format : en "XXXX.XX€" (sans séparateur de milliers, avec 2 décimales)
+""",
+    },
     "reconduction": {
         "consigne": """
      Définition : Reconduction ou de non-reconduction d'un marché public.
@@ -71,6 +79,14 @@ FICHE_NAVETTE_ATTRIBUTES = {
      Format : 0203-04-02
 """,
     },
+    "fond": {
+        "consigne": """
+     Définition : Fond du marché.
+     Indices : Repérer les expressions comme "Fond".
+     N/A est une valeur acceptable. Ne pas confondre avec "non renseigné" ou vide.
+     Format : 1-1-00733, N/A
+""",
+    },
     "localisation_interministerielle": {
         "consigne": """
      Définition : Localisation interministérielle du marché.
@@ -83,6 +99,41 @@ FICHE_NAVETTE_ATTRIBUTES = {
      Définition : Groupe de marchandise du marché.
      Indices : Repérer les expressions comme "Groupe de marchandise".
      Format : 40.01.02
+""",
+    },
+    "axe_ministeriel_1": {
+        "consigne": """
+     Définition : Axe ministériel 1 du marché.
+     Indices : Repérer les expressions comme "Axe ministériel 1" ou "Axe ministériel".
+     Format : 10-SG-SIMJ
+""",
+    },
+    "projet_analytique": {
+        "consigne": """
+     Définition : Projet analytique du marché.
+     Indices : Repérer les expressions comme "Projet analytique".
+     Format : code alphanumérique
+""",
+    },
+    "localisation_ministerielle": {
+        "consigne": """
+     Définition : Localisation ministérielle du marché.
+     Indices : Repérer les expressions comme "Localisation ministérielle".
+     Format : code alphanumérique
+""",
+    },
+    "axe_ministeriel_2": {
+        "consigne": """
+     Définition : Axe ministériel 2 du marché.
+     Indices : Repérer les expressions comme "Axe ministériel 2".
+     Format : 10-SG-SIMJ
+""",
+    },
+    "remarque": {
+        "consigne": """
+     Définition : Remarque libre associée au marché.
+     Indices : Repérer les expressions comme "Remarque".
+     Format : texte libre
 """,
     },
 }

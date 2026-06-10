@@ -139,6 +139,20 @@ def test_clean_llm_response_rib_titulaire_compte_postprocessing():
     assert result["titulaire_compte"] == "La Poste"
 
 
+def test_clean_llm_response_fiche_navette_amounts_independent():
+    """montant_ht et montant_maximum sont normalisés séparément, sans repli l'un sur l'autre."""
+    llm_response = {
+        "montant_ht": "25 000,50 €",
+        "montant_maximum": "1 234,56 €",
+        "taux_tva": "0.20",
+    }
+
+    result = clean_llm_response("fiche_navette", llm_response)
+
+    assert result["montant_ht"] == "25000.50"
+    assert result["montant_maximum"] == "1234.56"
+
+
 def test_clean_llm_response_rib_no_iban_and_incomplete_rib_sets_iban_none():
     """Reconstruction impossible et post_processing_bank_account renvoie None : pas de plantage."""
     llm_response = {

@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import sys
@@ -15,10 +16,11 @@ from tests_e2e.utils import (  # noqa: E402
     PROMPT_OBJECT,
     analyze_content_quality_test,
     check_global_statistics,
+    check_quality_by_error_type,
     check_quality_one_field,
-    check_quality_one_row,
     compare_normalized_string,
     compare_with_llm,
+    get_fields_with_comparison_errors,
 )
 
 logger = logging.getLogger("docia." + __name__)
@@ -41,14 +43,21 @@ def get_comparison_functions():
         "accord_cadre": compare_normalized_string,
         "id_accord_cadre": compare_normalized_string,
         "montant_ht": compare_normalized_string,
+        "montant_maximum": compare_normalized_string,
         "reconduction": compare_normalized_string,
         "taux_tva": compare_normalized_string,
         "centre_cout": compare_normalized_string,
         "centre_financier": compare_normalized_string,
         "activite": compare_normalized_string,
         "domaine_fonctionnel": compare_normalized_string,
+        "fond": compare_normalized_string,
         "localisation_interministerielle": compare_normalized_string,
         "groupe_marchandise": compare_normalized_string,
+        "axe_ministeriel_1": compare_normalized_string,
+        "projet_analytique": compare_normalized_string,
+        "localisation_ministerielle": compare_normalized_string,
+        "axe_ministeriel_2": compare_normalized_string,
+        "remarque": compare_normalized_string,
     }
 
 
@@ -66,12 +75,38 @@ def create_batch_test(multi_line_coef=1):
 if __name__ == "__main__":
     df_test, df_result, df_merged = create_batch_test()
 
-    EXCLUDED_COLUMNS = ["objet", "administration_beneficiaire"]
+    INCLUDED_COLUMNS = [
+        "societe_principale",
+        "accord_cadre",
+        "id_accord_cadre",
+        "montant_ht",
+        "montant_maximum",
+        "reconduction",
+        "taux_tva",
+        "centre_cout",
+        "centre_financier",
+        "activite",
+        "domaine_fonctionnel",
+        "fond",
+        "localisation_interministerielle",
+        "groupe_marchandise",
+        "axe_ministeriel_1",
+        "projet_analytique",
+        "localisation_ministerielle",
+        "axe_ministeriel_2",
+    ]
 
     comparison_functions = get_comparison_functions()
 
-    check_quality_one_field(df_merged, "montant_ht", comparison_functions)
+    check_quality_one_field(df_merged, "montant_maximum", comparison_functions, only_errors=True)
 
-    check_quality_one_row(df_merged, 0, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
+    check_quality_by_error_type(df_merged, comparison_functions, mode="FP2", included_columns=INCLUDED_COLUMNS)
 
-    check_global_statistics(df_merged, comparison_functions, excluded_columns=EXCLUDED_COLUMNS)
+    check_global_statistics(df_merged, comparison_functions, included_columns=INCLUDED_COLUMNS)
+
+    fields_with_errors = get_fields_with_comparison_errors(
+        df_merged.sort_values(by="filename"), comparison_functions, included_columns=INCLUDED_COLUMNS
+    )
+
+    for v in fields_with_errors.values():
+        print(json.dumps(v))

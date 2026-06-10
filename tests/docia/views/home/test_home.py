@@ -267,14 +267,21 @@ def test_fiche_navette(client):
         "accord_cadre": "[[accord_cadre]]",
         "id_accord_cadre": "[[id_accord_cadre]]",
         "montant_ht": "15000.00",
+        "montant_maximum": "20000.00",
         "reconduction": "Oui",
         "taux_tva": "0.20",
         "centre_cout": "DRIEETR075",
         "centre_financier": "0174-CLIM-SCEE",
         "activite": "020304DGTUCT",
         "domaine_fonctionnel": "0203-04-02",
+        "fond": "1-1-00733",
         "localisation_interministerielle": "N9130",
         "groupe_marchandise": "40.01.02",
+        "axe_ministeriel_1": "10-SG-SIMJ",
+        "projet_analytique": "PROJ-001",
+        "localisation_ministerielle": "LOC-001",
+        "axe_ministeriel_2": "10-SG-SIMJ",
+        "remarque": "[[remarque]]",
     }
     doc.save()
     user = UserFactory(is_superuser=True)
@@ -304,6 +311,8 @@ def test_fiche_navette(client):
     assert "Prix et reconduction" in response.text
     assert "Montant HT" in response.text
     assert "15" in response.text and "000" in response.text  # montant formaté (locale)
+    assert "Montant maximum" in response.text
+    assert "20" in response.text and "000" in response.text
     assert "Taux TVA" in response.text
     assert "20&nbsp;%" in response.text
     assert "Reconduction" in response.text
@@ -319,10 +328,23 @@ def test_fiche_navette(client):
     assert "020304DGTUCT" in response.text
     assert "Domaine fonctionnel" in response.text
     assert "0203-04-02" in response.text
+    assert "Fond" in response.text
+    assert "1-1-00733" in response.text
     assert "Localisation interministérielle" in response.text
     assert "N9130" in response.text
     assert "Groupe de marchandise" in response.text
     assert "40.01.02" in response.text
+    assert "Axe ministériel 1" in response.text
+    assert "10-SG-SIMJ" in response.text
+    assert "Projet analytique" in response.text
+    assert "PROJ-001" in response.text
+    assert "Localisation ministérielle" in response.text
+    assert "LOC-001" in response.text
+    assert "Axe ministériel 2" in response.text
+
+    # Section Remarque
+    assert "Remarque" in response.text
+    assert "[[remarque]]" in response.text
 
 
 @pytest.mark.django_db
