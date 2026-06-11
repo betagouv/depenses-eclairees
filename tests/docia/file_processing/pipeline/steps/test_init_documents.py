@@ -533,13 +533,14 @@ def test_bulk_create_documents_keeps_most_recent_date_on_duplicate_file_infos():
 def test_bulk_create_documents_updates_existing_with_newer_date():
     """Test that existing Documents are updated with newer date from FileInfo."""
     existing_date = tz_datetime("2025-03-14")
+    newer_date = tz_datetime("2025-03-15")
     existing_doc = DocumentFactory(date=existing_date, hash="existing_hash")
-    file_info = FileInfoFactory(hash="existing_hash")
+    file_info = FileInfoFactory(date=newer_date, hash="existing_hash")
 
     bulk_create_documents([file_info])
 
     existing_doc.refresh_from_db()
-    assert existing_doc.date == file_info.date
+    assert existing_doc.date == newer_date
 
 
 @pytest.mark.django_db
