@@ -1,10 +1,13 @@
 {
   "jobs": [
     {
-      "command": "0 16 * * * python manage.py launch_pipeline --timedelta 7d"
+      "command": "0 5,17 * * mon-fri python manage.py launch_pipeline --timedelta 7d"
     },
     {
-      "command": "0 6 * * * python manage.py launch_pipeline --timedelta 7d"
+      "command": "0 6-16 * * * python manage.py launch_pipeline --timedelta 2h"
+    },
+    {
+      "command": "0 2 * * sat python manage.py launch_pipeline --timedelta 7d --force_analyze"
     }
   ]
 }
