@@ -144,6 +144,7 @@ def home(request):
                             unprocessed.append(doc)
                     # Trier les documents
                     sort_documents(documents, sort_type=sort_type)
+                    sort_documents(unprocessed, sort_type=sort_type)
     else:
         # Create empty form
         form = forms.GetEJDetailsForm()
