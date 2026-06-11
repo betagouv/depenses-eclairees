@@ -6,6 +6,7 @@ import pydantic
 import pytest
 import requests
 import responses
+from requests.exceptions import ConnectionError
 
 from docia.file_processing.sync.client import (
     ApiDocumentMetadata,
@@ -444,6 +445,54 @@ def test_download_document_api_error(client: SyncClient, caplog):
 
     # Verify warning was logged about 429
     assert "429, wait " in caplog.text
+    assert " before retry" in caplog.text
+
+
+def test_download_document_connection_error(client: SyncClient, caplog):
+    """Test that download_document handles connection errors and implements retry logic"""
+
+    # Track call count to return different responses
+    call_count = 0
+
+    def request_callback(request):
+        nonlocal call_count
+        call_count += 1
+        if call_count <= 2:
+            # First two calls fail
+            raise ConnectionError(None, request=request)
+        else:
+            # Third call succeeds
+            return (200, {}, b"test document content")
+
+    # Add response with callback that handles multiple calls
+    responses.add_callback(
+        responses.GET,
+        "https://filesync.api.testing.beta.gouv.fr/export_pj_ej/pieces_jointes_data('doc123')/$value",
+        callback=request_callback,
+    )
+
+    # Call download_document with retries
+    with (
+        patch("time.sleep", autospec=True) as m_sleep,
+        patch("random.random", autospec=True, return_value=0.5),
+    ):
+        content = client.download_document("doc123", max_retries=3, retry_delay=20)
+
+    # Verify the call succeeded after retries
+    assert content == b"test document content"
+
+    # Verify sleep was called exactly twice with correct values (exponential backoff with jitter)
+    m_sleep.assert_has_calls(
+        [
+            mock.call(20 * 1.05 * 1),  # First retry: retry_delay * 1.05 * (attempt + 1)
+            mock.call(20 * 1.05 * 2),  # Second retry: retry_delay * 1.05 * (attempt + 1)
+        ],
+        any_order=False,
+    )  # Ensure calls were made in this exact order
+    assert m_sleep.call_count == 2  # Ensure no extra calls were made
+
+    # Verify warning was logged about 429
+    assert "-1, wait " in caplog.text
     assert " before retry" in caplog.text
 
 

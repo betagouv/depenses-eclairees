@@ -14,7 +14,7 @@ from django.conf import settings
 
 import pydantic
 import requests
-from requests import HTTPError
+from requests import HTTPError, RequestException
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +121,17 @@ class SyncApiError(Exception):
         self.message = message
         self.code = code
         self.details = details
+
+    @classmethod
+    def from_error(cls, err: RequestException):
+        if isinstance(err, HTTPError):
+            return cls.from_httperror(err)
+        else:
+            return cls(
+                message=str(err),
+                code=f"ERROR_{err.__class__.__name__}",
+                details=repr(err),
+            )
 
     @classmethod
     def from_httperror(cls, err: HTTPError):
@@ -324,21 +335,25 @@ class SyncClient:
             attempt += 1
             try:
                 return func_api()
-            except HTTPError as err:
-                status_code = err.response.status_code
-                # 401 = token expiré -> re-auth et retry
-                # 429 / 5xx / erreurs réseau -> retry
-                # 4xx (ex. 400) = faute client -> pas de retry
-                if status_code == 401:
-                    self.authenticate()
-                    max_retries += 1  # Does not count as a true retry
-                    effective_delay = 1
-                elif status_code == 429:
-                    effective_delay = retry_delay
-                elif 500 <= status_code < 600:
-                    effective_delay = retry_delay
+            except RequestException as err:
+                if isinstance(err, HTTPError):
+                    status_code = err.response.status_code
+                    # 401 = token expiré -> re-auth et retry
+                    # 429 / 5xx / erreurs réseau -> retry
+                    # 4xx (ex. 400) = faute client -> pas de retry
+                    if status_code == 401:
+                        self.authenticate()
+                        max_retries += 1  # Does not count as a true retry
+                        effective_delay = 1
+                    elif status_code == 429:
+                        effective_delay = retry_delay
+                    elif 500 <= status_code < 600:
+                        effective_delay = retry_delay
+                    else:
+                        raise  # 4xx : on relève tout de suite
                 else:
-                    raise  # 4xx : on relève tout de suite
+                    effective_delay = retry_delay
+                    status_code = -1
                 if attempt < max_retries:
                     wait_time = effective_delay * (1 + 0.1 * random.random()) * (attempt + 1)
                     logger.warning(
@@ -350,5 +365,5 @@ class SyncClient:
                     )
                     time.sleep(wait_time)
                     continue
-                raise SyncApiError.from_httperror(err)
+                raise SyncApiError.from_error(err)
         raise RuntimeError("Should not reach here")
