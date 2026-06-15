@@ -206,7 +206,7 @@ class SyncClient:
         object_type: str = "BUS2201",
         return_raw: bool = False,
         *,
-        max_retries: int = 0,
+        max_retries: int = 3,
         retry_delay: float = 20,
     ) -> list[ApiDocumentMetadata]:
         """Get list of documents associated with an engagement number"""
@@ -245,7 +245,7 @@ class SyncClient:
         purchase_organization: str,
         return_raw: bool = False,
         *,
-        max_retries: int = 0,
+        max_retries: int = 3,
         retry_delay: float = 20,
     ) -> list[ApiEngagementActivity]:
         """
