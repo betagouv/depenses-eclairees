@@ -213,7 +213,9 @@ def test_avenant(client):
         "incidence_financiere": {"ht": "10000.00", "taux_tva": "0.20", "tva": "2000.00", "ttc": "12000.00"},
         "incidence_duree": {"prolongation": 6, "date_fin_execution": "31/12/2027"},
         "incidence_bpu": True,
-        "date_derniere_signature": "15/03/2026",
+        "date_signature_mandataire": "10/03/2026",
+        "date_signature_administration": "15/03/2026",
+        "date_notification": "20/03/2026",
         "objet_marche": "[[objet_marche]]",
         "administration_beneficiaire": "[[administration_beneficiaire]]",
         "societe_principale": "[[societe_principale]]",
@@ -240,8 +242,12 @@ def test_avenant(client):
     assert "Prolongation 6 mois" in text
     assert "Fin 31/12/2027" in text
     assert "Incidence BPU" in text
-    assert "Date de dernière signature" in text
+    assert "Dates et signatures" in text
+    assert "Signature titulaire" in text
+    assert "Signature signataire" in text
+    assert "10/03/2026" in text
     assert "15/03/2026" in text
+    assert "20/03/2026" in text
     assert "Informations Marché" in text
     assert "Objet du marché" in text
     assert "[[objet_marche]]" in text
