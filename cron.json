@@ -7,7 +7,7 @@
       "command": "0 6-16 * * * python manage.py launch_pipeline --timedelta 2h"
     },
     {
-      "command": "0 2 * * sat python manage.py launch_pipeline --timedelta 7d --force_analyze"
+      "command": "0 2 * * sat python manage.py launch_pipeline --timedelta 7d --force-analyze"
     }
   ]
 }
