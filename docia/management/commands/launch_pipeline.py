@@ -16,6 +16,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--timedelta", type=str, default="7d", help='Time delta for filtering documents (e.g., "24h", "1d", "7d")'
         )
+        parser.add_argument("--batch-days", type=int, default="7", help="Number of days per batch (defaults to 7)")
         parser.add_argument(
             "--force-analyze",
             action="store_true",
@@ -26,6 +27,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         force_analyze = options["force_analyze"]
+        batch_days = options["batch_days"]
         # Parse timedelta parameter
         timedelta_str = options["timedelta"]
 
@@ -43,7 +45,7 @@ class Command(BaseCommand):
             return
 
         end = timezone.now()
-        batch_id = sync_and_analyze(start, end, force_analyze=force_analyze)
+        batch_id = sync_and_analyze(start, end, force_analyze=force_analyze, batch_days=batch_days)
         if batch_id:
             self.stdout.write(self.style.SUCCESS(f"Pipeline launched, batch: {batch_id}"))
         else:

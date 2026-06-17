@@ -43,21 +43,34 @@ def test_sync(syncer):
     ]
 
     # Mock
+    calls = []
+
     def m_list_ej_place(
         *args,
         **kwargs,
     ):
         bound_args = bind_arguments(syncer.client.list_ej_place, *args, **kwargs)
         purchase_organization = bound_args["purchase_organization"]
+        calls.append((purchase_organization, bound_args["start"], bound_args["end"]))
         return [activity for activity in api_activities if activity.purchase_organization == purchase_organization]
 
     # Function call
     with patch.object(syncer.client, "list_ej_place", autospec=True, side_effect=m_list_ej_place):
-        synced_num_ejs = syncer.sync([("oa1", "ga1-ga2"), ("oa2", "ga3")], start=datetime(2026, 3, 5))
+        synced_num_ejs = syncer.sync(
+            [("oa1", "ga1-ga2"), ("oa2", "ga3")], start=datetime(2026, 3, 5), end=datetime(2026, 3, 18)
+        )
 
     # Assert all num ejs are returned
     expected_synced_num_ejs = [activity.num_ej for activity in api_activities if activity.purchase_group != "ga4"]
     assert sorted(synced_num_ejs) == sorted(expected_synced_num_ejs)
+
+    # Assert list_ej_place called twice per OA
+    assert calls == [
+        ("oa1", datetime(2026, 3, 5), datetime(2026, 3, 12)),
+        ("oa1", datetime(2026, 3, 12), datetime(2026, 3, 18)),
+        ("oa2", datetime(2026, 3, 5), datetime(2026, 3, 12)),
+        ("oa2", datetime(2026, 3, 12), datetime(2026, 3, 18)),
+    ]
 
     # Asserts the EJ and scope are inserted
     inserted = sorted(
@@ -126,7 +139,7 @@ def test_sync_update_ej(syncer: EngagementsSync, activity_type: ApiEngagementAct
     # Function call
     with patch.object(syncer.client, "list_ej_place", autospec=True) as m_list:
         m_list.return_value = api_activities
-        synced_num_ejs = syncer.sync([("oa", "ga")], start=datetime(2026, 3, 5))
+        synced_num_ejs = syncer.sync([("oa", "ga")], start=datetime(2026, 3, 5), end=datetime(2026, 3, 6))
 
     # Assert all num ejs are returned
     expected_synced_num_ejs = [activity.num_ej for activity in api_activities]
@@ -204,7 +217,7 @@ def test_sync_preserve_newer_external_updated_at(syncer):
     # Function call
     with patch.object(syncer.client, "list_ej_place", autospec=True) as m_list:
         m_list.return_value = api_activities
-        synced_num_ejs = syncer.sync([("oa", "ga")], start=datetime(2026, 3, 5))
+        synced_num_ejs = syncer.sync([("oa", "ga")], start=datetime(2026, 3, 5), end=datetime(2026, 3, 6))
 
     # Assert all num ejs are returned
     expected_synced_num_ejs = [activity.num_ej for activity in api_activities]
@@ -252,7 +265,7 @@ def test_sync_update_engagement_with_null_external_updated_at(syncer):
     # Function call
     with patch.object(syncer.client, "list_ej_place", autospec=True) as m_list:
         m_list.return_value = api_activities
-        synced_num_ejs = syncer.sync([("oa", "ga")], start=datetime(2026, 1, 1))
+        synced_num_ejs = syncer.sync([("oa", "ga")], start=datetime(2026, 1, 1), end=datetime(2026, 1, 2))
 
     # Assert all num ejs are returned
     expected_synced_num_ejs = [activity.num_ej for activity in api_activities]
@@ -321,7 +334,9 @@ def test_sync_handles_duplicate_engagements(syncer):
 
     # Function call - sync both scopes
     with patch.object(syncer.client, "list_ej_place", autospec=True, side_effect=m_list_ej_place):
-        synced_num_ejs = syncer.sync([("oa1", "ga1"), ("oa2", "ga2")], start=datetime(2026, 1, 1))
+        synced_num_ejs = syncer.sync(
+            [("oa1", "ga1"), ("oa2", "ga2")], start=datetime(2026, 1, 1), end=datetime(2026, 1, 2)
+        )
 
     # Assert only one num_ej is returned (no duplicates)
     expected_synced_num_ejs = [num_ej]

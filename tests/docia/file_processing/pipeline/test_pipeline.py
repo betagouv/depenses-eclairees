@@ -16,6 +16,7 @@ from docia.file_processing.pipeline.pipeline import (
     sync_and_analyze,
     sync_and_analyze_ej_list,
 )
+from docia.file_processing.sync.sync_engagements import EngagementsSync
 from docia.models import Document
 from tests.factories.data import DocumentFactory, EngagementFactory
 from tests.factories.file_processing import (
@@ -273,7 +274,7 @@ def test_sync_and_analyze():
         result = sync_and_analyze(start, end, force_analyze=True)
 
         # Assertions
-        mock_sync_all.assert_called_once_with(start, end)
+        mock_sync_all.assert_called_once_with(start, end, batch_days=EngagementsSync.DEFAULT_BATCH_DAYS)
         mock_init_launch.assert_called_once_with(["ej1", "ej2"], force_analyze=True)
         assert result == "test_batch_id"
 
