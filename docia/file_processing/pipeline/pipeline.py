@@ -32,6 +32,7 @@ from docia.file_processing.pipeline.steps.init_documents import (
     init_documents_in_folder,
 )
 from docia.file_processing.pipeline.steps.text_extraction import task_extract_text
+from docia.file_processing.sync.sync_engagements import EngagementsSync
 from docia.file_processing.sync.workflow import sync_all, sync_documents_and_download_files
 from docia.models import Document
 
@@ -230,7 +231,12 @@ def init_documents_and_launch_batch(folder: str, batch_grist: str, target_classi
     return batch_id, gr
 
 
-def sync_and_analyze(start: datetime, end: datetime = None, force_analyze: bool = False) -> str | None:
+def sync_and_analyze(
+    start: datetime,
+    end: datetime = None,
+    force_analyze: bool = False,
+    batch_days: int = EngagementsSync.DEFAULT_BATCH_DAYS,
+) -> str | None:
     """
     Synchronize documents within a date range and analyze them.
 
@@ -238,13 +244,14 @@ def sync_and_analyze(start: datetime, end: datetime = None, force_analyze: bool 
         start: Start datetime for synchronization
         end: Optional end datetime for synchronization (defaults to now)
         force_analyze: If True, re-analyze already processed documents
+        batch_days: Number of days per batch for list_ej_place calls
 
     Returns:
         str: Batch ID of the launched processing batch, None if no documents to process
     """
     logger.info("Start sync and analyze (by date)")
     logger.info("Start sync")
-    sync_result = sync_all(start, end)
+    sync_result = sync_all(start, end, batch_days=batch_days)
     logger.info("Sync success:")
     for k, v in sync_result.items():
         v_str = str(v) if len(v) <= 10 else str(len(v))

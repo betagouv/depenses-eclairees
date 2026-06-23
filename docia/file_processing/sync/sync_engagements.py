@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.db.transaction import atomic
 from django.utils import timezone
@@ -11,14 +11,25 @@ logger = logging.getLogger(__name__)
 
 
 class EngagementsSync:
+    DEFAULT_BATCH_DAYS = 7
+
     def __init__(self):
         self.client = SyncClient.from_settings()
 
-    def sync(self, scopes: list[tuple[str, str]], start: datetime, end: datetime | None = None) -> list[str]:
+    def sync(
+        self,
+        scopes: list[tuple[str, str]],
+        start: datetime,
+        end: datetime | None = None,
+        batch_days: int = DEFAULT_BATCH_DAYS,
+    ) -> list[str]:
         """
         Update Engagement data from external system. Returns the inserted/updated engagements.
 
         scopes: List of tuples (purchase_organization, purchase_group)
+        start: Start datetime for sync
+        end: End datetime for sync (defaults to now)
+        batch_days: Number of days per batch for list_ej_place calls (default: 7)
         """
 
         if not self.client.is_authenticated:
@@ -33,8 +44,15 @@ class EngagementsSync:
             purchase_organization, s_purchase_groups = t_scope
             logger.info("Process scope %s (%s/%s)", t_scope, i, len(scopes))
 
-            # Get data from external system
-            activities = self.client.list_ej_place(start, end, purchase_organization)
+            # Process in batches of batch_days
+            current_start = start
+            activities = []
+            while current_start < end:
+                current_end = min(current_start + timedelta(days=batch_days), end)
+                logger.info("Fetching batch from %s to %s", current_start, current_end)
+                batch_activities = self.client.list_ej_place(current_start, current_end, purchase_organization)
+                activities.extend(batch_activities)
+                current_start = current_end
             if s_purchase_groups != "*":
                 purchase_groups = s_purchase_groups.split("-")
                 activities = [a for a in activities if a.purchase_group in purchase_groups]

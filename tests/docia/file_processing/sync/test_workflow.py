@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import freezegun
 import pytest
 
+from docia.file_processing.sync.sync_engagements import EngagementsSync
 from docia.file_processing.sync.workflow import (
     download_documents,
     sync_documents,
@@ -36,7 +37,9 @@ def test_sync_engagements():
 
             # Verify EngagementsSync was instantiated and sync was called
             expected_start = datetime(2024, 3, 8, 12, 0, 0, tzinfo=timezone.utc)
-            mock_instance.sync.assert_called_once_with([["oa", "ga"]], expected_start, now)
+            mock_instance.sync.assert_called_once_with(
+                [["oa", "ga"]], expected_start, now, batch_days=EngagementsSync.DEFAULT_BATCH_DAYS
+            )
 
 
 @pytest.mark.django_db

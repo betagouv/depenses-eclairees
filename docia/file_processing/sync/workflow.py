@@ -15,8 +15,8 @@ from .sync_metadata import DocumentMetadataSync
 logger = logging.getLogger(__name__)
 
 
-def sync_all(start: datetime, end: datetime = None):
-    num_ejs = sync_engagements(start, end)
+def sync_all(start: datetime, end: datetime = None, batch_days: int = EngagementsSync.DEFAULT_BATCH_DAYS):
+    num_ejs = sync_engagements(start, end, batch_days=batch_days)
     r = sync_documents_and_download_files(num_ejs)
     return {
         "num_ejs": num_ejs,
@@ -34,13 +34,15 @@ def sync_documents_and_download_files(num_ejs: list[str]):
     }
 
 
-def sync_engagements(start: datetime, end: datetime = None) -> list[str]:
+def sync_engagements(
+    start: datetime, end: datetime = None, batch_days: int = EngagementsSync.DEFAULT_BATCH_DAYS
+) -> list[str]:
     end = end or timezone.now()
     scopes = settings.FILE_SYNC_SCOPES
     t_scopes = [s.split("/") for s in scopes]
 
     ej_syncer = EngagementsSync()
-    num_ejs = ej_syncer.sync(t_scopes, start, end)
+    num_ejs = ej_syncer.sync(t_scopes, start, end, batch_days=batch_days)
     return num_ejs
 
 
