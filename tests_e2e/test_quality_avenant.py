@@ -76,7 +76,9 @@ def get_comparison_functions():
         "incidence_bpu": compare_exact_string,
         "incidence_financiere": compare_money_block,
         "incidence_autre": lambda a, e: compare_with_llm(a, e, prompt=PROMPT_OBJECT),
-        "date_derniere_signature": compare_exact_string,
+        "date_signature_mandataire": compare_exact_string,
+        "date_signature_administration": compare_exact_string,
+        "date_notification": compare_exact_string,
     }
 
 
@@ -124,7 +126,9 @@ if __name__ == "__main__":
         "montant_initial",
         "montant_marche",
         "incidence_financiere",
-        "date_derniere_signature",
+        "date_signature_mandataire",
+        "date_signature_administration",
+        "date_notification",
     ]
 
     comparison_functions = get_comparison_functions()
