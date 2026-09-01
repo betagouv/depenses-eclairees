@@ -9,7 +9,7 @@ dependencies = [
     "docx2txt",
     "python-dotenv",
     "olefile",  # File type identification for old Microsoft Office files (.xls, .doc, ...)
-    "openai",
+    "openai (>=2.32.0,<3.0.0)",
     "openpyxl",  # pandas xlsx read
     "pandas",
     "Pillow",
