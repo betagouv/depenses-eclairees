@@ -79,7 +79,7 @@ def analyze_file_text(
 
 
 def analyze_file_text_llm(
-    text: str, document_type: str, llm_model: str = "mistral-medium-2508", temperature: float = 0.0
+    text: str, document_type: str, llm_model: str = DEFAULT_ANALYZE_MODEL, temperature: float = 0.0
 ) -> tuple[dict, LLMUsage]:
     llm_env = LLMClient()
 

@@ -397,7 +397,7 @@ ALBERT_USE_RATE_LIMITER = config.bool("ALBERT_USE_RATE_LIMITER", default=False)
 # Limites par modèle (requêtes/min). Défaut pour un modèle non listé : ALBERT_RATE_PER_MINUTE_DEFAULT.
 ALBERT_RATE_PER_MINUTE_BY_MODEL = {
     "openweight-medium": 98,
-    "mistral-medium-2508": 98,
+    "mistral-medium-3-5": 98,
     "mistral-ocr-2512": 98,
 }
 ALBERT_RATE_PER_MINUTE_DEFAULT = config.int("ALBERT_RATE_PER_MINUTE", default=100)
