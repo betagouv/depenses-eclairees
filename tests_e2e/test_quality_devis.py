@@ -41,7 +41,7 @@ def get_comparison_functions():
     }
 
 
-def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="mistral-medium-2508", debug_mode=False):
+def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="mistral-medium-3-5", debug_mode=False):
     """Test de qualité des informations extraites par le LLM."""
 
     df_test = get_data_from_grist(table="Devis_gt").query("commentaire == 'traité'")
@@ -65,7 +65,7 @@ def create_batch_test(multi_line_coef=1, max_workers=10, llm_model="mistral-medi
 
 if __name__ == "__main__":
     df_test, df_result, df_merged = create_batch_test(
-        multi_line_coef=1, max_workers=30, debug_mode=True, llm_model="mistral-medium-2508"
+        multi_line_coef=1, max_workers=30, debug_mode=True, llm_model="mistral-medium-3-5"
     )
 
     EXCLUDED_COLUMNS = ["objet", "administration_beneficiaire"]
