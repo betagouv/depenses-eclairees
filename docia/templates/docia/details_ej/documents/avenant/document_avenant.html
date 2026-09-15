@@ -23,10 +23,35 @@
       {% include "docia/details_ej/blocks/attribute.html" with title="Incidence BPU" id=id_prefix|add:"incidence_bpu" %}
     {% endwith %}
   {% endif %}
-  {% with value=data.date_derniere_signature copy_value=data.date_derniere_signature %}
-    {% include "docia/details_ej/blocks/attribute.html" with title="Date de dernière signature" id=id_prefix|add:"date_derniere_signature" %}
-  {% endwith %}
 </div>
+
+{# Dates et signatures : déroulant si au moins une date, sinon section grisée #}
+{% if data.date_signature_mandataire or data.date_signature_administration or data.date_notification %}
+  <section class="fr-accordion fr-mt-2w" data-fr-js-accordion="true">
+    <h3 class="fr-accordion__title">
+      <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_dates" data-fr-js-collapse-button="true">
+        Dates et signatures
+      </button>
+    </h3>
+    <div class="fr-collapse" id="{{ doc.id }}_dates" data-fr-js-collapse="true" style="--collapse: -48px;">
+      <ul class="fr-list">
+        {% with value=data.date_signature_mandataire %}
+          {% include "docia/details_ej/blocks/attribute.html" with title="Signature titulaire" id=id_prefix|add:"date_signature_titulaire" %}
+        {% endwith %}
+        {% with value=data.date_signature_administration %}
+          {% include "docia/details_ej/blocks/attribute.html" with title="Signature signataire" id=id_prefix|add:"date_signature_signataire" %}
+        {% endwith %}
+        {% with value=data.date_notification %}
+          {% include "docia/details_ej/blocks/attribute.html" with title="Date de notification" id=id_prefix|add:"date_notification" %}
+        {% endwith %}
+      </ul>
+    </div>
+  </section>
+{% else %}
+  <div class="document-section--disabled fr-mt-2w">
+    <span class="document-section--disabled__title">Dates et signatures – Non trouvées dans le document.</span>
+  </div>
+{% endif %}
 
 <section class="fr-accordion fr-mt-2w" data-fr-js-accordion="true">
   <h3 class="fr-accordion__title">
