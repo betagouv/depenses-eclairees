@@ -28,7 +28,7 @@
     </li>
   </ul>
 
-  {# Sous le sous-traitant : paiement direct, avance, prestations, date, durée (affichage direct) #}
+  {# Sous le sous-traitant : paiement direct, avance, prestations, durée (affichage direct) #}
   <ul class="fr-list fr-mb-2w">
     <li class="fr-list__item">
       <span class="fr-text--sm fr-text--mention">Éligible au paiement direct&nbsp;</span>
@@ -68,17 +68,6 @@
       </span>
     </li>
     <li class="fr-list__item">
-      <span class="fr-text--sm fr-text--mention">Signé le&nbsp;</span>
-      <span class="fr-text--sm">
-        {% if data.date_signature %}
-          {{ data.date_signature }}
-          {% include "docia/blocks/button_copy.html" with id=id_prefix|add:"date_signature" value=data.date_signature %}
-        {% else %}
-          <span class="fr-text--mention">[Non trouvé]</span>
-        {% endif %}
-      </span>
-    </li>
-    <li class="fr-list__item">
       <span class="fr-text--sm fr-text--mention">Durée des prestations&nbsp;</span>
       <span class="fr-text--sm">
         {% with duree=data.duree_sous_traitance %}
@@ -92,6 +81,34 @@
       </span>
     </li>
   </ul>
+
+  {# Dates et signatures : déroulant si au moins une date, sinon section grisée #}
+  {% if data.date_signature_sous_traitant or data.date_signature_mandataire or data.date_signature_administration %}
+    <section class="fr-accordion fr-mb-2w" data-fr-js-accordion="true">
+      <h3 class="fr-accordion__title">
+        <button type="button" class="fr-accordion__btn" aria-expanded="false" aria-controls="{{ doc.id }}_dates" data-fr-js-collapse-button="true">
+          Dates et signatures
+        </button>
+      </h3>
+      <div class="fr-collapse" id="{{ doc.id }}_dates" data-fr-js-collapse="true" style="--collapse: -48px;">
+        <ul class="fr-list">
+          {% with value=data.date_signature_sous_traitant %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Signature sous-traitant" id=id_prefix|add:"date_signature_sous_traitant" %}
+          {% endwith %}
+          {% with value=data.date_signature_mandataire %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Signature titulaire" id=id_prefix|add:"date_signature_titulaire" %}
+          {% endwith %}
+          {% with value=data.date_signature_administration %}
+            {% include "docia/details_ej/blocks/attribute.html" with title="Signature signataire" id=id_prefix|add:"date_signature_signataire" %}
+          {% endwith %}
+        </ul>
+      </div>
+    </section>
+  {% else %}
+    <div class="document-section--disabled fr-mb-2w">
+      <span class="document-section--disabled__title">Dates et signatures – Non trouvées dans le document.</span>
+    </div>
+  {% endif %}
 
   {# Seul menu déroulant : Montants et TVA #}
   {% if data.montant_sous_traitance_ht or data.montant_sous_traitance_ttc or data.montant_tva %}
