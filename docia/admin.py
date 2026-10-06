@@ -167,7 +167,7 @@ class CustomGroupAdmin(auth_admin.GroupAdmin):
     """Admin class for Group model with inline GroupScope editing"""
 
     inlines = [GroupScopeInline]
-    list_display = ("name", "col_group_scopes")
+    list_display = ("name", "col_group_scopes", "col_permissions")
     search_fields = ("name", "scope__purchase_group", "scope__purchase_organization")
     fields = ("name", "permissions")
 
@@ -178,6 +178,11 @@ class CustomGroupAdmin(auth_admin.GroupAdmin):
         return ", ".join(str(scope) for scope in obj.scope_set.all())
 
     col_group_scopes.short_description = "Périmètres"
+
+    def col_permissions(self, obj):
+        return ", ".join(str(permission) for permission in obj.permissions.all())
+
+    col_permissions.short_description = "Permissions"
 
 
 class ActionFilter(admin.SimpleListFilter):
