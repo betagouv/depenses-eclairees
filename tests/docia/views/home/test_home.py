@@ -383,7 +383,9 @@ def test_sous_traitance(client):
         "paiement_direct": "oui",
         "conserve_avance": "conserve",
         "rib_sous_traitant": {"banque": "BNP", "iban": "FR7612345678901234567890123"},
-        "date_signature": "15/01/2025",
+        "date_signature_sous_traitant": "10/01/2025",
+        "date_signature_mandataire": "12/01/2025",
+        "date_signature_administration": "15/01/2025",
     }
     doc.save()
     user = UserFactory(is_superuser=True)
@@ -397,14 +399,19 @@ def test_sous_traitance(client):
     assert "732 829 320 000 74" in response.text
     assert "443 061 841 000 47" in response.text
 
-    # Lignes sous le sous-traitant : paiement direct, avance, prestations, signé le, durée
+    # Lignes sous le sous-traitant : paiement direct, avance, prestations, durée
     # (style acte_engagement : icône check/close + Oui/Non)
     assert "Éligible au paiement direct" in response.text
     assert "Oui" in response.text
     assert "Souhaite conserver l'avance" in response.text
     assert "Description des prestations" in response.text
     assert "[[description_prestations]]" in response.text
-    assert "Signé le" in response.text
+    assert "Dates et signatures" in response.text
+    assert "Signature sous-traitant" in response.text
+    assert "Signature titulaire" in response.text
+    assert "Signature signataire" in response.text
+    assert "10/01/2025" in response.text
+    assert "12/01/2025" in response.text
     assert "15/01/2025" in response.text
     assert "Durée des prestations" in response.text
     assert "12 mois" in response.text

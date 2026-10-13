@@ -6,7 +6,6 @@ from .common import (
     ADMINISTRATION_BENEFICIAIRE,
     ADRESSE_POSTALE_TITULAIRE,
     CONSERVE_AVANCE_SOUS_TRAITANT,
-    DATE_SIGNATURE_DERNIERE,
     DESCRIPTION_PRESTATIONS,
     MONTANT_TVA,
     OBJET_MARCHE,
@@ -101,7 +100,52 @@ SOUS_TRAITANCE_ATTRIBUTES = {
 """,
     },
     "description_prestations": DESCRIPTION_PRESTATIONS,
-    "date_signature": DATE_SIGNATURE_DERNIERE,
+    "date_signature_sous_traitant": {
+        "consigne": """
+   Définition : Date de signature de la déclaration de sous-traitance par le sous-traitant.
+   Indices :
+   - Uniquement la date de signature de l'entreprise sous-traitante, pas celle du titulaire ni de l'administration.
+   - Repérer les expressions comme "Signé le", "Fait à ...", ou des dates en bas du document associées à la signature du sous-traitant.
+     * Si une date est indiquée après "date de signature" ou "Signé le" pour le sous-traitant, on considère le document comme signé,
+       même si la signature n'apparaît pas dans le texte extrait.
+   - En cas de conflit entre une date de signature électronique et une date écrite (manuscrite ou imprimée), retenir la date de signature électronique.
+   - Ignorer les dates d'émission ou de création du document, en général en haut du document.
+   - Ne rien renvoyer si aucune date de signature trouvée pour le sous-traitant.
+   Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine.
+""",
+    },
+    "date_signature_mandataire": {
+        "consigne": """
+   Définition : Date de signature de la déclaration de sous-traitance par le mandataire (entreprise titulaire principale du marché).
+   Indices :
+   - Uniquement la date de signature de l'entreprise mandataire (titulaire), pas celle du sous-traitant ni de l'administration bénéficiaire.
+   - Souvent la première ou la deuxième date de signature en cas de plusieurs dates de signature.
+   - Repérer les expressions comme "Signé le", "Fait à ...", ou des dates en bas du document associées à la signature du titulaire.
+     * Si une date est indiquée après "date de signature" ou "Signé le", on considère le document comme signé,
+       même si la signature n'apparaît pas dans le texte extrait.
+   - En cas de conflit entre une date de signature électronique et une date écrite (manuscrite ou imprimée), retenir la date de signature électronique.
+   - Ignorer les dates d'émission ou de création du document, en général en haut du document.
+   - Ne rien renvoyer si aucune date de signature trouvée pour le mandataire.
+   Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine.
+""",
+    },
+    "date_signature_administration": {
+        "consigne": """
+   Définition : Date de signature de la déclaration de sous-traitance par l'administration.
+   Indices :
+   - Uniquement la date de signature de l'acheteur, du pouvoir adjudicateur, ou de l'administration bénéficiaire.
+   - Souvent la dernière signature en cas de plusieurs dates de signatures.
+   - Repérer les expressions comme "Signé le", "Fait à ...", "signature électronique", ou des dates en bas du document associées à une signature.
+     * Si une date est indiquée après "date de signature" ou "Signé le", on considère le document comme signé,
+       même si la signature n'apparaît pas dans le texte extrait.
+   - En cas de conflit entre une date de signature électronique et une date écrite (manuscrite ou imprimée), retenir la date de signature électronique.
+   - Si le document termine par une date seule, c'est probablement la date de signature de l'administration.
+   - Parfois la signature est électronique : seuls le nom du signataire et la date apparaissent dans le texte.
+   - Ignorer les dates d'émission ou de création du document, en général en haut du document.
+   - Ne rien renvoyer si aucune date de signature trouvée.
+   Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine.
+""",
+    },
     "montant_tva": MONTANT_TVA,
     "paiement_direct": {
         "consigne": """
