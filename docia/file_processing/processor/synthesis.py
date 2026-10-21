@@ -96,11 +96,11 @@ SYNTHESIS_FIELD_SOURCES: dict[str, list[SourceSpec]] = {
         ("ej", "facture", "date_emission"),
         ("ej", "acte_engagement", "date_signature_mandataire"),
         ("ej", "ccp_vae", "date_signature_mandataire"),
-        ("ej", "avenant", "date_signature"),
+        ("ej", "avenant", "date_signature_mandataire"),
         ("ej", "sous_traitance", "date_signature"),
         ("contrat", "acte_engagement", "date_signature_mandataire"),
         ("contrat", "ccp_vae", "date_signature_mandataire"),
-        ("contrat", "avenant", "date_signature"),
+        ("contrat", "avenant", "date_signature_mandataire"),
         ("contrat", "sous_traitance", "date_signature"),
     ],
     "societe_principale": [

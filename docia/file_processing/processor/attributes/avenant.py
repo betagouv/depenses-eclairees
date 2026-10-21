@@ -168,12 +168,48 @@ AVENANT_ATTRIBUTES = {
    Format : texte libre en bon français ; chaîne vide si aucune autre incidence identifiable.
 """,
     },
-    "date_derniere_signature": {
+    "date_signature_mandataire": {
         "consigne": """
-   Définition : date du dernier signataire de l'avenant — en général la date la plus récente parmi les blocs de signature (cachets, « fait le », signatures des parties).
+   Définition : Date de signature de l'avenant par le mandataire (entreprise prestataire principale).
    Indices :
-   - Bas de document, pages de signature, ordre chronologique des dates manuscrites ou mentionnées.
-   Important : renvoyer uniquement une chaîne de caractères (pas de type date) ; conserver le format texte cohérent avec le document et avec Grist (ex. JJ/MM/AAAA). Chaîne vide si aucune date fiable.
+   - Uniquement la date de signature de l'entreprise mandataire, pas celle de l'administration bénéficiaire.
+   - Souvent la première date de signature en cas de plusieurs dates de signature.
+   - Repérer les expressions comme "Signé le", "Fait à ...", ou des dates en bas du document associées à une signature.
+     * Si une date est indiquée après "date de signature" ou "Signé le", on considère l'avenant comme signé,
+       même si la signature n'apparaît pas dans le texte extrait.
+   - Ignorer les dates d'émission ou de création du document, en général en haut du document.
+   - Ne rien renvoyer si aucune date de signature trouvée pour le mandataire.
+   Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine.
+""",
+    },
+    "date_signature_administration": {
+        "consigne": """
+   Définition : Date de signature de l'avenant par l'administration.
+   Indices :
+   - Uniquement la date de signature de l'acheteur, du pouvoir adjudicateur, ou de l'administration bénéficiaire.
+   - Souvent la dernière signature en cas de plusieurs dates de signatures.
+   - Repérer les expressions comme "Signé le", "Fait à ...", "signature électronique", ou des dates en bas du document associées à une signature.
+     * Si une date est indiquée après "date de signature" ou "Signé le", on considère l'avenant comme signé,
+       même si la signature n'apparaît pas dans le texte extrait.
+   - Si le document termine par une date seule, c'est probablement la date de signature de l'administration.
+   - Parfois la signature est électronique : seuls le nom du signataire et la date apparaissent dans le texte.
+   - Ignorer les dates d'émission ou de création du document, en général en haut du document.
+   - Ne rien renvoyer si aucune date de signature trouvée.
+   Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine.
+""",
+    },
+    "date_notification": {
+        "consigne": """
+   Définition : Date de notification de cet avenant aux mandataires.
+   Indices :
+   - Parfois en début du document, ou en toute fin de document.
+   - Après la mention "Date de notification" relative à l'avenant, pas la date de début prévisionnelle "Date de début du marché".
+   - S'il y a un doute sur la lecture de la date, prendre la date la plus proche postérieure à la signature par l'administration si disponible.
+   - Peut aussi être la date d'un courrier de notification ou d'un mail en annexe du document.
+   - S'il n'y a pas de date de notification explicite de l'avenant, ne rien renvoyer.
+   - Attention à ne pas confondre la date de notification avec la date de signature.
+   - Ne pas confondre avec la date de notification du marché initial (champ date_marche.date_notification).
+   Format : en "JJ/MM/AAAA" quelle que soit la notation d'origine.
 """,
     },
 }
