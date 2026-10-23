@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile-scalingo
-    command: poetry run gunicorn --config gunicorn_conf.py docia.wsgi --bind 0.0.0.0:8000
+    command: uv run gunicorn --config gunicorn_conf.py docia.wsgi --bind 0.0.0.0:8000
     volumes:
       - .:/app
     ports:

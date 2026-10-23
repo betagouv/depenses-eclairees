@@ -26,34 +26,24 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        id: setup-python
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version-file: "pyproject.toml"
-      - name: Install Poetry
-        run: pipx install poetry
-      - name: Setup local virtual environment
-        run: |
-          poetry config virtualenvs.create true --local
-          poetry config virtualenvs.in-project true --local
-      - uses: actions/cache@v4
-        name: Cache virtualenv based on the dependencies lock file
-        with:
-          path: ./.venv
-          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('poetry.lock') }}
+          enable-cache: true
+          python-version: "3.13"
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt install -y --no-install-recommends $(cat Aptfile)
       - name: Install Python dependencies
-        run: poetry sync
+        run: uv sync --locked
       - name: Setup env
         run: cp ci.env .env
       - name: Check no missing migrations
-        run: poetry run ./manage.py makemigrations --check --dry-run
+        run: uv run ./manage.py makemigrations --check --dry-run
       - name: Run ruff
-        run: poetry run ruff check
+        run: uv run ruff check
       - name: Run ruff format
-        run: poetry run ruff format --check
+        run: uv run ruff format --check
       - name: Run tests
-        run: poetry run pytest --no-migrations tests
+        run: uv run pytest --no-migrations tests
