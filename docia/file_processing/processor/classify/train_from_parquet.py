@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import logging
 from pathlib import Path
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 from docia.file_processing.processor.classify.constants import DEFAULT_OUTPUT_DIR, DEFAULT_SEED
 from docia.file_processing.processor.classify.pipeline import run_training

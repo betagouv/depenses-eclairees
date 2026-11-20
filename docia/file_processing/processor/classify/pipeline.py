@@ -68,38 +68,62 @@ def run_training(
     audit_csv: Path | None = None,
 ) -> None:
     out = output_dir or default_output_dir()
+    logger.info("Classify v2 training: output_dir=%s seed=%s", out, seed)
     parquet_path = out / "documents_raw.parquet"
     if not parquet_path.exists():
         raise FileNotFoundError(f"Missing {parquet_path}; run dataset build first.")
 
     audit_path = audit_csv or (out / "reports" / "01_annotation_audit_sample.csv")
     if require_human_audit:
+        logger.info("Checking human audit: %s", audit_path)
         stats = import_audit_results(audit_path)
         if stats.get("reviewed", 0) == 0:
             raise RuntimeError(f"Human audit required but no reviews in {audit_path}")
+        logger.info("Human audit OK: reviewed=%s accuracy=%s", stats.get("reviewed"), stats.get("accuracy"))
 
+    logger.info("Loading %s", parquet_path)
     df = pd.read_parquet(parquet_path)
     train_df = df[df["split"] == "train"]
     val_df = df[df["split"] == "val"]
     calib_df = df[df["split"] == "calib"]
     test_df = df[df["split"] == "test"]
+    logger.info(
+        "Splits: train=%s val=%s calib=%s test=%s (total=%s)",
+        len(train_df),
+        len(val_df),
+        len(calib_df),
+        len(test_df),
+        len(df),
+    )
 
+    logger.info("Baselines on val...")
     baseline = {
         **baseline_majority(train_df, val_df),
         **baseline_filename_rule(val_df),
     }
+    logger.info("Baselines: %s", baseline)
+
     best_c, grid_rows = grid_search_c(train_df, val_df, seed=seed)
+    logger.info("Writing train reports to %s/reports/", out)
     write_train_reports(out, grid_rows, best_c, baseline)
 
     pipe, _ = fit_classifier(train_df, best_c, seed=seed)
     train_counts = train_class_counts(df)
     use_group = needs_group_cv_calibration(train_counts)
+    logger.info("Calibration: mode=%s (group_cv=%s)", "sigmoid_cv3" if use_group else "sigmoid_prefit", use_group)
     model, mode, calib_metrics = calibrate_model(pipe, calib_df, use_group_cv=use_group)
+    logger.info("Calibration metrics: %s", calib_metrics)
     write_calibration_report(out, mode, calib_metrics)
+    logger.info("Saving pipeline artifacts under %s", out)
     save_pipeline(out, model)
 
+    logger.info("Choosing rejection thresholds on calib split (n=%s)...", len(calib_df))
     tau, margin = choose_thresholds(calib_df, model)
+    logger.info("Thresholds: tau=%.3f margin=%.3f", tau, margin)
+    logger.info("Evaluating on test split (n=%s)...", len(test_df))
     metrics, cm = evaluate_test(test_df, model, tau, margin)
+    logger.info("Test macro_f1=%.4f", metrics.get("macro_f1"))
+    logger.info("Writing test reports and rejection curve...")
     rej_rows = rejection_curve_rows(calib_df, model)
     write_test_reports(out, metrics, cm, rej_rows)
     write_run_summary(
