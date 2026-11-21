@@ -10,7 +10,12 @@ from docia.file_processing.processor.classify.constants import (
     FINANCIAL_TARGETS,
     TARGET_CLASSES,
 )
-from docia.file_processing.processor.classify.label_hierarchy import TRAINABLE_COARSE, map_llm_to_coarse
+from docia.file_processing.processor.classify.label_hierarchy import (
+    COARSE_CCP_SIMPLE,
+    COARSE_CCP_VAE,
+    TRAINABLE_COARSE,
+    map_llm_to_coarse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +48,10 @@ def apply_coarse_hierarchy_labels(df: pd.DataFrame) -> int:
     mask = mapped.notna()
     n = int(mask.sum())
     df.loc[mask, "label_train"] = mapped[mask]
+    legacy = df["label_train"].isin((COARSE_CCP_SIMPLE, COARSE_CCP_VAE))
+    if legacy.any():
+        df.loc[legacy, "label_train"] = df.loc[legacy, "label_train"].map(map_llm_to_coarse)
+        n += int(legacy.sum())
     return n
 
 

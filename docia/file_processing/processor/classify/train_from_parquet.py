@@ -22,6 +22,15 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--merge-financial", action="store_true")
     parser.add_argument("--write-patched-parquet", action="store_true")
     parser.add_argument("--coarse-hierarchy", action="store_true")
+    parser.add_argument("--train-sample-n", type=int, default=None)
+    parser.add_argument(
+        "--train-sample-mode",
+        choices=("stratified", "priority_undersample"),
+        default="stratified",
+    )
+    parser.add_argument("--priority-per-class-n", type=int, default=None)
+    parser.add_argument("--non-priority-cap", type=int, default=None)
+    parser.add_argument("--c-grid", type=float, nargs="+", default=None)
     args = parser.parse_args(argv)
     run_training(
         output_dir=args.output_dir.resolve(),
@@ -32,6 +41,11 @@ def main(argv: list[str] | None = None) -> None:
         merge_financial=args.merge_financial,
         write_patched_parquet=args.write_patched_parquet,
         coarse_hierarchy=args.coarse_hierarchy,
+        train_sample_n=args.train_sample_n,
+        train_sample_mode=args.train_sample_mode,
+        non_priority_cap=args.non_priority_cap,
+        priority_per_class_n=args.priority_per_class_n,
+        c_grid=args.c_grid,
     )
 
 

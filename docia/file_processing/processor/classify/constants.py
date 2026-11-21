@@ -67,3 +67,9 @@ DEFAULT_OUTPUT_DIR = Path("data/classify_v2")
 
 CLASSIFIER_ARTIFACT_NAME = "classify_v2_pipeline.joblib"
 THRESHOLD_ARTIFACT_NAME = "classify_v2_thresholds.json"
+
+# Plafond sur le rejet logreg : fraction max de docs renvoyés au LLM (choix seuils calib).
+DEFAULT_MAX_LLM_FALLBACK_RATE = 0.40
+
+# Plancher F1 routage minimal par classe (toutes classes au calib, rejet compte dans le F1).
+DEFAULT_MIN_ROUTING_F1 = 0.25

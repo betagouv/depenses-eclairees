@@ -149,10 +149,59 @@ def write_test_reports(output_dir: Path, metrics: dict, confusion: pd.DataFrame,
     (rep / "05_metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
     confusion.to_csv(rep / "05_confusion_matrix.csv")
     pd.DataFrame(rejection_rows).to_csv(rep / "05_rejection_curve.csv", index=False)
-    (rep / "05_test_summary.md").write_text(
-        "\n".join(f"- {k}: {v}" for k, v in metrics.items()),
-        encoding="utf-8",
+    routing = metrics.get("routing") or {}
+    lines = [
+        "# Test eval (classify_v2)",
+        "",
+        "## Prod (routage : rejet = miss)",
+        "",
+        f"- macro_f1: {metrics.get('macro_f1')} (KPI principal)",
+        f"- min_routing_f1: {metrics.get('min_routing_f1')} (pire classe)",
+        f"- macro_recall: {metrics.get('macro_recall')} (diagnostic)",
+        "",
+        "Macro-F1 sur `pred_with_reject` : KPI prod (rejet compte comme erreur). "
+        "Recall par classe : voir `routing_recall_per_class` / `classification_report`.",
+        "",
+        "## Classifieur (sans seuils, diagnostic)",
+        "",
+        f"- macro_f1_classifier: {metrics.get('macro_f1_classifier')}",
+        f"- macro_recall_classifier: {metrics.get('macro_recall_classifier')}",
+        "",
+    ]
+    auc = metrics.get("auc") or {}
+    if auc:
+        lines.extend(
+            [
+                "## Séparation modèle (AUC, sans seuils)",
+                "",
+                f"- auc_macro_ovr: {auc.get('auc_macro_ovr')}",
+                f"- auc_acte_engagement: {auc.get('auc_acte_engagement')}",
+                "",
+                "L'AUC ne mesure pas le routage prod ; utile pour comparer modèles / calibration.",
+                "",
+            ]
+        )
+    lines.extend(
+        [
+            "## Routage prod (seuils tau / margin)",
+            "",
+            f"- logreg_accept_rate: {routing.get('logreg_accept_rate')}",
+            f"- llm_fallback_rate: {routing.get('llm_fallback_rate')} (part des docs renvoyés au LLM)",
+            f"- labeled_accuracy_on_accepted: {routing.get('labeled_accuracy_on_accepted')}",
+        ]
     )
+    if any(str(k).startswith("priority_") for k in routing):
+        lines.extend(
+            [
+                "",
+                "## Priorité (routage : rejet = miss)",
+                "",
+            ]
+        )
+        for k, v in sorted(routing.items()):
+            if str(k).startswith("priority_"):
+                lines.append(f"- {k}: {v}")
+    (rep / "05_test_summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def write_run_summary(output_dir: Path, sections: dict[str, str]) -> None:

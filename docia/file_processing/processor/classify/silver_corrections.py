@@ -16,6 +16,8 @@ DEFAULT_REVIEW_SOURCES = (
     "08_below_median_disagreement_review_sample.csv",
     "09_non_target_trio_review_sample.csv",
     "10_core_four_miss_review_sample.csv",
+    "13_train_disagreement_review_sample.csv",
+    "14_train_priority_agreement_low_conf_review_sample.csv",
 )
 
 

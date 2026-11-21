@@ -22,6 +22,10 @@ from docia.file_processing.processor.classify.label_corrections import (
     apply_coarse_hierarchy_labels,
     apply_disagreement_reviews,
 )
+from docia.file_processing.processor.classify.constants import (
+    DEFAULT_MAX_LLM_FALLBACK_RATE,
+    DEFAULT_MIN_ROUTING_F1,
+)
 from docia.file_processing.processor.classify.label_hierarchy import (
     COARSE_LABELS,
     HIERARCHY_REVISION,
@@ -42,6 +46,7 @@ from docia.file_processing.processor.classify.reporting import (
 )
 from docia.file_processing.processor.classify.splits import assign_splits, split_leakage_check, train_class_counts
 from docia.file_processing.processor.classify.train import (
+    apply_train_sample,
     baseline_filename_rule,
     baseline_majority,
     fit_classifier,
@@ -92,6 +97,13 @@ def run_training(
     write_patched_parquet: bool = False,
     *,
     coarse_hierarchy: bool = False,
+    train_sample_n: int | None = None,
+    train_sample_mode: str = "stratified",
+    non_priority_cap: int | None = None,
+    priority_per_class_n: int | None = None,
+    c_grid: list[float] | None = None,
+    max_llm_fallback_rate: float | None = None,
+    min_routing_f1: float | None = None,
 ) -> None:
     out = output_dir or default_output_dir()
     logger.info("Classify v2 training: output_dir=%s seed=%s", out, seed)
@@ -135,6 +147,18 @@ def run_training(
         logger.info("Patched parquet written to %s", parquet_path)
 
     train_df = df[df["split"] == "train"]
+    sample_mode = train_sample_mode
+    if coarse_hierarchy and train_sample_mode == "stratified":
+        sample_mode = "priority_undersample"
+    if train_sample_n or sample_mode == "priority_undersample":
+        train_df = apply_train_sample(
+            train_df,
+            mode=sample_mode,
+            seed=seed,
+            max_total=train_sample_n,
+            non_priority_cap=non_priority_cap,
+            priority_per_class_n=priority_per_class_n,
+        )
     val_df = df[df["split"] == "val"]
     calib_df = df[df["split"] == "calib"]
     test_df = df[df["split"] == "test"]
@@ -154,7 +178,13 @@ def run_training(
     }
     logger.info("Baselines: %s", baseline)
 
-    best_c, grid_rows = grid_search_c(train_df, val_df, seed=seed, boost_priority_classes=False)
+    best_c, grid_rows = grid_search_c(
+        train_df,
+        val_df,
+        seed=seed,
+        boost_priority_classes=False,
+        c_grid=c_grid,
+    )
     logger.info("Writing train reports to %s/reports/", out)
     write_train_reports(out, grid_rows, best_c, baseline)
 
@@ -168,33 +198,92 @@ def run_training(
     logger.info("Saving pipeline artifacts under %s", out)
     save_pipeline(out, model)
 
-    logger.info("Choosing rejection thresholds on calib split (n=%s)...", len(calib_df))
-    tau, margin = choose_thresholds(calib_df, model, optimize_priority=False)
-    logger.info("Thresholds: tau=%.3f margin=%.3f", tau, margin)
+    cap = DEFAULT_MAX_LLM_FALLBACK_RATE if max_llm_fallback_rate is None else max_llm_fallback_rate
+    f1_floor = DEFAULT_MIN_ROUTING_F1 if min_routing_f1 is None else min_routing_f1
+    logger.info(
+        "Choosing rejection thresholds on calib (n=%s, max_llm_fallback=%s, min_routing_f1=%s)...",
+        len(calib_df),
+        cap,
+        f1_floor,
+    )
+    th = choose_thresholds(
+        calib_df,
+        model,
+        optimize_priority=coarse_hierarchy,
+        max_llm_fallback_rate=cap,
+        min_routing_f1=f1_floor,
+    )
+    tau, margin = th.tau, th.margin
+    logger.info(
+        "Thresholds: tau=%.3f margin=%.3f llm_fallback_calib=%.1f%% constraint_met=%s",
+        tau,
+        margin,
+        100.0 * float(th.routing.get("llm_fallback_rate") or 0),
+        th.constraint_met,
+    )
     logger.info("Evaluating on test split (n=%s)...", len(test_df))
     metrics, cm = evaluate_test(test_df, model, tau, margin, report_priority=coarse_hierarchy)
-    logger.info("Test macro_f1=%.4f", metrics.get("macro_f1"))
+    routing = metrics.get("routing") or {}
+    logger.info(
+        "Test prod macro_f1=%.4f macro_recall=%.4f (classifier-only F1=%.4f)",
+        metrics.get("macro_f1"),
+        metrics.get("macro_recall"),
+        metrics.get("macro_f1_classifier"),
+    )
+    logger.info(
+        "Routing: logreg_accept=%.1f%% llm_fallback=%.1f%% acc_if_accepted=%.3f",
+        100.0 * float(routing.get("logreg_accept_rate") or 0),
+        100.0 * float(routing.get("llm_fallback_rate") or 0),
+        float(routing.get("labeled_accuracy_on_accepted") or 0),
+    )
     if coarse_hierarchy:
         logger.info(
-            "Priority capture rate=%.4f min_class_recall=%.4f",
-            metrics.get("priority_capture_rate"),
-            metrics.get("priority_min_class_recall"),
+            "Priority routing macro_f1=%.4f capture=%.4f min_class_f1=%.4f",
+            routing.get("priority_macro_f1"),
+            routing.get("priority_capture_rate"),
+            routing.get("priority_min_class_f1"),
         )
     logger.info("Writing test reports and rejection curve...")
     rej_rows = rejection_curve_rows(calib_df, model)
-    save_thresholds(out, tau, margin)
+    save_thresholds(
+        out,
+        tau,
+        margin,
+        extra={
+            "max_llm_fallback_rate": cap,
+            "min_routing_f1": f1_floor,
+            "constraint_met": th.constraint_met,
+            "routing_calib": th.routing,
+            "objective_score": th.score,
+        },
+    )
     write_test_reports(out, metrics, cm, rej_rows)
     write_run_summary(
         out,
         {
-            "Training": f"Best C={best_c}, calibration={mode}",
+            "Training": (
+                f"Best C={best_c}, calibration={mode}, train_n={len(train_df)}, "
+                f"sample_mode={train_sample_mode}, c_grid={c_grid or 'default'}"
+            ),
             "Hierarchy": f"coarse={coarse_hierarchy} revision={HIERARCHY_REVISION}",
             "Thresholds": f"tau={tau:.3f}, margin={margin:.3f}",
-            "Test macro F1": str(metrics.get("macro_f1")),
-            "Priority KPI (coarse)": (
-                f"capture={metrics.get('priority_capture_rate')}, "
-                f"min_recall={metrics.get('priority_min_class_recall')}"
-                if coarse_hierarchy
+            "Prod eval (test)": (
+                f"macro_f1={metrics.get('macro_f1')} "
+                f"macro_recall={metrics.get('macro_recall')} "
+                f"(classifier F1={metrics.get('macro_f1_classifier')})"
+            ),
+            "Routing (prod)": (
+                f"llm_fallback={routing.get('llm_fallback_rate'):.1%}, "
+                f"logreg_accept={routing.get('logreg_accept_rate'):.1%}, "
+                f"acc_if_accepted={routing.get('labeled_accuracy_on_accepted')}"
+                if routing
+                else "n/a"
+            ),
+            "Priority routing (coarse)": (
+                f"macro_f1={routing.get('priority_macro_f1')}, "
+                f"capture={routing.get('priority_capture_rate')}, "
+                f"min_class_f1={routing.get('priority_min_class_f1')}"
+                if coarse_hierarchy and routing
                 else "n/a"
             ),
         },

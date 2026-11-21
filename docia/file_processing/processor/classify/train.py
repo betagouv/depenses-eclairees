@@ -11,6 +11,7 @@ import pandas as pd
 from docia.file_processing.processor.classify.constants import DEFAULT_SEED
 from docia.file_processing.processor.classify.features import build_model_pipeline
 from docia.file_processing.processor.classify.label_hierarchy import (
+    COARSE_ACTE_ENGAGEMENT,
     PRIORITY_CLASS_WEIGHT_FACTOR,
     PRIORITY_COARSE_LABELS,
 )
@@ -80,18 +81,136 @@ def baseline_filename_rule(val_df: pd.DataFrame, label_col: str = "label_train")
     return {"filename_rules_macro_f1": float(macro_f1)}
 
 
+def stratified_train_sample(train_df: pd.DataFrame, n: int, seed: int = DEFAULT_SEED) -> pd.DataFrame:
+    from docia.file_processing.processor.classify.corpus_profile.vocab_curve import nested_stratified_take
+
+    train_y = train_df[train_df["label_train"].notna()]
+    if len(train_y) <= n:
+        return train_y
+    sub = nested_stratified_take(train_y, n, seed)
+    logger.info("Stratified train sample: %s -> %s rows", len(train_y), len(sub))
+    return sub
+
+
+def _label_seed(label: str, seed: int) -> int:
+    return seed + (hash(label) % 10_000)
+
+
+def _sample_group(grp: pd.DataFrame, n_take: int, label: str, seed: int) -> pd.DataFrame:
+    if len(grp) <= n_take:
+        return grp
+    return grp.sample(n=n_take, random_state=_label_seed(label, seed))
+
+
+def _default_priority_per_class_n(train_y: pd.DataFrame) -> int:
+    """Référence : effectif train d'acte_engagement (équilibre devis = AE, etc.)."""
+    ae = train_y[train_y["_label"] == COARSE_ACTE_ENGAGEMENT]
+    if len(ae) > 0:
+        return len(ae)
+    sizes = [
+        len(g)
+        for lab, g in train_y.groupby("_label")
+        if lab in PRIORITY_COARSE_LABELS
+    ]
+    return int(np.median(sizes)) if sizes else 5_000
+
+
+def priority_undersample_train(
+    train_df: pd.DataFrame,
+    seed: int = DEFAULT_SEED,
+    *,
+    max_total: int | None = None,
+    non_priority_cap: int | None = None,
+    priority_per_class_n: int | None = None,
+) -> pd.DataFrame:
+    """Classes PRIORITY_COARSE_LABELS : au plus ``priority_per_class_n`` (défaut = effectif AE)."""
+    train_y = train_df[train_df["label_train"].notna()].copy()
+    train_y["_label"] = train_y["label_train"].astype(str)
+
+    per_priority = priority_per_class_n
+    if per_priority is None:
+        per_priority = _default_priority_per_class_n(train_y)
+
+    if non_priority_cap is None:
+        non_priority_cap = per_priority
+
+    priority_parts: list[pd.DataFrame] = []
+    other_groups: list[tuple[str, pd.DataFrame]] = []
+    for label, grp in train_y.groupby("_label", sort=True):
+        if label in PRIORITY_COARSE_LABELS:
+            priority_parts.append(_sample_group(grp, per_priority, label, seed))
+        else:
+            other_groups.append((label, grp))
+
+    priority_df = pd.concat(priority_parts, ignore_index=True) if priority_parts else train_y.iloc[0:0]
+    n_priority = len(priority_df)
+
+    per_other = non_priority_cap
+    if max_total is not None:
+        if max_total <= n_priority:
+            logger.warning("max_total=%s <= priority sample=%s: priority only", max_total, n_priority)
+            out = priority_df.drop(columns=["_label"], errors="ignore")
+            return out.head(max_total) if max_total < len(out) else out
+        if other_groups:
+            per_other = max(1, min(non_priority_cap, (max_total - n_priority) // len(other_groups)))
+
+    other_parts = [
+        _sample_group(grp, min(len(grp), per_other), label, seed) for label, grp in other_groups
+    ]
+
+    out = pd.concat([priority_df, *other_parts], ignore_index=True)
+    out = out.drop(columns=["_label"], errors="ignore")
+    counts_p = {lab: int((out["label_train"].astype(str) == lab).sum()) for lab in PRIORITY_COARSE_LABELS}
+    logger.info(
+        "Priority undersample train: %s -> %s (per_priority=%s cap_other=%s per_other~=%s)",
+        len(train_y),
+        len(out),
+        per_priority,
+        non_priority_cap,
+        per_other,
+    )
+    logger.info("Priority counts: %s", counts_p)
+    return out
+
+
+def apply_train_sample(
+    train_df: pd.DataFrame,
+    *,
+    mode: str,
+    seed: int,
+    max_total: int | None = None,
+    non_priority_cap: int | None = None,
+    priority_per_class_n: int | None = None,
+) -> pd.DataFrame:
+    if not max_total and mode != "priority_undersample":
+        return train_df
+    if mode == "priority_undersample":
+        return priority_undersample_train(
+            train_df,
+            seed,
+            max_total=max_total,
+            non_priority_cap=non_priority_cap,
+            priority_per_class_n=priority_per_class_n,
+        )
+    if max_total is None:
+        return train_df
+    return stratified_train_sample(train_df, max_total, seed=seed)
+
+
 def grid_search_c(
     train_df: pd.DataFrame,
     val_df: pd.DataFrame,
     seed: int = DEFAULT_SEED,
     *,
     boost_priority_classes: bool = False,
+    c_grid: list[float] | None = None,
 ) -> tuple[float, list[dict]]:
     x_train, y_train = _features_labels(train_df)
     x_val, y_val = _features_labels(val_df)
 
+    grid = [float(x) for x in (c_grid if c_grid is not None else C_GRID)]
     rows = []
-    best_c = C_GRID[0]
+    best_c = grid[0]
     best_loss = float("inf")
     classes = sorted(y_train.unique())
     logger.info(
@@ -99,12 +218,12 @@ def grid_search_c(
         len(y_train),
         len(y_val),
         len(classes),
-        C_GRID,
+        grid,
     )
 
     class_weight = _class_weights(y_train, boost_priority=boost_priority_classes)
-    for i, c in enumerate(C_GRID, start=1):
-        logger.info("Grid %s/%s: fitting C=%s (TF-IDF + logistic saga)...", i, len(C_GRID), c)
+    for i, c in enumerate(grid, start=1):
+        logger.info("Grid %s/%s: fitting C=%s (TF-IDF + logistic saga)...", i, len(grid), c)
         clf = LogisticRegression(
             C=c,
             solver="saga",

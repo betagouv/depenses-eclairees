@@ -27,7 +27,7 @@ config = environ.Env()
 config.read_env(BASE_DIR / ".env")
 
 
-TESTING = "pytest" in sys.argv[0] or ("manage.py" in sys.argv[0] and "test" in sys.argv[1])
+TESTING = "pytest" in sys.argv[0] or (len(sys.argv) > 1 and sys.argv[1] == "test")
 if TESTING:
     assert config.str("ENV") != "prod", "prod environment cannot be used for testing!"
     print("LOAD TEST ENVIRONMENT VARIABLES! (TESTING=True)")

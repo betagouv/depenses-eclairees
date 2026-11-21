@@ -17,7 +17,7 @@ Les libellés absent du mapping → ``None`` (hors train / pool rejet).
 from __future__ import annotations
 
 # Revision lisible dans les logs / rapports (pas un semver produit)
-HIERARCHY_REVISION = "2026-11-21e-split_ccp_ratio"
+HIERARCHY_REVISION = "2026-11-21f-merge_ccp_ae_ccap"
 
 # --- Coarse labels (ordre = doc / stabilité affichage) ---
 
@@ -30,6 +30,7 @@ COARSE_OFFRE_COMMERCIALE = COARSE_CATALOGUE_PRIX
 COARSE_DEVIS = "devis"
 COARSE_CCAP = "ccap"
 COARSE_CCTP = "cctp"
+# Libellés LLM (fin) : mappés vers AE / CCAP au train logreg, pas des parents coarse.
 COARSE_CCP_SIMPLE = "ccp_simple"
 COARSE_CCP_VAE = "ccp_vae"
 COARSE_AVENANT = "avenant"
@@ -51,8 +52,6 @@ COARSE_LABELS: tuple[str, ...] = (
     COARSE_DEVIS,
     COARSE_CCAP,
     COARSE_CCTP,
-    COARSE_CCP_SIMPLE,
-    COARSE_CCP_VAE,
     COARSE_AVENANT,
     COARSE_SOUS_TRAITANCE,
     COARSE_RIB,
@@ -68,15 +67,13 @@ COARSE_LABELS: tuple[str, ...] = (
 
 TRAINABLE_COARSE: frozenset[str] = frozenset(COARSE_LABELS)
 
-# KPI entraînement / seuils : ne pas rater le cœur métier (9 coarse, CCP scindé)
+# KPI entraînement / seuils : cœur métier (CCP absorbé par AE / CCAP côté coarse)
 PRIORITY_COARSE_LABELS: frozenset[str] = frozenset(
     {
         COARSE_ACTE_ENGAGEMENT,
         COARSE_CCAP,
         COARSE_SOUS_TRAITANCE,
         COARSE_RIB,
-        COARSE_CCP_SIMPLE,
-        COARSE_CCP_VAE,
         COARSE_AVENANT,
         COARSE_DEVIS,
     }
@@ -208,8 +205,6 @@ _LLM_IDENTITY_COARSE: frozenset[str] = frozenset(
         COARSE_DEVIS,
         COARSE_CCAP,
         COARSE_CCTP,
-        COARSE_CCP_SIMPLE,
-        COARSE_CCP_VAE,
         COARSE_AVENANT,
         COARSE_SOUS_TRAITANCE,
         COARSE_RIB,
@@ -219,8 +214,10 @@ _LLM_IDENTITY_COARSE: frozenset[str] = frozenset(
 
 _LLM_EXPLICIT: dict[str, str] = {
     "ca_chgt_rib": COARSE_RIB,
-    # Erreur de saisie fréquente en revue (CCAP vs CCP)
-    "ccap_vae": COARSE_CCP_VAE,
+    # CCP (fin) → parent logreg ; distinction fine hors ce classifieur
+    "ccp_simple": COARSE_CCAP,
+    "ccp_vae": COARSE_ACTE_ENGAGEMENT,
+    "ccap_vae": COARSE_ACTE_ENGAGEMENT,
 }
 
 # Rétrocompat rapports / alias prod

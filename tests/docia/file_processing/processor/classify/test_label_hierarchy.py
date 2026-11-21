@@ -38,9 +38,10 @@ def test_messagerie_and_contrats_mixte():
     assert map_llm_to_coarse("conv_financement") == COARSE_CONTRATS_MIXTE
 
 
-def test_ccp_identity_and_mitigations_nov_2026():
-    assert map_llm_to_coarse("ccp_simple") == "ccp_simple"
-    assert map_llm_to_coarse("ccp_vae") == "ccp_vae"
+def test_ccp_merged_into_ae_and_ccap_nov_2026():
+    assert map_llm_to_coarse("ccp_simple") == "ccap"
+    assert map_llm_to_coarse("ccp_vae") == "acte_engagement"
+    assert map_llm_to_coarse("ccap_vae") == "acte_engagement"
     assert map_llm_to_coarse("fiche_achat") == COARSE_EXECUTION_COMMANDE
     assert map_llm_to_coarse("application_revision_prix") == COARSE_EXECUTION_COMMANDE
     assert map_llm_to_coarse("reconduction") == COARSE_EXECUTION_COMMANDE
