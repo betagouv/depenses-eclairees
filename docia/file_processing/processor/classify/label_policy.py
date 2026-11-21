@@ -3,11 +3,19 @@ from docia.file_processing.processor.classify.constants import (
     FINANCIAL_TARGETS,
     MIN_TRAIN_PER_CLASS,
 )
+from docia.file_processing.processor.classify.label_hierarchy import map_llm_to_coarse
 
 
-def training_label(classification: str | None, merge_financial: bool) -> str | None:
+def training_label(
+    classification: str | None,
+    merge_financial: bool,
+    *,
+    coarse_hierarchy: bool = False,
+) -> str | None:
     if classification is None:
         return None
+    if coarse_hierarchy:
+        return map_llm_to_coarse(classification)
     if merge_financial and classification in FINANCIAL_TARGETS:
         return ANNEXE_FINANCIERE_LABEL
     return classification

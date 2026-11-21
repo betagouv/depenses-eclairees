@@ -30,6 +30,12 @@ from docia.file_processing.processor.classify.constants import (
     TEXT_HEAD_CHARS,
 )
 from docia.file_processing.processor.classify.fill_ratio import compute_ratio_data_extraction
+from docia.file_processing.processor.classify.label_hierarchy import (
+    LLM_EXTRA_TEXT_STREAM,
+    _LLM_CATALOGUE_PRIX,
+    all_trainable_llm_labels,
+    map_llm_to_coarse,
+)
 from docia.file_processing.processor.classify.text_prep import normalize_filename, prepare_text_head
 
 logger = logging.getLogger(__name__)
@@ -96,10 +102,16 @@ def _row_from_light(
     text: str | None,
     num_ej: str | None,
     sample_role: str | None,
+    *,
+    coarse_hierarchy: bool = False,
 ) -> dict[str, Any]:
     ratio = compute_ratio_data_extraction(item.get("structured_data"))
     filename = item.get("filename") or ""
     cls = item["classification"]
+    if coarse_hierarchy:
+        label_train = map_llm_to_coarse(cls)
+    else:
+        label_train = cls if cls in TARGET_CLASSES else None
     return {
         "id": str(item["id"]),
         "hash": item["hash"],
@@ -108,7 +120,7 @@ def _row_from_light(
         "text_2000": prepare_text_head(text or "", TEXT_HEAD_CHARS),
         "filename_normalized": normalize_filename(filename),
         "classification": cls,
-        "label_train": cls if cls in TARGET_CLASSES else None,
+        "label_train": label_train,
         "ratio_extracted": ratio,
         "analyzed_at": item.get("analyzed_at"),
         "sample_role": sample_role,
@@ -121,6 +133,18 @@ def _row_from_light(
 def _chunked(ids: list[Any], size: int) -> Iterable[list[Any]]:
     for i in range(0, len(ids), size):
         yield ids[i : i + size]
+
+
+def _coerce_uuid_list(ids: Iterable[Any]) -> list[Any]:
+    import uuid
+
+    out: list[Any] = []
+    for raw in ids:
+        try:
+            out.append(uuid.UUID(str(raw)))
+        except (TypeError, ValueError):
+            continue
+    return out
 
 
 def _median_by_class_floats(buckets: dict[str, list[float]]) -> dict[str, float]:
@@ -184,15 +208,16 @@ def _compute_medians_from_db() -> dict[str, float]:
 
 def _ej_map_for_ids(doc_ids: list[str]) -> dict[str, str]:
     through = Document.engagements.through
+    uuid_ids = _coerce_uuid_list(doc_ids)
     out: dict[str, str] = {}
-    for chunk in _chunked(doc_ids, 500):
+    for chunk in _chunked(uuid_ids, 500):
         for link in (
             through.objects.filter(document_id__in=chunk)
             .values("document_id")
             .annotate(num_ej=Min("engagement__num_ej"))
         ):
             if link["num_ej"]:
-                out[str(link["document_id"])] = link["num_ej"]
+                out[str(link["document_id"])] = str(link["num_ej"])
     return out
 
 
@@ -204,21 +229,73 @@ def _load_texts_map(ids: list[Any]) -> dict[str, str]:
     return out
 
 
-def _flush_batch_to_store(batch_items: list[dict], texts: dict[str, str], role: str, store: _HashDedupStore) -> None:
+def _flush_batch_to_store(
+    batch_items: list[dict],
+    texts: dict[str, str],
+    role: str,
+    store: _HashDedupStore,
+    *,
+    coarse_hierarchy: bool = False,
+) -> None:
     if not batch_items:
         return
     ej_map = _ej_map_for_ids([str(i["id"]) for i in batch_items])
     for item in batch_items:
-        row = _row_from_light(item, texts.get(str(item["id"]), ""), ej_map.get(str(item["id"])), role)
+        row = _row_from_light(
+            item,
+            texts.get(str(item["id"]), ""),
+            ej_map.get(str(item["id"])),
+            role,
+            coarse_hierarchy=coarse_hierarchy,
+        )
         if not (row["text_2000"] or "").strip():
             continue
         store.upsert(row)
 
 
-def _stream_ratio_targets(medians: dict[str, float], store: _HashDedupStore, stats: DatasetBuildStats) -> None:
+def _stream_plain_classifications(
+    classifications: Iterable[str],
+    store: _HashDedupStore,
+    role: str,
+    *,
+    coarse_hierarchy: bool,
+) -> None:
+    for cls in classifications:
+        batch: list[dict] = []
+        qs = (
+            Document.objects.filter(classification=cls)
+            .exclude(text__isnull=True)
+            .exclude(text="")
+            .values(*_LIGHT_FIELDS)
+            .iterator(chunk_size=MEDIAN_SAMPLE_CHUNK)
+        )
+        for item in qs:
+            batch.append(item)
+            if len(batch) >= ROW_BATCH_SIZE:
+                texts = _load_texts_map([i["id"] for i in batch])
+                _flush_batch_to_store(batch, texts, role, store, coarse_hierarchy=coarse_hierarchy)
+                batch.clear()
+        if batch:
+            texts = _load_texts_map([i["id"] for i in batch])
+            _flush_batch_to_store(batch, texts, role, store, coarse_hierarchy=coarse_hierarchy)
+
+
+def _stream_hierarchy_extra_targets(store: _HashDedupStore) -> None:
+    extra = sorted(LLM_EXTRA_TEXT_STREAM)
+    _stream_plain_classifications(extra, store, SAMPLE_ROLE_TARGET_TEXT, coarse_hierarchy=True)
+
+
+def _stream_ratio_targets(
+    medians: dict[str, float],
+    store: _HashDedupStore,
+    stats: DatasetBuildStats,
+    *,
+    coarse_hierarchy: bool = False,
+) -> None:
+    ratio_classes = CLASSES_RATIO_MEDIAN if coarse_hierarchy else TARGET_RATIO_MEDIAN
     batch: list[dict] = []
     qs = (
-        Document.objects.filter(classification__in=TARGET_RATIO_MEDIAN)
+        Document.objects.filter(classification__in=ratio_classes)
         .exclude(analyzed_at__isnull=True)
         .exclude(text__isnull=True)
         .exclude(text="")
@@ -233,54 +310,25 @@ def _stream_ratio_targets(medians: dict[str, float], store: _HashDedupStore, sta
         batch.append(item)
         if len(batch) >= ROW_BATCH_SIZE:
             texts = _load_texts_map([i["id"] for i in batch])
-            _flush_batch_to_store(batch, texts, SAMPLE_ROLE_TARGET_RATIO, store)
+            _flush_batch_to_store(batch, texts, SAMPLE_ROLE_TARGET_RATIO, store, coarse_hierarchy=coarse_hierarchy)
             batch.clear()
     if batch:
         texts = _load_texts_map([i["id"] for i in batch])
-        _flush_batch_to_store(batch, texts, SAMPLE_ROLE_TARGET_RATIO, store)
+        _flush_batch_to_store(batch, texts, SAMPLE_ROLE_TARGET_RATIO, store, coarse_hierarchy=coarse_hierarchy)
     logger.info("Ratio-median targets in store: %s", len(store))
 
 
-def _stream_text_dedup_classes(store: _HashDedupStore) -> None:
-    text_classes = [c for c in CLASSES_TEXT_DEDUP if c in TARGET_CLASSES]
-    for cls in text_classes:
-        batch: list[dict] = []
-        qs = (
-            Document.objects.filter(classification=cls)
-            .exclude(text__isnull=True)
-            .exclude(text="")
-            .values(*_LIGHT_FIELDS)
-            .iterator(chunk_size=MEDIAN_SAMPLE_CHUNK)
-        )
-        for item in qs:
-            batch.append(item)
-            if len(batch) >= ROW_BATCH_SIZE:
-                texts = _load_texts_map([i["id"] for i in batch])
-                _flush_batch_to_store(batch, texts, SAMPLE_ROLE_TARGET_TEXT, store)
-                batch.clear()
-        if batch:
-            texts = _load_texts_map([i["id"] for i in batch])
-            _flush_batch_to_store(batch, texts, SAMPLE_ROLE_TARGET_TEXT, store)
+def _stream_text_dedup_classes(store: _HashDedupStore, *, coarse_hierarchy: bool = False) -> None:
+    if coarse_hierarchy:
+        text_classes = sorted(_LLM_CATALOGUE_PRIX)
+    else:
+        text_classes = [c for c in CLASSES_TEXT_DEDUP if c in TARGET_CLASSES]
+    _stream_plain_classifications(text_classes, store, SAMPLE_ROLE_TARGET_TEXT, coarse_hierarchy=coarse_hierarchy)
 
 
-def _stream_cctp(store: _HashDedupStore) -> None:
-    batch: list[dict] = []
-    qs = (
-        Document.objects.filter(classification="cctp")
-        .exclude(text__isnull=True)
-        .exclude(text="")
-        .values(*_LIGHT_FIELDS)
-        .iterator(chunk_size=MEDIAN_SAMPLE_CHUNK)
-    )
-    for item in qs:
-        batch.append(item)
-        if len(batch) >= ROW_BATCH_SIZE:
-            texts = _load_texts_map([i["id"] for i in batch])
-            _flush_batch_to_store(batch, texts, SAMPLE_ROLE_REJECTION, store)
-            batch.clear()
-    if batch:
-        texts = _load_texts_map([i["id"] for i in batch])
-        _flush_batch_to_store(batch, texts, SAMPLE_ROLE_REJECTION, store)
+def _stream_cctp(store: _HashDedupStore, *, coarse_hierarchy: bool = False) -> None:
+    role = SAMPLE_ROLE_TARGET_TEXT if coarse_hierarchy else SAMPLE_ROLE_REJECTION
+    _stream_plain_classifications(["cctp"], store, role, coarse_hierarchy=coarse_hierarchy)
 
 
 def _sample_rejection_into_store(
@@ -289,9 +337,19 @@ def _sample_rejection_into_store(
     budget: int,
     seed: int,
     store: _HashDedupStore,
+    *,
+    coarse_hierarchy: bool = False,
 ) -> dict[str, int]:
     seen_hashes = store.hashes()
-    eligible = {c: n for c, n in prod_counts.items() if c not in TARGET_CLASSES and c != "cctp" and n > 0}
+    if coarse_hierarchy:
+        trainable_llm = all_trainable_llm_labels()
+        eligible = {
+            c: n
+            for c, n in prod_counts.items()
+            if c not in trainable_llm and map_llm_to_coarse(c) is None and n > 0
+        }
+    else:
+        eligible = {c: n for c, n in prod_counts.items() if c not in TARGET_CLASSES and c != "cctp" and n > 0}
     total_prod = sum(eligible.values())
     if total_prod == 0 or budget <= 0:
         return {}
@@ -337,7 +395,13 @@ def _sample_rejection_into_store(
             for item in chunk:
                 if item["hash"] in seen_hashes:
                     continue
-                row = _row_from_light(item, texts.get(str(item["id"]), ""), None, SAMPLE_ROLE_REJECTION)
+                row = _row_from_light(
+                    item,
+                    texts.get(str(item["id"]), ""),
+                    None,
+                    SAMPLE_ROLE_REJECTION,
+                    coarse_hierarchy=coarse_hierarchy,
+                )
                 row["label_train"] = None
                 if not (row["text_2000"] or "").strip():
                     continue
@@ -349,15 +413,19 @@ def _sample_rejection_into_store(
 def build_dataset_frame(
     seed: int = DEFAULT_SEED,
     rejection_budget: int | None = None,
+    *,
+    coarse_hierarchy: bool = False,
 ) -> tuple[pd.DataFrame, DatasetBuildStats]:
     stats = DatasetBuildStats()
     stats.prod_counts = fetch_prod_counts()
     stats.medians_by_class = _compute_medians_from_db()
 
     store = _HashDedupStore()
-    _stream_ratio_targets(stats.medians_by_class, store, stats)
-    _stream_text_dedup_classes(store)
-    _stream_cctp(store)
+    _stream_ratio_targets(stats.medians_by_class, store, stats, coarse_hierarchy=coarse_hierarchy)
+    _stream_text_dedup_classes(store, coarse_hierarchy=coarse_hierarchy)
+    _stream_cctp(store, coarse_hierarchy=coarse_hierarchy)
+    if coarse_hierarchy:
+        _stream_hierarchy_extra_targets(store)
     stats.dedup_dropped = store.dropped
 
     target_n = sum(1 for r in store.rows() if r.get("label_train"))
@@ -366,7 +434,12 @@ def build_dataset_frame(
         budget = min(REJECTION_BUDGET_DEFAULT, max(int(target_n * REJECTION_BUDGET_FRAC_OF_TARGETS), 1))
     stats.rejection_budget = budget
     stats.rejection_draw = _sample_rejection_into_store(
-        stats.prod_counts, stats.medians_by_class, budget, seed, store
+        stats.prod_counts,
+        stats.medians_by_class,
+        budget,
+        seed,
+        store,
+        coarse_hierarchy=coarse_hierarchy,
     )
     stats.row_count = len(store)
     rows = store.rows()

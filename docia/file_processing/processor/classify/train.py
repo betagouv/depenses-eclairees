@@ -10,10 +10,30 @@ import pandas as pd
 
 from docia.file_processing.processor.classify.constants import DEFAULT_SEED
 from docia.file_processing.processor.classify.features import build_model_pipeline
+from docia.file_processing.processor.classify.label_hierarchy import (
+    PRIORITY_CLASS_WEIGHT_FACTOR,
+    PRIORITY_COARSE_LABELS,
+)
 
 logger = logging.getLogger(__name__)
 
 C_GRID = [1e-3, 1e-2, 1e-1, 1, 10, 100]
+
+
+def _class_weights(y: pd.Series, *, boost_priority: bool) -> dict[str, float] | str:
+    if not boost_priority:
+        return "balanced"
+    labels = np.array(sorted(y.unique()))
+    n_samples = len(y)
+    n_classes = len(labels)
+    weight_map: dict[str, float] = {}
+    for label in labels:
+        n_label = (y == label).sum()
+        weight_map[str(label)] = float(n_samples / (n_classes * max(n_label, 1)))
+    for label in PRIORITY_COARSE_LABELS:
+        if label in weight_map:
+            weight_map[label] *= PRIORITY_CLASS_WEIGHT_FACTOR
+    return weight_map
 
 
 def _features_labels(df: pd.DataFrame, label_col: str = "label_train"):
@@ -60,7 +80,13 @@ def baseline_filename_rule(val_df: pd.DataFrame, label_col: str = "label_train")
     return {"filename_rules_macro_f1": float(macro_f1)}
 
 
-def grid_search_c(train_df: pd.DataFrame, val_df: pd.DataFrame, seed: int = DEFAULT_SEED) -> tuple[float, list[dict]]:
+def grid_search_c(
+    train_df: pd.DataFrame,
+    val_df: pd.DataFrame,
+    seed: int = DEFAULT_SEED,
+    *,
+    boost_priority_classes: bool = False,
+) -> tuple[float, list[dict]]:
     x_train, y_train = _features_labels(train_df)
     x_val, y_val = _features_labels(val_df)
 
@@ -76,38 +102,70 @@ def grid_search_c(train_df: pd.DataFrame, val_df: pd.DataFrame, seed: int = DEFA
         C_GRID,
     )
 
+    class_weight = _class_weights(y_train, boost_priority=boost_priority_classes)
     for i, c in enumerate(C_GRID, start=1):
         logger.info("Grid %s/%s: fitting C=%s (TF-IDF + logistic saga)...", i, len(C_GRID), c)
         clf = LogisticRegression(
             C=c,
             solver="saga",
             max_iter=2000,
-            class_weight="balanced",
+            class_weight=class_weight,
             random_state=seed,
         )
         pipe = build_model_pipeline(clf)
         pipe.fit(x_train, y_train)
-        proba = pipe.predict_proba(x_val)
-        loss = log_loss(y_val, proba, labels=classes)
-        pred = pipe.predict(x_val)
-        macro_f1 = f1_score(y_val, pred, average="macro", zero_division=0)
-        rows.append({"C": c, "log_loss": loss, "macro_f1": macro_f1})
-        logger.info("Grid C=%s: val log_loss=%.4f macro_f1=%.4f%s", c, loss, macro_f1, " (best)" if loss < best_loss else "")
-        if loss < best_loss:
-            best_loss = loss
+        proba_val = pipe.predict_proba(x_val)
+        val_loss = log_loss(y_val, proba_val, labels=classes)
+        val_f1 = f1_score(y_val, pipe.predict(x_val), average="macro", zero_division=0)
+        proba_train = pipe.predict_proba(x_train)
+        train_loss = log_loss(y_train, proba_train, labels=classes)
+        train_f1 = f1_score(y_train, pipe.predict(x_train), average="macro", zero_division=0)
+        gap_loss = train_loss - val_loss
+        gap_f1 = train_f1 - val_f1
+        rows.append(
+            {
+                "C": c,
+                "train_log_loss": train_loss,
+                "val_log_loss": val_loss,
+                "log_loss": val_loss,
+                "train_macro_f1": train_f1,
+                "val_macro_f1": val_f1,
+                "macro_f1": val_f1,
+                "overfit_loss_gap": gap_loss,
+                "overfit_f1_gap": gap_f1,
+            }
+        )
+        logger.info(
+            "Grid C=%s: train loss=%.4f f1=%.4f | val loss=%.4f f1=%.4f | gap_f1=%+.4f%s",
+            c,
+            train_loss,
+            train_f1,
+            val_loss,
+            val_f1,
+            gap_f1,
+            " (best val loss)" if val_loss < best_loss else "",
+        )
+        if val_loss < best_loss:
+            best_loss = val_loss
             best_c = c
     logger.info("Grid search done: best_C=%s val_log_loss=%.4f", best_c, best_loss)
     return best_c, rows
 
 
-def fit_classifier(train_df: pd.DataFrame, c: float, seed: int = DEFAULT_SEED):
+def fit_classifier(
+    train_df: pd.DataFrame,
+    c: float,
+    seed: int = DEFAULT_SEED,
+    *,
+    boost_priority_classes: bool = False,
+):
     x, y = _features_labels(train_df)
     logger.info("Final fit on full train split: n=%s C=%s", len(y), c)
     clf = LogisticRegression(
         C=c,
         solver="saga",
         max_iter=3000,
-        class_weight="balanced",
+        class_weight=_class_weights(y, boost_priority=boost_priority_classes),
         random_state=seed,
     )
     pipe = build_model_pipeline(clf)

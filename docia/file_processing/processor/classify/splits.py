@@ -20,7 +20,7 @@ def _assign_ej_splits(df_targets: pd.DataFrame, seed: int) -> dict[str, str]:
         ej = row.get("num_ej")
         if ej is None or (isinstance(ej, float) and np.isnan(ej)):
             continue
-        ej_groups.setdefault(str(ej), []).append(str(row["classification"]))
+        ej_groups.setdefault(str(ej), []).append(str(row.get("label_train") or row["classification"]))
 
     ejs = list(ej_groups.keys())
     if not ejs:
@@ -86,9 +86,20 @@ def _assign_ej_splits(df_targets: pd.DataFrame, seed: int) -> dict[str, str]:
     return mapping
 
 
-def assign_splits(df: pd.DataFrame, seed: int = DEFAULT_SEED) -> tuple[pd.DataFrame, bool]:
+def assign_splits(df: pd.DataFrame, seed: int = DEFAULT_SEED, *, coarse_hierarchy: bool = False) -> tuple[pd.DataFrame, bool]:
     out = df.copy()
-    targets = out[out["classification"].isin(TARGET_CLASSES)].copy()
+    if coarse_hierarchy:
+        if "label_train" not in out.columns:
+            out["label_train"] = None
+        missing = out["label_train"].isna() & out["classification"].notna()
+        if missing.any():
+            out.loc[missing, "label_train"] = out.loc[missing, "classification"].map(
+                lambda c: training_label(c, False, coarse_hierarchy=True)
+            )
+        targets = out[out["label_train"].notna()].copy()
+        merge_financial = False
+    else:
+        targets = out[out["classification"].isin(TARGET_CLASSES)].copy()
     ej_map = _assign_ej_splits(targets, seed)
 
     rng = np.random.default_rng(seed)
@@ -108,13 +119,13 @@ def assign_splits(df: pd.DataFrame, seed: int = DEFAULT_SEED) -> tuple[pd.DataFr
 
     out["split"] = out.apply(_split_for_row, axis=1)
 
-    train_counts = out[out["split"] == "train"]["classification"].value_counts().to_dict()
-    merge_financial = needs_annexe_financiere_merge({str(k): int(v) for k, v in train_counts.items()})
-
-    if merge_financial:
-        out["label_train"] = out["classification"].map(lambda c: training_label(c, True))
-    else:
-        out["label_train"] = out["classification"].where(out["classification"].isin(TARGET_CLASSES))
+    if not coarse_hierarchy:
+        train_counts = out[out["split"] == "train"]["classification"].value_counts().to_dict()
+        merge_financial = needs_annexe_financiere_merge({str(k): int(v) for k, v in train_counts.items()})
+        if merge_financial:
+            out["label_train"] = out["classification"].map(lambda c: training_label(c, True))
+        else:
+            out["label_train"] = out["classification"].where(out["classification"].isin(TARGET_CLASSES))
 
     return out, merge_financial
 

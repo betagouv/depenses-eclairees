@@ -4,6 +4,7 @@ from pathlib import Path
 
 from tabulate import tabulate
 
+import numpy as np
 import pandas as pd
 
 from docia.file_processing.processor.classify.constants import (
@@ -103,11 +104,24 @@ def write_train_reports(
 ) -> None:
     rep = _reports_dir(output_dir)
     pd.DataFrame(grid_rows).to_csv(rep / "03_grid_search.csv", index=False)
+    grid_df = pd.DataFrame(grid_rows)
+    overfit_hint = ""
+    if not grid_df.empty and "overfit_f1_gap" in grid_df.columns:
+        match = grid_df.loc[np.isclose(grid_df["C"].astype(float), float(best_c))]
+        row = match.iloc[0] if len(match) else grid_df.loc[grid_df["val_log_loss"].idxmin()]
+        overfit_hint = (
+            f"\n## Overfit check (best C on val)\n\n"
+            f"- train_macro_f1: {row.get('train_macro_f1')}\n"
+            f"- val_macro_f1: {row.get('val_macro_f1')}\n"
+            f"- overfit_f1_gap (train − val): {row.get('overfit_f1_gap')}\n"
+            f"- overfit_loss_gap (train − val): {row.get('overfit_loss_gap')}\n"
+            "\nÉcart F1 train ≫ val ou val loss qui remonte quand C augmente → régulariser plus (C plus petit).\n"
+        )
     lines = [
         "# Train summary",
         "",
-        f"Best C: {best_c}",
-        "",
+        f"Best C: {best_c} (sélection sur val log_loss)",
+        overfit_hint,
         "## Baseline",
         "",
         tabulate(baseline.items(), headers=["metric", "value"]),

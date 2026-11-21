@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from docia.file_processing.processor.classify.artifacts import save_thresholds
+from docia.file_processing.processor.classify.label_hierarchy import PRIORITY_COARSE_LABELS
 
 
 def _features(df: pd.DataFrame) -> pd.DataFrame:
@@ -31,7 +32,55 @@ def predict_frame(model, df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def choose_thresholds(calib_df: pd.DataFrame, model) -> tuple[float, float]:
+def priority_capture_rate(
+    scored: pd.DataFrame,
+    tau: float,
+    margin: float,
+    *,
+    priority_labels: frozenset[str] | None = None,
+) -> float:
+    """
+    Part des docs prioritaires correctement classés ET acceptés (rejet = oubli).
+    """
+    priority = priority_labels or PRIORITY_COARSE_LABELS
+    pri = scored[scored["label_train"].astype(str).isin(priority)]
+    if pri.empty:
+        return 0.0
+    accept = (pri["max_proba"] >= tau) & (pri["margin"] >= margin)
+    correct = pri["pred"].astype(str) == pri["label_train"].astype(str)
+    return float((accept & correct).sum() / len(pri))
+
+
+def priority_metrics(
+    scored: pd.DataFrame,
+    tau: float,
+    margin: float,
+    *,
+    priority_labels: frozenset[str] | None = None,
+) -> dict[str, float]:
+    """Rappel par classe prioritaire + capture globale (rejet = miss)."""
+    priority = priority_labels or PRIORITY_COARSE_LABELS
+    pri = scored[scored["label_train"].notna() & scored["label_train"].astype(str).isin(priority)].copy()
+    if pri.empty:
+        return {"priority_capture_rate": 0.0, "priority_min_class_recall": 0.0}
+    accept = (pri["max_proba"] >= tau) & (pri["margin"] >= margin)
+    correct = pri["pred"].astype(str) == pri["label_train"].astype(str)
+    pri["hit"] = accept & correct
+    per_class = pri.groupby(pri["label_train"].astype(str), observed=True)["hit"].mean()
+    return {
+        "priority_capture_rate": float(pri["hit"].mean()),
+        "priority_min_class_recall": float(per_class.min()) if len(per_class) else 0.0,
+        **{f"priority_recall_{k}": float(v) for k, v in per_class.items()},
+    }
+
+
+def choose_thresholds(
+    calib_df: pd.DataFrame,
+    model,
+    *,
+    optimize_priority: bool = False,
+    priority_labels: frozenset[str] | None = None,
+) -> tuple[float, float]:
     scored = predict_frame(model, calib_df)
     targets = scored[scored["label_train"].notna()]
     rejections = scored[scored["label_train"].isna()]
@@ -47,7 +96,14 @@ def choose_thresholds(calib_df: pd.DataFrame, model) -> tuple[float, float]:
             false_accept = 0.0
             if len(rejections):
                 false_accept = ((rejections["max_proba"] >= tau) & (rejections["margin"] >= margin)).mean()
-            score = acc - false_accept
+            if optimize_priority:
+                cap = priority_capture_rate(scored, tau, margin, priority_labels=priority_labels)
+                min_rec = priority_metrics(scored, tau, margin, priority_labels=priority_labels)[
+                    "priority_min_class_recall"
+                ]
+                score = 0.55 * cap + 0.25 * min_rec + 0.2 * acc - false_accept
+            else:
+                score = acc - false_accept
             if score > best_score:
                 best_score = score
                 best_tau, best_margin = float(tau), float(margin)
@@ -61,7 +117,15 @@ def apply_reject(pred_df: pd.DataFrame, tau: float, margin: float) -> pd.Series:
     return out
 
 
-def evaluate_test(test_df: pd.DataFrame, model, tau: float, margin: float) -> tuple[dict, pd.DataFrame]:
+def evaluate_test(
+    test_df: pd.DataFrame,
+    model,
+    tau: float,
+    margin: float,
+    *,
+    report_priority: bool = False,
+    priority_labels: frozenset[str] | None = None,
+) -> tuple[dict, pd.DataFrame]:
     scored = predict_frame(model, test_df)
     scored["pred_with_reject"] = apply_reject(scored, tau, margin)
     labeled = scored[scored["label_train"].notna()].copy()
@@ -71,7 +135,9 @@ def evaluate_test(test_df: pd.DataFrame, model, tau: float, margin: float) -> tu
     report = classification_report(y_true, y_pred, zero_division=0, output_dict=True)
     cm = confusion_matrix(y_true, y_pred, labels=sorted(y_true.unique()))
     cm_df = pd.DataFrame(cm, index=sorted(y_true.unique()), columns=sorted(y_true.unique()))
-    metrics = {"macro_f1": float(macro_f1), "classification_report": report}
+    metrics: dict = {"macro_f1": float(macro_f1), "classification_report": report}
+    if report_priority:
+        metrics.update(priority_metrics(scored, tau, margin, priority_labels=priority_labels))
     return metrics, cm_df
 
 

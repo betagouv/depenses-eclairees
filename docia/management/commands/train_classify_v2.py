@@ -17,6 +17,14 @@ class Command(BaseCommand):
         parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
         parser.add_argument("--require-human-audit", action="store_true")
         parser.add_argument("--audit-csv", type=Path, default=None)
+        parser.add_argument("--disagreement-review-csv", type=Path, default=None)
+        parser.add_argument("--merge-financial", action="store_true")
+        parser.add_argument("--write-patched-parquet", action="store_true")
+        parser.add_argument(
+            "--coarse-hierarchy",
+            action="store_true",
+            help="Train sur label_train coarse (label_hierarchy.py, 19 parents)",
+        )
 
     def handle(self, *args, **options):
         run_training(
@@ -24,5 +32,9 @@ class Command(BaseCommand):
             seed=options["seed"],
             require_human_audit=options["require_human_audit"],
             audit_csv=options["audit_csv"],
+            disagreement_review_csv=options["disagreement_review_csv"],
+            merge_financial=options["merge_financial"],
+            write_patched_parquet=options["write_patched_parquet"],
+            coarse_hierarchy=options["coarse_hierarchy"],
         )
         self.stdout.write(self.style.SUCCESS("Training complete; see data/classify_v2/reports/"))

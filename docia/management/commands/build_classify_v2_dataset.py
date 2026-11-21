@@ -18,6 +18,11 @@ class Command(BaseCommand):
         parser.add_argument("--rejection-budget", type=int, default=None)
         parser.add_argument("--strict-audit", action="store_true")
         parser.add_argument("--stop-after-audit", action="store_true")
+        parser.add_argument(
+            "--coarse-hierarchy",
+            action="store_true",
+            help="Dataset avec parents coarse (label_hierarchy.py, 19 classes trainables)",
+        )
 
     def handle(self, *args, **options):
         path = run_dataset_build(
@@ -26,5 +31,6 @@ class Command(BaseCommand):
             rejection_budget=options["rejection_budget"],
             strict_audit=options["strict_audit"],
             stop_after_audit=options["stop_after_audit"],
+            coarse_hierarchy=options["coarse_hierarchy"],
         )
         self.stdout.write(self.style.SUCCESS(f"Dataset written to {path}"))

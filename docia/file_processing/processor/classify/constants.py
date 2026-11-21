@@ -15,6 +15,16 @@ TARGET_CLASSES: frozenset[str] = frozenset(
     }
 )
 
+# Fine labels (V1) encore utilisés pour audits cœur quatre
+CORE_FOUR_MISSED_TRACKING: frozenset[str] = frozenset(
+    {
+        "acte_engagement",
+        "ccap",
+        "sous_traitance",
+        "rib",
+    }
+)
+
 CLASSES_RATIO_MEDIAN: frozenset[str] = CLASSIFICATIONS_AFFICHEES | {"devis"}
 
 TARGET_RATIO_MEDIAN: frozenset[str] = CLASSES_RATIO_MEDIAN & TARGET_CLASSES
