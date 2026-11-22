@@ -14,12 +14,18 @@ import zipfile
 
 import docx2txt
 import pymupdf
-import tesserocr
 from PIL import Image
 
 from docia.file_processing.llm.client import LLMClient
 
 logger = logging.getLogger("docia." + __name__)
+
+
+def _tesserocr():
+    """Import différé : tesserocr/cysignals exige le thread principal (ex. Streamlit)."""
+    import tesserocr
+
+    return tesserocr
 
 
 def extract_text_from_pdf(file_content: bytes, word_threshold=50, ocr_tool: str = "mistral-ocr"):
@@ -45,7 +51,7 @@ def extract_text_from_pdf(file_content: bytes, word_threshold=50, ocr_tool: str 
         for i in range(len(doc)):
             pix = doc.load_page(i).get_pixmap(matrix=pymupdf.Matrix(2, 2))
             img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-            parts.append(tesserocr.image_to_text(img, lang="fra").strip())
+            parts.append(_tesserocr().image_to_text(img, lang="fra").strip())
         text = "\n\n".join(parts).strip()
     else:
         llm_client = LLMClient()
@@ -141,7 +147,7 @@ def extract_text_from_image(file_content: bytes, file_path: str):
     """
     try:
         image = Image.open(io.BytesIO(file_content))
-        text_ocr = tesserocr.image_to_text(image, lang="fra").strip()
+        text_ocr = _tesserocr().image_to_text(image, lang="fra").strip()
         if not text_ocr:
             print(f"Attention: Aucun texte détecté dans l'image {file_path}")
             return "", True

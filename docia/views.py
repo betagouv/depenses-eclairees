@@ -5,26 +5,13 @@ from datetime import datetime
 from django.shortcuts import render
 
 from . import forms
+from .file_processing.processor.classify.constants import CLASSIFICATIONS_AFFICHEES
 from .file_processing.processor.classifier import DIC_CLASS_FILE_BY_NAME
 from .models import Document, TrackingEvent
 from .permissions.checks import user_can_view_ej
 from .ratelimit.services import check_rate_limit_for_user
 
 logger = logging.getLogger(__name__)
-
-# Classifications traitées mais non affichées dans la catégorie analysée (pas encore prêtes)
-CLASSIFICATIONS_AFFICHEES = frozenset(
-    {
-        "acte_engagement",
-        "ccp_vae",
-        "ccap",
-        "ccp_simple",
-        "rib",
-        "fiche_navette",
-        "sous_traitance",
-        "avenant",
-    }
-)
 
 # Ordre d'affichage des catégories (chaque catégorie triée par taux de remplissage décroissant)
 ORDER_CLASSIFICATIONS = (

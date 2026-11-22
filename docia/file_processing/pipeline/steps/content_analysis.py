@@ -7,26 +7,11 @@ from celery import shared_task
 from docia.file_processing.models import ProcessDocumentStep
 from docia.file_processing.pipeline.steps.base import AbstractStepRunner, SkipStepException
 from docia.file_processing.processor import analyze_content as processor
+from docia.file_processing.processor.classify.constants import CONTENT_ANALYSIS_CLASSIFICATIONS
 
 logger = logging.getLogger(__name__)
 
-
-SUPPORTED_DOCUMENT_TYPES = [
-    "devis",
-    "facture",
-    "fiche_navette",
-    "acte_engagement",
-    "ccp_vae",
-    "bon_de_commande",
-    "avenant",
-    "conv_financement",
-    "sous_traitance",
-    "rib",
-    "att_sirene",
-    "kbis",
-    "ccap",
-    "ccp_simple",
-]
+SUPPORTED_DOCUMENT_TYPES = sorted(CONTENT_ANALYSIS_CLASSIFICATIONS)
 
 
 class AnalyzeContentStepRunner(AbstractStepRunner):

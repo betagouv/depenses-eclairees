@@ -12,7 +12,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from docia.documents.models import Document
-from docia.file_processing.processor.classify.artifacts import load_pipeline
+from docia.file_processing.processor.classify.artifacts import load_pipeline, load_thresholds
 from docia.file_processing.processor.classify.constants import (
     CLASSIFIER_ARTIFACT_NAME,
     TARGET_CLASSES,
@@ -53,14 +53,6 @@ def load_medians_by_class(output_dir: Path, *, recompute: bool = False) -> dict[
                 return {str(k): float(v) for k, v in medians.items()}
     logger.info("Computing medians from database (same rule as dataset build)")
     return _compute_medians_from_db()
-
-
-def load_thresholds(output_dir: Path) -> tuple[float, float]:
-    path = output_dir / THRESHOLD_ARTIFACT_NAME
-    if path.is_file():
-        data = json.loads(path.read_text(encoding="utf-8"))
-        return float(data["tau"]), float(data["margin"])
-    return 0.95, 0.0
 
 
 def _rows_to_frame(

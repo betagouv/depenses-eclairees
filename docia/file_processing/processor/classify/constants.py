@@ -1,6 +1,46 @@
 from pathlib import Path
 
-from docia.views import CLASSIFICATIONS_AFFICHEES
+# Partagé avec l'UI Django (éviter constants → views → classifier → Django au import)
+# Périmètre étape pipeline CONTENT_ANALYSIS (source unique).
+CONTENT_ANALYSIS_CLASSIFICATIONS: frozenset[str] = frozenset(
+    {
+        "devis",
+        "facture",
+        "fiche_navette",
+        "acte_engagement",
+        "ccp_vae",
+        "bon_de_commande",
+        "avenant",
+        "conv_financement",
+        "sous_traitance",
+        "rib",
+        "att_sirene",
+        "kbis",
+        "ccap",
+        "ccp_simple",
+    }
+)
+
+# Démo P1 après logreg : mistral OCR doc entier (AE, sous-traitance).
+PIPELINE1_MISTRAL_OCR_LABELS: frozenset[str] = frozenset({"acte_engagement", "sous_traitance"})
+
+# Autres classes à analyser : Tesseract / PyMuPDF4LLM sur tout le PDF.
+PIPELINE1_TESSERACT_FULL_OCR_LABELS: frozenset[str] = (
+    CONTENT_ANALYSIS_CLASSIFICATIONS - PIPELINE1_MISTRAL_OCR_LABELS
+)
+
+CLASSIFICATIONS_AFFICHEES: frozenset[str] = frozenset(
+    {
+        "acte_engagement",
+        "ccp_vae",
+        "ccap",
+        "ccp_simple",
+        "rib",
+        "fiche_navette",
+        "sous_traitance",
+        "avenant",
+    }
+)
 
 TARGET_CLASSES: frozenset[str] = frozenset(
     {

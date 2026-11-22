@@ -28,3 +28,11 @@ def save_thresholds(output_dir: Path, tau: float, margin: float, *, extra: dict 
         payload.update(extra)
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return path
+
+
+def load_thresholds(output_dir: Path) -> tuple[float, float]:
+    path = output_dir / THRESHOLD_ARTIFACT_NAME
+    if path.is_file():
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return float(data["tau"]), float(data["margin"])
+    return 0.95, 0.0
