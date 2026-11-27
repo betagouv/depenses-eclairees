@@ -34,5 +34,8 @@ report/analyze_structure_marche/*.json
 report/analyze_structure_marche/*.log
 report/analyze_structure_marche/*.zip
 /data/classify_v2/
+!/data/classify_v2/releases/
+/data/classify_v2/releases/**
+!/data/classify_v2/releases/**/RELEASE.md
 /data/classify_test_final/*
 !/data/classify_test_final/README.md

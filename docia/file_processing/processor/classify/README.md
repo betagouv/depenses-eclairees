@@ -27,6 +27,17 @@ ne couvraient pas les 19 parents au train).
 
 Artifacts live under `data/classify_v2/` (gitignored).
 
+### Geler une release (garder un modèle)
+
+```bash
+python manage.py freeze_classify_v2_release \
+  --tag 2026-11-22_macro-f1-0.73 \
+  --note "Baseline post-retrain F1=0.73"
+```
+
+Copie `classify_v2_pipeline.joblib`, seuils, `05_metrics.json` / résumés test dans
+`data/classify_v2/releases/<tag>/`. Seul `RELEASE.md` est versionné (git) ; les `.joblib` restent locaux.
+
 ## Golden test set (Grist, hors train V2)
 
 Le jeu **test final** (`data/classify_test_final/`) fusionne `Classif_gt` et les tables `*_gt` des tests e2e.

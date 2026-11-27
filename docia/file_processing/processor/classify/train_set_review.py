@@ -16,7 +16,7 @@ from docia.file_processing.processor.classify.constants import (
     DEFAULT_OUTPUT_DIR,
 )
 from docia.file_processing.processor.classify.disagreement_review import REVIEW_COLUMNS, _attach_review_context
-from docia.file_processing.processor.classify.evaluate import apply_reject, predict_frame
+from docia.file_processing.processor.classify.evaluate import accept_mask, apply_reject, predict_frame
 from docia.file_processing.processor.classify.label_hierarchy import (
     HIERARCHY_REVISION,
     PRIORITY_COARSE_LABELS,
@@ -55,6 +55,7 @@ SCORED_COLUMNS = [
     "nb_mot",
     "text_2000",
     "filename_normalized",
+    "split",
 ]
 
 
@@ -87,26 +88,22 @@ def _priority_score_coarse(row: pd.Series) -> float:
     return prob + 0.25 * margin + boost
 
 
-def score_train_split_from_parquet(
-    output_dir: Path | None = None,
+def score_split_to_frame(
+    output_dir: Path,
+    split: str,
     *,
     parquet_path: Path | None = None,
-    out_path: Path | None = None,
     batch_size: int = 8_000,
     max_rows: int | None = None,
-) -> Path:
-    """Score le split ``train`` du parquet V2 (offline) avec le joblib courant."""
-    output_dir = (output_dir or DEFAULT_OUTPUT_DIR).resolve()
+) -> pd.DataFrame:
+    """Score un split (train, calib, …) du parquet V2 et renvoie un DataFrame scored."""
+    output_dir = output_dir.resolve()
     parquet_path = (parquet_path or (output_dir / "documents_raw.parquet")).resolve()
     if not parquet_path.is_file():
         raise FileNotFoundError(parquet_path)
     artifact = output_dir / CLASSIFIER_ARTIFACT_NAME
     if not artifact.is_file():
         raise FileNotFoundError(f"Missing classifier at {artifact}")
-
-    out_path = (out_path or (output_dir / "train_scored.parquet")).resolve()
-    if out_path.is_file():
-        out_path.unlink()
 
     medians = load_medians_by_class(output_dir)
     tau, margin = load_thresholds(output_dir)
@@ -125,11 +122,12 @@ def score_train_split_from_parquet(
         "ratio_extracted",
         "split",
     ]
-    pf = pq.ParquetFile(parquet_path)
+    parts: list[pd.DataFrame] = []
     scored_n = 0
+    pf = pq.ParquetFile(parquet_path)
     for batch in pf.iter_batches(batch_size=batch_size, columns=cols):
         chunk = batch.to_pandas()
-        chunk = chunk.loc[chunk["split"] == "train"].copy()
+        chunk = chunk.loc[chunk["split"].astype(str) == split].copy()
         if chunk.empty:
             continue
         chunk = chunk.loc[chunk["text_2000"].fillna("").astype(str).str.strip().astype(bool)]
@@ -151,33 +149,55 @@ def score_train_split_from_parquet(
             errors="coerce",
         )
         scored["num_ej"] = scored["num_ej"].fillna("").astype(str)
+        scored["split"] = split
 
         slim = scored.loc[scored["llm_coarse"].notna()].copy()
         if slim.empty:
             continue
         slim = slim.drop(columns=["pred"], errors="ignore")
         keep = [c for c in SCORED_COLUMNS if c in slim.columns]
-        table = pa.Table.from_pandas(slim[keep], preserve_index=False)
-        if out_path.is_file():
-            existing = pq.read_table(out_path)
-            table = pa.concat_tables([existing, table])
-        pq.write_table(table, out_path)
+        parts.append(slim[keep])
         scored_n += len(slim)
-        logger.info("Train scored batch: +%s (total=%s)", len(slim), scored_n)
+        logger.info("%s scored batch: +%s (total=%s)", split, len(slim), scored_n)
 
-    if not out_path.is_file():
-        raise RuntimeError("No train rows scored")
+    if not parts:
+        raise RuntimeError(f"No rows scored for split={split!r}")
+    return pd.concat(parts, ignore_index=True)
+
+
+def score_train_split_from_parquet(
+    output_dir: Path | None = None,
+    *,
+    parquet_path: Path | None = None,
+    out_path: Path | None = None,
+    batch_size: int = 8_000,
+    max_rows: int | None = None,
+) -> Path:
+    """Score le split ``train`` du parquet V2 (offline) avec le joblib courant."""
+    output_dir = (output_dir or DEFAULT_OUTPUT_DIR).resolve()
+    out_path = (out_path or (output_dir / "train_scored.parquet")).resolve()
+    if out_path.is_file():
+        out_path.unlink()
+
+    frame = score_split_to_frame(
+        output_dir,
+        "train",
+        parquet_path=parquet_path,
+        batch_size=batch_size,
+        max_rows=max_rows,
+    )
+    pq.write_table(pa.Table.from_pandas(frame, preserve_index=False), out_path)
+
+    tau, margin = load_thresholds(output_dir)
     meta = output_dir / "reports" / "13_train_scoring_summary.md"
     meta.parent.mkdir(parents=True, exist_ok=True)
-    full = pd.read_parquet(out_path)
-    disagree = full.loc[~full["agree_coarse"]]
+    disagree = frame.loc[~frame["agree_coarse"]]
     meta.write_text(
         f"# Train split scoring\n\n"
-        f"parquet: {parquet_path.name}\n"
         f"hierarchy_revision: {HIERARCHY_REVISION}\n"
         f"tau={tau}, margin={margin}\n"
-        f"scored: {len(full)}\n"
-        f"coarse_disagree: {len(disagree)} ({len(disagree)/len(full):.4f})\n",
+        f"scored: {len(frame)}\n"
+        f"coarse_disagree: {len(disagree)} ({len(disagree)/len(frame):.4f})\n",
         encoding="utf-8",
     )
     return out_path
@@ -296,6 +316,150 @@ def export_train_disagreement_review(
     )
     logger.info("Wrote train review sample %s rows -> %s", len(sample), out_path)
     return out_path, pairs_path
+
+
+def _load_scored_splits_frames(
+    output_dir: Path,
+    *,
+    scored_parquet: Path | None = None,
+    rescore: bool = False,
+    extra_splits: tuple[str, ...] = ("calib", "test"),
+) -> pd.DataFrame:
+    scored_path = scored_parquet or (output_dir / "train_scored.parquet")
+    if rescore or not scored_path.is_file():
+        score_train_split_from_parquet(output_dir, out_path=scored_path)
+    train_scored = pd.read_parquet(scored_path)
+    if "split" not in train_scored.columns:
+        train_scored["split"] = "train"
+    frames = [train_scored]
+    for sp in extra_splits:
+        if sp == "train":
+            continue
+        frames.append(score_split_to_frame(output_dir, sp))
+    return pd.concat(frames, ignore_index=True)
+
+
+def export_coarse_classes_below_threshold_review(
+    output_dir: Path | None = None,
+    *,
+    coarse_classes: tuple[str, ...],
+    scored_parquet: Path | None = None,
+    rescore: bool = False,
+    extra_splits: tuple[str, ...] = ("calib", "test"),
+    review_csv_name: str = "15_train_ccap_below_threshold_review.csv",
+    summary_json_name: str = "15_train_ccap_below_threshold_summary.json",
+) -> tuple[Path, Path]:
+    """
+    Export exhaustif sous seuil prod pour plusieurs ``label_train`` coarse dans un seul CSV.
+    """
+    output_dir = (output_dir or DEFAULT_OUTPUT_DIR).resolve()
+    rep = output_dir / "reports"
+    rep.mkdir(parents=True, exist_ok=True)
+    tau, margin_th = load_thresholds(output_dir)
+    full = _load_scored_splits_frames(
+        output_dir,
+        scored_parquet=scored_parquet,
+        rescore=rescore,
+        extra_splits=extra_splits,
+    )
+
+    below_parts: list[pd.DataFrame] = []
+    by_class: dict[str, dict] = {}
+    for coarse_class in coarse_classes:
+        subset = full.loc[full["label_train"].astype(str).eq(coarse_class)].copy()
+        if subset.empty:
+            logger.warning("No rows for label_train=%s", coarse_class)
+            continue
+        accept = accept_mask(subset, tau, margin_th)
+        below = subset.loc[~accept].copy()
+        below["threshold_tau"] = tau
+        below["threshold_margin"] = margin_th
+        below["below_tau"] = below["max_proba"] < tau - 1e-12
+        below["below_margin"] = below["margin"] < margin_th - 1e-12
+        below["argmax_is_label"] = below["logreg_coarse"].astype(str) == coarse_class
+        below_parts.append(below)
+
+        by_split: dict[str, dict[str, float | int]] = {}
+        for sp, sub in subset.groupby(subset["split"].astype(str), observed=True):
+            bel = below.loc[below["split"].astype(str) == sp]
+            by_split[sp] = {
+                "label_rows": len(sub),
+                "below_threshold_rows": len(bel),
+                "below_threshold_frac": len(bel) / len(sub) if len(sub) else 0.0,
+                "argmax_is_label_below": int(bel["argmax_is_label"].sum()) if len(bel) else 0,
+            }
+        by_class[coarse_class] = {
+            "by_split": by_split,
+            "below_threshold_rows": len(below),
+            "argmax_is_label_below": int(below["argmax_is_label"].sum()) if len(below) else 0,
+        }
+
+    if not below_parts:
+        raise RuntimeError(f"No below-threshold rows for coarse_classes={coarse_classes!r}")
+
+    below = pd.concat(below_parts, ignore_index=True)
+    for col in ("review_ok", "review_correct_label", "review_notes"):
+        if col not in below.columns:
+            below[col] = ""
+
+    out_path = rep / review_csv_name
+    extra = ("llm_coarse", "logreg_coarse", "label_train", "split", "threshold_tau", "threshold_margin")
+    meta_cols = ("below_tau", "below_margin", "argmax_is_label")
+    cols = list(
+        dict.fromkeys(
+            [c for c in REVIEW_COLUMNS if c in below.columns]
+            + [c for c in extra if c in below.columns]
+            + [c for c in meta_cols if c in below.columns]
+        )
+    )
+    below = below.sort_values(
+        ["label_train", "split", "max_proba", "margin"],
+        ascending=[True, True, True, True],
+    )
+    below[cols].to_csv(out_path, index=False)
+
+    summary = {
+        "hierarchy_revision": HIERARCHY_REVISION,
+        "coarse_classes": list(coarse_classes),
+        "tau": tau,
+        "margin": margin_th,
+        "splits": ["train", *extra_splits],
+        "by_class": by_class,
+        "below_threshold_rows": len(below),
+        "argmax_is_label_below": int(below["argmax_is_label"].sum()),
+        "mean_max_proba_below": float(below["max_proba"].mean()) if len(below) else None,
+        "classification_counts_below": below["classification"].astype(str).value_counts().head(30).to_dict(),
+    }
+    summary_path = rep / summary_json_name
+    summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    logger.info(
+        "Wrote %s below-threshold rows (%s) train+%s -> %s",
+        len(below),
+        ",".join(coarse_classes),
+        "+".join(extra_splits) or "train-only",
+        out_path,
+    )
+    return out_path, summary_path
+
+
+def export_train_coarse_below_threshold_review(
+    output_dir: Path | None = None,
+    *,
+    coarse_class: str,
+    scored_parquet: Path | None = None,
+    rescore: bool = False,
+    extra_splits: tuple[str, ...] = ("calib", "test"),
+) -> tuple[Path, Path]:
+    slug = coarse_class.replace("/", "_")
+    return export_coarse_classes_below_threshold_review(
+        output_dir,
+        coarse_classes=(coarse_class,),
+        scored_parquet=scored_parquet,
+        rescore=rescore,
+        extra_splits=extra_splits,
+        review_csv_name=f"15_train_{slug}_below_threshold_review.csv",
+        summary_json_name=f"15_train_{slug}_below_threshold_summary.json",
+    )
 
 
 def _sample_priority_agreement_low_confidence(

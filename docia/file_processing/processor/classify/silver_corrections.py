@@ -18,6 +18,7 @@ DEFAULT_REVIEW_SOURCES = (
     "10_core_four_miss_review_sample.csv",
     "13_train_disagreement_review_sample.csv",
     "14_train_priority_agreement_low_conf_review_sample.csv",
+    "15_train_ccap_below_threshold_review.csv",
 )
 
 
